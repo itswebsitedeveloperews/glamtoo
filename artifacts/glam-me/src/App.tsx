@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
-import logoImage from '@assets/Glam_me_logo_1787646624948.png';
+import logoImage from '@assets/Glam_me_logo_transparent.png';
 import { Route, Router as WouterRouter, Switch } from 'wouter';
 import NotFound from '@/pages/not-found';
 
@@ -16,13 +16,26 @@ const products = [
 function Header() {
   return (
     <header className="site-header" data-testid="site-header">
-      <div className="announcement">Free delivery on orders over £75 · The new occasion edit has arrived</div>
       <div className="header-inner">
-        <a href="/shop" className="tool-label" data-testid="link-search"><span className="tool-icon">⌕</span><span>Search</span></a>
+        <a href="/shop" className="tool-label search-link" data-testid="link-search">
+          <span className="tool-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
+          </span>
+          <span>Search</span>
+        </a>
         <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Glam Me" /></a>
         <div className="header-tools">
-          <a href="/about" className="tool-label" data-testid="link-account"><span className="tool-icon">♙</span><span>Account</span></a>
-          <a href="/cart" className="tool-label" data-testid="link-cart"><span className="tool-icon">♡</span><span>Bag (1)</span></a>
+          <a href="/about" className="tool-label icon-link" aria-label="Account" data-testid="link-account">
+            <span className="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="img"><circle cx="12" cy="8" r="3.2" /><path d="M5.8 20c.6-3.3 2.7-5.1 6.2-5.1s5.6 1.8 6.2 5.1" /></svg>
+            </span>
+          </a>
+          <a href="/cart" className="tool-label icon-link bag-link" aria-label="Shopping bag, 1 item" data-testid="link-cart">
+            <span className="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="img"><path d="M5.5 8.5h13l-1 11h-11z" /><path d="M9 9V6.8a3 3 0 0 1 6 0V9" /></svg>
+              <span className="bag-count">1</span>
+            </span>
+          </a>
         </div>
       </div>
       <nav className="nav" aria-label="Primary navigation">
