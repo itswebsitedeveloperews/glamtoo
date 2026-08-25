@@ -261,11 +261,14 @@ function Home() {
           <div><h3>Accessories</h3><p>The finishing<br />touch.</p><a href="/category/accessories">Shop accessories <span>→</span></a></div>
         </div>
       </section>
-      <div className="intro-strip"><div className="container intro-strip-inner"><span>Designed in London</span><span>Easy, joyful dressing</span><span>Free delivery over £75</span></div></div>
-      <section className="products-section container" aria-labelledby="obsessions-heading">
-        <div className="section-heading"><div><div className="eyebrow">The Glam Edit</div><h2 id="obsessions-heading">Our current obsessions</h2></div><a className="text-link" href="/shop" data-testid="link-view-all-products">View all pieces</a></div>
-        <div className="product-grid">{products.slice(0, 4).map((product, index) => <ProductCard key={product.id} product={product} featured={index === 0} />)}</div>
+      <section className="products-section container home-obsessions" aria-labelledby="obsessions-heading">
+        <div className="home-obsessions-heading">
+          <div className="eyebrow">The Glam Edit</div>
+          <h2 id="obsessions-heading">Our Current Obsessions</h2>
+        </div>
+        <div className="product-grid">{products.slice(0, 3).map((product) => <ProductCard key={product.id} product={product} />)}</div>
       </section>
+      <div className="intro-strip"><div className="container intro-strip-inner"><span>Designed in London</span><span>Easy, joyful dressing</span><span>Free delivery over £75</span></div></div>
       <section className="moments" aria-labelledby="moments-heading">
         <div className="container"><div className="section-heading"><div><div className="eyebrow">Shop by moment</div><h2 id="moments-heading">Outfits for every plan</h2></div><a className="text-link" href="/category" data-testid="link-shop-moments">Explore all moments</a></div>
           <div className="moment-grid">
