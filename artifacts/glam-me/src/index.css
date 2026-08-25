@@ -186,7 +186,7 @@ img { display: block; max-width: 100%; }
 .newsletter h2 { margin: 0 0 7px; font: 400 29px/1 var(--hero-display); }
 .newsletter p { max-width: 300px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
 .newsletter-form { display: flex; width: min(100%, 520px); min-height: 49px; flex: 0 1 520px; border: 1px solid #dfd7d2; background: var(--white); }
-.newsletter-form input { min-width: 0; flex: 1; border: 0; background: transparent; padding: 0 16px; color: var(--ink); outline: none; }
+.newsletter-form input { min-width: 0; flex: 1; border: 0; background: #FFFFFF; padding: 0 16px; color: var(--ink); outline: none; }
 .newsletter-form input::placeholder { color: var(--muted); }
 .newsletter-form button { min-width: 145px; border: 0; background: #e23d6f; color: #fff; padding: 0 21px; text-transform: uppercase; letter-spacing: .14em; font-size: 14px; cursor: pointer; }
 .newsletter-form button:hover { background: #c93260; }
