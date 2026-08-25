@@ -334,7 +334,7 @@ img { display: block; max-width: 100%; }
   .collection-tile h3 { font-size: 24px; }
   .collection-tile p { margin-bottom: 10px; font-size: 14px; }
   .collection-tile a { font-size: 14px; }
-  .home-obsessions { padding-top: 62px; }
+  .home-obsessions { padding-top: 30px; }
   .home-obsessions .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .category-directory { padding: 58px 0 82px; }
   .category-directory-grid { gap: 12px; }
@@ -347,7 +347,6 @@ img { display: block; max-width: 100%; }
   .category-banner-copy { padding: 40px 25px 48px; }
   .category-products { padding: 70px 0 90px; }
   .category-products .product-grid { grid-template-columns: repeat(2, 1fr); }
-  .products-section { padding: 72px 0; }
   .product-grid { grid-template-columns: repeat(2, 1fr); gap: 25px 10px; }
   .product-info { display: block; }
   .price { display: block; margin-top: 4px; }
