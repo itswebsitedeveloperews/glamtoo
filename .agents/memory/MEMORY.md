@@ -1,2 +1,3 @@
 - [Clerk embedded sign-in](clerk-embedded-sign-in.md) — In this Wouter/Vite app, use Clerk’s default embedded sign-in mode; path routing left the auth widget empty.
 - [Vite catalog state](vite-catalog-state.md) — Hot reload can preserve browser state when a localStorage-backed catalog changes; verify seeded data in a fresh context.
+- [Cart storage](cart-storage.md) — Persist only cart line identifiers, size, and quantity; derive product media from the catalog.

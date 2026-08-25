@@ -69,25 +69,30 @@ const cartStorageKey = 'glam-me-cart-v1';
 
 type CartItem = {
   productId: number;
-  name: string;
-  image: string;
-  price: string;
   size: string;
   quantity: number;
-  position: string;
 };
 
 function getCartItems(): CartItem[] {
   try {
     const stored = window.localStorage.getItem(cartStorageKey);
     if (!stored) return [];
-    const parsed = JSON.parse(stored) as CartItem[];
+    const parsed = JSON.parse(stored) as Array<Partial<CartItem>>;
     return Array.isArray(parsed)
-      ? parsed.filter((item) => item && typeof item.productId === 'number' && typeof item.name === 'string' && typeof item.image === 'string' && typeof item.price === 'string' && typeof item.size === 'string' && typeof item.quantity === 'number')
+      ? parsed
+        .filter((item) => item && typeof item.productId === 'number' && typeof item.size === 'string' && typeof item.quantity === 'number' && item.quantity > 0)
+        .map((item) => ({ productId: item.productId as number, size: item.size as string, quantity: item.quantity as number }))
       : [];
   } catch {
     return [];
   }
+}
+
+function getCartQueryItem(): CartItem | null {
+  const params = new URLSearchParams(window.location.search);
+  const productId = Number(params.get('product'));
+  const size = params.get('size');
+  return Number.isInteger(productId) && productId > 0 && size ? { productId, size, quantity: 1 } : null;
 }
 
 function parsePounds(value: string) {
@@ -108,15 +113,16 @@ function addProductToCart(product: CatalogProduct, size: string) {
   } else {
     nextItems.push({
       productId: product.id,
-      name: product.name,
-      image: product.image,
-      price: product.price,
       size,
       quantity: 1,
-      position: product.position,
     });
   }
-  window.localStorage.setItem(cartStorageKey, JSON.stringify(nextItems));
+  try {
+    window.localStorage.setItem(cartStorageKey, JSON.stringify(nextItems));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function getStorefrontProducts(): CatalogProduct[] {
@@ -175,7 +181,12 @@ function getStorefrontCategories(): CatalogCategory[] {
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [cartCount] = useState(() => getCartItems().reduce((total, item) => total + item.quantity, 0));
+  const [cartCount] = useState(() => {
+    const items = getCartItems();
+    const queryItem = getCartQueryItem();
+    const hasQueryItem = queryItem && items.some((item) => item.productId === queryItem.productId && item.size === queryItem.size);
+    return items.reduce((total, item) => total + item.quantity, 0) + (queryItem && !hasQueryItem ? 1 : 0);
+  });
 
   return (
     <header className="site-header" data-testid="site-header">
@@ -484,8 +495,10 @@ function ProductDetail({ params }: { params: { id: string } }) {
     event.preventDefault();
     const size = new FormData(event.currentTarget).get('size');
     if (typeof size !== 'string' || !size) return;
-    addProductToCart(selectedProduct, size);
-    window.location.href = '/cart';
+    const wasSaved = addProductToCart(selectedProduct, size);
+    window.location.href = wasSaved
+      ? '/cart'
+      : `/cart?product=${selectedProduct.id}&size=${encodeURIComponent(size)}`;
   }
 
   return (
@@ -494,7 +507,6 @@ function ProductDetail({ params }: { params: { id: string } }) {
         <div className="product-detail-layout">
           <div className="product-gallery">
             <div className="gallery-image"><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /></div>
-            <div className="gallery-image"><img src={product.image} alt={`${product.name} detail`} style={{ objectPosition: product.position }} /></div>
           </div>
           <div className="detail-copy">
             <div className="eyebrow">{product.category} edit · Glam Too</div>
@@ -534,28 +546,39 @@ function LegalPage({ type }: { type: 'privacy' | 'terms' | 'delivery' }) {
 }
 
 function Cart() {
-  const [items] = useState<CartItem[]>(getCartItems);
-  const subtotal = items.reduce((total, item) => total + parsePounds(item.price) * item.quantity, 0);
+  const [items] = useState<CartItem[]>(() => {
+    const storedItems = getCartItems();
+    const queryItem = getCartQueryItem();
+    return queryItem && !storedItems.some((item) => item.productId === queryItem.productId && item.size === queryItem.size)
+      ? [...storedItems, queryItem]
+      : storedItems;
+  });
+  const products = getStorefrontProducts();
+  const cartLines = items.flatMap((item) => {
+    const product = products.find((candidate) => candidate.id === item.productId);
+    return product ? [{ item, product }] : [];
+  });
+  const subtotal = cartLines.reduce((total, { item, product }) => total + parsePounds(product.price) * item.quantity, 0);
 
   return (
     <Shell>
       <div className="container cart-page">
         <div className="eyebrow">Your edit</div>
         <h1>Your bag.</h1>
-        {items.length === 0 ? (
+        {cartLines.length === 0 ? (
           <p>Your bag is empty. <a className="text-link" href="/shop">Continue shopping</a></p>
         ) : (
           <div className="cart-layout">
             <div>
-              {items.map((item) => (
+              {cartLines.map(({ item, product }) => (
                 <div className="cart-item" key={`${item.productId}-${item.size}`}>
-                  <img src={item.image} alt={item.name} style={{ objectPosition: item.position }} />
+                  <img src={product.image} alt={product.name} style={{ objectPosition: product.position }} />
                   <div>
-                    <h3>{item.name}</h3>
+                    <h3>{product.name}</h3>
                     <p>{item.size} · Qty {item.quantity}</p>
                     <a className="text-link" href={`/product/${item.productId}`}>Edit item</a>
                   </div>
-                  <strong>{formatPounds(parsePounds(item.price) * item.quantity)}</strong>
+                  <strong>{formatPounds(parsePounds(product.price) * item.quantity)}</strong>
                 </div>
               ))}
               <a className="text-link" href="/shop" data-testid="link-cart-continue">Continue shopping</a>
