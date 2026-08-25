@@ -1,13 +1,24 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
 
 type AdminSection =
   | "overview"
   | "products"
   | "categories"
-  | "variations"
   | "orders"
   | "shipping"
   | "payments";
+
+type ProductStatus = "Published" | "Draft";
+type ProductType = "Simple" | "Variable";
+
+type ProductVariation = {
+  id: number;
+  size: string;
+  colour: string;
+  sku: string;
+  price: string;
+  stock: number;
+};
 
 type Product = {
   id: number;
@@ -15,8 +26,14 @@ type Product = {
   category: string;
   price: string;
   stock: number;
-  status: "Active" | "Draft";
+  status: ProductStatus;
+  type: ProductType;
+  description: string;
+  sku: string;
+  variations: ProductVariation[];
 };
+
+type ProductDraft = Omit<Product, "id">;
 
 type Order = {
   id: string;
@@ -30,16 +47,51 @@ const navItems: Array<{ id: AdminSection; label: string; hint: string }> = [
   { id: "overview", label: "Overview", hint: "Today" },
   { id: "products", label: "Products", hint: "Catalog" },
   { id: "categories", label: "Categories", hint: "Organize" },
-  { id: "variations", label: "Variations", hint: "Sizes & colours" },
   { id: "orders", label: "Orders", hint: "Fulfilment" },
   { id: "shipping", label: "Shipping", hint: "Delivery rules" },
   { id: "payments", label: "Payments", hint: "Stripe" },
 ];
 
 const initialProducts: Product[] = [
-  { id: 1, name: "Luna Ruffle Mini Dress", category: "Dresses", price: "£89.99", stock: 14, status: "Active" },
-  { id: 2, name: "Ella Tailored Jumpsuit", category: "Co-Ords", price: "£59.99", stock: 8, status: "Active" },
-  { id: 3, name: "Mila Satin Maxi Dress", category: "Occasion", price: "£44.99", stock: 0, status: "Draft" },
+  {
+    id: 1,
+    name: "Luna Ruffle Mini Dress",
+    category: "Dresses",
+    price: "£89.99",
+    stock: 14,
+    status: "Published",
+    type: "Simple",
+    description: "A soft, ruffled mini dress for plans that deserve a little extra.",
+    sku: "GM-LUNA",
+    variations: [],
+  },
+  {
+    id: 2,
+    name: "Ella Tailored Jumpsuit",
+    category: "Co-Ords",
+    price: "£59.99",
+    stock: 8,
+    status: "Published",
+    type: "Variable",
+    description: "A confident, tailored jumpsuit with an easy after-dark feel.",
+    sku: "GM-ELLA",
+    variations: [
+      { id: 201, size: "UK 8", colour: "Midnight", sku: "GM-ELLA-8-MID", price: "£59.99", stock: 4 },
+      { id: 202, size: "UK 10", colour: "Midnight", sku: "GM-ELLA-10-MID", price: "£59.99", stock: 4 },
+    ],
+  },
+  {
+    id: 3,
+    name: "Mila Satin Maxi Dress",
+    category: "Occasion",
+    price: "£44.99",
+    stock: 0,
+    status: "Draft",
+    type: "Simple",
+    description: "A fluid satin maxi with an elegant bias-cut shape.",
+    sku: "GM-MILA",
+    variations: [],
+  },
 ];
 
 const initialOrders: Order[] = [
@@ -47,6 +99,27 @@ const initialOrders: Order[] = [
   { id: "#GM-1047", customer: "Maya Patel", date: "Today, 09:18", total: "£89.99", status: "Shipped" },
   { id: "#GM-1046", customer: "Amelia Jones", date: "Yesterday", total: "£59.99", status: "Delivered" },
 ];
+
+function useStoredState<T>(key: string, fallback: T) {
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const stored = window.localStorage.getItem(key);
+      return stored ? (JSON.parse(stored) as T) : fallback;
+    } catch {
+      return fallback;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // The editor still works if browser storage is unavailable.
+    }
+  }, [key, value]);
+
+  return [value, setValue] as const;
+}
 
 function SectionTitle({
   eyebrow,
@@ -57,7 +130,7 @@ function SectionTitle({
   eyebrow: string;
   title: string;
   description: string;
-  action?: React.ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <div className="admin-section-title">
@@ -71,43 +144,269 @@ function SectionTitle({
   );
 }
 
+function blankProduct(category: string): ProductDraft {
+  return {
+    name: "",
+    category,
+    price: "",
+    stock: 0,
+    status: "Draft",
+    type: "Simple",
+    description: "",
+    sku: "",
+    variations: [],
+  };
+}
+
+function ProductEditor({
+  product,
+  categories,
+  onCancel,
+  onSave,
+}: {
+  product?: Product;
+  categories: string[];
+  onCancel: () => void;
+  onSave: (draft: ProductDraft) => void;
+}) {
+  const [draft, setDraft] = useState<ProductDraft>(() =>
+    product
+      ? {
+          name: product.name,
+          category: product.category,
+          price: product.price,
+          stock: product.stock,
+          status: product.status,
+          type: product.type,
+          description: product.description,
+          sku: product.sku,
+          variations: product.variations.map((variation) => ({ ...variation })),
+        }
+      : blankProduct(categories[0] ?? "Dresses"),
+  );
+  const [validationMessage, setValidationMessage] = useState("");
+
+  const publishLabel = product && draft.status === "Published" ? "Update product" : "Publish product";
+  const totalVariationStock = draft.variations.reduce((total, variation) => total + variation.stock, 0);
+
+  function updateDraft(patch: Partial<ProductDraft>) {
+    setDraft((current) => ({ ...current, ...patch }));
+    setValidationMessage("");
+  }
+
+  function save(status: ProductStatus) {
+    if (!draft.name.trim() || !draft.price.trim()) {
+      setValidationMessage("Add a product name and price before saving.");
+      return;
+    }
+    if (draft.type === "Variable" && draft.variations.length === 0) {
+      setValidationMessage("Add at least one variation or change the product type to Simple.");
+      return;
+    }
+    onSave({ ...draft, name: draft.name.trim(), status });
+  }
+
+  function addVariation() {
+    setDraft((current) => ({
+      ...current,
+      variations: [
+        ...current.variations,
+        {
+          id: Date.now(),
+          size: "",
+          colour: "",
+          sku: current.sku ? `${current.sku}-${current.variations.length + 1}` : "",
+          price: current.price,
+          stock: 0,
+        },
+      ],
+    }));
+  }
+
+  function updateVariation(id: number, patch: Partial<ProductVariation>) {
+    setDraft((current) => ({
+      ...current,
+      variations: current.variations.map((variation) =>
+        variation.id === id ? { ...variation, ...patch } : variation,
+      ),
+    }));
+  }
+
+  function removeVariation(id: number) {
+    setDraft((current) => ({
+      ...current,
+      variations: current.variations.filter((variation) => variation.id !== id),
+    }));
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    save(draft.status);
+  }
+
+  return (
+    <form className="admin-product-editor" onSubmit={handleSubmit}>
+      <div className="admin-editor-topbar">
+        <button className="admin-back-button" type="button" onClick={onCancel}>← Back to products</button>
+        <span>{product ? "Edit product" : "Add new product"}</span>
+      </div>
+      <div className="admin-editor-heading">
+        <div>
+          <p className="admin-eyebrow">Catalog / {product ? "Edit" : "New"}</p>
+          <h1>{product ? product.name : "Add new product"}</h1>
+          <p>{product ? "Update the product details, variations, or publishing status." : "Create a product customers will love to add to their next plan."}</p>
+        </div>
+        <div className="admin-editor-heading-actions">
+          <button className="admin-secondary" type="button" onClick={() => save("Draft")}>Save draft</button>
+          <button className="admin-primary" type="button" onClick={() => save("Published")}>{publishLabel}</button>
+        </div>
+      </div>
+
+      {validationMessage && <div className="admin-validation" role="alert">{validationMessage}</div>}
+
+      <div className="admin-editor-layout">
+        <div className="admin-editor-column">
+          <section className="admin-editor-card">
+            <div className="admin-card-heading"><div><p className="admin-eyebrow">Product details</p><h2>Tell the story</h2></div><span className="admin-required-note">* Required</span></div>
+            <label className="admin-editor-label">Product name *
+              <input className="admin-editor-input admin-editor-title-input" value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} placeholder="e.g. Sienna Slip Dress" required />
+            </label>
+            <label className="admin-editor-label">Description
+              <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="Describe the fit, feeling, and details customers should know." rows={5} />
+            </label>
+          </section>
+
+          <section className="admin-editor-card">
+            <div className="admin-card-heading"><div><p className="admin-eyebrow">Product data</p><h2>What are you selling?</h2></div></div>
+            <div className="admin-field-grid">
+              <label className="admin-editor-label">Product type
+                <select className="admin-editor-input" value={draft.type} onChange={(event) => updateDraft({ type: event.target.value as ProductType })}>
+                  <option value="Simple">Simple product</option>
+                  <option value="Variable">Variable product</option>
+                </select>
+                <small>{draft.type === "Variable" ? "Customers will choose from the variations below." : "One price and stock level for this product."}</small>
+              </label>
+              <label className="admin-editor-label">SKU
+                <input className="admin-editor-input" value={draft.sku} onChange={(event) => updateDraft({ sku: event.target.value })} placeholder="e.g. GM-SIENNA" />
+              </label>
+              <label className="admin-editor-label">Regular price *
+                <input className="admin-editor-input" value={draft.price} onChange={(event) => updateDraft({ price: event.target.value })} inputMode="decimal" placeholder="89.99" required />
+              </label>
+              <label className="admin-editor-label">Stock quantity
+                <input className="admin-editor-input" type="number" min="0" value={draft.stock} onChange={(event) => updateDraft({ stock: Number(event.target.value) || 0 })} />
+              </label>
+            </div>
+          </section>
+
+          {draft.type === "Variable" && (
+            <section className="admin-editor-card admin-variations-card">
+              <div className="admin-card-heading">
+                <div><p className="admin-eyebrow">Variable product</p><h2>Variations</h2><p className="admin-card-description">Add each purchasable combination of size, colour, price, and stock.</p></div>
+                <button className="admin-secondary" type="button" onClick={addVariation}>+ Add variation</button>
+              </div>
+              {draft.variations.length === 0 ? (
+                <div className="admin-empty-variations"><strong>No variations yet</strong><span>Add your first size and colour combination to make this product ready to sell.</span><button className="admin-primary" type="button" onClick={addVariation}>Add first variation</button></div>
+              ) : (
+                <div className="admin-variation-table">
+                  <div className="admin-variation-table-head"><span>Size</span><span>Colour</span><span>Variation SKU</span><span>Price</span><span>Stock</span><span /></div>
+                  {draft.variations.map((variation) => (
+                    <div className="admin-variation-row" key={variation.id}>
+                      <input aria-label="Variation size" value={variation.size} onChange={(event) => updateVariation(variation.id, { size: event.target.value })} placeholder="UK 8" />
+                      <input aria-label="Variation colour" value={variation.colour} onChange={(event) => updateVariation(variation.id, { colour: event.target.value })} placeholder="Blush" />
+                      <input aria-label="Variation SKU" value={variation.sku} onChange={(event) => updateVariation(variation.id, { sku: event.target.value })} placeholder="GM-001-8" />
+                      <input aria-label="Variation price" value={variation.price} onChange={(event) => updateVariation(variation.id, { price: event.target.value })} inputMode="decimal" placeholder="89.99" />
+                      <input aria-label="Variation stock" type="number" min="0" value={variation.stock} onChange={(event) => updateVariation(variation.id, { stock: Number(event.target.value) || 0 })} />
+                      <button className="admin-remove-button" type="button" onClick={() => removeVariation(variation.id)} aria-label={`Remove ${variation.size || "variation"}`}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {draft.variations.length > 0 && <p className="admin-variation-summary">{draft.variations.length} variation{draft.variations.length === 1 ? "" : "s"} · {totalVariationStock} units in stock</p>}
+            </section>
+          )}
+        </div>
+
+        <aside className="admin-editor-sidebar">
+          <section className="admin-publish-card">
+            <div className="admin-card-heading"><div><p className="admin-eyebrow">Publishing</p><h2>Product status</h2></div><span className={`admin-publish-dot ${draft.status.toLowerCase()}`} /></div>
+            <label className="admin-editor-label">Status
+              <select className="admin-editor-input" value={draft.status} onChange={(event) => updateDraft({ status: event.target.value as ProductStatus })}>
+                <option value="Draft">Draft</option>
+                <option value="Published">Published</option>
+              </select>
+            </label>
+            <p className="admin-publish-help">{draft.status === "Published" ? "This product is visible on your storefront." : "This product is hidden until you publish it."}</p>
+            <div className="admin-publish-actions">
+              <button className="admin-secondary" type="button" onClick={() => save("Draft")}>Move to draft</button>
+              <button className="admin-primary" type="button" onClick={() => save("Published")}>{publishLabel}</button>
+            </div>
+          </section>
+
+          <section className="admin-editor-card admin-sidebar-card">
+            <p className="admin-eyebrow">Organization</p>
+            <label className="admin-editor-label">Category
+              <select className="admin-editor-input" value={draft.category} onChange={(event) => updateDraft({ category: event.target.value })}>{categories.map((category) => <option key={category}>{category}</option>)}</select>
+            </label>
+          </section>
+
+          <section className="admin-editor-card admin-sidebar-card">
+            <p className="admin-eyebrow">Editor checklist</p>
+            <ul className="admin-checklist">
+              <li className={draft.name ? "is-complete" : ""}>Product name</li>
+              <li className={draft.price ? "is-complete" : ""}>Price</li>
+              <li className={draft.type === "Simple" || draft.variations.length > 0 ? "is-complete" : ""}>{draft.type === "Variable" ? "At least one variation" : "Stock quantity"}</li>
+            </ul>
+          </section>
+        </aside>
+      </div>
+    </form>
+  );
+}
+
 export default function AdminDashboard({
   onSignOut,
 }: {
   onSignOut: () => void;
 }) {
   const [section, setSection] = useState<AdminSection>("overview");
-  const [products, setProducts] = useState<Product[]>(initialProducts);
-  const [categories, setCategories] = useState(["Dresses", "Occasion", "Co-Ords", "Denim", "Accessories"]);
-  const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const [showProductForm, setShowProductForm] = useState(false);
+  const [products, setProducts] = useStoredState<Product[]>("glam-me-admin-products", initialProducts);
+  const [categories, setCategories] = useStoredState<string[]>("glam-me-admin-categories", ["Dresses", "Occasion", "Co-Ords", "Denim", "Accessories"]);
+  const [orders, setOrders] = useStoredState<Order[]>("glam-me-admin-orders", initialOrders);
+  const [editorProductId, setEditorProductId] = useState<number | "new" | null>(null);
   const [notice, setNotice] = useState("");
 
   const inventoryTotal = useMemo(
-    () => products.reduce((total, product) => total + product.stock, 0),
+    () => products.reduce((total, product) => total + (product.type === "Variable" ? product.variations.reduce((sum, variation) => sum + variation.stock, 0) : product.stock), 0),
     [products],
   );
 
-  function addProduct(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const fields = new FormData(event.currentTarget);
-    const name = String(fields.get("name") ?? "").trim();
-    const category = String(fields.get("category") ?? categories[0]);
-    const price = String(fields.get("price") ?? "").trim();
-    const stock = Number(fields.get("stock") ?? 0);
-    if (!name || !price) return;
-    setProducts((current) => [
-      { id: Date.now(), name, category, price: price.startsWith("£") ? price : `£${price}`, stock, status: "Active" },
-      ...current,
-    ]);
-    setShowProductForm(false);
-    setNotice(`${name} was added to your catalog.`);
+  function openNewProduct() {
+    setSection("products");
+    setEditorProductId("new");
+    setNotice("");
+  }
+
+  function saveProduct(draft: ProductDraft) {
+    if (editorProductId === "new") {
+      const newProduct: Product = { id: Date.now(), ...draft };
+      setProducts((current) => [newProduct, ...current]);
+      setNotice(`${newProduct.name} was ${newProduct.status === "Published" ? "published" : "saved as a draft"}.`);
+    } else if (typeof editorProductId === "number") {
+      setProducts((current) => current.map((product) => product.id === editorProductId ? { id: product.id, ...draft } : product));
+      setNotice(`${draft.name} was ${draft.status === "Published" ? "updated and published" : "moved to draft"}.`);
+    }
+    setEditorProductId(null);
+    setSection("products");
+  }
+
+  function removeProduct(product: Product) {
+    setProducts((current) => current.filter((item) => item.id !== product.id));
+    setNotice(`${product.name} was removed from the catalog.`);
   }
 
   function addCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const field = new FormData(event.currentTarget).get("category");
-    const category = String(field ?? "").trim();
+    const category = String(new FormData(event.currentTarget).get("category") ?? "").trim();
     if (!category || categories.includes(category)) return;
     setCategories((current) => [...current, category]);
     event.currentTarget.reset();
@@ -115,11 +414,11 @@ export default function AdminDashboard({
   }
 
   function updateOrderStatus(orderId: string, status: Order["status"]) {
-    setOrders((current) =>
-      current.map((order) => (order.id === orderId ? { ...order, status } : order)),
-    );
+    setOrders((current) => current.map((order) => (order.id === orderId ? { ...order, status } : order)));
     setNotice(`${orderId} is now marked ${status.toLowerCase()}.`);
   }
+
+  const editorProduct = typeof editorProductId === "number" ? products.find((product) => product.id === editorProductId) : undefined;
 
   return (
     <div className="admin-app">
@@ -130,14 +429,8 @@ export default function AdminDashboard({
         </a>
         <nav className="admin-nav" aria-label="Admin navigation">
           {navItems.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              className={section === item.id ? "is-active" : ""}
-              onClick={() => setSection(item.id)}
-            >
-              <span>{item.label}</span>
-              <small>{item.hint}</small>
+            <button type="button" key={item.id} className={section === item.id && editorProductId === null ? "is-active" : ""} onClick={() => { setSection(item.id); setEditorProductId(null); }}>
+              <span>{item.label}</span><small>{item.hint}</small>
             </button>
           ))}
         </nav>
@@ -148,21 +441,11 @@ export default function AdminDashboard({
       </aside>
 
       <main className="admin-main">
-        {notice && (
-          <div className="admin-notice" role="status">
-            <span>{notice}</span>
-            <button type="button" aria-label="Dismiss notification" onClick={() => setNotice("")}>×</button>
-          </div>
-        )}
+        {notice && <div className="admin-notice" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss notification" onClick={() => setNotice("")}>×</button></div>}
 
         {section === "overview" && (
           <>
-            <SectionTitle
-              eyebrow="Glam Me administration"
-              title="Good morning"
-              description="Your storefront is looking beautiful. Here’s what needs your attention today."
-              action={<button className="admin-primary" type="button" onClick={() => setSection("products")}>Add a product</button>}
-            />
+            <SectionTitle eyebrow="Glam Me administration" title="Good morning" description="Your storefront is looking beautiful. Here’s what needs your attention today." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add a product</button>} />
             <div className="admin-stat-grid">
               <article><p>Sales today</p><strong>£1,284.00</strong><span>+18.4% from yesterday</span></article>
               <article><p>Open orders</p><strong>{orders.filter((order) => order.status !== "Delivered").length}</strong><span>Ready for fulfilment</span></article>
@@ -170,51 +453,24 @@ export default function AdminDashboard({
               <article><p>Average order</p><strong>£74.25</strong><span>Last 30 days</span></article>
             </div>
             <div className="admin-two-column">
-              <section className="admin-panel">
-                <div className="admin-panel-header"><div><p className="admin-eyebrow">Fulfilment</p><h2>Recent orders</h2></div><button type="button" onClick={() => setSection("orders")}>View all</button></div>
-                <div className="admin-list">
-                  {orders.map((order) => (
-                    <div className="admin-order-row" key={order.id}>
-                      <div><strong>{order.id}</strong><span>{order.customer} · {order.date}</span></div>
-                      <div><strong>{order.total}</strong><span className={`order-status ${order.status.toLowerCase()}`}>{order.status}</span></div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-              <section className="admin-panel admin-pink-panel">
-                <p className="admin-eyebrow">Payments</p>
-                <h2>Stripe is not connected</h2>
-                <p>Connect Stripe through your secure workspace integration to activate card payments, refunds, and payment reporting.</p>
-                <button className="admin-quiet-button" type="button" onClick={() => setSection("payments")}>Open payment settings</button>
-              </section>
+              <section className="admin-panel"><div className="admin-panel-header"><div><p className="admin-eyebrow">Fulfilment</p><h2>Recent orders</h2></div><button type="button" onClick={() => setSection("orders")}>View all</button></div><div className="admin-list">{orders.map((order) => <div className="admin-order-row" key={order.id}><div><strong>{order.id}</strong><span>{order.customer} · {order.date}</span></div><div><strong>{order.total}</strong><span className={`order-status ${order.status.toLowerCase()}`}>{order.status}</span></div></div>)}</div></section>
+              <section className="admin-panel admin-pink-panel"><p className="admin-eyebrow">Payments</p><h2>Stripe is not connected</h2><p>Connect Stripe through your secure workspace integration to activate card payments, refunds, and payment reporting.</p><button className="admin-quiet-button" type="button" onClick={() => setSection("payments")}>Open payment settings</button></section>
             </div>
           </>
         )}
 
-        {section === "products" && (
+        {section === "products" && editorProductId !== null && <ProductEditor product={editorProduct} categories={categories} onCancel={() => setEditorProductId(null)} onSave={saveProduct} />}
+
+        {section === "products" && editorProductId === null && (
           <>
-            <SectionTitle
-              eyebrow="Catalog"
-              title="Products"
-              description="Create, edit, or remove the pieces customers see in your Glam Me store."
-              action={<button className="admin-primary" type="button" onClick={() => setShowProductForm((shown) => !shown)}>{showProductForm ? "Close form" : "Add product"}</button>}
-            />
-            {showProductForm && (
-              <form className="admin-product-form" onSubmit={addProduct}>
-                <label>Product name<input name="name" required placeholder="e.g. Sienna Slip Dress" /></label>
-                <label>Category<select name="category">{categories.map((category) => <option key={category}>{category}</option>)}</select></label>
-                <label>Price<input name="price" required inputMode="decimal" placeholder="89.99" /></label>
-                <label>Stock<input name="stock" required type="number" min="0" defaultValue="1" /></label>
-                <button className="admin-primary" type="submit">Save product</button>
-              </form>
-            )}
+            <SectionTitle eyebrow="Catalog" title="Products" description="Create, edit, publish, or move products back to draft from one product workspace." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add product</button>} />
             <section className="admin-panel admin-table-panel">
-              <div className="admin-table">
-                <div className="admin-table-head"><span>Product</span><span>Category</span><span>Price</span><span>Stock</span><span>Status</span><span /></div>
+              <div className="admin-table admin-products-table">
+                <div className="admin-table-head"><span>Product</span><span>Type</span><span>Category</span><span>Price</span><span>Status</span><span>Actions</span></div>
                 {products.map((product) => (
                   <div className="admin-table-row" key={product.id}>
-                    <strong>{product.name}</strong><span>{product.category}</span><span>{product.price}</span><span>{product.stock}</span><span className={`product-status ${product.status.toLowerCase()}`}>{product.status}</span>
-                    <button type="button" onClick={() => { setProducts((current) => current.filter((item) => item.id !== product.id)); setNotice(`${product.name} was removed.`); }}>Remove</button>
+                    <strong>{product.name}</strong><span>{product.type}</span><span>{product.category}</span><span>{product.price}</span><span className={`product-status ${product.status.toLowerCase()}`}>{product.status}</span>
+                    <div className="admin-product-actions"><button type="button" onClick={() => { setEditorProductId(product.id); setNotice(""); }}>Edit</button><button type="button" onClick={() => removeProduct(product)}>Remove</button></div>
                   </div>
                 ))}
               </div>
@@ -225,75 +481,29 @@ export default function AdminDashboard({
         {section === "categories" && (
           <>
             <SectionTitle eyebrow="Catalog structure" title="Categories" description="Organize your collection so customers can shop every moment with ease." />
-            <div className="admin-two-column">
-              <section className="admin-panel">
-                <h2>Existing categories</h2>
-                <div className="admin-chip-list">{categories.map((category) => <span key={category}>{category}<button type="button" aria-label={`Remove ${category}`} onClick={() => setCategories((current) => current.filter((item) => item !== category))}>×</button></span>)}</div>
-              </section>
-              <form className="admin-panel admin-simple-form" onSubmit={addCategory}>
-                <p className="admin-eyebrow">New category</p><h2>Add a collection</h2>
-                <label>Category name<input name="category" required placeholder="e.g. Weekend plans" /></label>
-                <button className="admin-primary" type="submit">Create category</button>
-              </form>
-            </div>
-          </>
-        )}
-
-        {section === "variations" && (
-          <>
-            <SectionTitle eyebrow="Catalog structure" title="Variations" description="Set the sizes, colours, and stock options attached to each product." />
-            <section className="admin-panel">
-              <div className="admin-variation-layout">
-                <div><p className="admin-eyebrow">Product</p><select aria-label="Select product">{products.map((product) => <option key={product.id}>{product.name}</option>)}</select></div>
-                <div><p className="admin-eyebrow">Options</p><div className="admin-chip-list"><span>Size: UK 6 <button type="button">×</button></span><span>Size: UK 8 <button type="button">×</button></span><span>Colour: Blush <button type="button">×</button></span></div></div>
-                <button className="admin-primary" type="button" onClick={() => setNotice("Variation editor saved for the selected product.")}>Save variations</button>
-              </div>
-            </section>
+            <div className="admin-two-column"><section className="admin-panel"><h2>Existing categories</h2><div className="admin-chip-list">{categories.map((category) => <span key={category}>{category}<button type="button" aria-label={`Remove ${category}`} onClick={() => setCategories((current) => current.filter((item) => item !== category))}>×</button></span>)}</div></section><form className="admin-panel admin-simple-form" onSubmit={addCategory}><p className="admin-eyebrow">New category</p><h2>Add a collection</h2><label>Category name<input name="category" required placeholder="e.g. Weekend plans" /></label><button className="admin-primary" type="submit">Create category</button></form></div>
           </>
         )}
 
         {section === "orders" && (
           <>
             <SectionTitle eyebrow="Fulfilment" title="Orders" description="Track customer purchases and move each order through delivery." />
-            <section className="admin-panel admin-table-panel">
-              <div className="admin-table">
-                <div className="admin-table-head"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span></div>
-                {orders.map((order) => (
-                  <div className="admin-table-row admin-order-table-row" key={order.id}>
-                    <strong>{order.id}</strong><span>{order.customer}</span><span>{order.date}</span><span>{order.total}</span>
-                    <select value={order.status} onChange={(event) => updateOrderStatus(order.id, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}>
-                      <option>Processing</option><option>Shipped</option><option>Delivered</option>
-                    </select>
-                  </div>
-                ))}
-              </div>
-            </section>
+            <section className="admin-panel admin-table-panel"><div className="admin-table"><div className="admin-table-head"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span></div>{orders.map((order) => <div className="admin-table-row admin-order-table-row" key={order.id}><strong>{order.id}</strong><span>{order.customer}</span><span>{order.date}</span><span>{order.total}</span><select value={order.status} onChange={(event) => updateOrderStatus(order.id, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}><option>Processing</option><option>Shipped</option><option>Delivered</option></select></div>)}</div></section>
           </>
         )}
 
         {section === "shipping" && (
           <>
             <SectionTitle eyebrow="Store settings" title="Shipping" description="Set delivery methods, rates, and your free-shipping threshold." />
-            <form className="admin-shipping-grid" onSubmit={(event) => { event.preventDefault(); setNotice("Shipping settings saved."); }}>
-              <section className="admin-panel admin-simple-form"><p className="admin-eyebrow">Standard delivery</p><h2>UK Standard</h2><label>Rate<input defaultValue="£3.99" /></label><label>Estimated delivery<input defaultValue="3–5 working days" /></label></section>
-              <section className="admin-panel admin-simple-form"><p className="admin-eyebrow">Free shipping</p><h2>Delivery incentive</h2><label>Free shipping over<input defaultValue="£75.00" /></label><label>Announcement text<input defaultValue="Free delivery on orders over £75" /></label></section>
-              <button className="admin-primary" type="submit">Save shipping rules</button>
-            </form>
+            <form className="admin-shipping-grid" onSubmit={(event) => { event.preventDefault(); setNotice("Shipping settings saved."); }}><section className="admin-panel admin-simple-form"><p className="admin-eyebrow">Standard delivery</p><h2>UK Standard</h2><label>Rate<input defaultValue="£3.99" /></label><label>Estimated delivery<input defaultValue="3–5 working days" /></label></section><section className="admin-panel admin-simple-form"><p className="admin-eyebrow">Free shipping</p><h2>Delivery incentive</h2><label>Free shipping over<input defaultValue="£75.00" /></label><label>Announcement text<input defaultValue="Free delivery on orders over £75" /></label></section><button className="admin-primary" type="submit">Save shipping rules</button></form>
           </>
         )}
 
         {section === "payments" && (
           <>
             <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Me." />
-            <section className="admin-payment-card">
-              <div><span className="stripe-mark">stripe</span><h2>Connect Stripe to accept payments</h2><p>Stripe has not been authorized for this workspace. For security, payment keys are never entered or stored inside the storefront admin.</p></div>
-              <div className="admin-payment-status"><strong>Connection status</strong><span>Not connected</span></div>
-            </section>
-            <section className="admin-panel admin-payment-next">
-              <p className="admin-eyebrow">Next step</p>
-              <h2>Connect through the workspace integration</h2>
-              <p>Once Stripe is authorized, this page will show live payment activity, refunds, customer records, and connected checkout settings.</p>
-            </section>
+            <section className="admin-payment-card"><div><span className="stripe-mark">stripe</span><h2>Connect Stripe to accept payments</h2><p>Stripe has not been authorized for this workspace. For security, payment keys are never entered or stored inside the storefront admin.</p></div><div className="admin-payment-status"><strong>Connection status</strong><span>Not connected</span></div></section>
+            <section className="admin-panel admin-payment-next"><p className="admin-eyebrow">Next step</p><h2>Connect through the workspace integration</h2><p>Once Stripe is authorized, this page will show live payment activity, refunds, customer records, and connected checkout settings.</p></section>
           </>
         )}
       </main>
