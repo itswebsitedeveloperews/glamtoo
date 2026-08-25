@@ -178,14 +178,18 @@ img { display: block; max-width: 100%; }
 .moment-shop-link { display: inline-block; padding-bottom: 4px; border-bottom: 1px solid currentColor; color: var(--white); font-size: 14px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
 .moment-shop-link span { margin-left: 3px; font-size: 16px; }
 
-.newsletter { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 47px 0; }
-.newsletter-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: center; }
-.newsletter h2 { margin: 0 0 8px; font: 400 45px/.9 var(--display); }
-.newsletter p { margin: 0; color: var(--muted); font-size: 14px; }
-.newsletter-form { display: flex; border-bottom: 1px solid var(--ink); }
-.newsletter-form input { flex: 1; border: 0; background: transparent; padding: 13px 0; color: var(--ink); outline: none; }
+.newsletter { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 31px 0; background: var(--paper); }
+.newsletter-inner { display: flex; align-items: center; gap: 36px; }
+.newsletter-copy-group { display: flex; min-width: 0; flex: 1; align-items: center; gap: 25px; }
+.newsletter-icon { display: grid; width: 76px; height: 76px; flex: 0 0 76px; place-items: center; border-radius: 50%; background: #f1dfdd; }
+.newsletter-icon svg { width: 42px; height: 42px; fill: none; stroke: var(--ink); stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.35; }
+.newsletter h2 { margin: 0 0 7px; font: 400 29px/1 var(--hero-display); }
+.newsletter p { max-width: 300px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
+.newsletter-form { display: flex; width: min(100%, 520px); min-height: 49px; flex: 0 1 520px; border: 1px solid #dfd7d2; background: var(--white); }
+.newsletter-form input { min-width: 0; flex: 1; border: 0; background: transparent; padding: 0 16px; color: var(--ink); outline: none; }
 .newsletter-form input::placeholder { color: var(--muted); }
-.newsletter-form button { border: 0; background: transparent; padding: 0 0 0 15px; text-transform: uppercase; letter-spacing: .14em; font-size: 14px; cursor: pointer; }
+.newsletter-form button { min-width: 145px; border: 0; background: #e23d6f; color: #fff; padding: 0 21px; text-transform: uppercase; letter-spacing: .14em; font-size: 14px; cursor: pointer; }
+.newsletter-form button:hover { background: #c93260; }
 
 .footer { padding: 68px 0 24px; background: var(--paper-deep); }
 .footer-grid { display: grid; grid-template-columns: 1.5fr repeat(3, 1fr); gap: 30px; padding-bottom: 65px; }

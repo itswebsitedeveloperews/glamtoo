@@ -165,9 +165,18 @@ function Footer() {
     <>
       <section className="newsletter" aria-label="Newsletter signup">
         <div className="container newsletter-inner">
-          <div>
+          <div className="newsletter-copy-group">
+            <div className="newsletter-icon" aria-hidden="true">
+              <svg viewBox="0 0 48 48" focusable="false">
+                <rect x="5" y="9" width="38" height="30" rx="1.5"></rect>
+                <path d="m6 11 18 15L42 11"></path>
+                <path d="m6 37 13-12M42 37 29 25"></path>
+              </svg>
+            </div>
+            <div>
             <h2 className="display">Don&apos;t miss a thing</h2>
-            <p>New drops, daily inspiration and 10% off your first order, delivered with care.</p>
+            <p>New drops, style inspo and exclusive perks straight to your inbox.</p>
+            </div>
           </div>
           <form className="newsletter-form" action="/" method="get">
             <label className="sr-only" htmlFor="newsletter-email">Email address</label>
