@@ -47,6 +47,12 @@ const productsStorageKey = "glam-me-admin-products-v4";
 const legacyProductsStorageKey = "glam-me-admin-products-v3";
 const initialProducts: Product[] = catalogProducts;
 
+function withoutProductDetail(product: Product): Product {
+  const cleanedProduct = { ...product } as Product & { detail?: unknown };
+  delete cleanedProduct.detail;
+  return cleanedProduct;
+}
+
 function getInitialProducts() {
   try {
     const legacyProducts = window.localStorage.getItem(legacyProductsStorageKey);
@@ -55,9 +61,20 @@ function getInitialProducts() {
     if (!Array.isArray(parsed)) return initialProducts;
     const seededIds = new Set(initialProducts.map((product) => product.id));
     const customProducts = parsed.filter((product) => !seededIds.has(product.id));
-    return [...initialProducts, ...customProducts];
+    return [...initialProducts, ...customProducts].map(withoutProductDetail);
   } catch {
     return initialProducts;
+  }
+}
+
+function getStoredProducts() {
+  try {
+    const storedProducts = window.localStorage.getItem(productsStorageKey);
+    if (!storedProducts) return getInitialProducts();
+    const parsed = JSON.parse(storedProducts) as Product[];
+    return Array.isArray(parsed) ? parsed.map(withoutProductDetail) : getInitialProducts();
+  } catch {
+    return getInitialProducts();
   }
 }
 
@@ -124,7 +141,6 @@ function blankProduct(category: string): ProductDraft {
     description: "",
     sku: "",
     image: "",
-    detail: "New Glam Too piece",
     position: "50% 50%",
     variations: [],
   };
@@ -157,7 +173,6 @@ function ProductEditor({
           description: product.description,
           sku: product.sku,
            image: product.image,
-           detail: product.detail,
            position: product.position,
           variations: product.variations.map((variation) => ({ ...variation })),
         }
@@ -384,7 +399,7 @@ export default function AdminDashboard({
   onSignOut: () => void;
 }) {
   const [section, setSection] = useState<AdminSection>("overview");
-  const [products, setProducts] = useStoredState<Product[]>(productsStorageKey, getInitialProducts());
+  const [products, setProducts] = useStoredState<Product[]>(productsStorageKey, getStoredProducts());
   const [categories, setCategories] = useStoredState<Category[]>("glam-me-admin-categories-v2", initialCategories);
   const [orders, setOrders] = useStoredState<Order[]>("glam-me-admin-orders", initialOrders);
   const [editorProductId, setEditorProductId] = useState<number | "new" | null>(null);
@@ -560,7 +575,7 @@ export default function AdminDashboard({
                       <div className="admin-product-catalog-info">
                         <div>
                           <div className="admin-product-catalog-name">{product.name}</div>
-                          <div className="admin-product-catalog-meta">{product.detail} · {product.category}</div>
+                          <div className="admin-product-catalog-meta">{product.category}</div>
                         </div>
                         <strong>{product.price}</strong>
                       </div>

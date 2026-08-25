@@ -88,7 +88,6 @@ function getStorefrontProducts(): CatalogProduct[] {
           name: product.name || matchingCatalogProduct?.name || 'Glam Too piece',
           category: product.category || matchingCatalogProduct?.category || '',
           image: product.image || matchingCatalogProduct?.image || matchingCategory?.image || '',
-          detail: product.detail || matchingCatalogProduct?.detail || 'Glam Too collection',
           position: product.position || matchingCatalogProduct?.position || '50% 50%',
         } as CatalogProduct;
       })
@@ -247,10 +246,10 @@ function ProductCard({ product, featured = false, showShopNow = false }: { produ
         <div className="product-image">
           {featured && <span className="badge">Just in</span>}
           <span className="heart" aria-hidden="true">♡</span>
-          <img src={product.image} alt={`${product.name}, ${product.detail}`} />
+          <img src={product.image} alt={product.name} />
         </div>
         <div className="product-info">
-          <div><div className="product-name">{product.name}</div><div className="product-meta">{product.detail}</div></div>
+          <div><div className="product-name">{product.name}</div><div className="product-meta">{product.category}</div></div>
           <div className="price">{product.price}</div>
             {showShopNow && <span className="product-shop-now">Shop now</span>}
         </div>
@@ -431,7 +430,7 @@ function ProductDetail({ params }: { params: { id: string } }) {
       <div className="container product-detail">
         <div className="product-detail-layout">
           <div className="product-gallery">
-            <div className="gallery-image"><img src={product.image} alt={`${product.name}, ${product.detail}`} style={{ objectPosition: product.position }} /></div>
+            <div className="gallery-image"><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /></div>
             <div className="gallery-image"><img src={product.image} alt={`${product.name} detail`} style={{ objectPosition: product.position }} /></div>
           </div>
           <div className="detail-copy">
@@ -442,10 +441,10 @@ function ProductDetail({ params }: { params: { id: string } }) {
             <form className="detail-form" action="/cart" method="get">
               <input type="hidden" name="product" value={product.id} />
               <div className="field"><label htmlFor={`product-size-${product.id}`}>Select size</label><select id={`product-size-${product.id}`} name="size" defaultValue="" required data-testid={`select-product-size-${product.id}`}><option value="" disabled>Choose a size</option><option>UK 6</option><option>UK 8</option><option>UK 10</option><option>UK 12</option><option>UK 14</option></select></div>
-              <div className="field"><label>Colour · {product.detail.split(" · ")[0]}</label><div className="swatches" aria-label="Available colours"><span className="swatch swatch-pink" title="Blush"></span><span className="swatch swatch-black" title="Black"></span><span className="swatch swatch-blue" title="Sky"></span></div></div>
+              <div className="field"><label>Colour</label><div className="swatches" aria-label="Available colours"><span className="swatch swatch-pink" title="Blush"></span><span className="swatch swatch-black" title="Black"></span><span className="swatch swatch-blue" title="Sky"></span></div></div>
               <button className="button" type="submit" data-testid={`button-add-to-bag-${product.id}`}>Add to bag · {product.price}</button>
             </form>
-            <div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>{product.detail}. True to size with an easy, considered fit.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery over £75. Return unworn pieces within 28 days.</p></details></div>
+            <div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with an easy, considered fit.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery over £75. Return unworn pieces within 28 days.</p></details></div>
           </div>
         </div>
       </div>

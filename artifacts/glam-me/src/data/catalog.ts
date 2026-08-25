@@ -31,7 +31,6 @@ export type CatalogProduct = {
   description: string;
   sku: string;
   image: string;
-  detail: string;
   position: string;
   variations: CatalogVariation[];
 };
@@ -63,7 +62,6 @@ export const catalogProducts: CatalogProduct[] = [
     description: "A soft pink ruffle mini dress made for your next lovely plan.",
     sku: "GM-LUNA",
     image: lunaProductImage,
-    detail: "Blush pink · Layered chiffon",
     position: "50% 50%",
     variations: [],
   },
@@ -78,7 +76,6 @@ export const catalogProducts: CatalogProduct[] = [
     description: "A sharp black tailored jumpsuit for plans that call for confidence.",
     sku: "GM-ELLA",
     image: ellaProductImage,
-    detail: "Black · Tailored crepe",
     position: "50% 50%",
     variations: [],
   },
@@ -93,7 +90,6 @@ export const catalogProducts: CatalogProduct[] = [
     description: "A softly draped blue satin maxi for evenings worth dressing up for.",
     sku: "GM-MILA",
     image: milaProductImage,
-    detail: "Sky blue · Satin jersey",
     position: "50% 50%",
     variations: [],
   },
@@ -108,7 +104,6 @@ export const catalogProducts: CatalogProduct[] = [
     description: "A luminous yellow satin dress for weddings and very special plans.",
     sku: "GM-WEDDING",
     image: weddingProductImage,
-    detail: "Butter yellow · Satin",
     position: "50% 50%",
     variations: [],
   },
@@ -123,7 +118,6 @@ export const catalogProducts: CatalogProduct[] = [
     description: "A chocolate sculpted top that brings polish to easy weekend looks.",
     sku: "GM-WEEKEND",
     image: weekendProductImage,
-    detail: "Chocolate brown · Sculpted jersey",
     position: "50% 50%",
     variations: [],
   },
@@ -138,7 +132,6 @@ export const catalogProducts: CatalogProduct[] = [
     description: "A bright floral one-piece for sunny days and spontaneous plans.",
     sku: "GM-DAYOUT",
     image: dayOutProductImage,
-    detail: "Pink floral · Stretch crepe",
     position: "50% 50%",
     variations: [],
   },
@@ -153,7 +146,6 @@ export const catalogProducts: CatalogProduct[] = [
     description: "A rich red satin halter dress designed to turn heads after dark.",
     sku: "GM-DATE",
     image: dateNightProductImage,
-    detail: "Burnt red · Liquid satin",
     position: "50% 50%",
     variations: [],
   },
