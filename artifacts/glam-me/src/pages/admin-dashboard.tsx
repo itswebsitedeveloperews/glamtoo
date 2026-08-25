@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { catalogCategories, catalogProducts, type CatalogProduct, type CatalogVariation } from "@/data/catalog";
 
 type AdminSection =
   | "overview"
@@ -11,29 +12,19 @@ type AdminSection =
 type ProductStatus = "Published" | "Draft";
 type ProductType = "Simple" | "Variable";
 
-type ProductVariation = {
-  id: number;
-  size: string;
-  colour: string;
-  sku: string;
-  price: string;
-  stock: number;
-};
-
-type Product = {
-  id: number;
-  name: string;
-  category: string;
-  price: string;
-  stock: number;
-  status: ProductStatus;
-  type: ProductType;
-  description: string;
-  sku: string;
-  variations: ProductVariation[];
-};
+type ProductVariation = CatalogVariation;
+type Product = CatalogProduct;
 
 type ProductDraft = Omit<Product, "id">;
+
+type Category = {
+  id: number;
+  name: string;
+  image: string;
+  description: string;
+};
+
+type CategoryDraft = Omit<Category, "id">;
 
 type Order = {
   id: string;
@@ -52,47 +43,25 @@ const navItems: Array<{ id: AdminSection; label: string; hint: string }> = [
   { id: "payments", label: "Payments", hint: "Stripe" },
 ];
 
-const initialProducts: Product[] = [
-  {
-    id: 1,
-    name: "Luna Ruffle Mini Dress",
-    category: "Dresses",
-    price: "£89.99",
-    stock: 14,
-    status: "Published",
-    type: "Simple",
-    description: "A soft, ruffled mini dress for plans that deserve a little extra.",
-    sku: "GM-LUNA",
-    variations: [],
-  },
-  {
-    id: 2,
-    name: "Ella Tailored Jumpsuit",
-    category: "Co-Ords",
-    price: "£59.99",
-    stock: 8,
-    status: "Published",
-    type: "Variable",
-    description: "A confident, tailored jumpsuit with an easy after-dark feel.",
-    sku: "GM-ELLA",
-    variations: [
-      { id: 201, size: "UK 8", colour: "Midnight", sku: "GM-ELLA-8-MID", price: "£59.99", stock: 4 },
-      { id: 202, size: "UK 10", colour: "Midnight", sku: "GM-ELLA-10-MID", price: "£59.99", stock: 4 },
-    ],
-  },
-  {
-    id: 3,
-    name: "Mila Satin Maxi Dress",
-    category: "Occasion",
-    price: "£44.99",
-    stock: 0,
-    status: "Draft",
-    type: "Simple",
-    description: "A fluid satin maxi with an elegant bias-cut shape.",
-    sku: "GM-MILA",
-    variations: [],
-  },
-];
+const productsStorageKey = "glam-me-admin-products-v4";
+const legacyProductsStorageKey = "glam-me-admin-products-v3";
+const initialProducts: Product[] = catalogProducts;
+
+function getInitialProducts() {
+  try {
+    const legacyProducts = window.localStorage.getItem(legacyProductsStorageKey);
+    if (!legacyProducts) return initialProducts;
+    const parsed = JSON.parse(legacyProducts) as Product[];
+    if (!Array.isArray(parsed)) return initialProducts;
+    const seededIds = new Set(initialProducts.map((product) => product.id));
+    const customProducts = parsed.filter((product) => !seededIds.has(product.id));
+    return [...initialProducts, ...customProducts];
+  } catch {
+    return initialProducts;
+  }
+}
+
+const initialCategories: Category[] = catalogCategories.map((category) => ({ ...category }));
 
 const initialOrders: Order[] = [
   { id: "#GM-1048", customer: "Lily Carter", date: "Today, 10:42", total: "£148.98", status: "Processing" },
@@ -154,8 +123,15 @@ function blankProduct(category: string): ProductDraft {
     type: "Simple",
     description: "",
     sku: "",
+    image: "",
+    detail: "New Glam Me piece",
+    position: "50% 50%",
     variations: [],
   };
+}
+
+function blankCategory(): CategoryDraft {
+  return { name: "", image: "", description: "" };
 }
 
 function ProductEditor({
@@ -180,11 +156,15 @@ function ProductEditor({
           type: product.type,
           description: product.description,
           sku: product.sku,
+           image: product.image,
+           detail: product.detail,
+           position: product.position,
           variations: product.variations.map((variation) => ({ ...variation })),
         }
       : blankProduct(categories[0] ?? "Dresses"),
   );
   const [validationMessage, setValidationMessage] = useState("");
+  const [productImageFileName, setProductImageFileName] = useState("");
 
   const publishLabel = product && draft.status === "Published" ? "Update product" : "Publish product";
   const totalVariationStock = draft.variations.reduce((total, variation) => total + variation.stock, 0);
@@ -242,6 +222,29 @@ function ProductEditor({
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     save(draft.status);
+  }
+
+  function handleProductImageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setValidationMessage("Please choose an image file.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setValidationMessage("Please choose an image smaller than 4MB.");
+      event.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        updateDraft({ image: reader.result });
+        setProductImageFileName(file.name);
+      }
+    };
+    reader.readAsDataURL(file);
   }
 
   return (
@@ -349,6 +352,18 @@ function ProductEditor({
             </label>
           </section>
 
+           <section className="admin-editor-card admin-sidebar-card">
+             <p className="admin-eyebrow">Product media</p>
+             {draft.image ? <img className="admin-product-image-preview" src={draft.image} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder">Add an image URL or upload an image to preview your product.</div>}
+             <label className="admin-editor-label">Image URL
+               <input className="admin-editor-input" value={draft.image.startsWith("data:") ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="https://..." />
+             </label>
+             <div className="admin-image-upload">
+               <label className="admin-upload-button">Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
+               <span>{productImageFileName || "PNG, JPG, WEBP or GIF · max 4MB"}</span>
+             </div>
+           </section>
+
           <section className="admin-editor-card admin-sidebar-card">
             <p className="admin-eyebrow">Editor checklist</p>
             <ul className="admin-checklist">
@@ -369,11 +384,15 @@ export default function AdminDashboard({
   onSignOut: () => void;
 }) {
   const [section, setSection] = useState<AdminSection>("overview");
-  const [products, setProducts] = useStoredState<Product[]>("glam-me-admin-products", initialProducts);
-  const [categories, setCategories] = useStoredState<string[]>("glam-me-admin-categories", ["Dresses", "Occasion", "Co-Ords", "Denim", "Accessories"]);
+  const [products, setProducts] = useStoredState<Product[]>(productsStorageKey, getInitialProducts());
+  const [categories, setCategories] = useStoredState<Category[]>("glam-me-admin-categories-v2", initialCategories);
   const [orders, setOrders] = useStoredState<Order[]>("glam-me-admin-orders", initialOrders);
   const [editorProductId, setEditorProductId] = useState<number | "new" | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
+  const [categoryDraft, setCategoryDraft] = useState<CategoryDraft>(blankCategory);
+  const [categoryImageFileName, setCategoryImageFileName] = useState("");
   const [notice, setNotice] = useState("");
+  const categoryNames = categories.map((category) => category.name);
 
   const inventoryTotal = useMemo(
     () => products.reduce((total, product) => total + (product.type === "Variable" ? product.variations.reduce((sum, variation) => sum + variation.stock, 0) : product.stock), 0),
@@ -404,13 +423,73 @@ export default function AdminDashboard({
     setNotice(`${product.name} was removed from the catalog.`);
   }
 
-  function addCategory(event: FormEvent<HTMLFormElement>) {
+  function submitCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const category = String(new FormData(event.currentTarget).get("category") ?? "").trim();
-    if (!category || categories.includes(category)) return;
-    setCategories((current) => [...current, category]);
-    event.currentTarget.reset();
-    setNotice(`${category} category created.`);
+    const name = categoryDraft.name.trim();
+    const description = categoryDraft.description.trim();
+    if (!name) return;
+    if (categories.some((category) => category.name.toLowerCase() === name.toLowerCase() && category.id !== editingCategoryId)) {
+      setNotice(`${name} already exists.`);
+      return;
+    }
+    if (editingCategoryId !== null) {
+      setCategories((current) => current.map((category) => category.id === editingCategoryId ? { ...category, name, image: categoryDraft.image.trim(), description } : category));
+      setNotice(`${name} category updated.`);
+    } else {
+      setCategories((current) => [...current, { id: Date.now(), name, image: categoryDraft.image.trim(), description }]);
+      setNotice(`${name} category created.`);
+    }
+    setCategoryDraft(blankCategory());
+    setEditingCategoryId(null);
+  }
+
+  function editCategory(category: Category) {
+    setEditingCategoryId(category.id);
+    setCategoryDraft({ name: category.name, image: category.image, description: category.description });
+    setCategoryImageFileName("");
+    setNotice("");
+    setSection("categories");
+  }
+
+  function deleteCategory(category: Category) {
+    setCategories((current) => current.filter((item) => item.id !== category.id));
+    if (editingCategoryId === category.id) {
+      setEditingCategoryId(null);
+      setCategoryDraft(blankCategory());
+      setCategoryImageFileName("");
+    }
+    setNotice(`${category.name} category deleted.`);
+  }
+
+  function cancelCategoryEdit() {
+    setEditingCategoryId(null);
+    setCategoryDraft(blankCategory());
+    setCategoryImageFileName("");
+    setNotice("");
+  }
+
+  function handleCategoryImageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setNotice("Please choose an image file.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setNotice("Please choose an image smaller than 4MB.");
+      event.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setCategoryDraft((current) => ({ ...current, image: reader.result as string }));
+        setCategoryImageFileName(file.name);
+        setNotice("");
+      }
+    };
+    reader.readAsDataURL(file);
   }
 
   function updateOrderStatus(orderId: string, status: Order["status"]) {
@@ -445,7 +524,7 @@ export default function AdminDashboard({
 
         {section === "overview" && (
           <>
-            <SectionTitle eyebrow="Glam Me administration" title="Good morning" description="Your storefront is looking beautiful. Here’s what needs your attention today." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add a product</button>} />
+            <SectionTitle eyebrow="Glam Me administration" title="Good Morning" description="Your storefront is looking beautiful. Here’s what needs your attention today." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add a product</button>} />
             <div className="admin-stat-grid">
               <article><p>Sales today</p><strong>£1,284.00</strong><span>+18.4% from yesterday</span></article>
               <article><p>Open orders</p><strong>{orders.filter((order) => order.status !== "Delivered").length}</strong><span>Ready for fulfilment</span></article>
@@ -459,7 +538,7 @@ export default function AdminDashboard({
           </>
         )}
 
-        {section === "products" && editorProductId !== null && <ProductEditor product={editorProduct} categories={categories} onCancel={() => setEditorProductId(null)} onSave={saveProduct} />}
+        {section === "products" && editorProductId !== null && <ProductEditor product={editorProduct} categories={categoryNames} onCancel={() => setEditorProductId(null)} onSave={saveProduct} />}
 
         {section === "products" && editorProductId === null && (
           <>
@@ -469,7 +548,7 @@ export default function AdminDashboard({
                 <div className="admin-table-head"><span>Product</span><span>Type</span><span>Category</span><span>Price</span><span>Status</span><span>Actions</span></div>
                 {products.map((product) => (
                   <div className="admin-table-row" key={product.id}>
-                    <strong>{product.name}</strong><span>{product.type}</span><span>{product.category}</span><span>{product.price}</span><span className={`product-status ${product.status.toLowerCase()}`}>{product.status}</span>
+                    <div className="admin-product-cell">{product.image && <img src={product.image} alt="" />}<strong>{product.name}</strong></div><span>{product.type}</span><span>{product.category}</span><span>{product.price}</span><span className={`product-status ${product.status.toLowerCase()}`}>{product.status}</span>
                     <div className="admin-product-actions"><button type="button" onClick={() => { setEditorProductId(product.id); setNotice(""); }}>Edit</button><button type="button" onClick={() => removeProduct(product)}>Remove</button></div>
                   </div>
                 ))}
@@ -481,7 +560,36 @@ export default function AdminDashboard({
         {section === "categories" && (
           <>
             <SectionTitle eyebrow="Catalog structure" title="Categories" description="Organize your collection so customers can shop every moment with ease." />
-            <div className="admin-two-column"><section className="admin-panel"><h2>Existing categories</h2><div className="admin-chip-list">{categories.map((category) => <span key={category}>{category}<button type="button" aria-label={`Remove ${category}`} onClick={() => setCategories((current) => current.filter((item) => item !== category))}>×</button></span>)}</div></section><form className="admin-panel admin-simple-form" onSubmit={addCategory}><p className="admin-eyebrow">New category</p><h2>Add a collection</h2><label>Category name<input name="category" required placeholder="e.g. Weekend plans" /></label><button className="admin-primary" type="submit">Create category</button></form></div>
+            <div className="admin-two-column admin-category-layout">
+              <section className="admin-panel admin-category-list-panel">
+                <div className="admin-panel-header"><div><p className="admin-eyebrow">Your collections</p><h2>Existing categories</h2></div><span className="admin-muted-count">{categories.length} categories</span></div>
+                <div className="admin-category-grid">
+                  {categories.map((category) => (
+                    <article className="admin-category-card" key={category.id}>
+                      {category.image ? <img src={category.image} alt="" /> : <div className="admin-category-image-empty">No image</div>}
+                      <div className="admin-category-card-content">
+                        <h3>{category.name}</h3>
+                        <p>{category.description || "No description yet."}</p>
+                        <div className="admin-category-actions"><button type="button" onClick={() => editCategory(category)}>Edit</button><button type="button" onClick={() => deleteCategory(category)}>Delete</button></div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+              <form className="admin-panel admin-simple-form admin-category-form" onSubmit={submitCategory}>
+                <p className="admin-eyebrow">{editingCategoryId !== null ? "Edit category" : "New category"}</p>
+                <h2>{editingCategoryId !== null ? "Update collection" : "Add a collection"}</h2>
+                <label>Category title<input value={categoryDraft.name} onChange={(event) => setCategoryDraft((current) => ({ ...current, name: event.target.value }))} required placeholder="e.g. Weekend plans" /></label>
+                <label>Image URL<input type="url" value={categoryDraft.image.startsWith("data:") ? "" : categoryDraft.image} onChange={(event) => { setCategoryImageFileName(""); setCategoryDraft((current) => ({ ...current, image: event.target.value })); }} placeholder="https://..." /></label>
+                <div className="admin-image-upload">
+                  <label className="admin-upload-button">Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleCategoryImageUpload} /></label>
+                  <span>{categoryImageFileName || "PNG, JPG, WEBP or GIF · max 4MB"}</span>
+                </div>
+                {categoryDraft.image && <img className="admin-category-form-preview" src={categoryDraft.image} alt="Category preview" />}
+                <label>Description<textarea value={categoryDraft.description} onChange={(event) => setCategoryDraft((current) => ({ ...current, description: event.target.value }))} placeholder="A short description for this collection." rows={4} /></label>
+                <div className="admin-category-form-actions"><button className="admin-primary" type="submit">{editingCategoryId !== null ? "Update category" : "Create category"}</button>{editingCategoryId !== null && <button className="admin-secondary" type="button" onClick={cancelCategoryEdit}>Cancel</button>}</div>
+              </form>
+            </div>
           </>
         )}
 

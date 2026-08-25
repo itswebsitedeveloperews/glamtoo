@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
+import { catalogCategories, catalogProducts, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
@@ -62,14 +63,63 @@ const clerkAppearance = {
   },
 };
 
-const products = [
-  { id: 'luna', name: 'Luna Ruffle Mini Dress', price: '£89.99', detail: 'Blush pink · Recycled satin', position: '34% 41%' },
-  { id: 'ella', name: 'Ella Tuxedo Jumpsuit', price: '£59.99', detail: 'Midnight · Tailored crepe', position: '51% 40%' },
-  { id: 'mila', name: 'Mila Satin Maxi Dress', price: '£44.99', detail: 'Powder blue · Bias cut', position: '64% 45%' },
-  { id: 'cleo', name: 'Cleo Shoulder Bag', price: '£39.99', detail: 'Rose petal · Soft leather', position: '80% 36%' },
-  { id: 'romi', name: 'Romi Bow Midi Dress', price: '£74.99', detail: 'Petal pink · Organza bow', position: '42% 39%' },
-  { id: 'naya', name: 'Naya Wide Leg Trouser', price: '£49.99', detail: 'Oat · Fluid tailoring', position: '55% 46%' },
-];
+const adminProductsStorageKey = 'glam-me-admin-products-v4';
+const adminCategoriesStorageKey = 'glam-me-admin-categories-v2';
+
+function getStorefrontProducts(): CatalogProduct[] {
+  try {
+    const stored = window.localStorage.getItem(adminProductsStorageKey);
+    if (!stored) return catalogProducts;
+    const products = JSON.parse(stored) as Array<Partial<CatalogProduct>>;
+    if (!Array.isArray(products)) return catalogProducts;
+    return products
+      .filter((product) => String(product.status ?? '').toLowerCase() === 'published')
+      .map((product, index) => {
+        const matchingCatalogProduct = catalogProducts.find((candidate) =>
+          candidate.id === product.id || candidate.name.toLowerCase() === String(product.name ?? '').toLowerCase(),
+        );
+        const matchingCategory = catalogCategories.find((category) =>
+          slugify(category.name) === slugify(String(product.category ?? '')),
+        );
+        return {
+          ...matchingCatalogProduct,
+          ...product,
+          id: typeof product.id === 'number' ? product.id : matchingCatalogProduct?.id ?? index + 1,
+          name: product.name || matchingCatalogProduct?.name || 'Glam Me piece',
+          category: product.category || matchingCatalogProduct?.category || '',
+          image: product.image || matchingCatalogProduct?.image || matchingCategory?.image || '',
+          detail: product.detail || matchingCatalogProduct?.detail || 'Glam Me collection',
+          position: product.position || matchingCatalogProduct?.position || '50% 50%',
+        } as CatalogProduct;
+      })
+      .filter((product) => product.image);
+  } catch {
+    return catalogProducts;
+  }
+}
+
+function slugify(value: string): string {
+  return value.toLowerCase().trim().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function getStorefrontCategories(): CatalogCategory[] {
+  try {
+    const stored = window.localStorage.getItem(adminCategoriesStorageKey);
+    if (!stored) return catalogCategories;
+    const categories = JSON.parse(stored) as Array<Partial<CatalogCategory>>;
+    if (!Array.isArray(categories)) return catalogCategories;
+    return categories
+      .filter((category) => typeof category?.name === 'string' && category.name.trim())
+      .map((category, index) => ({
+        id: typeof category.id === 'number' ? category.id : index + 1,
+        name: category.name!.trim(),
+        image: typeof category.image === 'string' ? category.image : '',
+        description: typeof category.description === 'string' ? category.description : '',
+      }));
+  } catch {
+    return catalogCategories;
+  }
+}
 
 function Header() {
   return (
@@ -98,12 +148,12 @@ function Header() {
       </div>
       <nav className="nav" aria-label="Primary navigation">
         <a href="/shop" data-testid="link-nav-new-in">New In</a>
-        <a href="/category" data-testid="link-nav-dresses">Dresses</a>
+        <a href="/category/dresses" data-testid="link-nav-dresses">Dresses</a>
         <a href="/shop" data-testid="link-nav-clothing">Clothing</a>
-        <a href="/category" data-testid="link-nav-occasion">Occasion</a>
-        <a href="/category" data-testid="link-nav-co-ords">Co-Ords</a>
-        <a href="/shop" data-testid="link-nav-denim">Denim</a>
-        <a href="/shop" data-testid="link-nav-accessories">Accessories</a>
+        <a href="/category/occasion" data-testid="link-nav-occasion">Occasion</a>
+        <a href="/category/co-ords" data-testid="link-nav-co-ords">Co-Ords</a>
+        <a href="/category/denim" data-testid="link-nav-denim">Denim</a>
+        <a href="/category/accessories" data-testid="link-nav-accessories">Accessories</a>
         <a href="/shop" data-testid="link-nav-sale">Sale</a>
       </nav>
     </header>
@@ -133,7 +183,7 @@ function Footer() {
               <img className="footer-logo" src={logoImage} alt="Glam Me" />
               <p className="footer-intro">Outfits that make every moment yours. Expressive pieces for the beautifully busy life.</p>
             </div>
-            <div><h4>Shop</h4><ul><li><a href="/shop" data-testid="link-footer-new-in">New In</a></li><li><a href="/category" data-testid="link-footer-dresses">Dresses</a></li><li><a href="/category" data-testid="link-footer-occasion">Occasion</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
+            <div><h4>Shop</h4><ul><li><a href="/shop" data-testid="link-footer-new-in">New In</a></li><li><a href="/category/dresses" data-testid="link-footer-dresses">Dresses</a></li><li><a href="/category/occasion" data-testid="link-footer-occasion">Occasion</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
             <div><h4>Help</h4><ul><li><a href="/delivery-returns" data-testid="link-footer-delivery">Delivery &amp; Returns</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
             <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">Our story</a></li><li><a href="/privacy" data-testid="link-footer-privacy">Privacy Policy</a></li><li><a href="/terms" data-testid="link-footer-terms">Terms &amp; Conditions</a></li></ul></div>
           </div>
@@ -148,14 +198,14 @@ function Shell({ children }: { children: ReactNode }) {
   return <><Header /><main className="page">{children}</main><Footer /></>;
 }
 
-function ProductCard({ product, featured = false }: { product: typeof products[number]; featured?: boolean }) {
+function ProductCard({ product, featured = false }: { product: CatalogProduct; featured?: boolean }) {
   return (
     <article className="product-card" data-testid={`card-product-${product.id}`}>
       <a href="/product" data-testid={`link-product-${product.id}`}>
         <div className="product-image">
           {featured && <span className="badge">Just in</span>}
           <span className="heart" aria-hidden="true">♡</span>
-          <img src={fashionImage} alt={`${product.name}, ${product.detail}`} style={{ objectPosition: product.position }} />
+          <img src={product.image} alt={`${product.name}, ${product.detail}`} style={{ objectPosition: product.position }} />
         </div>
         <div className="product-info">
           <div><div className="product-name">{product.name}</div><div className="product-meta">{product.detail}</div></div>
@@ -167,6 +217,7 @@ function ProductCard({ product, featured = false }: { product: typeof products[n
 }
 
 function Home() {
+  const [products] = useState<CatalogProduct[]>(getStorefrontProducts);
   return (
     <Shell>
       <section className="hero" aria-label="The new occasion edit">
@@ -175,6 +226,29 @@ function Home() {
           <h1>It&apos;s your moment</h1>
           <p>Standout outfits for every plan on your calendar.</p>
           <a className="button button-pink" href="/shop" data-testid="link-hero-shop">Shop New In</a>
+        </div>
+      </section>
+      <section className="collection-collage container" aria-labelledby="collection-heading">
+        <h2 id="collection-heading" className="sr-only">Shop the collection</h2>
+        <div className="collection-tile collection-dresses">
+          <img src={catalogProducts[0].image} alt="Model wearing a pink floral Glam Me dress" />
+          <div><h3>Dresses</h3><p>From day dates<br />to after dark.</p><a href="/category/dresses">Shop dresses <span>→</span></a></div>
+        </div>
+        <div className="collection-tile collection-coords">
+          <img src={catalogProducts[1].image} alt="Model wearing an ivory Glam Me co-ord" />
+          <div><h3>Co-Ords</h3><p>Effortless<br />matching sets<br />made to wear.</p><a href="/category/co-ords">Shop co-ords <span>→</span></a></div>
+        </div>
+        <div className="collection-tile collection-occasion">
+          <img src={catalogProducts[2].image} alt="Model wearing a rose satin Glam Me occasion dress" />
+          <div><h3>Occasion</h3><p>For weddings,<br />parties &amp; all the<br />special plans.</p><a href="/category/occasion">Shop occasion <span>→</span></a></div>
+        </div>
+        <div className="collection-tile collection-denim">
+          <img src={catalogProducts[4].image} alt="Model wearing a Glam Me denim co-ord" />
+          <div><h3>Denim</h3><p>Everyday staples<br />with a fresh<br />season twist.</p><a href="/category/denim">Shop denim <span>→</span></a></div>
+        </div>
+        <div className="collection-tile collection-accessories">
+          <img src={catalogProducts[3].image} alt="Glam Me pink quilted shoulder bag and accessories" />
+          <div><h3>Accessories</h3><p>The finishing<br />touch.</p><a href="/category/accessories">Shop accessories <span>→</span></a></div>
         </div>
       </section>
       <div className="intro-strip"><div className="container intro-strip-inner"><span>Designed in London</span><span>Easy, joyful dressing</span><span>Free delivery over £75</span></div></div>
@@ -204,11 +278,81 @@ function PageHero({ eyebrow, title, copy }: { eyebrow: string; title: string; co
 }
 
 function Shop() {
-  return <Shell><PageHero eyebrow="The shop" title="Pieces with presence." copy="A considered wardrobe of colour, texture and easy confidence. Find something for the plan you have, and the one you haven't made yet." /><div className="container shop-layout"><aside className="filter"><h3>Browse</h3><a href="/shop">All pieces</a><a href="/category">Dresses</a><a href="/category">Occasionwear</a><a href="/shop">Tops &amp; tailoring</a><a href="/shop">Accessories</a><h3 style={{ marginTop: 36 }}>Sort by</h3><a href="/shop">New in</a><a href="/shop">Bestsellers</a><a href="/shop">Price: low to high</a></aside><section className="shop-main"><div className="shop-toolbar"><span>24 pieces</span><span>Showing all</span></div><div className="product-grid">{products.map((product, index) => <ProductCard key={product.id} product={product} featured={index < 2} />)}</div></section></div></Shell>;
+  const products = getStorefrontProducts();
+  return <Shell><PageHero eyebrow="The shop" title="Pieces with presence." copy="A considered wardrobe of colour, texture and easy confidence. Find something for the plan you have, and the one you haven't made yet." /><div className="container shop-layout"><aside className="filter"><h3>Browse</h3><a href="/shop">All pieces</a><a href="/category">Dresses</a><a href="/category">Occasionwear</a><a href="/shop">Tops &amp; tailoring</a><a href="/shop">Accessories</a><h3 style={{ marginTop: 36 }}>Sort by</h3><a href="/shop">New in</a><a href="/shop">Bestsellers</a><a href="/shop">Price: low to high</a></aside><section className="shop-main"><div className="shop-toolbar"><span>{products.length} pieces</span><span>Showing all</span></div><div className="product-grid">{products.map((product, index) => <ProductCard key={product.id} product={product} featured={index < 2} />)}</div></section></div></Shell>;
 }
 
-function Category() {
-  return <Shell><PageHero eyebrow="The occasion edit" title="Dress for the yes." copy="Wedding dates, birthday dinners, rooftop drinks and every reason to make an entrance." /><div className="container shop-layout"><aside className="filter"><h3>Occasion</h3><a href="/category">All occasion</a><a href="/category">Wedding guest</a><a href="/category">Date night</a><a href="/category">Party dressing</a><a href="/category">Holiday</a></aside><section className="shop-main"><div className="shop-toolbar"><span>Occasion / 12 pieces</span><a href="/shop">View all shop</a></div><div className="product-grid">{products.slice(0, 4).map((product) => <ProductCard key={product.id} product={product} />)}</div></section></div></Shell>;
+function CategoryCard({ category }: { category: CatalogCategory }) {
+  const categorySlug = slugify(category.name);
+  return (
+    <a className="category-directory-card" href={`/category/${categorySlug}`} data-testid={`link-category-${categorySlug}`}>
+      <div className="category-directory-image">
+        {category.image ? <img src={category.image} alt={`${category.name} collection`} /> : <span>No image yet</span>}
+      </div>
+      <div className="category-directory-copy">
+        <div>
+          <div className="eyebrow">Collection</div>
+          <h2>{category.name}</h2>
+          <p>{category.description || "Explore the latest pieces from this collection."}</p>
+        </div>
+        <span className="category-directory-link">Explore collection <span aria-hidden="true">→</span></span>
+      </div>
+    </a>
+  );
+}
+
+function CategoryIndex() {
+  const categories = getStorefrontCategories();
+  return (
+    <Shell>
+      <PageHero eyebrow="The collections" title="Find your moment." copy="Explore every Glam Me collection, from effortless everyday layers to the pieces made for an entrance." />
+      <section className="container category-directory" aria-labelledby="category-directory-heading">
+        <div className="section-heading">
+          <div><div className="eyebrow">Every collection</div><h2 id="category-directory-heading">Shop by category</h2></div>
+          <span className="category-count">{categories.length} collections</span>
+        </div>
+        <div className="category-directory-grid">
+          {categories.map((category) => <CategoryCard key={category.id} category={category} />)}
+        </div>
+      </section>
+    </Shell>
+  );
+}
+
+function CategoryDetail({ params }: { params: { slug: string } }) {
+  const categories = getStorefrontCategories();
+  const category = categories.find((item) => slugify(item.name) === params.slug);
+  if (!category) return <NotFound />;
+  const products = getStorefrontProducts().filter((product) => slugify(product.category) === params.slug);
+
+  return (
+    <Shell>
+      <section className="category-banner" aria-labelledby="category-banner-heading">
+        <div className="container category-banner-inner">
+          <div className="category-banner-media">
+            {category.image ? <img src={category.image} alt={`${category.name} collection campaign`} /> : <div className="category-banner-empty">Glam Me collection</div>}
+          </div>
+          <div className="category-banner-copy">
+            <div className="eyebrow">The {category.name.toLowerCase()} edit</div>
+            <h1 id="category-banner-heading">{category.name}</h1>
+            <p>{category.description || `Pieces selected for every ${category.name.toLowerCase()} moment.`}</p>
+            <a className="button button-pink" href="#category-products">Shop the edit</a>
+          </div>
+        </div>
+      </section>
+      <section className="container category-products" id="category-products" aria-labelledby="category-products-heading">
+        <div className="section-heading">
+          <div><div className="eyebrow">The edit</div><h2 id="category-products-heading">{category.name} pieces</h2></div>
+          <span className="category-count">{products.length} {products.length === 1 ? "piece" : "pieces"}</span>
+        </div>
+        {products.length > 0 ? (
+          <div className="product-grid">{products.map((product) => <ProductCard key={product.id} product={product} />)}</div>
+        ) : (
+          <div className="category-empty"><h3>More pieces are on their way.</h3><p>Explore the full shop while we add to this collection.</p><a className="button" href="/shop">View all pieces</a></div>
+        )}
+      </section>
+    </Shell>
+  );
 }
 
 function Product() {
@@ -267,7 +411,8 @@ function AppRoutes() {
     <Route path="/about" component={About} />
     <Route path="/shop" component={Shop} />
     <Route path="/product" component={Product} />
-    <Route path="/category" component={Category} />
+    <Route path="/category" component={CategoryIndex} />
+    <Route path="/category/:slug" component={CategoryDetail} />
     <Route path="/faq" component={FAQ} />
     <Route path="/contact" component={Contact} />
     <Route path="/privacy" component={() => <LegalPage type="privacy" />} />
