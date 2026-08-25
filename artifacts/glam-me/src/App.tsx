@@ -188,15 +188,30 @@ function Footer() {
       <footer className="footer">
         <div className="container">
           <div className="footer-grid">
-            <div>
+            <div className="footer-brand">
               <img className="footer-logo" src={logoImage} alt="Glam Too" />
               <p className="footer-intro">Outfits that make every moment yours. Expressive pieces for the beautifully busy life.</p>
+              <div className="footer-socials" aria-label="Social links">
+                <a href="/" aria-label="Instagram">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"></rect><circle cx="12" cy="12" r="3.5"></circle><circle cx="17.3" cy="6.8" r=".8" fill="currentColor" stroke="none"></circle></svg>
+                </a>
+                <a href="/" aria-label="Facebook">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 20v-7h2.4l.4-3H14V8.2c0-.9.3-1.5 1.6-1.5H17V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 4v2H8.5v3h2.4v7"></path></svg>
+                </a>
+                <a href="/" aria-label="TikTok">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4v10.2a3.7 3.7 0 1 1-3-3.6"></path><path d="M14 4c.5 2.5 2 4 4.5 4.3"></path></svg>
+                </a>
+                <a href="/" aria-label="Pinterest">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 20c1-2 1.2-3.2 1.7-5.2.4.8 1.4 1.6 2.8 1.6 3.7 0 6-3.1 6-6.8C20 6.2 16.8 4 12.4 4 7 4 4 7.4 4 11c0 2.1.8 4 2.5 4.7.2.1.4 0 .5-.2l.4-1.5c.1-.2 0-.3-.1-.5-.5-.6-.8-1.4-.8-2.5 0-3.3 2.5-6.2 6.5-6.2 3.5 0 5.4 2.1 5.4 4.9 0 3.7-1.6 6.8-4 6.8-1.3 0-2.3-1-2-2.3.4-1.7 1.1-3.5 1.1-4.7 0-1.1-.6-2-1.8-2-1.4 0-2.5 1.4-2.5 3.3 0 1.2.4 2 .4 2l-1.6 6.8"></path></svg>
+                </a>
+              </div>
             </div>
-            <div><h4>Shop</h4><ul><li><a href="/shop" data-testid="link-footer-new-in">New In</a></li><li><a href="/category/dresses" data-testid="link-footer-dresses">Dresses</a></li><li><a href="/category/occasion" data-testid="link-footer-occasion">Occasion</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
-            <div><h4>Help</h4><ul><li><a href="/delivery-returns" data-testid="link-footer-delivery">Delivery &amp; Returns</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
-            <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">Our story</a></li><li><a href="/privacy" data-testid="link-footer-privacy">Privacy Policy</a></li><li><a href="/terms" data-testid="link-footer-terms">Terms &amp; Conditions</a></li></ul></div>
+            <div><h4>Shop</h4><ul><li><a href="/shop" data-testid="link-footer-new-in">New In</a></li><li><a href="/category/dresses" data-testid="link-footer-dresses">Dresses</a></li><li><a href="/shop" data-testid="link-footer-clothing">Clothing</a></li><li><a href="/category/occasion" data-testid="link-footer-occasion">Occasion</a></li><li><a href="/category/co-ords" data-testid="link-footer-co-ords">Co-Ords</a></li><li><a href="/category/denim" data-testid="link-footer-denim">Denim</a></li><li><a href="/category/accessories" data-testid="link-footer-accessories">Accessories</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
+            <div><h4>Help</h4><ul><li><a href="/delivery-returns" data-testid="link-footer-delivery">Delivery &amp; Returns</a></li><li><a href="/faq" data-testid="link-footer-size-guide">Size Guide</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
+            <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">About</a></li><li><a href="/about" data-testid="link-footer-style-journal">Style Journal</a></li></ul></div>
+            <div className="footer-knowledge"><h4>Stay in the know</h4><p>Sign up for new arrivals<br />and exclusive offers.</p><form className="footer-newsletter-form" action="/" method="get"><label className="sr-only" htmlFor="footer-newsletter-email">Email address</label><input id="footer-newsletter-email" name="email" type="email" placeholder="Enter your email" required data-testid="input-footer-newsletter-email" /><button type="submit" aria-label="Sign me up" data-testid="button-footer-newsletter-submit">→</button></form></div>
           </div>
-          <div className="footer-bottom"><span>© 2026 Glam Too. All rights reserved.</span><span>Made for your next favourite moment.</span></div>
+          <div className="footer-bottom"><span>© 2026 Glam Too. All rights reserved.</span><div className="footer-legal-links"><a href="/privacy" data-testid="link-footer-privacy">Privacy Policy</a><span aria-hidden="true">|</span><a href="/terms" data-testid="link-footer-terms">Terms &amp; Conditions</a></div></div>
         </div>
       </footer>
     </>
