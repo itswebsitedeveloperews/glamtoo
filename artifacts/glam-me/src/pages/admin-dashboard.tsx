@@ -646,7 +646,7 @@ export default function AdminDashboard({
         {section === "orders" && (
           <>
             <SectionTitle eyebrow="Fulfilment" title="Orders" description="Track customer purchases and move each order through delivery." />
-            <section className="admin-panel admin-table-panel"><div className="admin-table"><div className="admin-table-head"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span></div>{orders.map((order) => <div className="admin-table-row admin-order-table-row" key={order.id}><strong>{order.id}</strong><span>{order.customer}</span><span>{order.date}</span><span>{order.total}</span><select value={order.status} onChange={(event) => updateOrderStatus(order.id, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}><option>Processing</option><option>Shipped</option><option>Delivered</option></select></div>)}</div></section>
+            <section className="admin-panel admin-table-panel"><div className="admin-table"><div className="admin-table-head admin-order-table-head"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span></div>{orders.map((order) => <div className="admin-table-row admin-order-table-row" key={order.id}><strong>{order.id}</strong><span>{order.customer}</span><span>{order.date}</span><span>{order.total}</span><select value={order.status} onChange={(event) => updateOrderStatus(order.id, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}><option>Processing</option><option>Shipped</option><option>Delivered</option></select></div>)}</div></section>
           </>
         )}
 

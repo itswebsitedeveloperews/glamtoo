@@ -495,7 +495,7 @@ img { display: block; max-width: 100%; }
 .admin-image-upload > span { color: var(--muted); font-size: 14px; line-height: 1.35; }
 .admin-variation-layout { display: grid; grid-template-columns: .7fr 1.3fr auto; align-items: end; gap: 25px; }
 .admin-variation-layout .admin-eyebrow { margin-bottom: 8px; }
-.admin-order-table-row { grid-template-columns: .8fr 1.2fr 1.15fr .65fr .8fr; }
+.admin-order-table-head, .admin-order-table-row { grid-template-columns: .8fr 1.2fr 1.15fr .65fr .8fr; }
 .admin-shipping-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .admin-shipping-grid > .admin-primary { justify-self: start; grid-column: 1 / -1; margin-top: 8px; }
 .admin-shipping-grid .admin-simple-form { gap: 16px; }
