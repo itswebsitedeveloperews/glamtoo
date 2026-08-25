@@ -218,6 +218,16 @@ function ProductCard({ product, featured = false }: { product: CatalogProduct; f
 
 function Home() {
   const [products] = useState<CatalogProduct[]>(getStorefrontProducts);
+  const categories = getStorefrontCategories();
+  const categoryImage = (name: string, fallback: string) =>
+    categories.find((category) => slugify(category.name) === slugify(name))?.image || fallback;
+  const collectionImages = {
+    dresses: categoryImage("Dresses", catalogCategories[0].image),
+    coords: categoryImage("Co-Ords", catalogCategories[2].image),
+    occasion: categoryImage("Occasion", catalogCategories[1].image),
+    denim: categoryImage("Denim", catalogCategories[3].image),
+    accessories: categoryImage("Accessories", catalogCategories[4].image),
+  };
   return (
     <Shell>
       <section className="hero" aria-label="The new occasion edit">
@@ -231,23 +241,23 @@ function Home() {
       <section className="collection-collage container" aria-labelledby="collection-heading">
         <h2 id="collection-heading" className="sr-only">Shop the collection</h2>
         <div className="collection-tile collection-dresses">
-          <img src={catalogProducts[0].image} alt="Model wearing a pink floral Glam Me dress" />
+          <img src={collectionImages.dresses} alt="Dresses collection" />
           <div><h3>Dresses</h3><p>From day dates<br />to after dark.</p><a href="/category/dresses">Shop dresses <span>→</span></a></div>
         </div>
         <div className="collection-tile collection-coords">
-          <img src={catalogProducts[1].image} alt="Model wearing an ivory Glam Me co-ord" />
+          <img src={collectionImages.coords} alt="Co-Ords collection" />
           <div><h3>Co-Ords</h3><p>Effortless<br />matching sets<br />made to wear.</p><a href="/category/co-ords">Shop co-ords <span>→</span></a></div>
         </div>
         <div className="collection-tile collection-occasion">
-          <img src={catalogProducts[2].image} alt="Model wearing a rose satin Glam Me occasion dress" />
+          <img src={collectionImages.occasion} alt="Occasion collection" />
           <div><h3>Occasion</h3><p>For weddings,<br />parties &amp; all the<br />special plans.</p><a href="/category/occasion">Shop occasion <span>→</span></a></div>
         </div>
         <div className="collection-tile collection-denim">
-          <img src={catalogProducts[4].image} alt="Model wearing a Glam Me denim co-ord" />
+          <img src={collectionImages.denim} alt="Denim collection" />
           <div><h3>Denim</h3><p>Everyday staples<br />with a fresh<br />season twist.</p><a href="/category/denim">Shop denim <span>→</span></a></div>
         </div>
         <div className="collection-tile collection-accessories">
-          <img src={catalogProducts[3].image} alt="Glam Me pink quilted shoulder bag and accessories" />
+          <img src={collectionImages.accessories} alt="Accessories collection" />
           <div><h3>Accessories</h3><p>The finishing<br />touch.</p><a href="/category/accessories">Shop accessories <span>→</span></a></div>
         </div>
       </section>
