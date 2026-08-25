@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Glam Me"
+description = "A static editorial fashion storefront for Glam Me, featuring a cinematic home page, shoppable collections, product details, cart, checkout, order confirmation, and customer care pages."
+version = "1.0.0"
+id = "artifacts/glam-me"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18781
+
+[services.development]
+run = "pnpm --filter @workspace/glam-me run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/glam-me", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/glam-me/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18781"
+BASE_PATH = "/"
