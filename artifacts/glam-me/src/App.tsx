@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
@@ -95,6 +95,13 @@ function getCartQueryItem(): CartItem | null {
   return Number.isInteger(productId) && productId > 0 && size ? { productId, size, quantity: 1 } : null;
 }
 
+function getCartCount() {
+  const items = getCartItems();
+  const queryItem = getCartQueryItem();
+  const hasQueryItem = queryItem && items.some((item) => item.productId === queryItem.productId && item.size === queryItem.size);
+  return items.reduce((total, item) => total + item.quantity, 0) + (queryItem && !hasQueryItem ? 1 : 0);
+}
+
 function parsePounds(value: string) {
   const amount = Number.parseFloat(value.replace(/[^0-9.-]/g, ''));
   return Number.isFinite(amount) ? amount : 0;
@@ -119,6 +126,7 @@ function addProductToCart(product: CatalogProduct, size: string) {
   }
   try {
     window.localStorage.setItem(cartStorageKey, JSON.stringify(nextItems));
+    window.dispatchEvent(new Event('glam-cart-updated'));
     return true;
   } catch {
     return false;
@@ -181,12 +189,13 @@ function getStorefrontCategories(): CatalogCategory[] {
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [cartCount] = useState(() => {
-    const items = getCartItems();
-    const queryItem = getCartQueryItem();
-    const hasQueryItem = queryItem && items.some((item) => item.productId === queryItem.productId && item.size === queryItem.size);
-    return items.reduce((total, item) => total + item.quantity, 0) + (queryItem && !hasQueryItem ? 1 : 0);
-  });
+  const [cartCount, setCartCount] = useState(getCartCount);
+
+  useEffect(() => {
+    const updateCartCount = () => setCartCount(getCartCount());
+    window.addEventListener('glam-cart-updated', updateCartCount);
+    return () => window.removeEventListener('glam-cart-updated', updateCartCount);
+  }, []);
 
   return (
     <header className="site-header" data-testid="site-header">
@@ -546,7 +555,7 @@ function LegalPage({ type }: { type: 'privacy' | 'terms' | 'delivery' }) {
 }
 
 function Cart() {
-  const [items] = useState<CartItem[]>(() => {
+  const [items, setItems] = useState<CartItem[]>(() => {
     const storedItems = getCartItems();
     const queryItem = getCartQueryItem();
     return queryItem && !storedItems.some((item) => item.productId === queryItem.productId && item.size === queryItem.size)
@@ -559,6 +568,21 @@ function Cart() {
     return product ? [{ item, product }] : [];
   });
   const subtotal = cartLines.reduce((total, { item, product }) => total + parsePounds(product.price) * item.quantity, 0);
+
+  function removeCartItem(itemToRemove: CartItem) {
+    const nextItems = items.filter((item) => item.productId !== itemToRemove.productId || item.size !== itemToRemove.size);
+    setItems(nextItems);
+    try {
+      window.localStorage.setItem(cartStorageKey, JSON.stringify(nextItems));
+    } catch {
+      // The visible cart still updates if browser storage is unavailable.
+    }
+    const queryItem = getCartQueryItem();
+    if (queryItem?.productId === itemToRemove.productId && queryItem.size === itemToRemove.size) {
+      window.history.replaceState({}, '', '/cart');
+    }
+    window.dispatchEvent(new Event('glam-cart-updated'));
+  }
 
   return (
     <Shell>
@@ -579,6 +603,7 @@ function Cart() {
                     <a className="text-link" href={`/product/${item.productId}`}>Edit item</a>
                   </div>
                   <strong>{formatPounds(parsePounds(product.price) * item.quantity)}</strong>
+                  <button className="cart-remove" type="button" aria-label={`Remove ${product.name}`} data-testid={`button-remove-cart-${item.productId}-${item.size.replace(/\s+/g, '-').toLowerCase()}`} onClick={() => removeCartItem(item)}>×</button>
                 </div>
               ))}
               <a className="text-link" href="/shop" data-testid="link-cart-continue">Continue shopping</a>
