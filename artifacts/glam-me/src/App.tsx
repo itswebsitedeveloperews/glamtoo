@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type FormEvent, type ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
@@ -65,6 +65,59 @@ const clerkAppearance = {
 
 const adminProductsStorageKey = 'glam-me-admin-products-v4';
 const adminCategoriesStorageKey = 'glam-me-admin-categories-v2';
+const cartStorageKey = 'glam-me-cart-v1';
+
+type CartItem = {
+  productId: number;
+  name: string;
+  image: string;
+  price: string;
+  size: string;
+  quantity: number;
+  position: string;
+};
+
+function getCartItems(): CartItem[] {
+  try {
+    const stored = window.localStorage.getItem(cartStorageKey);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as CartItem[];
+    return Array.isArray(parsed)
+      ? parsed.filter((item) => item && typeof item.productId === 'number' && typeof item.name === 'string' && typeof item.image === 'string' && typeof item.price === 'string' && typeof item.size === 'string' && typeof item.quantity === 'number')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function parsePounds(value: string) {
+  const amount = Number.parseFloat(value.replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function formatPounds(value: number) {
+  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
+}
+
+function addProductToCart(product: CatalogProduct, size: string) {
+  const items = getCartItems();
+  const existingIndex = items.findIndex((item) => item.productId === product.id && item.size === size);
+  const nextItems = [...items];
+  if (existingIndex >= 0) {
+    nextItems[existingIndex] = { ...nextItems[existingIndex], quantity: nextItems[existingIndex].quantity + 1 };
+  } else {
+    nextItems.push({
+      productId: product.id,
+      name: product.name,
+      image: product.image,
+      price: product.price,
+      size,
+      quantity: 1,
+      position: product.position,
+    });
+  }
+  window.localStorage.setItem(cartStorageKey, JSON.stringify(nextItems));
+}
 
 function getStorefrontProducts(): CatalogProduct[] {
   try {
@@ -122,6 +175,7 @@ function getStorefrontCategories(): CatalogCategory[] {
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [cartCount] = useState(() => getCartItems().reduce((total, item) => total + item.quantity, 0));
 
   return (
     <header className="site-header" data-testid="site-header">
@@ -150,10 +204,10 @@ function Header() {
               <svg viewBox="0 0 24 24" role="img"><circle cx="12" cy="8" r="3.2" /><path d="M5.8 20c.6-3.3 2.7-5.1 6.2-5.1s5.6 1.8 6.2 5.1" /></svg>
             </span>
           </a>
-          <a href="/cart" className="tool-label icon-link bag-link" aria-label="Shopping bag, 1 item" data-testid="link-cart">
+          <a href="/cart" className="tool-label icon-link bag-link" aria-label={`Shopping bag, ${cartCount} item${cartCount === 1 ? '' : 's'}`} data-testid="link-cart">
             <span className="tool-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" role="img"><path d="M5.5 8.5h13l-1 11h-11z" /><path d="M9 9V6.8a3 3 0 0 1 6 0V9" /></svg>
-              <span className="bag-count">1</span>
+              {cartCount > 0 && <span className="bag-count">{cartCount}</span>}
             </span>
           </a>
         </div>
@@ -424,6 +478,15 @@ function Product() {
 function ProductDetail({ params }: { params: { id: string } }) {
   const product = getStorefrontProducts().find((item) => String(item.id) === params.id);
   if (!product) return <NotFound />;
+  const selectedProduct = product;
+
+  function handleAddToCart(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const size = new FormData(event.currentTarget).get('size');
+    if (typeof size !== 'string' || !size) return;
+    addProductToCart(selectedProduct, size);
+    window.location.href = '/cart';
+  }
 
   return (
     <Shell>
@@ -438,7 +501,7 @@ function ProductDetail({ params }: { params: { id: string } }) {
             <h1>{product.name}</h1>
             <div className="detail-price">{product.price}</div>
             <p>{product.description}</p>
-            <form className="detail-form" action="/cart" method="get">
+            <form className="detail-form" onSubmit={handleAddToCart}>
               <input type="hidden" name="product" value={product.id} />
               <div className="field"><label htmlFor={`product-size-${product.id}`}>Select size</label><select id={`product-size-${product.id}`} name="size" defaultValue="" required data-testid={`select-product-size-${product.id}`}><option value="" disabled>Choose a size</option><option>UK 6</option><option>UK 8</option><option>UK 10</option><option>UK 12</option><option>UK 14</option></select></div>
               <div className="field"><label>Colour</label><div className="swatches" aria-label="Available colours"><span className="swatch swatch-pink" title="Blush"></span><span className="swatch swatch-black" title="Black"></span><span className="swatch swatch-blue" title="Sky"></span></div></div>
@@ -471,7 +534,44 @@ function LegalPage({ type }: { type: 'privacy' | 'terms' | 'delivery' }) {
 }
 
 function Cart() {
-  return <Shell><div className="container cart-page"><div className="eyebrow">Your edit</div><h1>Your bag.</h1><div className="cart-layout"><div><div className="cart-item"><img src={fashionImage} alt="Luna Ruffle Mini Dress in blush pink" /><div><h3>Luna Ruffle Mini Dress</h3><p>Blush · UK 10 · Qty 1</p><a className="text-link" href="/product">Edit item</a></div><strong>£89.99</strong></div><a className="text-link" href="/shop" data-testid="link-cart-continue">Continue shopping</a></div><aside className="cart-summary"><h2>Summary</h2><div className="summary-row"><span>Subtotal</span><span>£89.99</span></div><div className="summary-row"><span>Delivery</span><span>Free</span></div><div className="summary-row total"><span>Total</span><span>£89.99</span></div><a className="button button-pink" href="/checkout" data-testid="link-checkout">Go to checkout</a></aside></div></div></Shell>;
+  const [items] = useState<CartItem[]>(getCartItems);
+  const subtotal = items.reduce((total, item) => total + parsePounds(item.price) * item.quantity, 0);
+
+  return (
+    <Shell>
+      <div className="container cart-page">
+        <div className="eyebrow">Your edit</div>
+        <h1>Your bag.</h1>
+        {items.length === 0 ? (
+          <p>Your bag is empty. <a className="text-link" href="/shop">Continue shopping</a></p>
+        ) : (
+          <div className="cart-layout">
+            <div>
+              {items.map((item) => (
+                <div className="cart-item" key={`${item.productId}-${item.size}`}>
+                  <img src={item.image} alt={item.name} style={{ objectPosition: item.position }} />
+                  <div>
+                    <h3>{item.name}</h3>
+                    <p>{item.size} · Qty {item.quantity}</p>
+                    <a className="text-link" href={`/product/${item.productId}`}>Edit item</a>
+                  </div>
+                  <strong>{formatPounds(parsePounds(item.price) * item.quantity)}</strong>
+                </div>
+              ))}
+              <a className="text-link" href="/shop" data-testid="link-cart-continue">Continue shopping</a>
+            </div>
+            <aside className="cart-summary">
+              <h2>Summary</h2>
+              <div className="summary-row"><span>Subtotal</span><span>{formatPounds(subtotal)}</span></div>
+              <div className="summary-row"><span>Delivery</span><span>Free</span></div>
+              <div className="summary-row total"><span>Total</span><span>{formatPounds(subtotal)}</span></div>
+              <a className="button button-pink" href="/checkout" data-testid="link-checkout">Go to checkout</a>
+            </aside>
+          </div>
+        )}
+      </div>
+    </Shell>
+  );
 }
 
 function Checkout() {
@@ -504,7 +604,6 @@ function AppRoutes() {
     <Route path="/about" component={About} />
     <Route path="/shop" component={Shop} />
     <Route path="/product/:id" component={ProductDetail} />
-    <Route path="/product" component={Product} />
     <Route path="/category" component={CategoryIndex} />
     <Route path="/category/:slug" component={CategoryDetail} />
     <Route path="/faq" component={FAQ} />
