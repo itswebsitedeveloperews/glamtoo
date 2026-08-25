@@ -86,6 +86,15 @@ const initialOrders: Order[] = [
   { id: "#GM-1046", customer: "Amelia Jones", date: "Yesterday", total: "£59.99", status: "Delivered" },
 ];
 
+function parseOrderTotal(total: string) {
+  const amount = Number.parseFloat(total.replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function formatPounds(amount: number) {
+  return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
+}
+
 function useStoredState<T>(key: string, fallback: T) {
   const [value, setValue] = useState<T>(() => {
     try {
@@ -413,6 +422,12 @@ export default function AdminDashboard({
     () => products.reduce((total, product) => total + (product.type === "Variable" ? product.variations.reduce((sum, variation) => sum + variation.stock, 0) : product.stock), 0),
     [products],
   );
+  const salesToday = orders.filter((order) => order.date.startsWith("Today")).reduce((total, order) => total + parseOrderTotal(order.total), 0);
+  const salesYesterday = orders.filter((order) => order.date.startsWith("Yesterday")).reduce((total, order) => total + parseOrderTotal(order.total), 0);
+  const salesChange = salesYesterday > 0 ? ((salesToday - salesYesterday) / salesYesterday) * 100 : null;
+  const salesChangeLabel = salesChange === null
+    ? "No sales recorded yesterday"
+    : `${salesChange >= 0 ? "+" : ""}${salesChange.toFixed(1)}% from yesterday`;
 
   function openNewProduct() {
     setSection("products");
@@ -541,7 +556,7 @@ export default function AdminDashboard({
           <>
             <SectionTitle eyebrow="Glam Too administration" title="Good Morning" description="Your storefront is looking beautiful. Here’s what needs your attention today." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add a product</button>} />
             <div className="admin-stat-grid">
-              <article><p>Sales today</p><strong>£1,284.00</strong><span>+18.4% from yesterday</span></article>
+              <article><p>Sales today</p><strong>{formatPounds(salesToday)}</strong><span>{salesChangeLabel}</span></article>
               <article><p>Open orders</p><strong>{orders.filter((order) => order.status !== "Delivered").length}</strong><span>Ready for fulfilment</span></article>
               <article><p>Products in stock</p><strong>{inventoryTotal}</strong><span>Across {products.length} styles</span></article>
               <article><p>Average order</p><strong>£74.25</strong><span>Last 30 days</span></article>
