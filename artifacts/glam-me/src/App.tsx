@@ -290,10 +290,6 @@ function Home() {
           </div>
         </div>
       </section>
-      <div className="intro-strip"><div className="container intro-strip-inner"><span>Designed in London</span><span>Easy, joyful dressing</span><span>Free delivery over £75</span></div></div>
-      <section className="editorial container">
-        <div className="editorial-layout"><div className="editorial-art"><img src={fashionImage} alt="Editorial portrait from the Glam Too occasion collection" /></div><div className="editorial-copy"><div className="eyebrow">A little more you</div><h2>Dress like you mean it.</h2><p>There is no dress code for being exactly yourself. Find the colour, cut and confidence that follows you into the room.</p><a className="button" href="/about" data-testid="link-about-editorial">Meet Glam Too</a></div></div>
-      </section>
     </Shell>
   );
 }
