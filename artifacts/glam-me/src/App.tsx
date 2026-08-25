@@ -122,9 +122,22 @@ function getStorefrontCategories(): CatalogCategory[] {
 }
 
 function Header() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <header className="site-header" data-testid="site-header">
       <div className="header-inner">
+        <button
+          className="menu-toggle"
+          type="button"
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+          aria-expanded={menuOpen}
+          aria-controls="primary-navigation"
+          data-testid="button-menu-toggle"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          <span className="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
+        </button>
         <a href="/shop" className="tool-label search-link" data-testid="link-search">
           <span className="tool-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
@@ -146,15 +159,15 @@ function Header() {
           </a>
         </div>
       </div>
-      <nav className="nav" aria-label="Primary navigation">
-        <a href="/shop" data-testid="link-nav-new-in">New In</a>
-        <a href="/category/dresses" data-testid="link-nav-dresses">Dresses</a>
-        <a href="/shop" data-testid="link-nav-clothing">Clothing</a>
-        <a href="/category/occasion" data-testid="link-nav-occasion">Occasion</a>
-        <a href="/category/co-ords" data-testid="link-nav-co-ords">Co-Ords</a>
-        <a href="/category/denim" data-testid="link-nav-denim">Denim</a>
-        <a href="/category/accessories" data-testid="link-nav-accessories">Accessories</a>
-        <a href="/shop" data-testid="link-nav-sale">Sale</a>
+      <nav id="primary-navigation" className={menuOpen ? 'nav nav-open' : 'nav'} aria-label="Primary navigation">
+        <a href="/shop" data-testid="link-nav-new-in" onClick={() => setMenuOpen(false)}>New In</a>
+        <a href="/category/dresses" data-testid="link-nav-dresses" onClick={() => setMenuOpen(false)}>Dresses</a>
+        <a href="/shop" data-testid="link-nav-clothing" onClick={() => setMenuOpen(false)}>Clothing</a>
+        <a href="/category/occasion" data-testid="link-nav-occasion" onClick={() => setMenuOpen(false)}>Occasion</a>
+        <a href="/category/co-ords" data-testid="link-nav-co-ords" onClick={() => setMenuOpen(false)}>Co-Ords</a>
+        <a href="/category/denim" data-testid="link-nav-denim" onClick={() => setMenuOpen(false)}>Denim</a>
+        <a href="/category/accessories" data-testid="link-nav-accessories" onClick={() => setMenuOpen(false)}>Accessories</a>
+        <a href="/shop" data-testid="link-nav-sale" onClick={() => setMenuOpen(false)}>Sale</a>
       </nav>
     </header>
   );
