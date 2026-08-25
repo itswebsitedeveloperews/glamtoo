@@ -229,7 +229,7 @@ function ProductCard({ product, featured = false, showShopNow = false }: { produ
         <div className="product-image">
           {featured && <span className="badge">Just in</span>}
           <span className="heart" aria-hidden="true">♡</span>
-          <img src={product.image} alt={`${product.name}, ${product.detail}`} style={{ objectPosition: product.position }} />
+          <img src={product.image} alt={`${product.name}, ${product.detail}`} />
         </div>
         <div className="product-info">
           <div><div className="product-name">{product.name}</div><div className="product-meta">{product.detail}</div></div>
