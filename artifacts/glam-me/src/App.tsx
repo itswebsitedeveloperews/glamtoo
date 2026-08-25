@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
-import logoImage from '@assets/glam_too_logo_1787660255416.svg';
+import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
 import { catalogCategories, catalogProducts, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
