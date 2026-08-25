@@ -556,17 +556,19 @@ export default function AdminDashboard({
                       <span className="admin-product-catalog-heart" aria-hidden="true">♡</span>
                       <span className={`admin-product-catalog-status ${product.status.toLowerCase()}`}>{product.status}</span>
                     </div>
-                    <div className="admin-product-catalog-info">
-                      <div>
-                        <div className="admin-product-catalog-name">{product.name}</div>
-                        <div className="admin-product-catalog-meta">{product.detail} · {product.category}</div>
+                    <div className="admin-product-catalog-content">
+                      <div className="admin-product-catalog-info">
+                        <div>
+                          <div className="admin-product-catalog-name">{product.name}</div>
+                          <div className="admin-product-catalog-meta">{product.detail} · {product.category}</div>
+                        </div>
+                        <strong>{product.price}</strong>
                       </div>
-                      <strong>{product.price}</strong>
-                    </div>
-                    <div className="admin-product-catalog-actions">
-                      <a href={`/product/${product.id}`} data-testid={`link-view-product-${product.id}`}>View product</a>
-                      <button type="button" data-testid={`button-edit-product-${product.id}`} onClick={() => { setEditorProductId(product.id); setNotice(""); }}>Edit product</button>
-                      <button type="button" data-testid={`button-remove-product-${product.id}`} onClick={() => removeProduct(product)}>Remove</button>
+                      <div className="admin-product-catalog-actions">
+                        <a href={`/product/${product.id}`} data-testid={`link-view-product-${product.id}`}>View product</a>
+                        <button type="button" data-testid={`button-edit-product-${product.id}`} onClick={() => { setEditorProductId(product.id); setNotice(""); }}>Edit product</button>
+                        <button type="button" data-testid={`button-remove-product-${product.id}`} onClick={() => removeProduct(product)}>Remove</button>
+                      </div>
                     </div>
                   </article>
                 ))}
