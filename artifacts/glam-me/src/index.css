@@ -84,7 +84,8 @@ img { display: block; max-width: 100%; }
 .button:hover { background: var(--pink); color: var(--ink); border-color: var(--pink); transform: translateY(-2px); }
 .button-light { background: transparent; border-color: var(--white); color: var(--white); }
 .button-light:hover { background: var(--white); color: var(--ink); }
-.button-pink { background: var(--pink); border-color: var(--pink); color: var(--ink); }
+.button-pink { background: #e23d6f; border-color: #e23d6f; color: #fff; }
+.button-pink:hover { background: #c93260; border-color: #c93260; color: #fff; }
 
 .intro-strip { border-bottom: 1px solid var(--line); padding: 21px 0; }
 .intro-strip-inner { display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; font-size: 11px; letter-spacing: .11em; text-transform: uppercase; }

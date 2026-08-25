@@ -115,10 +115,9 @@ function Home() {
       <section className="hero" aria-label="The new occasion edit">
         <img className="hero-image" src={heroImage} alt="Woman in a pink dress beside a vintage pink car on a sunny street" />
         <div className="hero-copy">
-          <div className="eyebrow">The new occasion edit</div>
-          <h1>It&apos;s your moment.</h1>
-          <p>Standout outfits for every plan on your calendar, from the first coffee to the last dance.</p>
-          <a className="button button-pink" href="/shop" data-testid="link-hero-shop">Shop the edit</a>
+          <h1>It&apos;s your moment</h1>
+          <p>Standout outfits for every plan on your calendar.</p>
+          <a className="button button-pink" href="/shop" data-testid="link-hero-shop">Shop New In</a>
         </div>
       </section>
       <div className="intro-strip"><div className="container intro-strip-inner"><span>Designed in London</span><span>Easy, joyful dressing</span><span>Free delivery over £75</span></div></div>
