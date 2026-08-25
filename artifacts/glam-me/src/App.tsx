@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/Glam_me_logo_transparent.png';
+import heroImage from '@assets/glam-me-hero-clean.png';
 import { Route, Router as WouterRouter, Switch } from 'wouter';
 import NotFound from '@/pages/not-found';
 
@@ -112,7 +113,7 @@ function Home() {
   return (
     <Shell>
       <section className="hero" aria-label="The new occasion edit">
-        <img className="hero-image" src={fashionImage} alt="Woman in a pink dress beside a vintage pink car on a sunny street" />
+        <img className="hero-image" src={heroImage} alt="Woman in a pink dress beside a vintage pink car on a sunny street" />
         <div className="hero-copy">
           <div className="eyebrow">The new occasion edit</div>
           <h1>It&apos;s your moment.</h1>
