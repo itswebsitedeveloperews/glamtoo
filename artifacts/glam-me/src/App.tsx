@@ -1,9 +1,66 @@
 import type { ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
-import logoImage from '@assets/Glam_me_logo_transparent.png';
+import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
-import { Route, Router as WouterRouter, Switch } from 'wouter';
+import { ClerkProvider, SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
+import { publishableKeyFromHost } from '@clerk/react/internal';
+import { shadcn } from '@clerk/themes';
+import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import NotFound from '@/pages/not-found';
+import AdminDashboard from '@/pages/admin-dashboard';
+
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+
+function stripBase(path: string): string {
+  return basePath && path.startsWith(basePath)
+    ? path.slice(basePath.length) || '/'
+    : path;
+}
+
+const clerkAppearance = {
+  theme: shadcn,
+  cssLayerName: 'clerk',
+  options: {
+    logoPlacement: 'inside' as const,
+    logoLinkUrl: basePath || '/',
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+  },
+  variables: {
+    colorPrimary: '#e23d6f',
+    colorForeground: '#171615',
+    colorMutedForeground: '#716a67',
+    colorDanger: '#b42342',
+    colorBackground: '#fffdfb',
+    colorInput: '#f5f1ed',
+    colorInputForeground: '#171615',
+    colorNeutral: '#d8d0ca',
+    fontFamily: 'DM Sans, sans-serif',
+    borderRadius: '0px',
+  },
+  elements: {
+    rootBox: { width: '100%', display: 'flex', justifyContent: 'center' },
+    cardBox: { width: '440px', maxWidth: '100%', overflow: 'hidden', background: '#fffdfb', border: '1px solid #d8d0ca', borderRadius: '0px', boxShadow: '12px 12px 0 rgba(23, 22, 21, .08)' },
+    card: { border: '0', background: 'transparent', borderRadius: '0px', boxShadow: 'none' },
+    footer: { border: '0', background: 'transparent', borderRadius: '0px', boxShadow: 'none' },
+    headerTitle: { color: '#171615' },
+    headerSubtitle: { color: '#716a67' },
+    formFieldLabel: { color: '#171615' },
+    footerActionLink: { color: '#e23d6f' },
+    footerActionText: { color: '#716a67' },
+    dividerText: { color: '#716a67' },
+    formButtonPrimary: { background: '#e23d6f', borderRadius: '0px' },
+    formFieldInput: { background: '#f5f1ed', color: '#171615', borderRadius: '0px' },
+    socialButtonsBlockButton: { borderRadius: '0px' },
+    socialButtonsBlockButtonText: { color: '#171615' },
+    dividerLine: { background: '#d8d0ca' },
+    logoImage: { height: 'auto', width: '142px' },
+  },
+};
 
 const products = [
   { id: 'luna', name: 'Luna Ruffle Mini Dress', price: '£89.99', detail: 'Blush pink · Recycled satin', position: '34% 41%' },
@@ -188,8 +245,24 @@ function Confirmation() {
   return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Me. Your order GM-260214 is being wrapped with care. We&apos;ve sent all the details to your inbox.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
 }
 
-function App() {
-  return <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Switch>
+function SignInPage() {
+  return <div className="admin-auth-page"><SignIn signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={`${basePath}/admin`} /></div>;
+}
+
+function SignUpPage() {
+  return <div className="admin-auth-page"><SignUp signInUrl={`${basePath}/sign-in`} fallbackRedirectUrl={`${basePath}/admin`} /></div>;
+}
+
+function AdminRoute() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { signOut } = useClerk();
+  if (!isLoaded) return <div className="admin-auth-page"><p>Loading secure admin access…</p></div>;
+  if (!isSignedIn) return <SignInPage />;
+  return <AdminDashboard onSignOut={() => signOut({ redirectUrl: basePath || '/' })} />;
+}
+
+function AppRoutes() {
+  return <Switch>
     <Route path="/" component={Home} />
     <Route path="/about" component={About} />
     <Route path="/shop" component={Shop} />
@@ -203,8 +276,33 @@ function App() {
     <Route path="/cart" component={Cart} />
     <Route path="/checkout" component={Checkout} />
     <Route path="/order-confirmation" component={Confirmation} />
+    <Route path="/admin" component={AdminRoute} />
+    <Route path="/sign-in/*?" component={SignInPage} />
+    <Route path="/sign-up/*?" component={SignUpPage} />
     <Route component={NotFound} />
-  </Switch></WouterRouter>;
+  </Switch>;
+}
+
+function ClerkProviderWithRoutes() {
+  const [, setLocation] = useLocation();
+  return (
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={clerkAppearance}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      routerPush={(to) => setLocation(stripBase(to))}
+      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+    >
+      <AppRoutes />
+    </ClerkProvider>
+  );
+}
+
+function App() {
+  if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY');
+  return <WouterRouter base={basePath}><ClerkProviderWithRoutes /></WouterRouter>;
 }
 
 export default App;

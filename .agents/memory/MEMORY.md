@@ -1,0 +1,1 @@
+- [Clerk embedded sign-in](clerk-embedded-sign-in.md) — In this Wouter/Vite app, use Clerk’s default embedded sign-in mode; path routing left the auth widget empty.
