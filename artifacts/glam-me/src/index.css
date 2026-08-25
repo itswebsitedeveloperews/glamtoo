@@ -336,7 +336,7 @@ img { display: block; max-width: 100%; }
   .price { display: block; margin-top: 4px; }
   .moments { padding: 66px 0 72px; }
   .moment-grid { grid-template-columns: repeat(2, 1fr); }
-  .moment-card { aspect-ratio: 1 / 1.75; }
+  .moment-card { aspect-ratio: 1 / 1.25; }
   .newsletter-inner { flex-direction: column; align-items: stretch; gap: 25px; }
   .newsletter-copy-group { justify-content: center; }
   .newsletter-form { width: 100%; max-width: 520px; margin: 0 auto; }
