@@ -229,6 +229,12 @@ function Home() {
     denim: categoryImage("Denim", catalogCategories[3].image),
     accessories: categoryImage("Accessories", catalogCategories[4].image),
   };
+  const momentPlans = [
+    { name: "Day Out", copy: "Bright looks for sunny plans." },
+    { name: "Date Night", copy: "Turn heads from six to midnight." },
+    { name: "Weddings", copy: "Guest-ready looks for the loved-up days." },
+    { name: "Weekend Plans", copy: "Effortless pieces for off-duty hours." },
+  ];
   return (
     <Shell>
       <section className="hero" aria-label="The new occasion edit">
@@ -269,17 +275,22 @@ function Home() {
         </div>
         <div className="product-grid">{products.slice(0, 3).map((product) => <ProductCard key={product.id} product={product} showShopNow />)}</div>
       </section>
-      <div className="intro-strip"><div className="container intro-strip-inner"><span>Designed in London</span><span>Easy, joyful dressing</span><span>Free delivery over £75</span></div></div>
       <section className="moments" aria-labelledby="moments-heading">
-        <div className="container"><div className="section-heading"><div><div className="eyebrow">Shop by moment</div><h2 id="moments-heading">Outfits for every plan</h2></div><a className="text-link" href="/category" data-testid="link-shop-moments">Explore all moments</a></div>
+        <div className="container">
+          <div className="moments-heading"><div className="eyebrow">Shop by moment</div><h2 id="moments-heading">Outfits for Every Plan</h2></div>
           <div className="moment-grid">
-            {['Day Out', 'Date Night', 'Weddings', 'Weekend Plans'].map((moment, index) => <a className="moment-card" href="/category" key={moment} data-testid={`link-moment-${index}`}>
-              <img src={fashionImage} alt={`${moment} fashion edit`} />
-              <div className="moment-copy"><h3>{moment}</h3><p>{['Bright looks for sunny plans.', 'Turn heads from six to midnight.', 'Guest-ready looks for the loved-up days.', 'Effortless pieces for off-duty hours.'][index]}</p><span className="text-link">Shop now</span></div>
-            </a>)}
+            {momentPlans.map((moment, index) => {
+              const product = products[index + 3] ?? products[index] ?? products[0];
+              if (!product) return null;
+              return <a className="moment-card" href={`/product/${product.id}`} key={moment.name} data-testid={`link-moment-${index}`}>
+                <img src={product.image} alt={`${product.name}, ${moment.name} fashion edit`} style={{ objectPosition: product.position }} />
+                <div className="moment-copy"><h3>{moment.name}</h3><p>{moment.copy}</p><span className="moment-shop-link">Shop now <span aria-hidden="true">→</span></span></div>
+              </a>;
+            })}
           </div>
         </div>
       </section>
+      <div className="intro-strip"><div className="container intro-strip-inner"><span>Designed in London</span><span>Easy, joyful dressing</span><span>Free delivery over £75</span></div></div>
       <section className="editorial container">
         <div className="editorial-layout"><div className="editorial-art"><img src={fashionImage} alt="Editorial portrait from the Glam Too occasion collection" /></div><div className="editorial-copy"><div className="eyebrow">A little more you</div><h2>Dress like you mean it.</h2><p>There is no dress code for being exactly yourself. Find the colour, cut and confidence that follows you into the room.</p><a className="button" href="/about" data-testid="link-about-editorial">Meet Glam Too</a></div></div>
       </section>
