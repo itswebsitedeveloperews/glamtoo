@@ -93,7 +93,7 @@ img { display: block; max-width: 100%; }
 .collection-tile img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2,.65,.25,1); }
 .collection-tile:hover img { transform: scale(1.035); }
 .collection-tile:after { content: ''; position: absolute; z-index: 0; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(255,255,255,.78) 0%, rgba(255,255,255,.4) 43%, rgba(255,255,255,0) 78%); }
-.collection-tile > div { position: absolute; z-index: 1; left: 28px; bottom: 28px; max-width: 155px; }
+.collection-tile > div { position: absolute; z-index: 1; left: 28px; bottom: 28px; max-width: 190px; }
 .collection-tile h3 { margin: 0 0 6px; font: 500 clamp(23px, 2.1vw, 31px)/.98 var(--display); letter-spacing: -.035em; }
 .collection-tile p { margin: 0 0 18px; font-size: 14px; line-height: 1.38; }
 .collection-tile a { display: inline-block; padding-bottom: 4px; border-bottom: 1px solid currentColor; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
