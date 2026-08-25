@@ -124,7 +124,7 @@ function blankProduct(category: string): ProductDraft {
     description: "",
     sku: "",
     image: "",
-    detail: "New Glam Me piece",
+    detail: "New Glam Too piece",
     position: "50% 50%",
     variations: [],
   };
@@ -502,8 +502,8 @@ export default function AdminDashboard({
   return (
     <div className="admin-app">
       <aside className="admin-sidebar">
-        <a className="admin-brand" href="/" aria-label="Return to Glam Me storefront">
-          <img src="/logo.svg" alt="Glam Me" />
+        <a className="admin-brand" href="/" aria-label="Return to Glam Too storefront">
+          <img src="/logo.svg" alt="Glam Too" />
           <small>Commerce Studio</small>
         </a>
         <nav className="admin-nav" aria-label="Admin navigation">
@@ -524,7 +524,7 @@ export default function AdminDashboard({
 
         {section === "overview" && (
           <>
-            <SectionTitle eyebrow="Glam Me administration" title="Good Morning" description="Your storefront is looking beautiful. Here’s what needs your attention today." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add a product</button>} />
+            <SectionTitle eyebrow="Glam Too administration" title="Good Morning" description="Your storefront is looking beautiful. Here’s what needs your attention today." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add a product</button>} />
             <div className="admin-stat-grid">
               <article><p>Sales today</p><strong>£1,284.00</strong><span>+18.4% from yesterday</span></article>
               <article><p>Open orders</p><strong>{orders.filter((order) => order.status !== "Delivered").length}</strong><span>Ready for fulfilment</span></article>
@@ -543,14 +543,32 @@ export default function AdminDashboard({
         {section === "products" && editorProductId === null && (
           <>
             <SectionTitle eyebrow="Catalog" title="Products" description="Create, edit, publish, or move products back to draft from one product workspace." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add product</button>} />
-            <section className="admin-panel admin-table-panel">
-              <div className="admin-table admin-products-table">
-                <div className="admin-table-head"><span>Product</span><span>Type</span><span>Category</span><span>Price</span><span>Status</span><span>Actions</span></div>
+            <section className="admin-panel admin-product-catalog-panel">
+              <div className="admin-product-catalog-heading">
+                <div><p className="admin-eyebrow">The Glam Edit</p><h2>Our Current Obsessions</h2></div>
+                <span className="admin-muted-count">{products.length} products</span>
+              </div>
+              <div className="admin-product-catalog-grid">
                 {products.map((product) => (
-                  <div className="admin-table-row" key={product.id}>
-                    <div className="admin-product-cell">{product.image && <img src={product.image} alt="" />}<strong>{product.name}</strong></div><span>{product.type}</span><span>{product.category}</span><span>{product.price}</span><span className={`product-status ${product.status.toLowerCase()}`}>{product.status}</span>
-                    <div className="admin-product-actions"><button type="button" onClick={() => { setEditorProductId(product.id); setNotice(""); }}>Edit</button><button type="button" onClick={() => removeProduct(product)}>Remove</button></div>
-                  </div>
+                  <article className="admin-product-catalog-card" key={product.id} data-testid={`admin-card-product-${product.id}`}>
+                    <div className="admin-product-catalog-image">
+                      {product.image ? <img src={product.image} alt={`${product.name} product preview`} /> : <div className="admin-image-placeholder">Add product media</div>}
+                      <span className="admin-product-catalog-heart" aria-hidden="true">♡</span>
+                      <span className={`admin-product-catalog-status ${product.status.toLowerCase()}`}>{product.status}</span>
+                    </div>
+                    <div className="admin-product-catalog-info">
+                      <div>
+                        <div className="admin-product-catalog-name">{product.name}</div>
+                        <div className="admin-product-catalog-meta">{product.detail} · {product.category}</div>
+                      </div>
+                      <strong>{product.price}</strong>
+                    </div>
+                    <div className="admin-product-catalog-actions">
+                      <a href={`/product/${product.id}`} data-testid={`link-view-product-${product.id}`}>View product</a>
+                      <button type="button" data-testid={`button-edit-product-${product.id}`} onClick={() => { setEditorProductId(product.id); setNotice(""); }}>Edit product</button>
+                      <button type="button" data-testid={`button-remove-product-${product.id}`} onClick={() => removeProduct(product)}>Remove</button>
+                    </div>
+                  </article>
                 ))}
               </div>
             </section>
@@ -609,7 +627,7 @@ export default function AdminDashboard({
 
         {section === "payments" && (
           <>
-            <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Me." />
+            <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Too." />
             <section className="admin-payment-card"><div><span className="stripe-mark">stripe</span><h2>Connect Stripe to accept payments</h2><p>Stripe has not been authorized for this workspace. For security, payment keys are never entered or stored inside the storefront admin.</p></div><div className="admin-payment-status"><strong>Connection status</strong><span>Not connected</span></div></section>
             <section className="admin-panel admin-payment-next"><p className="admin-eyebrow">Next step</p><h2>Connect through the workspace integration</h2><p>Once Stripe is authorized, this page will show live payment activity, refunds, customer records, and connected checkout settings.</p></section>
           </>

@@ -85,10 +85,10 @@ function getStorefrontProducts(): CatalogProduct[] {
           ...matchingCatalogProduct,
           ...product,
           id: typeof product.id === 'number' ? product.id : matchingCatalogProduct?.id ?? index + 1,
-          name: product.name || matchingCatalogProduct?.name || 'Glam Me piece',
+          name: product.name || matchingCatalogProduct?.name || 'Glam Too piece',
           category: product.category || matchingCatalogProduct?.category || '',
           image: product.image || matchingCatalogProduct?.image || matchingCategory?.image || '',
-          detail: product.detail || matchingCatalogProduct?.detail || 'Glam Me collection',
+          detail: product.detail || matchingCatalogProduct?.detail || 'Glam Too collection',
           position: product.position || matchingCatalogProduct?.position || '50% 50%',
         } as CatalogProduct;
       })
@@ -131,7 +131,7 @@ function Header() {
           </span>
           <span>Search</span>
         </a>
-        <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Glam Me" /></a>
+        <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Glam Too" /></a>
         <div className="header-tools">
           <a href="/about" className="tool-label icon-link" aria-label="Account" data-testid="link-account">
             <span className="tool-icon" aria-hidden="true">
@@ -180,14 +180,14 @@ function Footer() {
         <div className="container">
           <div className="footer-grid">
             <div>
-              <img className="footer-logo" src={logoImage} alt="Glam Me" />
+              <img className="footer-logo" src={logoImage} alt="Glam Too" />
               <p className="footer-intro">Outfits that make every moment yours. Expressive pieces for the beautifully busy life.</p>
             </div>
             <div><h4>Shop</h4><ul><li><a href="/shop" data-testid="link-footer-new-in">New In</a></li><li><a href="/category/dresses" data-testid="link-footer-dresses">Dresses</a></li><li><a href="/category/occasion" data-testid="link-footer-occasion">Occasion</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
             <div><h4>Help</h4><ul><li><a href="/delivery-returns" data-testid="link-footer-delivery">Delivery &amp; Returns</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
             <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">Our story</a></li><li><a href="/privacy" data-testid="link-footer-privacy">Privacy Policy</a></li><li><a href="/terms" data-testid="link-footer-terms">Terms &amp; Conditions</a></li></ul></div>
           </div>
-          <div className="footer-bottom"><span>© 2026 Glam Me. All rights reserved.</span><span>Made for your next favourite moment.</span></div>
+          <div className="footer-bottom"><span>© 2026 Glam Too. All rights reserved.</span><span>Made for your next favourite moment.</span></div>
         </div>
       </footer>
     </>
@@ -198,10 +198,10 @@ function Shell({ children }: { children: ReactNode }) {
   return <><Header /><main className="page">{children}</main><Footer /></>;
 }
 
-function ProductCard({ product, featured = false }: { product: CatalogProduct; featured?: boolean }) {
+function ProductCard({ product, featured = false, showShopNow = false }: { product: CatalogProduct; featured?: boolean; showShopNow?: boolean }) {
   return (
     <article className="product-card" data-testid={`card-product-${product.id}`}>
-      <a href="/product" data-testid={`link-product-${product.id}`}>
+      <a href={`/product/${product.id}`} data-testid={`link-product-${product.id}`}>
         <div className="product-image">
           {featured && <span className="badge">Just in</span>}
           <span className="heart" aria-hidden="true">♡</span>
@@ -210,6 +210,7 @@ function ProductCard({ product, featured = false }: { product: CatalogProduct; f
         <div className="product-info">
           <div><div className="product-name">{product.name}</div><div className="product-meta">{product.detail}</div></div>
           <div className="price">{product.price}</div>
+            {showShopNow && <span className="product-shop-now">Shop now</span>}
         </div>
       </a>
     </article>
@@ -266,7 +267,7 @@ function Home() {
           <div className="eyebrow">The Glam Edit</div>
           <h2 id="obsessions-heading">Our Current Obsessions</h2>
         </div>
-        <div className="product-grid">{products.slice(0, 3).map((product) => <ProductCard key={product.id} product={product} />)}</div>
+        <div className="product-grid">{products.slice(0, 3).map((product) => <ProductCard key={product.id} product={product} showShopNow />)}</div>
       </section>
       <div className="intro-strip"><div className="container intro-strip-inner"><span>Designed in London</span><span>Easy, joyful dressing</span><span>Free delivery over £75</span></div></div>
       <section className="moments" aria-labelledby="moments-heading">
@@ -280,7 +281,7 @@ function Home() {
         </div>
       </section>
       <section className="editorial container">
-        <div className="editorial-layout"><div className="editorial-art"><img src={fashionImage} alt="Editorial portrait from the Glam Me occasion collection" /></div><div className="editorial-copy"><div className="eyebrow">A little more you</div><h2>Dress like you mean it.</h2><p>There is no dress code for being exactly yourself. Find the colour, cut and confidence that follows you into the room.</p><a className="button" href="/about" data-testid="link-about-editorial">Meet Glam Me</a></div></div>
+        <div className="editorial-layout"><div className="editorial-art"><img src={fashionImage} alt="Editorial portrait from the Glam Too occasion collection" /></div><div className="editorial-copy"><div className="eyebrow">A little more you</div><h2>Dress like you mean it.</h2><p>There is no dress code for being exactly yourself. Find the colour, cut and confidence that follows you into the room.</p><a className="button" href="/about" data-testid="link-about-editorial">Meet Glam Too</a></div></div>
       </section>
     </Shell>
   );
@@ -318,7 +319,7 @@ function CategoryIndex() {
   const categories = getStorefrontCategories();
   return (
     <Shell>
-      <PageHero eyebrow="The collections" title="Find your moment." copy="Explore every Glam Me collection, from effortless everyday layers to the pieces made for an entrance." />
+      <PageHero eyebrow="The collections" title="Find your moment." copy="Explore every Glam Too collection, from effortless everyday layers to the pieces made for an entrance." />
       <section className="container category-directory" aria-labelledby="category-directory-heading">
         <div className="section-heading">
           <div><div className="eyebrow">Every collection</div><h2 id="category-directory-heading">Shop by category</h2></div>
@@ -343,7 +344,7 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
       <section className="category-banner" aria-labelledby="category-banner-heading">
         <div className="container category-banner-inner">
           <div className="category-banner-media">
-            {category.image ? <img src={category.image} alt={`${category.name} collection campaign`} /> : <div className="category-banner-empty">Glam Me collection</div>}
+            {category.image ? <img src={category.image} alt={`${category.name} collection campaign`} /> : <div className="category-banner-empty">Glam Too collection</div>}
           </div>
           <div className="category-banner-copy">
             <div className="eyebrow">The {category.name.toLowerCase()} edit</div>
@@ -372,21 +373,52 @@ function Product() {
   return <Shell><div className="container product-detail"><div className="product-detail-layout"><div className="product-gallery"><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress in blush pink, full editorial view" /></div><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress detail" /></div><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress styled for occasionwear" /></div></div><div className="detail-copy"><div className="eyebrow">The occasion edit · Just in</div><h1>Luna Ruffle Mini Dress</h1><div className="detail-price">£89.99</div><p>A little romance, a lot of movement. Luna is cut in soft recycled satin with a gathered neckline, floaty ruffles and a hem made for dancing.</p><form className="detail-form" action="/cart" method="get"><div className="field"><label htmlFor="dress-size">Select size</label><select id="dress-size" name="size" defaultValue="" required data-testid="select-product-size"><option value="" disabled>Choose a size</option><option>UK 6</option><option>UK 8</option><option>UK 10</option><option>UK 12</option><option>UK 14</option></select></div><div className="field"><label>Colour · Blush</label><div className="swatches" aria-label="Available colours"><span className="swatch swatch-pink" title="Blush"></span><span className="swatch swatch-black" title="Black"></span><span className="swatch swatch-blue" title="Sky"></span></div></div><button className="button" type="submit" data-testid="button-add-to-bag">Add to bag · £89.99</button></form><div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with a relaxed, floaty fit. Adjustable straps and invisible side zip. Dress length: 82cm.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery over £75. Return unworn pieces within 28 days.</p></details></div></div></div></div></Shell>;
 }
 
+function ProductDetail({ params }: { params: { id: string } }) {
+  const product = getStorefrontProducts().find((item) => String(item.id) === params.id);
+  if (!product) return <NotFound />;
+
+  return (
+    <Shell>
+      <div className="container product-detail">
+        <div className="product-detail-layout">
+          <div className="product-gallery">
+            <div className="gallery-image"><img src={product.image} alt={`${product.name}, ${product.detail}`} style={{ objectPosition: product.position }} /></div>
+            <div className="gallery-image"><img src={product.image} alt={`${product.name} detail`} style={{ objectPosition: product.position }} /></div>
+          </div>
+          <div className="detail-copy">
+            <div className="eyebrow">{product.category} edit · Glam Too</div>
+            <h1>{product.name}</h1>
+            <div className="detail-price">{product.price}</div>
+            <p>{product.description}</p>
+            <form className="detail-form" action="/cart" method="get">
+              <input type="hidden" name="product" value={product.id} />
+              <div className="field"><label htmlFor={`product-size-${product.id}`}>Select size</label><select id={`product-size-${product.id}`} name="size" defaultValue="" required data-testid={`select-product-size-${product.id}`}><option value="" disabled>Choose a size</option><option>UK 6</option><option>UK 8</option><option>UK 10</option><option>UK 12</option><option>UK 14</option></select></div>
+              <div className="field"><label>Colour · {product.detail.split(" · ")[0]}</label><div className="swatches" aria-label="Available colours"><span className="swatch swatch-pink" title="Blush"></span><span className="swatch swatch-black" title="Black"></span><span className="swatch swatch-blue" title="Sky"></span></div></div>
+              <button className="button" type="submit" data-testid={`button-add-to-bag-${product.id}`}>Add to bag · {product.price}</button>
+            </form>
+            <div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>{product.detail}. True to size with an easy, considered fit.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery over £75. Return unworn pieces within 28 days.</p></details></div>
+          </div>
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
 function About() {
-  return <Shell><div className="split-page"><div className="split-image"><img src={fashionImage} alt="Glam Me woman wearing pink in the sunshine" /></div><div className="split-copy"><div className="eyebrow">Our story</div><h1>More you, more often.</h1><p>Glam Me began with a simple belief: getting dressed should be one of the best parts of your day. We make expressive, feminine clothes for the many versions of you — the early riser, the plus-one, the main character and the one who stays out for one more.</p><p>Our collections are small, considered and designed to be worn on repeat. Expect confident colour, thoughtful details and pieces that make an ordinary Tuesday feel like a very good idea.</p><div className="quote">“Wear the thing that makes you stand a little taller.”</div></div></div></Shell>;
+  return <Shell><div className="split-page"><div className="split-image"><img src={fashionImage} alt="Glam Too woman wearing pink in the sunshine" /></div><div className="split-copy"><div className="eyebrow">Our story</div><h1>More you, more often.</h1><p>Glam Too began with a simple belief: getting dressed should be one of the best parts of your day. We make expressive, feminine clothes for the many versions of you — the early riser, the plus-one, the main character and the one who stays out for one more.</p><p>Our collections are small, considered and designed to be worn on repeat. Expect confident colour, thoughtful details and pieces that make an ordinary Tuesday feel like a very good idea.</p><div className="quote">“Wear the thing that makes you stand a little taller.”</div></div></div></Shell>;
 }
 
 function FAQ() {
-  const questions = [['How do Glam Me pieces fit?', 'Most pieces fit true to size. Every product page includes fit notes and garment measurements to help you choose. If you are between sizes, we recommend sizing up in fitted styles.'], ['When will my order arrive?', 'Standard delivery takes 2–4 working days and express delivery takes 1–2 working days. You will receive tracking as soon as your parcel leaves us.'], ['Can I return something?', 'Of course. Send unworn, unwashed items back within 28 days of delivery with tags attached. Visit Delivery & Returns for the full guide.'], ['Do you deliver internationally?', 'We currently deliver across the UK and selected European destinations. Delivery options and costs are shown at checkout.'], ['How can I contact you?', 'Our team is here Monday to Friday, 9am–5pm. Email hello@glamme.co.uk or use our contact form.']];
+  const questions = [['How do Glam Too pieces fit?', 'Most pieces fit true to size. Every product page includes fit notes and garment measurements to help you choose. If you are between sizes, we recommend sizing up in fitted styles.'], ['When will my order arrive?', 'Standard delivery takes 2–4 working days and express delivery takes 1–2 working days. You will receive tracking as soon as your parcel leaves us.'], ['Can I return something?', 'Of course. Send unworn, unwashed items back within 28 days of delivery with tags attached. Visit Delivery & Returns for the full guide.'], ['Do you deliver internationally?', 'We currently deliver across the UK and selected European destinations. Delivery options and costs are shown at checkout.'], ['How can I contact you?', 'Our team is here Monday to Friday, 9am–5pm. Email hello@glamtoo.co.uk or use our contact form.']];
   return <Shell><PageHero eyebrow="Need to know" title="Questions, answered." copy="The useful details, without the fine-print maze." /><div className="container faq-list">{questions.map(([question, answer], index) => <details key={question} open={index === 0}><summary data-testid={`text-faq-question-${index}`}>{question}</summary><p>{answer}</p></details>)}</div></Shell>;
 }
 
 function Contact() {
-  return <Shell><div className="container form-page"><div className="form-layout"><div className="form-copy"><div className="eyebrow">Say hello</div><h1>Let&apos;s talk.</h1><p>Questions about a fit, an order or your next big moment? Our small, lovely customer care team is ready.</p><p>hello@glamme.co.uk<br />Monday–Friday, 9am–5pm</p></div><form className="form-stack" action="/contact" method="get"><div className="field"><label htmlFor="contact-name">Your name</label><input id="contact-name" name="name" type="text" required data-testid="input-contact-name" /></div><div className="field"><label htmlFor="contact-email">Email address</label><input id="contact-email" name="email" type="email" required data-testid="input-contact-email" /></div><div className="field"><label htmlFor="contact-topic">What can we help with?</label><select id="contact-topic" name="topic" defaultValue="" data-testid="select-contact-topic"><option value="" disabled>Choose a topic</option><option>Order help</option><option>Fit &amp; styling</option><option>Returns</option><option>Something else</option></select></div><div className="field"><label htmlFor="contact-message">Your message</label><textarea id="contact-message" name="message" required data-testid="textarea-contact-message"></textarea></div><button className="button" type="submit" data-testid="button-contact-submit">Send message</button></form></div></div></Shell>;
+  return <Shell><div className="container form-page"><div className="form-layout"><div className="form-copy"><div className="eyebrow">Say hello</div><h1>Let&apos;s talk.</h1><p>Questions about a fit, an order or your next big moment? Our small, lovely customer care team is ready.</p><p>hello@glamtoo.co.uk<br />Monday–Friday, 9am–5pm</p></div><form className="form-stack" action="/contact" method="get"><div className="field"><label htmlFor="contact-name">Your name</label><input id="contact-name" name="name" type="text" required data-testid="input-contact-name" /></div><div className="field"><label htmlFor="contact-email">Email address</label><input id="contact-email" name="email" type="email" required data-testid="input-contact-email" /></div><div className="field"><label htmlFor="contact-topic">What can we help with?</label><select id="contact-topic" name="topic" defaultValue="" data-testid="select-contact-topic"><option value="" disabled>Choose a topic</option><option>Order help</option><option>Fit &amp; styling</option><option>Returns</option><option>Something else</option></select></div><div className="field"><label htmlFor="contact-message">Your message</label><textarea id="contact-message" name="message" required data-testid="textarea-contact-message"></textarea></div><button className="button" type="submit" data-testid="button-contact-submit">Send message</button></form></div></div></Shell>;
 }
 
 function LegalPage({ type }: { type: 'privacy' | 'terms' | 'delivery' }) {
-  const copy = type === 'privacy' ? { eyebrow: 'The small print', title: 'Privacy policy', heads: ['The short version', 'What we collect', 'How we use your information'], paras: ['We respect your information and only collect what we need to make your Glam Me experience work well. This policy explains what happens to your details when you browse or shop with us.', 'When you place an order, sign up to our notes or contact us, we may collect your name, contact details, delivery address and order information. We never sell your personal information.', 'We use information to process orders, answer your questions, improve our website and send emails you have chosen to receive. You can unsubscribe at any time.'] } : type === 'terms' ? { eyebrow: 'The small print', title: 'Terms & conditions', heads: ['Using this site', 'Products and pricing', 'Orders'], paras: ['By using glamme.co.uk, you agree to use the site lawfully and with respect for our content, team and community. These terms apply to every visit and purchase.', 'We take care to keep product descriptions, colours and prices accurate. Occasionally a detail may change; if it affects your order, we will contact you before dispatch.', 'An order is confirmed when you receive our email confirmation. If we cannot fulfil an item, we will let you know and refund the unavailable part of your order.'] } : { eyebrow: 'The useful details', title: 'Delivery & returns', heads: ['Delivery', 'Returns', 'The good-to-know bit'], paras: ['Standard delivery is £3.95 and takes 2–4 working days. Express delivery is £6.95 and takes 1–2 working days. Standard delivery is free on orders over £75.', 'Changed your mind? Return unworn items with tags attached within 28 days of delivery. Start your return by emailing hello@glamme.co.uk with your order number.', 'Please try on occasionwear over underwear and keep makeup, perfume and deodorant away from garments. Items showing signs of wear may not be accepted.'] };
+  const copy = type === 'privacy' ? { eyebrow: 'The small print', title: 'Privacy policy', heads: ['The short version', 'What we collect', 'How we use your information'], paras: ['We respect your information and only collect what we need to make your Glam Too experience work well. This policy explains what happens to your details when you browse or shop with us.', 'When you place an order, sign up to our notes or contact us, we may collect your name, contact details, delivery address and order information. We never sell your personal information.', 'We use information to process orders, answer your questions, improve our website and send emails you have chosen to receive. You can unsubscribe at any time.'] } : type === 'terms' ? { eyebrow: 'The small print', title: 'Terms & conditions', heads: ['Using this site', 'Products and pricing', 'Orders'], paras: ['By using glamtoo.co.uk, you agree to use the site lawfully and with respect for our content, team and community. These terms apply to every visit and purchase.', 'We take care to keep product descriptions, colours and prices accurate. Occasionally a detail may change; if it affects your order, we will contact you before dispatch.', 'An order is confirmed when you receive our email confirmation. If we cannot fulfil an item, we will let you know and refund the unavailable part of your order.'] } : { eyebrow: 'The useful details', title: 'Delivery & returns', heads: ['Delivery', 'Returns', 'The good-to-know bit'], paras: ['Standard delivery is £3.95 and takes 2–4 working days. Express delivery is £6.95 and takes 1–2 working days. Standard delivery is free on orders over £75.', 'Changed your mind? Return unworn items with tags attached within 28 days of delivery. Start your return by emailing hello@glamtoo.co.uk with your order number.', 'Please try on occasionwear over underwear and keep makeup, perfume and deodorant away from garments. Items showing signs of wear may not be accepted.'] };
   return <Shell><div className="container legal"><div className="eyebrow">{copy.eyebrow}</div><h1>{copy.title}</h1>{copy.heads.map((head, index) => <section key={head}><h2>{head}</h2><p>{copy.paras[index]}</p></section>)}<p>Last updated: February 2026. For any questions, please <a className="text-link" href="/contact">contact our team</a>.</p></div></Shell>;
 }
 
@@ -399,7 +431,7 @@ function Checkout() {
 }
 
 function Confirmation() {
-  return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Me. Your order GM-260214 is being wrapped with care. We&apos;ve sent all the details to your inbox.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
+  return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order GM-260214 is being wrapped with care. We&apos;ve sent all the details to your inbox.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
 }
 
 function SignInPage() {
@@ -423,6 +455,7 @@ function AppRoutes() {
     <Route path="/" component={Home} />
     <Route path="/about" component={About} />
     <Route path="/shop" component={Shop} />
+    <Route path="/product/:id" component={ProductDetail} />
     <Route path="/product" component={Product} />
     <Route path="/category" component={CategoryIndex} />
     <Route path="/category/:slug" component={CategoryDetail} />
