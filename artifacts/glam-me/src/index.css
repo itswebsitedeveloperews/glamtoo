@@ -178,7 +178,7 @@ img { display: block; max-width: 100%; }
 .moment-shop-link { display: inline-block; padding-bottom: 4px; border-bottom: 1px solid currentColor; color: var(--white); font-size: 14px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
 .moment-shop-link span { margin-left: 3px; font-size: 16px; }
 
-.newsletter { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 31px 0; background: var(--paper); }
+.newsletter { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 31px 0; background: var(--paper); scroll-margin-top: 120px; }
 .newsletter-inner { display: flex; align-items: center; gap: 36px; }
 .newsletter-copy-group { display: flex; min-width: 0; flex: 1; align-items: center; gap: 25px; }
 .newsletter-icon { display: grid; width: 76px; height: 76px; flex: 0 0 76px; place-items: center; border-radius: 50%; background: #f1dfdd; }
@@ -339,7 +339,7 @@ img { display: block; max-width: 100%; }
   .moment-card { aspect-ratio: 1 / 1.25; }
   .newsletter-inner { flex-direction: column; align-items: stretch; gap: 25px; }
   .newsletter-copy-group { justify-content: center; }
-  .newsletter-form { width: 100%; max-width: 520px; margin: 0 auto; }
+  .newsletter-form { width: 100%; max-width: 520px; margin: 0 auto; flex: 0 0 auto; }
   .form-layout, .cart-layout { grid-template-columns: 1fr; gap: 38px; }
   .footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); padding-bottom: 40px; }
   .footer-grid > :first-child { grid-column: span 2; }
@@ -377,6 +377,7 @@ img { display: block; max-width: 100%; }
   .section-heading { display: block; }
   .section-heading .text-link { display: inline-block; margin-top: 17px; }
   .newsletter-form { margin-top: 10px; }
+  .newsletter { scroll-margin-top: 190px; }
   .footer-grid { gap: 25px 14px; }
   .footer-bottom { display: block; }
   .footer-bottom span { display: block; margin-top: 6px; }
