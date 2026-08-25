@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/Glam_me_logo_transparent.png';
-import heroImage from '@assets/glam-me-hero-clean.png';
+import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
 import { Route, Router as WouterRouter, Switch } from 'wouter';
 import NotFound from '@/pages/not-found';
 
