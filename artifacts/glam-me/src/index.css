@@ -572,7 +572,8 @@ img { display: block; max-width: 100%; }
 .account-layout { display: grid; grid-template-columns: 220px minmax(0, 1fr); align-items: start; gap: 46px; margin-top: 38px; }
 .account-nav { display: flex; flex-direction: column; min-height: 286px; border: 1px solid var(--line); background: #fffdfb; }
 .account-nav-links { display: grid; }
-.account-nav button { border: 0; border-bottom: 1px solid #eee8e3; background: transparent; padding: 15px 17px; color: var(--muted); cursor: pointer; font: 600 14px/1.2 var(--body); letter-spacing: .05em; text-align: left; transition: background .2s ease, color .2s ease; }
+.account-nav button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; border-bottom: 1px solid #eee8e3; background: transparent; padding: 15px 17px; color: var(--muted); cursor: pointer; font: 600 14px/1.2 var(--body); letter-spacing: .05em; text-align: left; transition: background .2s ease, color .2s ease; }
+.account-nav-icon { width: 15px; height: 15px; flex: 0 0 auto; stroke-width: 1.8; }
 .account-nav button:hover, .account-nav button.is-active { background: #f9e7ed; color: var(--pink-deep); }
 .account-nav button.is-active { box-shadow: inset 3px 0 0 var(--pink); }
 .account-nav .account-nav-logout { margin-top: auto; border-bottom: 0; color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }

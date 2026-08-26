@@ -6,6 +6,7 @@ import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPri
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
+import { CreditCard, LayoutDashboard, LogOut, MapPin, ShoppingBag, UserRound, type LucideIcon } from 'lucide-react';
 import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin-dashboard';
@@ -1549,12 +1550,12 @@ function CustomerAccountPage() {
 
   const accountName = profile.firstName || user?.firstName || user?.username || "there";
   const selectedOrder = selectedOrderId ? orders.find((order) => order.id === selectedOrderId) ?? null : null;
-  const accountSections: Array<{ id: AccountSection; label: string }> = [
-    { id: "dashboard", label: "Dashboard" },
-    { id: "orders", label: "Orders" },
-    { id: "addresses", label: "Addresses" },
-    { id: "payment-methods", label: "Payment methods" },
-    { id: "account-details", label: "Account details" },
+  const accountSections: Array<{ id: AccountSection; label: string; icon: LucideIcon }> = [
+    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "orders", label: "Orders", icon: ShoppingBag },
+    { id: "addresses", label: "Addresses", icon: MapPin },
+    { id: "payment-methods", label: "Payment methods", icon: CreditCard },
+    { id: "account-details", label: "Account details", icon: UserRound },
   ];
   const sectionCopy: Record<AccountSection, { title: string; description: string }> = {
     dashboard: { title: "Your account.", description: "Manage your orders, details, and delivery preferences in one place." },
@@ -1589,11 +1590,12 @@ function CustomerAccountPage() {
                   onClick={() => { setAccountSection(section.id); setSelectedOrderId(null); }}
                   aria-current={accountSection === section.id ? "page" : undefined}
                 >
-                  {section.label}
+                  <section.icon className="account-nav-icon" aria-hidden="true" />
+                  <span>{section.label}</span>
                 </button>
               ))}
             </div>
-            <button className="account-nav-logout" type="button" onClick={() => void signOut({ redirectUrl: basePath || "/" })}>Log out</button>
+            <button className="account-nav-logout" type="button" onClick={() => void signOut({ redirectUrl: basePath || "/" })}><LogOut className="account-nav-icon" aria-hidden="true" /><span>Log out</span></button>
           </nav>
 
           <div className="account-content">
