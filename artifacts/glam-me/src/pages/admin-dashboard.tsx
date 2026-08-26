@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { catalogCategories, catalogProducts, formatCatalogPrice, getCatalogPriceInput, type CatalogProduct, type CatalogVariation } from "@/data/catalog";
+import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogPriceInput, type CatalogProduct, type CatalogVariation } from "@/data/catalog";
 
 type AdminSection =
   | "overview"
@@ -52,6 +52,7 @@ function withoutProductDetail(product: Product): Product {
   delete cleanedProduct.detail;
   return {
     ...cleanedProduct,
+    slug: createProductSlug(cleanedProduct.slug || cleanedProduct.name),
     price: formatCatalogPrice(cleanedProduct.price),
     variations: (cleanedProduct.variations ?? []).map((variation) => ({
       ...variation,
@@ -166,6 +167,7 @@ function SectionTitle({
 
 function blankProduct(category: string): ProductDraft {
   return {
+    slug: "",
     name: "",
     category,
     price: "",
@@ -229,6 +231,7 @@ function ProductEditor({
   const [draft, setDraft] = useState<ProductDraft>(() =>
     product
       ? {
+           slug: product.slug || createProductSlug(product.name),
           name: product.name,
           category: product.category,
            price: getCatalogPriceInput(product.price),
@@ -254,6 +257,17 @@ function ProductEditor({
     setValidationMessage("");
   }
 
+  function updateProductName(name: string) {
+    setDraft((current) => ({
+      ...current,
+      name,
+      slug: !current.slug || current.slug === createProductSlug(current.name)
+        ? createProductSlug(name)
+        : current.slug,
+    }));
+    setValidationMessage("");
+  }
+
   function save(status: ProductStatus) {
     const formattedPrice = formatCatalogPrice(draft.price);
     if (!draft.name.trim() || !formattedPrice) {
@@ -266,13 +280,14 @@ function ProductEditor({
     }
     onSave({
       ...draft,
+      slug: createProductSlug(draft.slug || draft.name),
       name: draft.name.trim(),
       price: formattedPrice,
       status,
-      variations: draft.variations.map((variation) => ({
+      variations: draft.type === "Variable" ? draft.variations.map((variation) => ({
         ...variation,
         price: formatCatalogPrice(variation.price) || formattedPrice,
-      })),
+      })) : [],
     });
   }
 
@@ -362,7 +377,11 @@ function ProductEditor({
           <section className="admin-editor-card">
             <div className="admin-card-heading"><div><p className="admin-eyebrow">Product details</p><h2>Tell the story</h2></div><span className="admin-required-note">* Required</span></div>
             <label className="admin-editor-label">Product name *
-              <input className="admin-editor-input admin-editor-title-input" value={draft.name} onChange={(event) => updateDraft({ name: event.target.value })} placeholder="e.g. Sienna Slip Dress" required />
+               <input className="admin-editor-input admin-editor-title-input" value={draft.name} onChange={(event) => updateProductName(event.target.value)} placeholder="e.g. Sienna Slip Dress" required />
+            </label>
+            <label className="admin-editor-label">Product slug
+              <input className="admin-editor-input" value={draft.slug} onChange={(event) => updateDraft({ slug: event.target.value })} placeholder="sienna-slip-dress" />
+              <small>Auto-generated from the product name. Edit it to change this product&apos;s storefront URL.</small>
             </label>
             <label className="admin-editor-label">Description
               <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="Describe the fit, feeling, and details customers should know." rows={5} />
@@ -512,14 +531,28 @@ export default function AdminDashboard({
     setNotice("");
   }
 
+  function getUniqueProductSlug(requestedSlug: string, productId?: number) {
+    const baseSlug = createProductSlug(requestedSlug) || "glam-too-piece";
+    let candidate = baseSlug;
+    let suffix = 2;
+    while (products.some((product) => product.id !== productId && product.slug === candidate)) {
+      candidate = `${baseSlug}-${suffix}`;
+      suffix += 1;
+    }
+    return candidate;
+  }
+
   function saveProduct(draft: ProductDraft) {
+    const productId = typeof editorProductId === "number" ? editorProductId : undefined;
+    const slug = getUniqueProductSlug(draft.slug || draft.name, productId);
+    const savedDraft = { ...draft, slug };
     if (editorProductId === "new") {
-      const newProduct: Product = { id: Date.now(), ...draft };
+      const newProduct: Product = { id: Date.now(), ...savedDraft };
       setProducts((current) => [newProduct, ...current]);
       setNotice(`${newProduct.name} was ${newProduct.status === "Published" ? "published" : "saved as a draft"}.`);
     } else if (typeof editorProductId === "number") {
-      setProducts((current) => current.map((product) => product.id === editorProductId ? { id: product.id, ...draft } : product));
-      setNotice(`${draft.name} was ${draft.status === "Published" ? "updated and published" : "moved to draft"}.`);
+      setProducts((current) => current.map((product) => product.id === editorProductId ? { id: product.id, ...savedDraft } : product));
+      setNotice(`${savedDraft.name} was ${savedDraft.status === "Published" ? "updated and published" : "moved to draft"}.`);
     }
     setEditorProductId(null);
     setSection("products");
@@ -672,7 +705,7 @@ export default function AdminDashboard({
                         <strong>{product.price}</strong>
                       </div>
                       <div className="admin-product-catalog-actions">
-                        <a href={`/product/${product.id}`} data-testid={`link-view-product-${product.id}`}>View product</a>
+                        <a href={`/product/${product.slug}`} data-testid={`link-view-product-${product.id}`}>View product</a>
                         <button type="button" data-testid={`button-edit-product-${product.id}`} onClick={() => { setEditorProductId(product.id); setNotice(""); }}>Edit product</button>
                         <button type="button" data-testid={`button-remove-product-${product.id}`} onClick={() => removeProduct(product)}>Remove</button>
                       </div>

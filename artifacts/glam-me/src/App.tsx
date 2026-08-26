@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
-import { catalogCategories, catalogProducts, formatCatalogPrice, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
+import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
@@ -70,6 +70,8 @@ const cartStorageKey = 'glam-me-cart-v1';
 type CartItem = {
   productId: number;
   size: string;
+  colour?: string;
+  variationId?: number;
   quantity: number;
 };
 
@@ -81,7 +83,13 @@ function getCartItems(): CartItem[] {
     return Array.isArray(parsed)
       ? parsed
         .filter((item) => item && typeof item.productId === 'number' && typeof item.size === 'string' && typeof item.quantity === 'number' && item.quantity > 0)
-        .map((item) => ({ productId: item.productId as number, size: item.size as string, quantity: item.quantity as number }))
+        .map((item) => ({
+          productId: item.productId as number,
+          size: item.size as string,
+          colour: typeof item.colour === 'string' ? item.colour : undefined,
+          variationId: typeof item.variationId === 'number' ? item.variationId : undefined,
+          quantity: item.quantity as number,
+        }))
       : [];
   } catch {
     return [];
@@ -92,13 +100,28 @@ function getCartQueryItem(): CartItem | null {
   const params = new URLSearchParams(window.location.search);
   const productId = Number(params.get('product'));
   const size = params.get('size');
-  return Number.isInteger(productId) && productId > 0 && size ? { productId, size, quantity: 1 } : null;
+  const variationId = Number(params.get('variation'));
+  const colour = params.get('colour');
+  return Number.isInteger(productId) && productId > 0 && size
+    ? {
+        productId,
+        size,
+        colour: colour || undefined,
+        variationId: Number.isInteger(variationId) && variationId > 0 ? variationId : undefined,
+        quantity: 1,
+      }
+    : null;
 }
 
 function getCartCount() {
   const items = getCartItems();
   const queryItem = getCartQueryItem();
-  const hasQueryItem = queryItem && items.some((item) => item.productId === queryItem.productId && item.size === queryItem.size);
+  const hasQueryItem = queryItem && items.some((item) =>
+    item.productId === queryItem.productId
+    && item.size === queryItem.size
+    && item.colour === queryItem.colour
+    && item.variationId === queryItem.variationId,
+  );
   return items.reduce((total, item) => total + item.quantity, 0) + (queryItem && !hasQueryItem ? 1 : 0);
 }
 
@@ -111,9 +134,15 @@ function formatPounds(value: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
 }
 
-function addProductToCart(product: CatalogProduct, size: string) {
+function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'productId' | 'quantity'> = { size: 'One size' }) {
+  const size = selection.size || 'One size';
   const items = getCartItems();
-  const existingIndex = items.findIndex((item) => item.productId === product.id && item.size === size);
+  const existingIndex = items.findIndex((item) =>
+    item.productId === product.id
+    && item.size === size
+    && item.colour === selection.colour
+    && item.variationId === selection.variationId,
+  );
   const nextItems = [...items];
   if (existingIndex >= 0) {
     nextItems[existingIndex] = { ...nextItems[existingIndex], quantity: nextItems[existingIndex].quantity + 1 };
@@ -121,6 +150,8 @@ function addProductToCart(product: CatalogProduct, size: string) {
     nextItems.push({
       productId: product.id,
       size,
+      colour: selection.colour,
+      variationId: selection.variationId,
       quantity: 1,
     });
   }
@@ -153,6 +184,7 @@ function getStorefrontProducts(): CatalogProduct[] {
           ...matchingCatalogProduct,
           ...product,
           id: Number.isInteger(productId) && productId > 0 ? productId : matchingCatalogProduct?.id ?? index + 1,
+          slug: createProductSlug(String(product.slug || product.name || matchingCatalogProduct?.slug || matchingCatalogProduct?.name || `product-${index + 1}`)),
           name: product.name || matchingCatalogProduct?.name || 'Glam Too piece',
           category: product.category || matchingCatalogProduct?.category || '',
           price: formatCatalogPrice(product.price || matchingCatalogProduct?.price || ''),
@@ -321,7 +353,7 @@ function Shell({ children }: { children: ReactNode }) {
 function ProductCard({ product, featured = false, showShopNow = false }: { product: CatalogProduct; featured?: boolean; showShopNow?: boolean }) {
   return (
     <article className="product-card" data-testid={`card-product-${product.id}`}>
-      <a href={`/product/${product.id}`} data-testid={`link-product-${product.id}`}>
+      <a href={`/product/${product.slug}`} data-testid={`link-product-${product.id}`}>
         <div className="product-image">
           {featured && <span className="badge">Just in</span>}
           <span className="heart" aria-hidden="true">♡</span>
@@ -402,7 +434,7 @@ function Home() {
             {momentPlans.map((moment, index) => {
               const product = products[index + 3] ?? products[index] ?? products[0];
               if (!product) return null;
-              return <a className="moment-card" href={`/product/${product.id}`} key={moment.name} data-testid={`link-moment-${index}`}>
+              return <a className="moment-card" href={`/product/${product.slug}`} key={moment.name} data-testid={`link-moment-${index}`}>
                 <img src={product.image} alt={`${product.name}, ${moment.name} fashion edit`} style={{ objectPosition: product.position }} />
                 <div className="moment-copy"><h3>{moment.name}</h3><p>{moment.copy}</p><span className="moment-shop-link">Shop now <span aria-hidden="true">→</span></span></div>
               </a>;
@@ -500,19 +532,44 @@ function Product() {
   return <Shell><div className="container product-detail"><div className="product-detail-layout"><div className="product-gallery"><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress in blush pink, full editorial view" /></div><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress detail" /></div><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress styled for occasionwear" /></div></div><div className="detail-copy"><div className="eyebrow">The occasion edit · Just in</div><h1>Luna Ruffle Mini Dress</h1><div className="detail-price">£89.99</div><p>A little romance, a lot of movement. Luna is cut in soft recycled satin with a gathered neckline, floaty ruffles and a hem made for dancing.</p><form className="detail-form" action="/cart" method="get"><div className="field"><label htmlFor="dress-size">Select size</label><select id="dress-size" name="size" defaultValue="" required data-testid="select-product-size"><option value="" disabled>Choose a size</option><option>UK 6</option><option>UK 8</option><option>UK 10</option><option>UK 12</option><option>UK 14</option></select></div><div className="field"><label>Colour · Blush</label><div className="swatches" aria-label="Available colours"><span className="swatch swatch-pink" title="Blush"></span><span className="swatch swatch-black" title="Black"></span><span className="swatch swatch-blue" title="Sky"></span></div></div><button className="button" type="submit" data-testid="button-add-to-bag">Add to bag · £89.99</button></form><div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with a relaxed, floaty fit. Adjustable straps and invisible side zip. Dress length: 82cm.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery over £75. Return unworn pieces within 28 days.</p></details></div></div></div></div></Shell>;
 }
 
-function ProductDetail({ params }: { params: { id: string } }) {
-  const product = getStorefrontProducts().find((item) => String(item.id) === params.id);
+function ProductDetail({ params }: { params: { slug: string } }) {
+  const product = getStorefrontProducts().find((item) => item.slug === params.slug || String(item.id) === params.slug);
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColour, setSelectedColour] = useState('');
+  const [variationMessage, setVariationMessage] = useState('');
+  const availableVariations = product?.type === 'Variable'
+    ? product.variations.filter((variation) => variation.stock > 0)
+    : [];
+  const sizes = [...new Set(availableVariations.map((variation) => variation.size).filter(Boolean))];
+  const colours = [...new Set(availableVariations.map((variation) => variation.colour).filter(Boolean))];
+  const selectedVariation = product?.type === 'Variable'
+    ? availableVariations.find((variation) =>
+      (!sizes.length || variation.size === selectedSize)
+      && (!colours.length || variation.colour === selectedColour),
+    )
+    : undefined;
+  const displayedPrice = selectedVariation?.price ?? product?.price ?? '';
+
   if (!product) return <NotFound />;
   const selectedProduct = product;
 
   function handleAddToCart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const size = new FormData(event.currentTarget).get('size');
-    if (typeof size !== 'string' || !size) return;
-    const wasSaved = addProductToCart(selectedProduct, size);
-    window.location.href = wasSaved
-      ? '/cart'
-      : `/cart?product=${selectedProduct.id}&size=${encodeURIComponent(size)}`;
+    if (selectedProduct.type === 'Variable' && !selectedVariation) {
+      setVariationMessage('Choose an available option before adding this product to your bag.');
+      return;
+    }
+    const selection = selectedVariation
+      ? { size: selectedVariation.size || 'One size', colour: selectedVariation.colour || undefined, variationId: selectedVariation.id }
+      : { size: 'One size' };
+    const wasSaved = addProductToCart(selectedProduct, selection);
+    const fallbackParams = new URLSearchParams({
+      product: String(selectedProduct.id),
+      size: selection.size,
+    });
+    if (selection.colour) fallbackParams.set('colour', selection.colour);
+    if (selection.variationId) fallbackParams.set('variation', String(selection.variationId));
+    window.location.href = wasSaved ? '/cart' : `/cart?${fallbackParams.toString()}`;
   }
 
   return (
@@ -525,13 +582,19 @@ function ProductDetail({ params }: { params: { id: string } }) {
           <div className="detail-copy">
             <div className="eyebrow">{product.category} edit · Glam Too</div>
             <h1>{product.name}</h1>
-            <div className="detail-price">{product.price}</div>
+              <div className="detail-price">{displayedPrice}</div>
             <p>{product.description}</p>
             <form className="detail-form" onSubmit={handleAddToCart}>
               <input type="hidden" name="product" value={product.id} />
-              <div className="field"><label htmlFor={`product-size-${product.id}`}>Select size</label><select id={`product-size-${product.id}`} name="size" defaultValue="" required data-testid={`select-product-size-${product.id}`}><option value="" disabled>Choose a size</option><option>UK 6</option><option>UK 8</option><option>UK 10</option><option>UK 12</option><option>UK 14</option></select></div>
-              <div className="field"><label>Colour</label><div className="swatches" aria-label="Available colours"><span className="swatch swatch-pink" title="Blush"></span><span className="swatch swatch-black" title="Black"></span><span className="swatch swatch-blue" title="Sky"></span></div></div>
-              <button className="button" type="submit" data-testid={`button-add-to-bag-${product.id}`}>Add to bag · {product.price}</button>
+               {product.type === 'Variable' && (
+                 <>
+                   {sizes.length > 0 && <div className="field"><label htmlFor={`product-size-${product.id}`}>Select size</label><select id={`product-size-${product.id}`} name="size" value={selectedSize} onChange={(event) => { setSelectedSize(event.target.value); setVariationMessage(''); }} required data-testid={`select-product-size-${product.id}`}><option value="" disabled>Choose a size</option>{sizes.map((size) => <option key={size}>{size}</option>)}</select></div>}
+                   {colours.length > 0 && <div className="field"><label htmlFor={`product-colour-${product.id}`}>Select colour</label><select id={`product-colour-${product.id}`} name="colour" value={selectedColour} onChange={(event) => { setSelectedColour(event.target.value); setVariationMessage(''); }} required data-testid={`select-product-colour-${product.id}`}><option value="" disabled>Choose a colour</option>{colours.map((colour) => <option key={colour}>{colour}</option>)}</select></div>}
+                   {availableVariations.length === 0 && <p className="variation-message">This product is currently unavailable.</p>}
+                   {variationMessage && <p className="variation-message" role="alert">{variationMessage}</p>}
+                 </>
+               )}
+               <button className="button" type="submit" disabled={product.type === 'Variable' && !selectedVariation} data-testid={`button-add-to-bag-${product.id}`}>Add to bag · {displayedPrice}</button>
             </form>
             <div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with an easy, considered fit.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery over £75. Return unworn pieces within 28 days.</p></details></div>
           </div>
@@ -563,19 +626,32 @@ function Cart() {
   const [items, setItems] = useState<CartItem[]>(() => {
     const storedItems = getCartItems();
     const queryItem = getCartQueryItem();
-    return queryItem && !storedItems.some((item) => item.productId === queryItem.productId && item.size === queryItem.size)
+    return queryItem && !storedItems.some((item) =>
+      item.productId === queryItem.productId
+      && item.size === queryItem.size
+      && item.colour === queryItem.colour
+      && item.variationId === queryItem.variationId,
+    )
       ? [...storedItems, queryItem]
       : storedItems;
   });
   const products = getStorefrontProducts();
   const cartLines = items.flatMap((item) => {
     const product = products.find((candidate) => candidate.id === item.productId);
-    return product ? [{ item, product }] : [];
+    const variation = product?.type === 'Variable'
+      ? product.variations.find((candidate) => candidate.id === item.variationId)
+      : undefined;
+    return product ? [{ item, product, variation }] : [];
   });
-  const subtotal = cartLines.reduce((total, { item, product }) => total + parsePounds(product.price) * item.quantity, 0);
+  const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
 
   function removeCartItem(itemToRemove: CartItem) {
-    const nextItems = items.filter((item) => item.productId !== itemToRemove.productId || item.size !== itemToRemove.size);
+    const nextItems = items.filter((item) =>
+      item.productId !== itemToRemove.productId
+      || item.size !== itemToRemove.size
+      || item.colour !== itemToRemove.colour
+      || item.variationId !== itemToRemove.variationId,
+    );
     setItems(nextItems);
     try {
       window.localStorage.setItem(cartStorageKey, JSON.stringify(nextItems));
@@ -583,7 +659,12 @@ function Cart() {
       // The visible cart still updates if browser storage is unavailable.
     }
     const queryItem = getCartQueryItem();
-    if (queryItem?.productId === itemToRemove.productId && queryItem.size === itemToRemove.size) {
+    if (
+      queryItem?.productId === itemToRemove.productId
+      && queryItem.size === itemToRemove.size
+      && queryItem.colour === itemToRemove.colour
+      && queryItem.variationId === itemToRemove.variationId
+    ) {
       window.history.replaceState({}, '', '/cart');
     }
     window.dispatchEvent(new Event('glam-cart-updated'));
@@ -599,16 +680,16 @@ function Cart() {
         ) : (
           <div className="cart-layout">
             <div>
-              {cartLines.map(({ item, product }) => (
-                <div className="cart-item" key={`${item.productId}-${item.size}`}>
+              {cartLines.map(({ item, product, variation }) => (
+                <div className="cart-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ''}`}>
                   <img src={product.image} alt={product.name} style={{ objectPosition: product.position }} />
                   <div>
                     <h3>{product.name}</h3>
-                    <p>{item.size} · Qty {item.quantity}</p>
-                    <a className="text-link" href={`/product/${item.productId}`}>Edit item</a>
+                    <p>{[item.size !== 'One size' ? item.size : '', item.colour ?? ''].filter(Boolean).join(' · ')}{item.size !== 'One size' || item.colour ? ' · ' : ''}Qty {item.quantity}</p>
+                    <a className="text-link" href={`/product/${product.slug}`}>Edit item</a>
                   </div>
-                  <strong>{formatPounds(parsePounds(product.price) * item.quantity)}</strong>
-                  <button className="cart-remove" type="button" aria-label={`Remove ${product.name}`} data-testid={`button-remove-cart-${item.productId}-${item.size.replace(/\s+/g, '-').toLowerCase()}`} onClick={() => removeCartItem(item)}>×</button>
+                  <strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong>
+                  <button className="cart-remove" type="button" aria-label={`Remove ${product.name}`} data-testid={`button-remove-cart-${item.productId}-${item.variationId ?? item.size.replace(/\s+/g, '-').toLowerCase()}`} onClick={() => removeCartItem(item)}>×</button>
                 </div>
               ))}
               <a className="text-link" href="/shop" data-testid="link-cart-continue">Continue shopping</a>
@@ -656,7 +737,7 @@ function AppRoutes() {
     <Route path="/" component={Home} />
     <Route path="/about" component={About} />
     <Route path="/shop" component={Shop} />
-    <Route path="/product/:id" component={ProductDetail} />
+    <Route path="/product/:slug" component={ProductDetail} />
     <Route path="/category" component={CategoryIndex} />
     <Route path="/category/:slug" component={CategoryDetail} />
     <Route path="/faq" component={FAQ} />

@@ -22,6 +22,7 @@ export type CatalogVariation = {
 
 export type CatalogProduct = {
   id: number;
+  slug: string;
   name: string;
   category: string;
   price: string;
@@ -59,6 +60,15 @@ export function getCatalogPriceInput(value: string | number) {
   return amount === null ? "" : String(amount);
 }
 
+export function createProductSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 export const catalogCategories: CatalogCategory[] = [
   { id: 1, name: "Dresses", image: dressesImage, description: "From day dates to after dark." },
   { id: 2, name: "Occasion", image: occasionImage, description: "For weddings, parties, and special plans." },
@@ -70,6 +80,7 @@ export const catalogCategories: CatalogCategory[] = [
 export const catalogProducts: CatalogProduct[] = [
   {
     id: 101,
+    slug: "luna-ruffle-mini-dress",
     name: "Luna Ruffle Mini Dress",
     category: "Dresses",
     price: "£49.99",
@@ -84,6 +95,7 @@ export const catalogProducts: CatalogProduct[] = [
   },
   {
     id: 102,
+    slug: "ella-tailored-jumpsuit",
     name: "Ella Tailored Jumpsuit",
     category: "Co-Ords",
     price: "£59.99",
@@ -98,6 +110,7 @@ export const catalogProducts: CatalogProduct[] = [
   },
   {
     id: 103,
+    slug: "mila-satin-maxi-dress",
     name: "Mila Satin Maxi Dress",
     category: "Occasion",
     price: "£44.99",
@@ -112,6 +125,7 @@ export const catalogProducts: CatalogProduct[] = [
   },
   {
     id: 104,
+    slug: "wedding-guest-satin-dress",
     name: "Wedding Guest Satin Dress",
     category: "Occasion",
     price: "£89.99",
@@ -126,6 +140,7 @@ export const catalogProducts: CatalogProduct[] = [
   },
   {
     id: 105,
+    slug: "weekend-plans-sculpted-top",
     name: "Weekend Plans Sculpted Top",
     category: "Co-Ords",
     price: "£39.99",
@@ -140,6 +155,7 @@ export const catalogProducts: CatalogProduct[] = [
   },
   {
     id: 106,
+    slug: "day-out-floral-jumpsuit",
     name: "Day Out Floral Jumpsuit",
     category: "Dresses",
     price: "£69.99",
@@ -154,6 +170,7 @@ export const catalogProducts: CatalogProduct[] = [
   },
   {
     id: 107,
+    slug: "date-night-satin-halter-dress",
     name: "Date Night Satin Halter Dress",
     category: "Occasion",
     price: "£79.99",

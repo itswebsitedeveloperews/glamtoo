@@ -2,3 +2,4 @@
 - [Vite catalog state](vite-catalog-state.md) — Hot reload can preserve browser state when a localStorage-backed catalog changes; verify seeded data in a fresh context.
 - [Cart storage](cart-storage.md) — Persist only cart line identifiers, size, and quantity; derive product media from the catalog.
 - [Admin image persistence](admin-image-persistence.md) — Compress uploaded product images before localStorage persistence to prevent save failures and disappearing products.
+- [Product types and slugs](product-types-and-slugs.md) — Simple products have no option controls; variable options and editable title-derived slugs drive storefront behavior.
