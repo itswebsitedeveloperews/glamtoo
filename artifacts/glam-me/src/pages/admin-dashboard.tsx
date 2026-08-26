@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { CreditCard, LayoutDashboard, Package, ShoppingBag, Tags, Truck, Users, type LucideIcon } from "lucide-react";
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogPriceInput, type CatalogProduct, type CatalogVariation } from "@/data/catalog";
 
 type AdminSection =
@@ -108,14 +109,14 @@ type NewUserDraft = {
   role: "customer" | "admin";
 };
 
-const navItems: Array<{ id: AdminSection; label: string; hint: string }> = [
-  { id: "overview", label: "Overview", hint: "Today" },
-  { id: "products", label: "Products", hint: "Catalog" },
-  { id: "categories", label: "Categories", hint: "Organize" },
-  { id: "orders", label: "Orders", hint: "Fulfilment" },
-  { id: "shipping", label: "Shipping", hint: "Delivery rules" },
-  { id: "payments", label: "Payments", hint: "Stripe" },
-  { id: "users", label: "Users", hint: "Access" },
+const navItems: Array<{ id: AdminSection; label: string; hint: string; icon: LucideIcon }> = [
+  { id: "overview", label: "Overview", hint: "Today", icon: LayoutDashboard },
+  { id: "products", label: "Products", hint: "Catalog", icon: Package },
+  { id: "categories", label: "Categories", hint: "Organize", icon: Tags },
+  { id: "orders", label: "Orders", hint: "Fulfilment", icon: ShoppingBag },
+  { id: "shipping", label: "Shipping", hint: "Delivery rules", icon: Truck },
+  { id: "payments", label: "Payments", hint: "Stripe", icon: CreditCard },
+  { id: "users", label: "Users", hint: "Access", icon: Users },
 ];
 
 const productsStorageKey = "glam-me-admin-products-v4";
@@ -1114,7 +1115,7 @@ export default function AdminDashboard({
         <nav className="admin-nav" aria-label="Admin navigation">
             {navItems.map((item) => (
             <button type="button" key={item.id} className={section === item.id && editorProductId === null ? "is-active" : ""} onClick={() => { setSection(item.id); setEditorProductId(null); setSelectedOrderId(null); }}>
-              <span>{item.label}</span><small>{item.hint}</small>
+              <span className="admin-nav-label"><item.icon className="admin-nav-icon" aria-hidden="true" /><span>{item.label}</span></span><small>{item.hint}</small>
             </button>
           ))}
         </nav>
