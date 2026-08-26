@@ -1,6 +1,7 @@
 import { Router, type IRouter, type Request } from "express";
 import type Stripe from "stripe";
 import { checkoutCatalog } from "../checkoutCatalog";
+import { requireAdmin } from "../adminAuth";
 import { getStripeConnectionInfo, getUncachableStripeClient } from "../stripeClient";
 
 type SubmittedCheckoutLine = {
@@ -84,7 +85,7 @@ function getRequestOrigin(request: Request) {
   return `${request.protocol}://${request.get("host")}`;
 }
 
-router.get("/stripe/status", async (_request, response) => {
+router.get("/stripe/status", requireAdmin, async (_request, response) => {
   try {
     const connection = await getStripeConnectionInfo();
     const mode = connection.secretKey.startsWith("sk_live_") ? "live" : "test";

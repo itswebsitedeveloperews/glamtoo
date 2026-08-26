@@ -786,11 +786,42 @@ function SignUpPage() {
   return <div className="admin-auth-page"><SignUp signInUrl={`${basePath}/sign-in`} fallbackRedirectUrl={`${basePath}/admin`} /></div>;
 }
 
+function AdminAccessDenied({ onSignOut }: { onSignOut: () => void }) {
+  return <div className="admin-auth-page"><div className="admin-access-denied"><div className="eyebrow">Private studio</div><h1>Admin access only.</h1><p>This account is signed in, but it is not approved to access the Glam Too admin area.</p><div className="admin-access-actions"><button className="button" type="button" onClick={onSignOut}>Sign out</button><a className="text-link" href="/">Return to storefront</a></div></div></div>;
+}
+
 function AdminRoute() {
   const { isLoaded, isSignedIn } = useAuth();
   const { signOut } = useClerk();
+  const [accessState, setAccessState] = useState<"checking" | "allowed" | "denied" | "error">("checking");
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      setAccessState("checking");
+      return;
+    }
+
+    let cancelled = false;
+    setAccessState("checking");
+    fetch("/api/admin/access", { credentials: "include" })
+      .then((response) => {
+        if (cancelled) return;
+        setAccessState(response.ok ? "allowed" : response.status === 403 ? "denied" : "error");
+      })
+      .catch(() => {
+        if (!cancelled) setAccessState("error");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn]);
+
   if (!isLoaded) return <div className="admin-auth-page"><p>Loading secure admin access…</p></div>;
   if (!isSignedIn) return <SignInPage />;
+  if (accessState === "checking") return <div className="admin-auth-page"><p>Verifying admin access…</p></div>;
+  if (accessState === "denied") return <AdminAccessDenied onSignOut={() => void signOut({ redirectUrl: basePath || '/' })} />;
+  if (accessState === "error") return <div className="admin-auth-page"><div className="admin-access-denied"><div className="eyebrow">Private studio</div><h1>Access check unavailable.</h1><p>We could not verify this account right now. Please try again shortly.</p><div className="admin-access-actions"><button className="button" type="button" onClick={() => window.location.reload()}>Try again</button><a className="text-link" href="/">Return to storefront</a></div></div></div>;
   return <AdminDashboard onSignOut={() => signOut({ redirectUrl: basePath || '/' })} />;
 }
 
