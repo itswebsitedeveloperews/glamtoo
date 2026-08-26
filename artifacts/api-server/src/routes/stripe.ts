@@ -95,6 +95,7 @@ router.get("/stripe/status", requireAdmin, async (_request, response) => {
       mode,
       paymentMethods: ["Card"],
       publishableKeyConfigured: Boolean(connection.publishableKey),
+      webhookSecretConfigured: Boolean(connection.webhookSecret),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Stripe is not ready.";
@@ -104,6 +105,8 @@ router.get("/stripe/status", requireAdmin, async (_request, response) => {
       configured: false,
       mode: "unknown",
       paymentMethods: [],
+      publishableKeyConfigured: false,
+      webhookSecretConfigured: false,
       error: message,
     });
   }

@@ -534,7 +534,23 @@ img { display: block; max-width: 100%; }
 .admin-payment-detail-grid span { color: var(--muted); font-size: 14px; }
 .admin-payment-detail-grid strong { font-size: 16px; }
 .admin-payment-actions { margin-bottom: 18px; }
+.admin-payment-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .admin-payment-error { margin: 0 0 16px; color: #b42342 !important; }
+.admin-stripe-guide { display: grid; gap: 28px; margin-top: 14px; max-width: 760px; background: #f7f0ec; }
+.admin-stripe-guide h2, .admin-payment-how h2 { margin: 0; font: 400 38px/.95 var(--display); letter-spacing: -.045em; }
+.admin-stripe-guide > div:first-child > p:last-child { max-width: 580px; margin-bottom: 0; color: var(--muted); font-size: 16px; line-height: 1.55; }
+.admin-stripe-key-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.admin-stripe-key-options article { display: grid; align-content: start; gap: 9px; min-height: 205px; padding: 22px; background: #fffdfb; }
+.admin-stripe-option-label { color: #9b3351; font-size: 14px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.admin-stripe-key-options h3 { margin: 0; font: 400 28px/.95 var(--display); letter-spacing: -.035em; }
+.admin-stripe-key-options p { margin: 0 0 10px; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.admin-stripe-key-options .admin-secondary { justify-self: start; display: inline-flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 12px; text-decoration: none; }
+.admin-stripe-checklist { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.admin-stripe-checklist div { display: grid; gap: 5px; padding: 16px; background: #fffdfb; }
+.admin-stripe-checklist strong { font-size: 16px; }
+.admin-stripe-checklist span { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.admin-payment-how { display: grid; gap: 15px; max-width: 760px; margin-top: 14px; }
+.admin-payment-how ol { display: grid; gap: 11px; margin: 0; padding-left: 22px; color: var(--muted); font-size: 14px; line-height: 1.55; }
 .checkout-payment-error { margin: 0; color: #b42342; font-size: 14px; }
 .admin-users-panel { max-width: 1060px; }
 .admin-users-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 28px; color: var(--muted); font-size: 14px; }
