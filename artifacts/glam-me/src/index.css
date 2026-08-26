@@ -438,7 +438,7 @@ img { display: block; max-width: 100%; }
   .account-delivery { border-top: 1px solid var(--line); border-left: 0; padding: 25px 0 0; }
   .account-order-page-layout { grid-template-columns: 1fr; }
   .account-order-page-heading { align-items: start; }
-  .account-order-page-heading h2 { font-size: 40px; }
+  .account-order-page-heading h2 { font-size: 36px; }
   .account-shortcuts { grid-template-columns: 1fr; margin-top: 28px; }
 }
 @media (max-width: 460px) {
@@ -544,7 +544,7 @@ img { display: block; max-width: 100%; }
 .account-order-back { border: 0; background: transparent; padding: 0; color: var(--ink); cursor: pointer; font: 700 14px/1 var(--body); text-decoration: underline; text-underline-offset: 4px; }
 .account-order-back:hover { color: var(--pink-deep); }
 .account-order-page-heading { display: flex; align-items: end; justify-content: space-between; gap: 22px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
-.account-order-page-heading h2 { margin: 7px 0 0; font: 400 54px/.88 var(--display); letter-spacing: -.05em; }
+.account-order-page-heading h2 { margin: 7px 0 0; font: 400 36px/.92 var(--display); letter-spacing: -.05em; }
 .account-order-page-heading p { margin: 10px 0 0; color: var(--muted); font-size: 16px; }
 .account-order-page-total { display: grid; justify-items: end; gap: 9px; }
 .account-order-page-total > strong { font-size: 18px; }
@@ -924,7 +924,7 @@ img { display: block; max-width: 100%; }
   .account-order-body { grid-template-columns: 1fr; gap: 25px; }
   .account-delivery { border-top: 1px solid var(--line); border-left: 0; padding: 23px 0 0; }
   .account-order-page-heading { display: grid; align-items: start; }
-  .account-order-page-heading h2 { font-size: 42px; }
+  .account-order-page-heading h2 { font-size: 36px; }
   .account-order-page-total { justify-items: start; }
   .account-order-page-layout { grid-template-columns: 1fr; }
   .account-order-detail-card { padding: 21px; }
@@ -970,7 +970,7 @@ img { display: block; max-width: 100%; }
   .account-order-header { display: grid; }
   .account-order-total { justify-items: start; text-align: left; }
   .account-order-page-topbar { align-items: start; flex-direction: column; gap: 9px; }
-  .account-order-page-heading h2 { font-size: 38px; }
+  .account-order-page-heading h2 { font-size: 36px; }
   .admin-product-catalog-card { grid-template-columns: 1fr; }
   .admin-product-catalog-image { height: auto; aspect-ratio: .78; }
   .admin-product-catalog-content { grid-column: 1; padding-top: 18px; }
