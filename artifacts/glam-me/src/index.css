@@ -624,12 +624,10 @@ img { display: block; max-width: 100%; }
 .admin-brand img { width: 176px; height: auto; filter: invert(1); }
 .admin-brand small { color: #cfc4bd; font-size: 14px; letter-spacing: .16em; text-transform: uppercase; }
 .admin-nav { display: grid; gap: 4px; }
-.admin-nav button { display: flex; align-items: center; justify-content: space-between; width: 100%; border: 0; background: transparent; color: #d9d1cb; padding: 12px 13px; text-align: left; cursor: pointer; font: 500 14px var(--body); transition: background .2s ease, color .2s ease; }
+.admin-nav button { display: flex; align-items: center; width: 100%; border: 0; background: transparent; color: #d9d1cb; padding: 12px 13px; text-align: left; cursor: pointer; font: 500 14px var(--body); transition: background .2s ease, color .2s ease; }
 .admin-nav-label { display: flex; min-width: 0; align-items: center; gap: 10px; }
 .admin-nav-icon { width: 16px; height: 16px; flex: 0 0 auto; stroke-width: 1.8; }
-.admin-nav button small { color: #88817c; font-size: 14px; letter-spacing: .04em; }
 .admin-nav button:hover, .admin-nav button.is-active { background: #f2e8e2; color: var(--ink); }
-.admin-nav button.is-active small { color: #c93260; }
 .admin-sidebar-bottom { margin-top: auto; display: grid; gap: 10px; padding: 18px 13px 0; border-top: 1px solid #393431; font-size: 14px; }
 .admin-store-link { color: #fffdfb; }
 .admin-store-link:hover { color: var(--pink); }

@@ -109,14 +109,14 @@ type NewUserDraft = {
   role: "customer" | "admin";
 };
 
-const navItems: Array<{ id: AdminSection; label: string; hint: string; icon: LucideIcon }> = [
-  { id: "overview", label: "Overview", hint: "Today", icon: LayoutDashboard },
-  { id: "products", label: "Products", hint: "Catalog", icon: Package },
-  { id: "categories", label: "Categories", hint: "Organize", icon: Tags },
-  { id: "orders", label: "Orders", hint: "Fulfilment", icon: ShoppingBag },
-  { id: "shipping", label: "Shipping", hint: "Delivery rules", icon: Truck },
-  { id: "payments", label: "Payments", hint: "Stripe", icon: CreditCard },
-  { id: "users", label: "Users", hint: "Access", icon: Users },
+const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
+  { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "products", label: "Products", icon: Package },
+  { id: "categories", label: "Categories", icon: Tags },
+  { id: "orders", label: "Orders", icon: ShoppingBag },
+  { id: "shipping", label: "Shipping", icon: Truck },
+  { id: "payments", label: "Payments", icon: CreditCard },
+  { id: "users", label: "Users", icon: Users },
 ];
 
 const productsStorageKey = "glam-me-admin-products-v4";
@@ -1115,7 +1115,7 @@ export default function AdminDashboard({
         <nav className="admin-nav" aria-label="Admin navigation">
             {navItems.map((item) => (
             <button type="button" key={item.id} className={section === item.id && editorProductId === null ? "is-active" : ""} onClick={() => { setSection(item.id); setEditorProductId(null); setSelectedOrderId(null); }}>
-              <span className="admin-nav-label"><item.icon className="admin-nav-icon" aria-hidden="true" /><span>{item.label}</span></span><small>{item.hint}</small>
+              <span className="admin-nav-label"><item.icon className="admin-nav-icon" aria-hidden="true" /><span>{item.label}</span></span>
             </button>
           ))}
         </nav>
