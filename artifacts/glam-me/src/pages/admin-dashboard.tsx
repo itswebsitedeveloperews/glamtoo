@@ -45,7 +45,9 @@ type Order = {
   email: string;
   placedAt: string | null;
   date: string;
+  amount: number;
   total: string;
+  currency: string;
   status: "Processing" | "Shipped" | "Delivered";
   delivery: {
     method: string;
@@ -72,6 +74,7 @@ type OrderPayload = {
   placedAt: string | null;
   status: Order["status"];
   total: number;
+  currency: string;
   email: string;
   delivery: {
     name: string;
@@ -199,11 +202,135 @@ function toAdminOrder(order: OrderPayload): Order {
     email: order.email,
     placedAt: order.placedAt,
     date: formatOrderDate(order.placedAt),
+    amount: order.total,
     total: formatPounds(order.total / 100),
+    currency: order.currency,
     status: order.status,
     delivery: order.delivery,
     items: order.items,
   };
+}
+
+function AdminOrderDetailPage({
+  order,
+  updating,
+  onStatusChange,
+  onBack,
+}: {
+  order: Order;
+  updating: boolean;
+  onStatusChange: (status: Order["status"]) => void;
+  onBack: () => void;
+}) {
+  const itemSubtotal = order.items.reduce((total, item) => total + item.total, 0);
+  const deliveryAmount = Math.max(order.amount - itemSubtotal, 0);
+  const addressParts = [
+    order.delivery.address.line1,
+    order.delivery.address.line2,
+    order.delivery.address.city,
+    order.delivery.address.postcode,
+    order.delivery.address.country,
+  ].filter(Boolean);
+
+  return (
+    <div className="admin-order-page">
+      <div className="admin-order-page-topbar">
+        <button className="admin-back-button" type="button" onClick={onBack}>← Back to orders</button>
+        <span>Order {order.id}</span>
+      </div>
+
+      <div className="admin-order-page-heading">
+        <div>
+          <p className="admin-eyebrow">Orders / View order</p>
+          <h1>{order.id}</h1>
+          <p>Placed on {order.date} · Paid via Stripe</p>
+        </div>
+        <div className="admin-order-page-heading-actions">
+          <button className="admin-secondary" type="button" onClick={onBack}>Back to orders</button>
+        </div>
+      </div>
+
+      <div className="admin-order-page-layout">
+        <div className="admin-order-page-main">
+          <section className="admin-order-card">
+            <div className="admin-order-card-heading">
+              <div><p className="admin-eyebrow">Purchased items</p><h2>Order items</h2></div>
+              <span>{order.items.length} line{order.items.length === 1 ? "" : "s"}</span>
+            </div>
+            {order.items.length === 0 ? (
+              <p className="admin-order-empty">Item details are unavailable for this order.</p>
+            ) : (
+              <div className="admin-order-item-table">
+                <div className="admin-order-item-head"><span>Product</span><span>Quantity</span><span>Total</span></div>
+                {order.items.map((item, index) => (
+                  <div className="admin-order-item-row" key={`${item.productId ?? item.name}-${index}`}>
+                    <div><strong>{item.name}</strong>{item.productId && <small>Product ID: {item.productId}</small>}</div>
+                    <span>{item.quantity}</span>
+                    <strong>{formatPounds(item.total / 100)}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="admin-order-totals">
+              <div><span>Items subtotal</span><strong>{formatPounds(itemSubtotal / 100)}</strong></div>
+              {deliveryAmount > 0 && <div><span>{order.delivery.method}</span><strong>{formatPounds(deliveryAmount / 100)}</strong></div>}
+              <div className="admin-order-total-row"><span>Order total</span><strong>{order.total}</strong></div>
+            </div>
+          </section>
+
+          <section className="admin-order-card">
+            <div className="admin-order-card-heading">
+              <div><p className="admin-eyebrow">Internal record</p><h2>Order notes</h2></div>
+            </div>
+            <div className="admin-order-note-empty">No notes have been added to this order.</div>
+            <p className="admin-order-note-help">Keep fulfilment updates and customer-care notes with the order as it moves through delivery.</p>
+          </section>
+        </div>
+
+        <aside className="admin-order-page-sidebar">
+          <section className="admin-order-card admin-order-actions-card">
+            <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Fulfilment</p><h2>Order actions</h2></div></div>
+            <label className="admin-order-status-field">Status
+              <select value={order.status} disabled={updating} onChange={(event) => onStatusChange(event.target.value as Order["status"])}>
+                <option>Processing</option>
+                <option>Shipped</option>
+                <option>Delivered</option>
+              </select>
+            </label>
+            <p className="admin-order-status-help">{updating ? "Saving order status…" : "Update the order when it moves to its next delivery stage."}</p>
+          </section>
+
+          <section className="admin-order-card">
+            <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Customer</p><h2>Customer details</h2></div></div>
+            <dl className="admin-order-detail-list">
+              <div><dt>Name</dt><dd>{order.customer || "Customer unavailable"}</dd></div>
+              <div><dt>Email</dt><dd>{order.email || "Email unavailable"}</dd></div>
+            </dl>
+          </section>
+
+          <section className="admin-order-card">
+            <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Delivery</p><h2>Shipping details</h2></div></div>
+            <dl className="admin-order-detail-list">
+              <div><dt>Method</dt><dd>{order.delivery.method}</dd></div>
+              <div><dt>Recipient</dt><dd>{order.delivery.name || order.customer || "Recipient unavailable"}</dd></div>
+            </dl>
+            <address className="admin-order-page-address">
+              {addressParts.length > 0 ? addressParts.map((part, index) => <span key={`${part}-${index}`}>{part}</span>) : <span>Address unavailable</span>}
+            </address>
+          </section>
+
+          <section className="admin-order-card">
+            <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Payment</p><h2>Payment details</h2></div></div>
+            <dl className="admin-order-detail-list">
+              <div><dt>Gateway</dt><dd>Stripe</dd></div>
+              <div><dt>Payment</dt><dd>Paid</dd></div>
+              <div><dt>Currency</dt><dd>{order.currency?.toUpperCase() || "GBP"}</dd></div>
+            </dl>
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
 }
 
 function formatUserDate(value: number | null) {
@@ -964,8 +1091,8 @@ export default function AdminDashboard({
           <small>Commerce Studio</small>
         </a>
         <nav className="admin-nav" aria-label="Admin navigation">
-          {navItems.map((item) => (
-            <button type="button" key={item.id} className={section === item.id && editorProductId === null ? "is-active" : ""} onClick={() => { setSection(item.id); setEditorProductId(null); }}>
+            {navItems.map((item) => (
+            <button type="button" key={item.id} className={section === item.id && editorProductId === null ? "is-active" : ""} onClick={() => { setSection(item.id); setEditorProductId(null); setSelectedOrderId(null); }}>
               <span>{item.label}</span><small>{item.hint}</small>
             </button>
           ))}
@@ -1070,73 +1197,34 @@ export default function AdminDashboard({
           </>
         )}
 
-        {section === "orders" && (
+        {section === "orders" && selectedOrder && (
+          <AdminOrderDetailPage
+            order={selectedOrder}
+            updating={updatingOrderId === selectedOrder.id}
+            onStatusChange={(status) => void updateOrderStatus(selectedOrder, status)}
+            onBack={() => setSelectedOrderId(null)}
+          />
+        )}
+
+        {section === "orders" && !selectedOrder && (
           <>
             <SectionTitle eyebrow="Fulfilment" title="Orders" description="Track customer purchases and move each order through delivery." action={<button className="admin-secondary" type="button" onClick={() => void refreshOrders()} disabled={ordersLoading}>{ordersLoading ? "Refreshing…" : "Refresh orders"}</button>} />
             <section className="admin-panel admin-table-panel">
               {ordersError && <p className="admin-payment-error" role="alert">{ordersError}</p>}
               {ordersLoading && orders.length === 0 ? <p className="admin-users-state">Loading orders…</p> : orders.length === 0 ? <p className="admin-users-state">No paid orders yet.</p> : (
-                <>
-                  {selectedOrder && (
-                    <section className="admin-order-detail" aria-labelledby={`order-detail-${selectedOrder.id}`}>
-                      <header className="admin-order-detail-header">
-                        <div>
-                          <p className="admin-eyebrow">Order details</p>
-                          <h2 id={`order-detail-${selectedOrder.id}`}>{selectedOrder.id}</h2>
-                          <p>Placed {selectedOrder.date}</p>
-                        </div>
-                        <button className="admin-secondary" type="button" onClick={() => setSelectedOrderId(null)}>Close details</button>
-                      </header>
-
-                      <div className="admin-order-summary-grid">
-                        <div><span>Customer</span><strong>{selectedOrder.customer}</strong><small>{selectedOrder.email || "Email unavailable"}</small></div>
-                        <div><span>Delivery service</span><strong>{selectedOrder.delivery.method}</strong><small>{selectedOrder.status}</small></div>
-                        <div><span>Order total</span><strong>{selectedOrder.total}</strong><small>Paid order</small></div>
-                      </div>
-
-                      <div className="admin-order-detail-columns">
-                        <section>
-                          <p className="admin-eyebrow">Products purchased</p>
-                          {selectedOrder.items.length === 0 ? <p className="admin-order-empty">Item details are unavailable for this order.</p> : (
-                            <div className="admin-order-items">
-                              {selectedOrder.items.map((item, index) => (
-                                <article key={`${item.productId ?? item.name}-${index}`}>
-                                  <div><strong>{item.name}</strong><span>Quantity {item.quantity}</span></div>
-                                  <strong>{formatPounds(item.total / 100)}</strong>
-                                </article>
-                              ))}
-                            </div>
-                          )}
-                        </section>
-                        <section>
-                          <p className="admin-eyebrow">Delivery address</p>
-                          <address className="admin-order-address">
-                            <strong>{selectedOrder.delivery.name || selectedOrder.customer}</strong>
-                            {selectedOrder.delivery.address.line1 && <span>{selectedOrder.delivery.address.line1}</span>}
-                            {selectedOrder.delivery.address.line2 && <span>{selectedOrder.delivery.address.line2}</span>}
-                            {(selectedOrder.delivery.address.city || selectedOrder.delivery.address.postcode) && <span>{[selectedOrder.delivery.address.city, selectedOrder.delivery.address.postcode].filter(Boolean).join(", ")}</span>}
-                            {selectedOrder.delivery.address.country && <span>{selectedOrder.delivery.address.country}</span>}
-                            {!selectedOrder.delivery.address.line1 && <span>Address unavailable</span>}
-                          </address>
-                        </section>
-                      </div>
-                    </section>
-                  )}
-
-                  <div className="admin-table">
-                    <div className="admin-table-head admin-order-table-head"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span><span>Details</span></div>
-                    {orders.map((order) => (
-                      <div className="admin-table-row admin-order-table-row" key={order.id}>
-                        <strong>{order.id}</strong>
-                        <span>{order.customer}</span>
-                        <span>{order.date}</span>
-                        <span>{order.total}</span>
-                        <select value={order.status} disabled={updatingOrderId === order.id} onChange={(event) => void updateOrderStatus(order, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}><option>Processing</option><option>Shipped</option><option>Delivered</option></select>
-                        <button className="admin-order-details-button" type="button" onClick={() => setSelectedOrderId(order.id)} aria-expanded={selectedOrder?.id === order.id}>View details</button>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                <div className="admin-table">
+                  <div className="admin-table-head admin-order-table-head"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span><span>Details</span></div>
+                  {orders.map((order) => (
+                    <div className="admin-table-row admin-order-table-row" key={order.id}>
+                      <strong>{order.id}</strong>
+                      <span>{order.customer}</span>
+                      <span>{order.date}</span>
+                      <span>{order.total}</span>
+                      <select value={order.status} disabled={updatingOrderId === order.id} onChange={(event) => void updateOrderStatus(order, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}><option>Processing</option><option>Shipped</option><option>Delivered</option></select>
+                      <button className="admin-order-details-button" type="button" onClick={() => setSelectedOrderId(order.id)}>View order</button>
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
           </>
