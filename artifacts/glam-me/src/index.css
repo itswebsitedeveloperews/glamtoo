@@ -228,8 +228,8 @@ img { display: block; max-width: 100%; }
 .footer-legal-links { display: flex; gap: 20px; }
 
 .page-hero { padding: 92px 0 82px; border-bottom: 1px solid var(--line); }
-.page-hero h1 { margin: 9px 0 0; font: 400 clamp(56px, 9vw, 114px)/.86 var(--display); letter-spacing: -.05em; }
-.page-hero p { max-width: 420px; color: var(--muted); margin: 23px 0 0; }
+.page-hero h1 { margin: 16px 0 0; font: 400 72px/.86 var(--display); letter-spacing: -.05em; }
+.page-hero p { color: var(--muted); margin: 23px 0 0; }
 .shop-layout { display: grid; grid-template-columns: 185px 1fr; gap: 45px; padding: 64px 0 110px; }
 .filter { font-size: 14px; }
 .filter h3 { font-size: 14px; letter-spacing: .16em; text-transform: uppercase; margin: 0 0 18px; }
