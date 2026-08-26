@@ -174,6 +174,11 @@ function getCartItems(): CartItem[] {
   }
 }
 
+function clearCart() {
+  window.localStorage.removeItem(cartStorageKey);
+  window.dispatchEvent(new Event('glam-cart-updated'));
+}
+
 function getCartQueryItem(): CartItem | null {
   const params = new URLSearchParams(window.location.search);
   const productId = Number(params.get('product'));
@@ -949,6 +954,7 @@ function Checkout() {
       });
       if (confirmation.error) throw new Error(confirmation.error.message || "Your card could not be confirmed.");
       if (confirmation.paymentIntent?.status !== "succeeded") throw new Error("Your payment needs additional confirmation. Please try again.");
+      clearCart();
       window.location.assign(`${basePath}/order-confirmation?payment_intent=${encodeURIComponent(confirmation.paymentIntent.id)}`);
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : "Unable to start Stripe checkout.");
@@ -1016,6 +1022,11 @@ function Checkout() {
 }
 
 function Confirmation() {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("payment_intent") || params.has("stripe_session_id")) clearCart();
+  }, []);
+
   return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order GM-260214 is being wrapped with care. We&apos;ve sent all the details to your inbox.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
 }
 
