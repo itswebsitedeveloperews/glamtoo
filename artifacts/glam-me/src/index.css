@@ -579,11 +579,11 @@ img { display: block; max-width: 100%; }
 .account-nav .account-nav-logout { margin-top: auto; border-bottom: 0; color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
 .account-nav .account-nav-logout:hover { background: #fff5f7; color: var(--pink-deep); }
 .account-logout-modal { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(23, 22, 21, .52); backdrop-filter: blur(4px); }
-.account-logout-dialog { position: relative; width: min(100%, 450px); border: 1px solid var(--line); border-top: 4px solid var(--pink); background: #fffdfb; padding: clamp(31px, 5vw, 45px); box-shadow: 0 24px 70px rgba(23, 22, 21, .22); animation: account-logout-dialog-in .2s ease-out both; }
+.account-logout-dialog { position: relative; width: min(100%, 450px); border: 1px solid var(--line); border-top: 4px solid var(--pink); background: #fffdfb; padding: 40px 30px; box-shadow: 0 24px 70px rgba(23, 22, 21, .22); animation: account-logout-dialog-in .2s ease-out both; }
 .account-logout-close { position: absolute; top: 15px; right: 15px; display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer; }
 .account-logout-close:hover { border-color: var(--line); background: var(--paper-deep); color: var(--ink); }
 .account-logout-close svg { width: 17px; height: 17px; stroke-width: 1.7; }
-.account-logout-dialog h2 { max-width: 330px; margin: 10px 0 14px; font: 400 38px/.95 var(--display); letter-spacing: -.045em; }
+.account-logout-dialog h2 { margin: 10px 0 14px; font: 400 30px/.95 var(--display); letter-spacing: -.045em; }
 .account-logout-dialog p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.6; }
 .account-logout-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; }
 .account-logout-actions .button { min-width: 112px; cursor: pointer; }
