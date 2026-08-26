@@ -1421,6 +1421,16 @@ function CustomerAccountPage() {
   const [addressSaving, setAddressSaving] = useState(false);
   const [addressNotice, setAddressNotice] = useState("");
   const [addressError, setAddressError] = useState("");
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (!logoutConfirmOpen) return;
+    function handleLogoutDialogKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setLogoutConfirmOpen(false);
+    }
+    window.addEventListener("keydown", handleLogoutDialogKeyDown);
+    return () => window.removeEventListener("keydown", handleLogoutDialogKeyDown);
+  }, [logoutConfirmOpen]);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) {
@@ -1595,7 +1605,7 @@ function CustomerAccountPage() {
                 </button>
               ))}
             </div>
-            <button className="account-nav-logout" type="button" onClick={() => void signOut({ redirectUrl: basePath || "/" })}><LogOut className="account-nav-icon" aria-hidden="true" /><span>Log out</span></button>
+            <button className="account-nav-logout" type="button" onClick={() => setLogoutConfirmOpen(true)}><LogOut className="account-nav-icon" aria-hidden="true" /><span>Log out</span></button>
           </nav>
 
           <div className="account-content">
@@ -1694,6 +1704,25 @@ function CustomerAccountPage() {
           </div>
         </div>
       </div>
+      {logoutConfirmOpen && (
+        <div
+          className="account-logout-modal"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setLogoutConfirmOpen(false);
+          }}
+        >
+          <div className="account-logout-dialog" role="dialog" aria-modal="true" aria-labelledby="logout-dialog-title" aria-describedby="logout-dialog-description">
+            <div className="eyebrow">Sign out</div>
+            <h2 id="logout-dialog-title">Log out of your account?</h2>
+            <p id="logout-dialog-description">You&apos;ll need to sign in again to view your orders and account details.</p>
+            <div className="account-logout-actions">
+              <button className="button account-logout-cancel" type="button" onClick={() => setLogoutConfirmOpen(false)}>Cancel</button>
+              <button className="button button-pink" type="button" onClick={() => { setLogoutConfirmOpen(false); void signOut({ redirectUrl: basePath || "/" }); }}>Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
     </Shell>
   );
 }
