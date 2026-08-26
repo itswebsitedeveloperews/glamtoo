@@ -893,7 +893,7 @@ img { display: block; max-width: 100%; }
 .admin-product-catalog-card:hover .admin-product-catalog-image > img { transform: scale(1.045); }
 .admin-product-catalog-image .admin-image-placeholder { height: 100%; min-height: 0; margin: 0; border: 0; }
 .admin-product-catalog-heart { position: absolute; top: 12px; right: 14px; z-index: 1; color: var(--ink); font-size: 30px; line-height: 1; }
-.admin-product-catalog-status { position: absolute; top: 13px; left: 13px; background: #fffdfb; padding: 6px 8px; color: var(--ink); font-size: 14px; letter-spacing: .1em; text-transform: uppercase; }
+.admin-product-catalog-status { position: absolute; top: 5px; left: 5px; background: #fffdfb; padding: 6px 8px; color: var(--ink); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
 .admin-product-catalog-status.draft { color: #a6516e; }
 .admin-product-catalog-content { display: flex; min-width: 0; grid-column: 2; flex-direction: column; padding-top: 34px; }
 .admin-product-catalog-info { display: flex; align-items: start; justify-content: space-between; gap: 12px; padding: 0 28px; }
