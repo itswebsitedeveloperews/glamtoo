@@ -493,7 +493,7 @@ img { display: block; max-width: 100%; }
 .customer-recovery-error { margin: 15px 0; color: #b42342; font-size: 14px; line-height: 1.45; }
 .account-page { width: min(1030px, calc(100% - 48px)); margin: 0 auto; padding: 82px 0 120px; }
 .account-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; padding-bottom: 39px; border-bottom: 1px solid var(--line); }
-.account-heading h1 { margin: 10px 0 16px; font: 400 clamp(55px, 7vw, 94px)/.87 var(--display); letter-spacing: -.05em; }
+.account-heading h1 { margin: 10px 0 16px; font: 400 72px/.87 var(--display); letter-spacing: -.05em; }
 .account-heading p { max-width: 430px; margin: 0; color: var(--muted); font-size: 16px; line-height: 1.6; }
 .account-signout { flex: 0 0 auto; border: 0; border-bottom: 1px solid currentColor; background: transparent; padding: 0 0 4px; color: var(--ink); cursor: pointer; font: 600 14px var(--body); letter-spacing: .1em; text-transform: uppercase; }
 .account-signout:hover { color: var(--pink-deep); }
@@ -531,7 +531,7 @@ img { display: block; max-width: 100%; }
 .account-nav .account-nav-logout:hover { background: #fff5f7; color: var(--pink-deep); }
 .account-content { min-width: 0; }
 .account-panel { border: 1px solid var(--line); background: #fffdfb; padding: clamp(28px, 4vw, 48px); }
-.account-panel h2 { margin: 9px 0 17px; font: 400 clamp(38px, 5vw, 59px)/.9 var(--display); letter-spacing: -.05em; }
+.account-panel h2 { margin: 9px 0 17px; font: 400 52px/.9 var(--display); letter-spacing: -.05em; }
 .account-panel > p { max-width: 540px; margin: 0 0 27px; color: var(--muted); font-size: 16px; line-height: 1.65; }
 .account-dashboard { min-height: 360px; }
 .account-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 38px; }
