@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
@@ -100,6 +100,56 @@ type CustomerOrder = {
     total: number;
   }>;
 };
+
+type StripeCardElement = {
+  mount: (target: HTMLElement) => void;
+  destroy: () => void;
+  on: (event: 'change', listener: (event: { error?: { message?: string } }) => void) => void;
+};
+
+type StripeJs = {
+  elements: () => { create: (type: 'card', options?: Record<string, unknown>) => StripeCardElement };
+  confirmCardPayment: (
+    clientSecret: string,
+    data: {
+      payment_method: {
+        card: StripeCardElement;
+        billing_details: {
+          name: string;
+          email: string;
+          phone?: string;
+          address: { line1: string; line2?: string; city: string; postal_code: string; country: string };
+        };
+      };
+      return_url: string;
+    },
+  ) => Promise<{ error?: { message?: string }; paymentIntent?: { id: string; status: string } }>;
+};
+
+declare global {
+  interface Window {
+    Stripe?: (publishableKey: string) => StripeJs;
+  }
+}
+
+function loadStripeJs() {
+  if (window.Stripe) return Promise.resolve();
+  return new Promise<void>((resolve, reject) => {
+    const existing = document.getElementById('glam-too-stripe-js') as HTMLScriptElement | null;
+    if (existing) {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Stripe card fields could not be loaded.')), { once: true });
+      return;
+    }
+    const script = document.createElement('script');
+    script.id = 'glam-too-stripe-js';
+    script.src = 'https://js.stripe.com/v3/';
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Stripe card fields could not be loaded.'));
+    document.head.appendChild(script);
+  });
+}
 
 function getCartItems(): CartItem[] {
   try {
@@ -746,9 +796,14 @@ function Cart() {
 
 function Checkout() {
   const { isLoaded, isSignedIn } = useAuth();
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isPaying, setIsPaying] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+  const [cardError, setCardError] = useState("");
   const [delivery, setDelivery] = useState<"standard" | "express">("standard");
+  const [publishableKey, setPublishableKey] = useState("");
+  const [paymentSetupError, setPaymentSetupError] = useState("");
+  const cardMountRef = useRef<HTMLDivElement | null>(null);
+  const stripePaymentRef = useRef<{ stripe: StripeJs; card: StripeCardElement } | null>(null);
   const products = getStorefrontProducts();
   const storedItems = getCartItems();
   const queryItem = getCartQueryItem();
@@ -767,6 +822,61 @@ function Checkout() {
   });
   const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
 
+  useEffect(() => {
+    let cancelled = false;
+    setPaymentSetupError("");
+    fetch("/api/stripe/payment-config", { credentials: "include" })
+      .then(async (response) => {
+        const payload = await response.json() as { publishableKey?: string; error?: string };
+        if (!response.ok || !payload.publishableKey) throw new Error(payload.error || "Stripe card payments are unavailable.");
+        if (!cancelled) setPublishableKey(payload.publishableKey);
+      })
+      .catch((error) => {
+        if (!cancelled) setPaymentSetupError(error instanceof Error ? error.message : "Stripe card payments are unavailable.");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!publishableKey || !cardMountRef.current) return;
+    let cancelled = false;
+    let card: StripeCardElement | null = null;
+    void loadStripeJs()
+      .then(() => {
+        const stripe = window.Stripe?.(publishableKey);
+        if (!stripe || !cardMountRef.current) throw new Error("Stripe card fields could not be initialized.");
+        card = stripe.elements().create("card", {
+          hidePostalCode: true,
+          style: {
+            base: {
+              color: "#171615",
+              fontFamily: "DM Sans, sans-serif",
+              fontSize: "16px",
+              "::placeholder": { color: "#827975" },
+            },
+            invalid: { color: "#b42342" },
+          },
+        });
+        if (cancelled) {
+          card.destroy();
+          return;
+        }
+        card.mount(cardMountRef.current);
+        card.on("change", (event) => setCardError(event.error?.message ?? ""));
+        stripePaymentRef.current = { stripe, card };
+      })
+      .catch((error) => {
+        if (!cancelled) setPaymentSetupError(error instanceof Error ? error.message : "Stripe card fields are unavailable.");
+      });
+    return () => {
+      cancelled = true;
+      stripePaymentRef.current = null;
+      card?.destroy();
+    };
+  }, [publishableKey]);
+
   async function beginStripeCheckout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!isSignedIn) {
@@ -778,7 +888,12 @@ function Checkout() {
       return;
     }
 
-    setIsRedirecting(true);
+    if (!stripePaymentRef.current) {
+      setPaymentError(paymentSetupError || "Stripe card fields are still loading. Please wait a moment and try again.");
+      return;
+    }
+
+    setIsPaying(true);
     setPaymentError("");
     const formData = new FormData(event.currentTarget);
     const lines = cartLines.map(({ item, product, variation }) => ({
@@ -788,30 +903,114 @@ function Checkout() {
     }));
 
     try {
-      const response = await fetch("/api/stripe/checkout", {
+      const customerName = [formData.get("firstName"), formData.get("lastName")].filter(Boolean).join(" ");
+      const response = await fetch("/api/stripe/payment-intent", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: formData.get("email"),
-          customerName: [formData.get("firstName"), formData.get("lastName")].filter(Boolean).join(" "),
+          customerName,
+          phone: formData.get("phone"),
           lines,
           delivery,
+          address: {
+            line1: formData.get("address"),
+            line2: formData.get("addressTwo"),
+            city: formData.get("city"),
+            postcode: formData.get("postcode"),
+            country: formData.get("country"),
+          },
         }),
       });
-      const result = await response.json() as { url?: string; error?: string };
-      if (!response.ok || !result.url) throw new Error(result.error || "Stripe checkout is not available right now.");
-      window.location.assign(result.url);
+      const result = await response.json() as { clientSecret?: string; error?: string };
+      if (!response.ok || !result.clientSecret) throw new Error(result.error || "Stripe checkout is not available right now.");
+
+      const billingDetails = {
+        name: customerName,
+        email: String(formData.get("email") ?? ""),
+        phone: String(formData.get("phone") ?? "") || undefined,
+        address: {
+          line1: String(formData.get("address") ?? ""),
+          line2: String(formData.get("addressTwo") ?? "") || undefined,
+          city: String(formData.get("city") ?? ""),
+          postal_code: String(formData.get("postcode") ?? ""),
+          country: String(formData.get("country") ?? "GB"),
+        },
+      };
+      const confirmation = await stripePaymentRef.current.stripe.confirmCardPayment(result.clientSecret, {
+        payment_method: {
+          card: stripePaymentRef.current.card,
+          billing_details: billingDetails,
+        },
+        return_url: `${window.location.origin}${basePath}/order-confirmation`,
+      });
+      if (confirmation.error) throw new Error(confirmation.error.message || "Your card could not be confirmed.");
+      if (confirmation.paymentIntent?.status !== "succeeded") throw new Error("Your payment needs additional confirmation. Please try again.");
+      window.location.assign(`${basePath}/order-confirmation?payment_intent=${encodeURIComponent(confirmation.paymentIntent.id)}`);
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : "Unable to start Stripe checkout.");
-      setIsRedirecting(false);
+      setIsPaying(false);
     }
   }
 
   const deliveryAmount = delivery === "express" ? 6.95 : 0;
   const total = subtotal + deliveryAmount;
 
-  return <Shell><main className="container checkout-page"><header className="checkout-heading"><div><div className="eyebrow">Nearly yours</div><h1>Checkout.</h1><p>Enter your details, review your order, then complete payment securely with Stripe.</p></div><a className="text-link" href="/cart">Return to bag</a></header><form className="checkout-layout" onSubmit={beginStripeCheckout}><div className="checkout-details">{!isSignedIn && <div className="checkout-account-notice"><strong>Sign in to save this order to your account.</strong><a className="text-link" href="/account">Sign in or create an account</a></div>}<section className="checkout-section"><div className="checkout-section-heading"><span>01</span><div><h2>Billing details</h2><p>We&apos;ll use these details for your payment confirmation.</p></div></div><div className="checkout-field-grid"><div className="field"><label htmlFor="checkout-first-name">First name</label><input id="checkout-first-name" name="firstName" type="text" required data-testid="input-checkout-first-name" /></div><div className="field"><label htmlFor="checkout-last-name">Last name</label><input id="checkout-last-name" name="lastName" type="text" required data-testid="input-checkout-last-name" /></div><div className="field checkout-field-wide"><label htmlFor="checkout-email">Email address</label><input id="checkout-email" name="email" type="email" required autoComplete="email" data-testid="input-checkout-email" /></div><div className="field checkout-field-wide"><label htmlFor="checkout-country">Country / region</label><select id="checkout-country" name="country" defaultValue="GB"><option value="GB">United Kingdom</option></select></div><div className="field checkout-field-wide"><label htmlFor="checkout-address">Street address</label><input id="checkout-address" name="address" type="text" required autoComplete="address-line1" placeholder="House number and street name" data-testid="input-checkout-address" /></div><div className="field checkout-field-wide"><label htmlFor="checkout-address-two">Address line 2 <span>Optional</span></label><input id="checkout-address-two" name="addressTwo" type="text" autoComplete="address-line2" placeholder="Apartment, suite, unit, etc." /></div><div className="field"><label htmlFor="checkout-city">Town or city</label><input id="checkout-city" name="city" type="text" required autoComplete="address-level2" data-testid="input-checkout-city" /></div><div className="field"><label htmlFor="checkout-postcode">Postcode</label><input id="checkout-postcode" name="postcode" type="text" required autoComplete="postal-code" data-testid="input-checkout-postcode" /></div><div className="field checkout-field-wide"><label htmlFor="checkout-phone">Phone <span>Optional</span></label><input id="checkout-phone" name="phone" type="tel" autoComplete="tel" placeholder="For delivery updates only" /></div></div></section><section className="checkout-section"><div className="checkout-section-heading"><span>02</span><div><h2>Shipping</h2><p>Choose how quickly you&apos;d like your order to arrive.</p></div></div><div className="checkout-delivery-options"><label className={`checkout-delivery-option ${delivery === "standard" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="standard" checked={delivery === "standard"} onChange={() => setDelivery("standard")} /><span><strong>Standard delivery</strong><small>3–5 working days</small></span><b>Free</b></label><label className={`checkout-delivery-option ${delivery === "express" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="express" checked={delivery === "express"} onChange={() => setDelivery("express")} /><span><strong>Express delivery</strong><small>1–2 working days</small></span><b>£6.95</b></label></div></section><section className="checkout-section checkout-payment-section"><div className="checkout-section-heading"><span>03</span><div><h2>Payment</h2><p>Your card details are collected securely on Stripe&apos;s hosted checkout.</p></div></div><div className="checkout-stripe-note"><strong>Pay securely with Stripe</strong><span>Card payments · protected checkout</span></div></section>{paymentError && <p className="checkout-payment-error" role="alert">{paymentError}</p>}</div><aside className="checkout-order-review"><div className="checkout-order-heading"><h2>Your order</h2><span>{cartLines.reduce((count, { item }) => count + item.quantity, 0)} item{cartLines.reduce((count, { item }) => count + item.quantity, 0) === 1 ? "" : "s"}</span></div>{cartLines.length === 0 ? <div className="checkout-empty-order"><p>Your bag is empty.</p><a className="text-link" href="/shop">Continue shopping</a></div> : <div className="checkout-order-items">{cartLines.map(({ item, product, variation }) => <article className="checkout-order-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ""}`}><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /><div><h3>{product.name}</h3><p>{[item.size !== "One size" ? item.size : "", item.colour ?? ""].filter(Boolean).join(" · ") || "One size"} · Qty {item.quantity}</p></div><strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong></article>)}</div>}<div className="checkout-totals"><div><span>Subtotal</span><strong>{formatPounds(subtotal)}</strong></div><div><span>Delivery</span><strong>{deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</strong></div><div className="checkout-total"><span>Total</span><strong>{formatPounds(total)}</strong></div></div><button className="button checkout-pay-button" type="submit" disabled={!isLoaded || !isSignedIn || isRedirecting || cartLines.length === 0} data-testid="button-place-order">{isRedirecting ? "Opening secure checkout…" : !isLoaded ? "Checking account…" : !isSignedIn ? "Sign in to checkout" : `Continue to secure payment · ${formatPounds(total)}`}</button><p className="checkout-security-copy">By continuing, you&apos;ll be taken to Stripe to confirm your billing and delivery address, then pay securely.</p></aside></form></main></Shell>;
+  return (
+    <Shell>
+      <main className="container checkout-page">
+        <header className="checkout-heading">
+          <div>
+            <div className="eyebrow">Nearly yours</div>
+            <h1>Checkout.</h1>
+            <p>Enter your details, review your order, then pay securely with Stripe.</p>
+          </div>
+          <a className="text-link" href="/cart">Return to bag</a>
+        </header>
+        <form className="checkout-layout" onSubmit={beginStripeCheckout}>
+          <div className="checkout-details">
+            {!isSignedIn && <div className="checkout-account-notice"><strong>Sign in to save this order to your account.</strong><a className="text-link" href="/account">Sign in or create an account</a></div>}
+            <section className="checkout-section">
+              <div className="checkout-section-heading"><span>01</span><div><h2>Billing details</h2><p>We&apos;ll use these details for your payment confirmation.</p></div></div>
+              <div className="checkout-field-grid">
+                <div className="field"><label htmlFor="checkout-first-name">First name</label><input id="checkout-first-name" name="firstName" type="text" required data-testid="input-checkout-first-name" /></div>
+                <div className="field"><label htmlFor="checkout-last-name">Last name</label><input id="checkout-last-name" name="lastName" type="text" required data-testid="input-checkout-last-name" /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-email">Email address</label><input id="checkout-email" name="email" type="email" required autoComplete="email" data-testid="input-checkout-email" /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-country">Country / region</label><select id="checkout-country" name="country" defaultValue="GB"><option value="GB">United Kingdom</option></select></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-address">Street address</label><input id="checkout-address" name="address" type="text" required autoComplete="address-line1" placeholder="House number and street name" data-testid="input-checkout-address" /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-address-two">Address line 2 <span>Optional</span></label><input id="checkout-address-two" name="addressTwo" type="text" autoComplete="address-line2" placeholder="Apartment, suite, unit, etc." /></div>
+                <div className="field"><label htmlFor="checkout-city">Town or city</label><input id="checkout-city" name="city" type="text" required autoComplete="address-level2" data-testid="input-checkout-city" /></div>
+                <div className="field"><label htmlFor="checkout-postcode">Postcode</label><input id="checkout-postcode" name="postcode" type="text" required autoComplete="postal-code" data-testid="input-checkout-postcode" /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-phone">Phone <span>Optional</span></label><input id="checkout-phone" name="phone" type="tel" autoComplete="tel" placeholder="For delivery updates only" /></div>
+              </div>
+            </section>
+            <section className="checkout-section">
+              <div className="checkout-section-heading"><span>02</span><div><h2>Shipping</h2><p>Choose how quickly you&apos;d like your order to arrive.</p></div></div>
+              <div className="checkout-delivery-options">
+                <label className={`checkout-delivery-option ${delivery === "standard" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="standard" checked={delivery === "standard"} onChange={() => setDelivery("standard")} /><span><strong>Standard delivery</strong><small>3–5 working days</small></span><b>Free</b></label>
+                <label className={`checkout-delivery-option ${delivery === "express" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="express" checked={delivery === "express"} onChange={() => setDelivery("express")} /><span><strong>Express delivery</strong><small>1–2 working days</small></span><b>£6.95</b></label>
+              </div>
+            </section>
+            <section className="checkout-section checkout-payment-section">
+              <div className="checkout-section-heading"><span>03</span><div><h2>Payment</h2><p>Your card details are encrypted and sent directly to Stripe.</p></div></div>
+              <div className="checkout-stripe-note"><strong>Pay securely with Stripe</strong><span>Card payments · protected checkout</span></div>
+              {paymentSetupError ? <p className="checkout-payment-error" role="alert">{paymentSetupError}</p> : <div className="checkout-card-field" ref={cardMountRef} data-testid="stripe-card-field" aria-label="Card details" />}
+              {cardError && <p className="checkout-payment-error" role="alert">{cardError}</p>}
+            </section>
+            {paymentError && <p className="checkout-payment-error" role="alert">{paymentError}</p>}
+          </div>
+          <aside className="checkout-order-review">
+            <div className="checkout-order-heading"><h2>Your order</h2><span>{cartLines.reduce((count, { item }) => count + item.quantity, 0)} item{cartLines.reduce((count, { item }) => count + item.quantity, 0) === 1 ? "" : "s"}</span></div>
+            {cartLines.length === 0 ? <div className="checkout-empty-order"><p>Your bag is empty.</p><a className="text-link" href="/shop">Continue shopping</a></div> : <div className="checkout-order-items">{cartLines.map(({ item, product, variation }) => <article className="checkout-order-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ""}`}><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /><div><h3>{product.name}</h3><p>{[item.size !== "One size" ? item.size : "", item.colour ?? ""].filter(Boolean).join(" · ") || "One size"} · Qty {item.quantity}</p></div><strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong></article>)}</div>}
+            <div className="checkout-totals"><div><span>Subtotal</span><strong>{formatPounds(subtotal)}</strong></div><div><span>Delivery</span><strong>{deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</strong></div><div className="checkout-total"><span>Total</span><strong>{formatPounds(total)}</strong></div></div>
+            <button className="button checkout-pay-button" type="submit" disabled={!isLoaded || !isSignedIn || isPaying || !publishableKey || Boolean(paymentSetupError) || cartLines.length === 0} data-testid="button-place-order">{isPaying ? "Processing secure payment…" : !isLoaded ? "Checking account…" : !isSignedIn ? "Sign in to checkout" : !publishableKey ? "Loading secure payment…" : `Pay securely · ${formatPounds(total)}`}</button>
+            <p className="checkout-security-copy">Your card details never touch Glam Too&apos;s servers. Stripe processes your payment securely.</p>
+          </aside>
+        </form>
+      </main>
+    </Shell>
+  );
 }
 
 function Confirmation() {

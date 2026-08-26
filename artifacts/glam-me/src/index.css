@@ -328,6 +328,8 @@ img { display: block; max-width: 100%; }
 .checkout-stripe-note { display: flex; align-items: center; justify-content: space-between; gap: 18px; border: 1px solid var(--line); background: #f7f2ee; padding: 17px; }
 .checkout-stripe-note strong { font-size: 16px; }
 .checkout-stripe-note span { color: var(--muted); font-size: 14px; text-align: right; }
+.checkout-card-field { min-height: 48px; margin-top: 11px; border: 1px solid var(--line); background: #fffdfb; padding: 15px 14px; }
+.checkout-card-field:focus-within { border-color: var(--pink-deep); box-shadow: 0 0 0 2px rgba(226, 61, 111, .12); }
 .checkout-order-review { position: sticky; top: 132px; border: 1px solid var(--line); background: #f4ece7; padding: 25px; }
 .checkout-order-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 15px; padding-bottom: 19px; border-bottom: 1px solid var(--line); }
 .checkout-order-heading h2 { margin: 0; font: 400 36px/.9 var(--display); letter-spacing: -.04em; }

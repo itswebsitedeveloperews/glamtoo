@@ -135,6 +135,23 @@ router.get("/stripe/status", requireAdmin, async (_request, response) => {
   }
 });
 
+router.get("/stripe/payment-config", async (_request, response) => {
+  try {
+    const { connection } = await getStripeConnectionInfoWithSource();
+    if (!connection.publishableKey) {
+      return response.status(503).json({
+        error: "Stripe is connected, but a publishable key is needed to display card fields.",
+      });
+    }
+    return response.set("Cache-Control", "no-store").json({
+      publishableKey: connection.publishableKey,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Stripe card payments are not available right now.";
+    return response.status(503).json({ error: message });
+  }
+});
+
 router.put("/stripe/credentials", requireAdmin, async (request, response) => {
   const secretKey = credentialText(request.body?.secretKey);
   const publishableKey = credentialText(request.body?.publishableKey);
@@ -192,6 +209,93 @@ router.delete("/stripe/credentials", requireAdmin, async (_request, response) =>
     return response.status(204).send();
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to start Stripe checkout.";
+    return response.status(500).json({ error: message });
+  }
+});
+
+router.post("/stripe/payment-intent", async (request, response) => {
+  try {
+    const { userId } = getAuth(request);
+    if (!userId) {
+      return response.status(401).json({ error: "Sign in before checkout so your order can be saved." });
+    }
+
+    const submittedLines: SubmittedCheckoutLine[] = Array.isArray(request.body?.lines)
+      ? (request.body.lines as unknown[])
+        .map(parseCheckoutLine)
+        .filter((line: SubmittedCheckoutLine | null): line is SubmittedCheckoutLine => line !== null)
+      : [];
+    const checkoutLines = submittedLines.map(resolveCheckoutLine);
+    const email = safeText(request.body?.email, 250);
+    const customerName = safeText(request.body?.customerName, 120);
+    const phone = safeText(request.body?.phone, 40);
+    const address = asRecord(request.body?.address);
+    const addressLine1 = safeText(address.line1, 200);
+    const addressLine2 = safeText(address.line2, 200);
+    const city = safeText(address.city, 100);
+    const postcode = safeText(address.postcode, 40);
+    const country = safeText(address.country, 2).toUpperCase() || "GB";
+
+    if (submittedLines.length === 0 || checkoutLines.some((line) => line === null)) {
+      return response.status(400).json({ error: "Your bag is empty or contains an invalid item." });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return response.status(400).json({ error: "Enter a valid email address to continue." });
+    }
+    if (!customerName || !addressLine1 || !city || !postcode || country !== "GB") {
+      return response.status(400).json({ error: "Complete your billing and UK delivery address before paying." });
+    }
+
+    const lines = checkoutLines as CheckoutLine[];
+    const delivery = request.body?.delivery === "express" ? "express" : "standard";
+    const deliveryAmount = delivery === "express" ? 695 : 0;
+    const amount = lines.reduce((total, line) => total + line.unitAmount * line.quantity, deliveryAmount);
+    const orderItems = lines.map((line) => ({
+      name: line.name,
+      productId: line.productId,
+      quantity: line.quantity,
+      total: line.unitAmount * line.quantity,
+    }));
+    const encodedItems = JSON.stringify(orderItems);
+    if (encodedItems.length > 450) {
+      return response.status(400).json({ error: "Your bag has too many items to pay for in one order." });
+    }
+
+    const stripe = await getUncachableStripeClient();
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency: "gbp",
+      payment_method_types: ["card"],
+      receipt_email: email,
+      description: `Glam Too order for ${customerName}`,
+      shipping: {
+        name: customerName,
+        phone: phone || undefined,
+        address: {
+          line1: addressLine1,
+          line2: addressLine2 || undefined,
+          city,
+          postal_code: postcode,
+          country,
+        },
+      },
+      metadata: {
+        store: "Glam Too",
+        clerk_user_id: userId,
+        customer_name: customerName,
+        customer_email: email,
+        delivery,
+        glam_too_items: encodedItems,
+      },
+    });
+
+    if (!paymentIntent.client_secret) {
+      throw new Error("Stripe did not return a payment secret.");
+    }
+    return response.json({ clientSecret: paymentIntent.client_secret });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to prepare secure card payment.";
+    request.log?.error({ error }, "Stripe payment intent could not be created");
     return response.status(500).json({ error: message });
   }
 });
@@ -386,6 +490,80 @@ function serializeOrder(row: OrderRow) {
   };
 }
 
+type SerializedOrder = ReturnType<typeof serializeOrder>;
+
+function paymentIntentItems(value: string | undefined) {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.map((item) => {
+      const record = asRecord(item);
+      return {
+        name: stringValue(record.name) || "Glam Too item",
+        productId: stringValue(record.productId, 80) || null,
+        quantity: Number(record.quantity) || 1,
+        total: Number(record.total) || 0,
+      };
+    }) : [];
+  } catch {
+    return [];
+  }
+}
+
+function serializePaymentIntentOrder(paymentIntent: Stripe.PaymentIntent, fulfillmentStatus: FulfillmentStatus): SerializedOrder {
+  const metadata = paymentIntent.metadata ?? {};
+  const shipping = asRecord(paymentIntent.shipping);
+  return {
+    id: orderNumber(paymentIntent.id),
+    stripeSessionId: paymentIntent.id,
+    placedAt: new Date(paymentIntent.created * 1000).toISOString(),
+    status: fulfillmentStatus,
+    total: paymentIntent.amount_received || paymentIntent.amount,
+    currency: paymentIntent.currency || "gbp",
+    email: paymentIntent.receipt_email || metadata.customer_email || "",
+    delivery: {
+      method: metadata.delivery === "express" ? "Express delivery" : "Standard delivery",
+      name: stringValue(shipping.name) || metadata.customer_name || "",
+      address: serializeAddress(shipping.address),
+    },
+    items: paymentIntentItems(metadata.glam_too_items),
+  };
+}
+
+async function paymentIntentOrders(userId?: string, paymentIntentId?: string): Promise<SerializedOrder[]> {
+  const stripe = await getUncachableStripeClient();
+  const paymentIntents = await stripe.paymentIntents.list({ limit: 100 });
+  const matching = paymentIntents.data.filter((paymentIntent) =>
+    paymentIntent.status === "succeeded"
+    && paymentIntent.metadata.store === "Glam Too"
+    && (!userId || paymentIntent.metadata.clerk_user_id === userId)
+    && (!paymentIntentId || paymentIntent.id === paymentIntentId),
+  );
+  if (matching.length === 0) return [];
+
+  const statusResult = await pool.query<{ stripe_session_id: string; status: FulfillmentStatus }>(
+    "SELECT stripe_session_id, status FROM order_fulfillment WHERE stripe_session_id = ANY($1)",
+    [matching.map((paymentIntent) => paymentIntent.id)],
+  );
+  const statuses = new Map(statusResult.rows.map((row) => [row.stripe_session_id, row.status]));
+  return matching.map((paymentIntent) => serializePaymentIntentOrder(
+    paymentIntent,
+    statuses.get(paymentIntent.id) ?? "Processing",
+  ));
+}
+
+async function allOrders(userId?: string) {
+  const query = orderQuery(userId);
+  const [sessionOrders, directOrders] = await Promise.all([
+    pool.query<OrderRow>(query.text, query.values),
+    paymentIntentOrders(userId),
+  ]);
+  return [
+    ...sessionOrders.rows.map(serializeOrder),
+    ...directOrders,
+  ].sort((left, right) => Date.parse(right.placedAt ?? "") - Date.parse(left.placedAt ?? "")).slice(0, 50);
+}
+
 async function getOrderBySessionId(stripeSessionId: string) {
   const query = orderQuery(undefined, stripeSessionId);
   const result = await pool.query<OrderRow>(query.text, query.values);
@@ -397,9 +575,7 @@ router.get("/stripe/orders", async (request, response) => {
   if (!userId) return response.status(401).json({ error: "Sign in to view your orders." });
 
   try {
-    const query = orderQuery(userId);
-    const result = await pool.query<OrderRow>(query.text, query.values);
-    return response.set("Cache-Control", "no-store").json({ orders: result.rows.map(serializeOrder) });
+    return response.set("Cache-Control", "no-store").json({ orders: await allOrders(userId) });
   } catch (error) {
     request.log?.error({ error }, "Customer orders could not be loaded");
     return response.status(503).json({ error: "Your orders could not be loaded right now." });
@@ -408,9 +584,7 @@ router.get("/stripe/orders", async (request, response) => {
 
 router.get("/admin/orders", requireAdmin, async (request, response) => {
   try {
-    const query = orderQuery();
-    const result = await pool.query<OrderRow>(query.text, query.values);
-    return response.set("Cache-Control", "no-store").json({ orders: result.rows.map(serializeOrder) });
+    return response.set("Cache-Control", "no-store").json({ orders: await allOrders() });
   } catch (error) {
     request.log?.error({ error }, "Admin orders could not be loaded");
     return response.status(503).json({ error: "Orders could not be loaded right now." });
@@ -420,13 +594,16 @@ router.get("/admin/orders", requireAdmin, async (request, response) => {
 router.patch("/admin/orders/:stripeSessionId/status", requireAdmin, async (request, response) => {
   const stripeSessionId = safeText(request.params.stripeSessionId, 120);
   const requestedStatus = safeText(request.body?.status, 20);
-  if (!/^cs_[A-Za-z0-9_]+$/.test(stripeSessionId) || !fulfillmentStatuses.includes(requestedStatus as FulfillmentStatus)) {
+  const isEmbeddedCardOrder = /^pi_[A-Za-z0-9_]+$/.test(stripeSessionId);
+  if ((!/^cs_[A-Za-z0-9_]+$/.test(stripeSessionId) && !isEmbeddedCardOrder) || !fulfillmentStatuses.includes(requestedStatus as FulfillmentStatus)) {
     return response.status(400).json({ error: "Choose a valid order and fulfilment status." });
   }
   const status = requestedStatus as FulfillmentStatus;
 
   try {
-    const existingOrder = await getOrderBySessionId(stripeSessionId);
+    const existingOrder = isEmbeddedCardOrder
+      ? (await paymentIntentOrders(undefined, stripeSessionId))[0]
+      : await getOrderBySessionId(stripeSessionId);
     if (!existingOrder) return response.status(404).json({ error: "That paid order could not be found." });
 
     await db.insert(orderFulfillmentTable).values({
@@ -438,9 +615,12 @@ router.patch("/admin/orders/:stripeSessionId/status", requireAdmin, async (reque
       set: { status, updatedAt: new Date() },
     });
 
-    const updatedOrder = await getOrderBySessionId(stripeSessionId);
+    const updatedOrder = isEmbeddedCardOrder
+      ? (await paymentIntentOrders(undefined, stripeSessionId))[0]
+      : await getOrderBySessionId(stripeSessionId);
     if (!updatedOrder) return response.status(404).json({ error: "That order could not be reloaded." });
-    return response.json({ order: serializeOrder(updatedOrder) });
+    if (isEmbeddedCardOrder) return response.json({ order: updatedOrder });
+    return response.json({ order: serializeOrder(updatedOrder as OrderRow) });
   } catch (error) {
     request.log?.error({ error, stripeSessionId }, "Order status could not be updated");
     return response.status(503).json({ error: "Order status could not be updated right now." });
