@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
-import { catalogCategories, catalogProducts, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
+import { catalogCategories, catalogProducts, formatCatalogPrice, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
@@ -143,22 +143,27 @@ function getStorefrontProducts(): CatalogProduct[] {
       .filter((product) => String(product.status ?? '').toLowerCase() === 'published')
       .map((product, index) => {
         const matchingCatalogProduct = catalogProducts.find((candidate) =>
-          candidate.id === product.id || candidate.name.toLowerCase() === String(product.name ?? '').toLowerCase(),
+          candidate.id === Number(product.id) || candidate.name.toLowerCase() === String(product.name ?? '').toLowerCase(),
         );
         const matchingCategory = catalogCategories.find((category) =>
           slugify(category.name) === slugify(String(product.category ?? '')),
         );
+        const productId = Number(product.id);
         return {
           ...matchingCatalogProduct,
           ...product,
-          id: typeof product.id === 'number' ? product.id : matchingCatalogProduct?.id ?? index + 1,
+          id: Number.isInteger(productId) && productId > 0 ? productId : matchingCatalogProduct?.id ?? index + 1,
           name: product.name || matchingCatalogProduct?.name || 'Glam Too piece',
           category: product.category || matchingCatalogProduct?.category || '',
-          image: product.image || matchingCatalogProduct?.image || matchingCategory?.image || '',
+          price: formatCatalogPrice(product.price || matchingCatalogProduct?.price || ''),
+          image: product.image || matchingCatalogProduct?.image || matchingCategory?.image || fashionImage,
           position: product.position || matchingCatalogProduct?.position || '50% 50%',
+          variations: (product.variations ?? matchingCatalogProduct?.variations ?? []).map((variation) => ({
+            ...variation,
+            price: formatCatalogPrice(variation.price),
+          })),
         } as CatalogProduct;
       })
-      .filter((product) => product.image);
   } catch {
     return catalogProducts;
   }

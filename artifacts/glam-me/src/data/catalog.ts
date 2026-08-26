@@ -42,6 +42,23 @@ export type CatalogCategory = {
   description: string;
 };
 
+function getPriceAmount(value: string | number) {
+  const amount = Number.parseFloat(String(value).replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(amount) && amount >= 0 ? amount : null;
+}
+
+export function formatCatalogPrice(value: string | number) {
+  const amount = getPriceAmount(value);
+  return amount === null
+    ? ""
+    : new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
+}
+
+export function getCatalogPriceInput(value: string | number) {
+  const amount = getPriceAmount(value);
+  return amount === null ? "" : String(amount);
+}
+
 export const catalogCategories: CatalogCategory[] = [
   { id: 1, name: "Dresses", image: dressesImage, description: "From day dates to after dark." },
   { id: 2, name: "Occasion", image: occasionImage, description: "For weddings, parties, and special plans." },

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { catalogCategories, catalogProducts, type CatalogProduct, type CatalogVariation } from "@/data/catalog";
+import { catalogCategories, catalogProducts, formatCatalogPrice, getCatalogPriceInput, type CatalogProduct, type CatalogVariation } from "@/data/catalog";
 
 type AdminSection =
   | "overview"
@@ -50,7 +50,14 @@ const initialProducts: Product[] = catalogProducts;
 function withoutProductDetail(product: Product): Product {
   const cleanedProduct = { ...product } as Product & { detail?: unknown };
   delete cleanedProduct.detail;
-  return cleanedProduct;
+  return {
+    ...cleanedProduct,
+    price: formatCatalogPrice(cleanedProduct.price),
+    variations: (cleanedProduct.variations ?? []).map((variation) => ({
+      ...variation,
+      price: formatCatalogPrice(variation.price),
+    })),
+  };
 }
 
 function getInitialProducts() {
@@ -105,15 +112,29 @@ function useStoredState<T>(key: string, fallback: T) {
     }
   });
 
-  useEffect(() => {
+  function persist(nextValue: T) {
     try {
-      window.localStorage.setItem(key, JSON.stringify(value));
+      window.localStorage.setItem(key, JSON.stringify(nextValue));
     } catch {
       // The editor still works if browser storage is unavailable.
     }
+  }
+
+  const setStoredValue = (nextValue: T | ((current: T) => T)) => {
+    setValue((current) => {
+      const resolvedValue = typeof nextValue === "function"
+        ? (nextValue as (current: T) => T)(current)
+        : nextValue;
+      persist(resolvedValue);
+      return resolvedValue;
+    });
+  };
+
+  useEffect(() => {
+    persist(value);
   }, [key, value]);
 
-  return [value, setValue] as const;
+  return [value, setStoredValue] as const;
 }
 
 function SectionTitle({
@@ -175,7 +196,7 @@ function ProductEditor({
       ? {
           name: product.name,
           category: product.category,
-          price: product.price,
+           price: getCatalogPriceInput(product.price),
           stock: product.stock,
           status: product.status,
           type: product.type,
@@ -183,7 +204,7 @@ function ProductEditor({
           sku: product.sku,
            image: product.image,
            position: product.position,
-          variations: product.variations.map((variation) => ({ ...variation })),
+           variations: product.variations.map((variation) => ({ ...variation, price: getCatalogPriceInput(variation.price) })),
         }
       : blankProduct(categories[0] ?? "Dresses"),
   );
@@ -199,15 +220,25 @@ function ProductEditor({
   }
 
   function save(status: ProductStatus) {
-    if (!draft.name.trim() || !draft.price.trim()) {
-      setValidationMessage("Add a product name and price before saving.");
+    const formattedPrice = formatCatalogPrice(draft.price);
+    if (!draft.name.trim() || !formattedPrice) {
+      setValidationMessage("Add a product name and a valid price before saving.");
       return;
     }
     if (draft.type === "Variable" && draft.variations.length === 0) {
       setValidationMessage("Add at least one variation or change the product type to Simple.");
       return;
     }
-    onSave({ ...draft, name: draft.name.trim(), status });
+    onSave({
+      ...draft,
+      name: draft.name.trim(),
+      price: formattedPrice,
+      status,
+      variations: draft.variations.map((variation) => ({
+        ...variation,
+        price: formatCatalogPrice(variation.price) || formattedPrice,
+      })),
+    });
   }
 
   function addVariation() {
@@ -317,7 +348,7 @@ function ProductEditor({
                 <input className="admin-editor-input" value={draft.sku} onChange={(event) => updateDraft({ sku: event.target.value })} placeholder="e.g. GM-SIENNA" />
               </label>
               <label className="admin-editor-label">Regular price *
-                <input className="admin-editor-input" value={draft.price} onChange={(event) => updateDraft({ price: event.target.value })} inputMode="decimal" placeholder="89.99" required />
+                <input className="admin-editor-input" type="number" min="0.01" step="0.01" value={draft.price} onChange={(event) => updateDraft({ price: event.target.value })} inputMode="decimal" placeholder="89.99" required />
               </label>
               <label className="admin-editor-label">Stock quantity
                 <input className="admin-editor-input" type="number" min="0" value={draft.stock} onChange={(event) => updateDraft({ stock: Number(event.target.value) || 0 })} />
@@ -341,7 +372,7 @@ function ProductEditor({
                       <input aria-label="Variation size" value={variation.size} onChange={(event) => updateVariation(variation.id, { size: event.target.value })} placeholder="UK 8" />
                       <input aria-label="Variation colour" value={variation.colour} onChange={(event) => updateVariation(variation.id, { colour: event.target.value })} placeholder="Blush" />
                       <input aria-label="Variation SKU" value={variation.sku} onChange={(event) => updateVariation(variation.id, { sku: event.target.value })} placeholder="GM-001-8" />
-                      <input aria-label="Variation price" value={variation.price} onChange={(event) => updateVariation(variation.id, { price: event.target.value })} inputMode="decimal" placeholder="89.99" />
+                      <input aria-label="Variation price" type="number" min="0.01" step="0.01" value={variation.price} onChange={(event) => updateVariation(variation.id, { price: event.target.value })} inputMode="decimal" placeholder="89.99" />
                       <input aria-label="Variation stock" type="number" min="0" value={variation.stock} onChange={(event) => updateVariation(variation.id, { stock: Number(event.target.value) || 0 })} />
                       <button className="admin-remove-button" type="button" onClick={() => removeVariation(variation.id)} aria-label={`Remove ${variation.size || "variation"}`}>×</button>
                     </div>
