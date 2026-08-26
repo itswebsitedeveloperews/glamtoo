@@ -1140,6 +1140,11 @@ function formatCustomerOrderDate(value: string | null) {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date(value));
 }
 
+function formatCustomerOrderCountry(value: string) {
+  if (value.toUpperCase() === "GB" || value.toUpperCase() === "UK") return "United Kingdom";
+  return value;
+}
+
 function CustomerOrderDetailPage({ order, onBack }: { order: CustomerOrder; onBack: () => void }) {
   const itemSubtotal = order.items.reduce((total, item) => total + item.total, 0);
   const deliveryAmount = Math.max(order.total - itemSubtotal, 0);
@@ -1149,14 +1154,14 @@ function CustomerOrderDetailPage({ order, onBack }: { order: CustomerOrder; onBa
     order.delivery.address.line2,
     order.delivery.address.city,
     order.delivery.address.postcode,
-    order.delivery.address.country,
+    formatCustomerOrderCountry(order.delivery.address.country),
   ].filter(Boolean);
 
   return (
     <div className="account-order-page">
       <div className="account-order-page-topbar">
         <button className="account-order-back" type="button" onClick={onBack}>← Back to orders</button>
-        <span>Order {order.id}</span>
+        <span>Glam Too order history</span>
       </div>
       <div className="account-order-page-heading">
         <div>
@@ -1558,6 +1563,9 @@ function CustomerAccountPage() {
     "payment-methods": { title: "Payment methods.", description: "Your payments stay protected by Stripe from checkout to confirmation." },
     "account-details": { title: "Account details.", description: "Keep your personal details up to date." },
   };
+  const activeSectionCopy = selectedOrder && accountSection === "orders"
+    ? { title: "Order details.", description: "Review your purchase, delivery, and payment information." }
+    : sectionCopy[accountSection];
 
   return (
     <Shell>
@@ -1565,8 +1573,8 @@ function CustomerAccountPage() {
         <div className="account-heading">
           <div>
             <div className="eyebrow">Your Glam Too account</div>
-            <h1>{sectionCopy[accountSection].title}</h1>
-            <p>{sectionCopy[accountSection].description}</p>
+            <h1>{activeSectionCopy.title}</h1>
+            <p>{activeSectionCopy.description}</p>
           </div>
         </div>
 

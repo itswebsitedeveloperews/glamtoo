@@ -497,7 +497,7 @@ img { display: block; max-width: 100%; }
 .customer-recovery-button { min-height: 46px; border: 0; background: var(--pink); color: #fff; font: 700 14px/1 var(--sans); letter-spacing: .05em; text-transform: uppercase; cursor: pointer; }
 .customer-recovery-button:disabled { cursor: wait; opacity: .65; }
 .customer-recovery-error { margin: 15px 0; color: #b42342; font-size: 14px; line-height: 1.45; }
-.account-page { width: min(1030px, calc(100% - 48px)); margin: 0 auto; padding: 82px 0 120px; }
+.account-page { width: min(1180px, calc(100% - 48px)); margin: 0 auto; padding: 82px 0 120px; }
 .account-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; padding-bottom: 39px; border-bottom: 1px solid var(--line); }
 .account-heading h1 { margin: 10px 0 16px; font: 400 72px/.87 var(--display); letter-spacing: -.05em; }
 .account-heading p { max-width: 430px; margin: 0; color: var(--muted); font-size: 16px; line-height: 1.6; }
@@ -544,15 +544,15 @@ img { display: block; max-width: 100%; }
 .account-order-back { border: 0; background: transparent; padding: 0; color: var(--ink); cursor: pointer; font: 700 14px/1 var(--body); text-decoration: underline; text-underline-offset: 4px; }
 .account-order-back:hover { color: var(--pink-deep); }
 .account-order-page-heading { display: flex; align-items: end; justify-content: space-between; gap: 22px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
-.account-order-page-heading h2 { margin: 7px 0 0; font: 400 46px/.9 var(--display); letter-spacing: -.05em; }
+.account-order-page-heading h2 { margin: 7px 0 0; font: 400 54px/.88 var(--display); letter-spacing: -.05em; }
 .account-order-page-heading p { margin: 10px 0 0; color: var(--muted); font-size: 16px; }
 .account-order-page-total { display: grid; justify-items: end; gap: 9px; }
 .account-order-page-total > strong { font-size: 18px; }
-.account-order-page-layout { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(245px, .8fr); align-items: start; gap: 18px; }
+.account-order-page-layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, .8fr); align-items: start; gap: 22px; }
 .account-order-page-sidebar { display: grid; gap: 18px; }
-.account-order-detail-card { padding: 23px; border: 1px solid var(--line); background: #fffdfb; }
+.account-order-detail-card { padding: 29px; border: 1px solid var(--line); background: #fffdfb; }
 .account-order-detail-heading { display: flex; align-items: start; justify-content: space-between; gap: 14px; padding-bottom: 17px; border-bottom: 1px solid var(--line); }
-.account-order-detail-heading h3 { margin: 5px 0 0; font: 400 30px/.92 var(--display); letter-spacing: -.04em; }
+.account-order-detail-heading h3 { margin: 5px 0 0; font: 400 34px/.92 var(--display); letter-spacing: -.04em; }
 .account-order-detail-heading > span { color: var(--muted); font-size: 14px; }
 .account-order-detail-items { display: grid; }
 .account-order-detail-item { display: flex; align-items: start; justify-content: space-between; gap: 18px; padding: 16px 0; border-bottom: 1px solid #eee8e3; }
@@ -923,6 +923,11 @@ img { display: block; max-width: 100%; }
   .account-order-header, .account-order-body { padding: 21px; }
   .account-order-body { grid-template-columns: 1fr; gap: 25px; }
   .account-delivery { border-top: 1px solid var(--line); border-left: 0; padding: 23px 0 0; }
+  .account-order-page-heading { display: grid; align-items: start; }
+  .account-order-page-heading h2 { font-size: 42px; }
+  .account-order-page-total { justify-items: start; }
+  .account-order-page-layout { grid-template-columns: 1fr; }
+  .account-order-detail-card { padding: 21px; }
   .admin-main { padding: 34px 18px 70px; }
   .admin-section-title, .admin-payment-card { display: grid; align-items: start; }
   .admin-section-title h1 { font-size: 48px; letter-spacing: -.045em; }
@@ -964,6 +969,8 @@ img { display: block; max-width: 100%; }
   .account-empty { padding: 32px 22px; }
   .account-order-header { display: grid; }
   .account-order-total { justify-items: start; text-align: left; }
+  .account-order-page-topbar { align-items: start; flex-direction: column; gap: 9px; }
+  .account-order-page-heading h2 { font-size: 38px; }
   .admin-product-catalog-card { grid-template-columns: 1fr; }
   .admin-product-catalog-image { height: auto; aspect-ratio: .78; }
   .admin-product-catalog-content { grid-column: 1; padding-top: 18px; }
