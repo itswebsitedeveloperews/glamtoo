@@ -931,6 +931,7 @@ function Checkout() {
         const stripe = window.Stripe?.(publishableKey);
         if (!stripe || !cardMountRef.current) throw new Error("Stripe card fields could not be initialized.");
         card = stripe.elements().create("card", {
+          disableLink: true,
           hidePostalCode: true,
           style: {
             base: {
@@ -1190,6 +1191,7 @@ function PaymentMethodsPanel({ profile }: { profile: CustomerProfile }) {
         const stripe = window.Stripe?.(publishableKey);
         if (!stripe || !cardMountRef.current) throw new Error("Stripe card fields could not be initialized.");
         card = stripe.elements().create("card", {
+          disableLink: true,
           hidePostalCode: true,
           style: {
             base: { color: "#171615", fontFamily: "DM Sans, sans-serif", fontSize: "16px", "::placeholder": { color: "#827975" } },
