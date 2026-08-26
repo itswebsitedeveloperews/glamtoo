@@ -195,6 +195,10 @@ router.delete("/stripe/credentials", requireAdmin, async (_request, response) =>
 
 router.post("/stripe/checkout", async (request, response) => {
   try {
+    const { userId } = getAuth(request);
+    if (!userId) {
+      return response.status(401).json({ error: "Sign in before checkout so your order can be saved." });
+    }
     const submittedLines: SubmittedCheckoutLine[] = Array.isArray(request.body?.lines)
       ? (request.body.lines as unknown[])
         .map(parseCheckoutLine)
@@ -256,27 +260,33 @@ router.post("/stripe/checkout", async (request, response) => {
   }
 });
 
-export default router;
-
 function orderNumber(stripeSessionId: string) {
   const suffix = stripeSessionId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase();
   return `#GM-${suffix}`;
 }
 
-          const customerDetails = asRecord(row.customer_details);
+function serializeAddress(value: unknown) {
+  const address = asRecord(value);
+  return {
+    line1: stringValue(address.line1, 200),
+    line2: stringValue(address.line2, 200),
+    city: stringValue(address.city, 100),
+    postcode: stringValue(address.postal_code, 40),
+    country: stringValue(address.country, 80),
+  };
+}
 
-          const deliveryAddress = serializeAddress(deliveryDetails.address ?? customerDetails.address);
+function stringValue(value: unknown, maximumLength = 160) {
+  return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
+}
 
-              const itemRecord = asRecord(item);
+router.get("/stripe/orders", async (request, response) => {
+  const { userId } = getAuth(request);
+  if (!userId) {
+    return response.status(401).json({ error: "Sign in to view your orders." });
+  }
 
-          const metadata = asRecord(row.metadata);
-
-    const { userId } = getAuth(request);
-
-          const shippingDetails = asRecord(row.shipping_details);
-
-          const deliveryName = stringValue(deliveryDetails.name) || stringValue(customerDetails.name);
-
+  try {
     const result = await pool.query<{
       id: string;
       created: number | null;
@@ -338,21 +348,42 @@ function orderNumber(stripeSessionId: string) {
       [userId],
     );
 
-          const parsedItems = Array.isArray(row.items) ? row.items : [];
+    const orders = result.rows.map((row) => {
+      const customerDetails = asRecord(row.customer_details);
+      const shippingDetails = asRecord(row.shipping_details);
+      const deliveryDetails = Object.keys(shippingDetails).length > 0 ? shippingDetails : customerDetails;
+      const metadata = asRecord(row.metadata);
+      const parsedItems = Array.isArray(row.items) ? row.items : [];
 
-function serializeAddress(value: unknown) {
-  const address = asRecord(value);
-  return {
-    line1: stringValue(address.line1, 200),
-    line2: stringValue(address.line2, 200),
-    city: stringValue(address.city, 100),
-    postcode: stringValue(address.postal_code, 40),
-    country: stringValue(address.country, 80),
-  };
-}
+      return {
+        id: orderNumber(row.id),
+        placedAt: row.created ? new Date(row.created * 1000).toISOString() : null,
+        status: row.status === "complete" ? "Paid" : stringValue(row.payment_status) || "Processing",
+        total: (row.amount_total ?? 0) / 100,
+        currency: stringValue(row.currency, 10).toUpperCase() || "GBP",
+        email: stringValue(row.customer_email) || stringValue(customerDetails.email),
+        delivery: {
+          method: stringValue(metadata.delivery) === "express" ? "Express delivery" : "Standard delivery",
+          name: stringValue(deliveryDetails.name) || stringValue(customerDetails.name),
+          address: serializeAddress(deliveryDetails.address ?? customerDetails.address),
+        },
+        items: parsedItems.map((item) => {
+          const itemRecord = asRecord(item);
+          return {
+            name: stringValue(itemRecord.name) || "Glam Too item",
+            productId: stringValue(itemRecord.productId) || null,
+            quantity: Number(itemRecord.quantity) || 1,
+            total: (Number(itemRecord.total) || 0) / 100,
+          };
+        }),
+      };
+    });
 
-function stringValue(value: unknown, maximumLength = 160) {
-  return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
-}
+    return response.set("Cache-Control", "no-store").json({ orders });
+  } catch (error) {
+    request.log?.error({ error }, "Customer order history query failed");
+    return response.status(503).json({ error: "Your orders could not be loaded right now." });
+  }
+});
 
-          const deliveryDetails = Object.keys(shippingDetails).length > 0 ? shippingDetails : customerDetails;
+export default router;
