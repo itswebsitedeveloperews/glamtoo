@@ -61,11 +61,8 @@ function getLineKey(line: CheckoutLine) {
 
 async function getOrCreatePrice(stripe: Stripe, line: CheckoutLine) {
   const lineKey = getLineKey(line);
-  const foundProducts = await stripe.products.search({
-    query: `metadata['glam_too_key']:'${lineKey}'`,
-    limit: 1,
-  });
-  const product = foundProducts.data[0] ?? await stripe.products.create({
+  const existingProducts = await stripe.products.list({ active: true, limit: 100 });
+  const product = existingProducts.data.find((candidate) => candidate.metadata.glam_too_key === lineKey) ?? await stripe.products.create({
     name: line.name,
     description: line.description || undefined,
     metadata: { glam_too_key: lineKey, glam_too_product_id: line.productId },
@@ -108,11 +105,8 @@ function credentialMode(value: string, prefix: "sk" | "pk") {
 }
 
 async function findStripeCustomer(stripe: Stripe, userId: string) {
-  const customers = await stripe.customers.search({
-    query: `metadata['clerk_user_id']:'${userId}'`,
-    limit: 1,
-  });
-  return customers.data[0] ?? null;
+  const customers = await stripe.customers.list({ limit: 100 });
+  return customers.data.find((customer) => customer.metadata.clerk_user_id === userId) ?? null;
 }
 
 async function getOrCreateStripeCustomer(stripe: Stripe, userId: string, email: string, name: string) {

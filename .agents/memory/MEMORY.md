@@ -8,3 +8,4 @@
 - [Stripe key management UI](stripe-key-management-ui.md) — Admins can save Stripe credentials through a protected form; values are encrypted server-side and never returned to the browser.
 - [Embedded Stripe card checkout](embedded-stripe-card-checkout.md) — Use Stripe.js Card Element with server-created PaymentIntents so card details never reach Glam Too.
 - [Database declaration rebuild](db-declaration-rebuild.md) — Rebuild database declarations after adding schemas before dependent packages can resolve new exports.
+- [Stripe regional Search API](stripe-regional-search-api.md) — Use Stripe list APIs, not Search API, for customer and product lookup in this account region.
