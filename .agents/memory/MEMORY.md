@@ -3,3 +3,4 @@
 - [Cart storage](cart-storage.md) — Persist only cart line identifiers, size, and quantity; derive product media from the catalog.
 - [Admin image persistence](admin-image-persistence.md) — Compress uploaded product images before localStorage persistence to prevent save failures and disappearing products.
 - [Product types and slugs](product-types-and-slugs.md) — Simple products have no option controls; variable options and editable title-derived slugs drive storefront behavior.
+- [Stripe connector setup](stripe-connector-setup.md) — Treat an attached Stripe connection without credentials as “key setup needed,” not as a ready payment provider.

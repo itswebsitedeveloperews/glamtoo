@@ -719,7 +719,59 @@ function Cart() {
 }
 
 function Checkout() {
-  return <Shell><div className="container form-page"><div className="form-layout"><div className="form-copy"><div className="eyebrow">Nearly yours</div><h1>Checkout.</h1><p>Complete your details below. You will receive an order confirmation by email.</p><a className="text-link" href="/cart">Return to bag</a></div><form className="form-stack" action="/order-confirmation" method="get"><div className="field"><label htmlFor="checkout-email">Email address</label><input id="checkout-email" name="email" type="email" required data-testid="input-checkout-email" /></div><div className="field"><label htmlFor="checkout-name">Full name</label><input id="checkout-name" name="name" type="text" required data-testid="input-checkout-name" /></div><div className="field"><label htmlFor="checkout-address">Address</label><input id="checkout-address" name="address" type="text" required data-testid="input-checkout-address" /></div><div className="field"><label htmlFor="checkout-city">Town or city</label><input id="checkout-city" name="city" type="text" required data-testid="input-checkout-city" /></div><div className="field"><label htmlFor="checkout-postcode">Postcode</label><input id="checkout-postcode" name="postcode" type="text" required data-testid="input-checkout-postcode" /></div><div className="field"><label htmlFor="checkout-delivery">Delivery method</label><select id="checkout-delivery" name="delivery" defaultValue="standard" data-testid="select-checkout-delivery"><option value="standard">Standard · Free</option><option value="express">Express · £6.95</option></select></div><button className="button" type="submit" data-testid="button-place-order">Place order · £89.99</button></form></div></div></Shell>;
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
+  const products = getStorefrontProducts();
+  const cartLines = getCartItems().flatMap((item) => {
+    const product = products.find((candidate) => candidate.id === item.productId);
+    const variation = product?.type === "Variable"
+      ? product.variations.find((candidate) => candidate.id === item.variationId)
+      : undefined;
+    return product ? [{ item, product, variation }] : [];
+  });
+  const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
+
+  async function beginStripeCheckout(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (cartLines.length === 0) {
+      setPaymentError("Your bag is empty. Add a piece before checking out.");
+      return;
+    }
+
+    setIsRedirecting(true);
+    setPaymentError("");
+    const formData = new FormData(event.currentTarget);
+    const delivery = String(formData.get("delivery") ?? "standard");
+    const lines = cartLines.map(({ item, product, variation }) => ({
+      productId: String(product.id),
+      variationId: variation ? String(variation.id) : undefined,
+      quantity: item.quantity,
+    }));
+
+    try {
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.get("email"),
+          customerName: formData.get("name"),
+          lines,
+          delivery,
+        }),
+      });
+      const result = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !result.url) throw new Error(result.error || "Stripe checkout is not available right now.");
+      window.location.assign(result.url);
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "Unable to start Stripe checkout.");
+      setIsRedirecting(false);
+    }
+  }
+
+  const deliveryCharge = "Free";
+  const total = subtotal;
+  return <Shell><div className="container form-page"><div className="form-layout"><div className="form-copy"><div className="eyebrow">Nearly yours</div><h1>Checkout.</h1><p>Complete your details below, then pay securely on Stripe&apos;s hosted checkout.</p><a className="text-link" href="/cart">Return to bag</a></div><form className="form-stack" onSubmit={beginStripeCheckout}><div className="field"><label htmlFor="checkout-email">Email address</label><input id="checkout-email" name="email" type="email" required data-testid="input-checkout-email" /></div><div className="field"><label htmlFor="checkout-name">Full name</label><input id="checkout-name" name="name" type="text" required data-testid="input-checkout-name" /></div><div className="field"><label htmlFor="checkout-address">Address</label><input id="checkout-address" name="address" type="text" required data-testid="input-checkout-address" /></div><div className="field"><label htmlFor="checkout-city">Town or city</label><input id="checkout-city" name="city" type="text" required data-testid="input-checkout-city" /></div><div className="field"><label htmlFor="checkout-postcode">Postcode</label><input id="checkout-postcode" name="postcode" type="text" required data-testid="input-checkout-postcode" /></div><div className="field"><label htmlFor="checkout-delivery">Delivery method</label><select id="checkout-delivery" name="delivery" defaultValue="standard" data-testid="select-checkout-delivery"><option value="standard">Standard · {deliveryCharge}</option><option value="express">Express · £6.95</option></select></div>{paymentError && <p className="checkout-payment-error" role="alert">{paymentError}</p>}<button className="button" type="submit" disabled={isRedirecting || cartLines.length === 0} data-testid="button-place-order">{isRedirecting ? "Opening secure checkout…" : `Pay securely · ${formatPounds(total)}`}</button></form></div></div></Shell>;
 }
 
 function Confirmation() {

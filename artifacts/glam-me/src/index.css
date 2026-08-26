@@ -510,6 +510,14 @@ img { display: block; max-width: 100%; }
 .admin-payment-status span { color: #f2a0ba; font-size: 14px; }
 .admin-payment-next { margin-top: 14px; max-width: 650px; }
 .admin-payment-next p:last-child { color: var(--muted); font-size: 14px; line-height: 1.65; }
+.admin-payment-settings { max-width: 760px; }
+.admin-payment-detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 24px 0; border: 1px solid var(--line); background: var(--line); }
+.admin-payment-detail-grid > div { display: grid; gap: 7px; min-height: 82px; padding: 17px; background: #fffdfb; }
+.admin-payment-detail-grid span { color: var(--muted); font-size: 14px; }
+.admin-payment-detail-grid strong { font-size: 16px; }
+.admin-payment-actions { margin-bottom: 18px; }
+.admin-payment-error { margin: 0 0 16px; color: #b42342 !important; }
+.checkout-payment-error { margin: 0; color: #b42342; font-size: 14px; }
 
 .admin-product-editor { width: 100%; }
 .admin-editor-topbar { display: flex; align-items: center; gap: 18px; margin-bottom: 30px; color: var(--muted); font-size: 14px; letter-spacing: .1em; text-transform: uppercase; }

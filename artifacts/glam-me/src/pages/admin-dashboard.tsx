@@ -26,6 +26,15 @@ type Category = {
 
 type CategoryDraft = Omit<Category, "id">;
 
+type StripeStatus = {
+  connected: boolean;
+  configured?: boolean;
+  mode: "test" | "live" | "unknown";
+  paymentMethods: string[];
+  publishableKeyConfigured?: boolean;
+  error?: string;
+};
+
 type Order = {
   id: string;
   customer: string;
@@ -496,6 +505,8 @@ export default function AdminDashboard({
   const [products, setProducts] = useStoredState<Product[]>(productsStorageKey, getStoredProducts());
   const [categories, setCategories] = useStoredState<Category[]>("glam-me-admin-categories-v2", initialCategories);
   const [orders, setOrders] = useStoredState<Order[]>("glam-me-admin-orders", initialOrders);
+  const [stripeStatus, setStripeStatus] = useState<StripeStatus>({ connected: false, configured: false, mode: "unknown", paymentMethods: [] });
+  const [stripeStatusLoading, setStripeStatusLoading] = useState(true);
   const [editorProductId, setEditorProductId] = useState<number | "new" | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft>(blankCategory);
@@ -637,6 +648,23 @@ export default function AdminDashboard({
     setNotice(`${orderId} is now marked ${status.toLowerCase()}.`);
   }
 
+  async function refreshStripeStatus() {
+    setStripeStatusLoading(true);
+    try {
+      const response = await fetch("/api/stripe/status", { credentials: "include" });
+      const status = await response.json() as StripeStatus;
+      setStripeStatus(status);
+    } catch {
+      setStripeStatus({ connected: false, configured: false, mode: "unknown", paymentMethods: [], error: "Unable to reach Stripe settings." });
+    } finally {
+      setStripeStatusLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refreshStripeStatus();
+  }, []);
+
   const editorProduct = typeof editorProductId === "number" ? products.find((product) => product.id === editorProductId) : undefined;
 
   return (
@@ -673,7 +701,7 @@ export default function AdminDashboard({
             </div>
             <div className="admin-two-column">
               <section className="admin-panel"><div className="admin-panel-header"><div><p className="admin-eyebrow">Fulfilment</p><h2>Recent orders</h2></div><button type="button" onClick={() => setSection("orders")}>View all</button></div><div className="admin-list">{orders.map((order) => <div className="admin-order-row" key={order.id}><div><strong>{order.id}</strong><span>{order.customer} · {order.date}</span></div><div><strong>{order.total}</strong><span className={`order-status ${order.status.toLowerCase()}`}>{order.status}</span></div></div>)}</div></section>
-              <section className="admin-panel admin-pink-panel"><p className="admin-eyebrow">Payments</p><h2>Stripe is not connected</h2><p>Connect Stripe through your secure workspace integration to activate card payments, refunds, and payment reporting.</p><button className="admin-quiet-button" type="button" onClick={() => setSection("payments")}>Open payment settings</button></section>
+              <section className="admin-panel admin-pink-panel"><p className="admin-eyebrow">Payments</p><h2>{stripeStatus.configured ? `Stripe ${stripeStatus.mode === "live" ? "live payments are ready" : "test mode is ready"}` : stripeStatus.connected ? "Stripe keys need setup" : "Stripe needs attention"}</h2><p>{stripeStatus.configured ? "Card payments can now use Stripe-hosted checkout." : stripeStatus.connected ? "Your Stripe connection is attached. Add its secure key configuration to activate card payments." : "Check your secure Stripe workspace connection to activate payments."}</p><button className="admin-quiet-button" type="button" onClick={() => setSection("payments")}>Open payment settings</button></section>
             </div>
           </>
         )}
@@ -770,8 +798,8 @@ export default function AdminDashboard({
         {section === "payments" && (
           <>
             <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Too." />
-            <section className="admin-payment-card"><div><span className="stripe-mark">stripe</span><h2>Connect Stripe to accept payments</h2><p>Stripe has not been authorized for this workspace. For security, payment keys are never entered or stored inside the storefront admin.</p></div><div className="admin-payment-status"><strong>Connection status</strong><span>Not connected</span></div></section>
-            <section className="admin-panel admin-payment-next"><p className="admin-eyebrow">Next step</p><h2>Connect through the workspace integration</h2><p>Once Stripe is authorized, this page will show live payment activity, refunds, customer records, and connected checkout settings.</p></section>
+            <section className="admin-payment-card"><div><span className="stripe-mark">stripe</span><h2>{stripeStatus.configured ? "Stripe checkout is connected" : stripeStatus.connected ? "Add Stripe key configuration" : "Connect Stripe to accept payments"}</h2><p>{stripeStatus.configured ? "Your keys are held by the secure workspace connection. Customers are sent to Stripe’s hosted checkout to pay by card." : stripeStatus.connected ? "Your Stripe connection is attached, but its secure secret key is not configured yet." : "Stripe is not ready yet. Check the secure workspace integration for your publishable and secret key setup."}</p></div><div className="admin-payment-status"><strong>Connection status</strong><span>{stripeStatusLoading ? "Checking…" : stripeStatus.configured ? `${stripeStatus.mode === "live" ? "Live" : "Test"} mode connected` : stripeStatus.connected ? "Key setup needed" : "Not connected"}</span></div></section>
+            <section className="admin-panel admin-payment-next admin-payment-settings"><p className="admin-eyebrow">Stripe details</p><h2>Payment setup</h2><div className="admin-payment-detail-grid"><div><span>Environment</span><strong>{stripeStatus.configured ? `${stripeStatus.mode === "live" ? "Live" : "Test"} mode` : stripeStatus.connected ? "Awaiting secure keys" : "Not configured"}</strong></div><div><span>Publishable key</span><strong>{stripeStatus.publishableKeyConfigured ? "Connected securely" : "Managed by Stripe connection"}</strong></div><div><span>Secret key</span><strong>{stripeStatus.configured ? "Stored server-side" : stripeStatus.connected ? "Add in workspace connection" : "Not configured"}</strong></div><div><span>Payment methods</span><strong>{stripeStatus.paymentMethods.length ? stripeStatus.paymentMethods.join(", ") : "Card payments pending"}</strong></div></div>{stripeStatus.error && <p className="admin-payment-error" role="alert">{stripeStatus.error}</p>}<div className="admin-payment-actions"><button className="admin-primary" type="button" onClick={() => void refreshStripeStatus()} disabled={stripeStatusLoading}>{stripeStatusLoading ? "Checking Stripe…" : "Refresh Stripe details"}</button></div><p>For safety, keys are never copied into this browser or saved in local storage. Update test or live keys in the secure Stripe workspace connection; this page will show the updated status after refresh.</p></section>
           </>
         )}
       </main>
