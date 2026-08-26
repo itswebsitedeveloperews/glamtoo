@@ -56,6 +56,14 @@ type ManagedUser = {
   isBootstrapAdmin: boolean;
 };
 
+type NewUserDraft = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  role: "customer" | "admin";
+};
+
 const navItems: Array<{ id: AdminSection; label: string; hint: string }> = [
   { id: "overview", label: "Overview", hint: "Today" },
   { id: "products", label: "Products", hint: "Catalog" },
@@ -536,6 +544,11 @@ export default function AdminDashboard({
   const [usersError, setUsersError] = useState("");
   const [userSearch, setUserSearch] = useState("");
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [newUserError, setNewUserError] = useState("");
+  const [newUserDraft, setNewUserDraft] = useState<NewUserDraft>({ firstName: "", lastName: "", email: "", password: "", role: "customer" });
   const [editorProductId, setEditorProductId] = useState<number | "new" | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft>(blankCategory);
@@ -774,6 +787,48 @@ export default function AdminDashboard({
     }
   }
 
+  async function createUser(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCreatingUser(true);
+    setNewUserError("");
+    try {
+      const response = await fetch("/api/admin/users", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUserDraft),
+      });
+      const payload = await response.json() as { user?: ManagedUser; error?: string };
+      if (!response.ok || !payload.user) throw new Error(payload.error || "User could not be created.");
+      setManagedUsers((current) => [payload.user as ManagedUser, ...current]);
+      setNewUserDraft({ firstName: "", lastName: "", email: "", password: "", role: "customer" });
+      setCreateUserOpen(false);
+      setNotice(`${payload.user.email} was created as a ${newUserDraft.role}.`);
+    } catch (error) {
+      setNewUserError(error instanceof Error ? error.message : "User could not be created.");
+    } finally {
+      setCreatingUser(false);
+    }
+  }
+
+  async function deleteUser(user: ManagedUser) {
+    if (user.isBootstrapAdmin) return;
+    if (!window.confirm(`Delete ${user.email}? This permanently removes their account and cannot be undone.`)) return;
+    setDeletingUserId(user.id);
+    setUsersError("");
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}`, { method: "DELETE", credentials: "include" });
+      const payload = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(payload.error || "User could not be deleted.");
+      setManagedUsers((current) => current.filter((item) => item.id !== user.id));
+      setNotice(`${user.email} was deleted.`);
+    } catch (error) {
+      setUsersError(error instanceof Error ? error.message : "User could not be deleted.");
+    } finally {
+      setDeletingUserId(null);
+    }
+  }
+
   useEffect(() => {
     void refreshStripeStatus();
   }, []);
@@ -920,8 +975,9 @@ export default function AdminDashboard({
 
         {section === "users" && (
           <>
-            <SectionTitle eyebrow="Private studio" title="Users & access" description="Review all customer accounts and grant admin access manually. Passwords and private account data are never shown here." action={<button className="admin-secondary" type="button" onClick={() => void refreshUsers()} disabled={usersLoading}>{usersLoading ? "Refreshing…" : "Refresh users"}</button>} />
+            <SectionTitle eyebrow="Private studio" title="Users & access" description="Create customer or administrator accounts, review access, and remove accounts when needed. Passwords and private account data are never shown here." action={<div className="admin-section-actions"><button className="admin-secondary" type="button" onClick={() => void refreshUsers()} disabled={usersLoading}>{usersLoading ? "Refreshing…" : "Refresh users"}</button><button className="admin-primary" type="button" onClick={() => { setCreateUserOpen((open) => !open); setNewUserError(""); }}>{createUserOpen ? "Close new user" : "New user"}</button></div>} />
             <section className="admin-panel admin-users-panel">
+              {createUserOpen && <form className="admin-new-user-form" onSubmit={createUser}><div><p className="admin-eyebrow">Account creation</p><h2>Create a new user</h2><p>Set an initial password and choose whether this account is a Customer or Admin.</p></div><div className="admin-new-user-fields"><label>First name<input value={newUserDraft.firstName} onChange={(event) => setNewUserDraft((current) => ({ ...current, firstName: event.target.value }))} placeholder="First name" /></label><label>Last name<input value={newUserDraft.lastName} onChange={(event) => setNewUserDraft((current) => ({ ...current, lastName: event.target.value }))} placeholder="Last name" /></label><label className="admin-new-user-email">Email address<input type="email" required value={newUserDraft.email} onChange={(event) => setNewUserDraft((current) => ({ ...current, email: event.target.value }))} placeholder="name@example.com" /></label><label>Initial password<input type="password" required minLength={8} autoComplete="new-password" value={newUserDraft.password} onChange={(event) => setNewUserDraft((current) => ({ ...current, password: event.target.value }))} placeholder="At least 8 characters" /></label><label>Assign role<select value={newUserDraft.role} onChange={(event) => setNewUserDraft((current) => ({ ...current, role: event.target.value as NewUserDraft["role"] }))}><option value="customer">Customer</option><option value="admin">Admin</option></select></label></div>{newUserError && <p className="admin-payment-error" role="alert">{newUserError}</p>}<div className="admin-new-user-actions"><button className="admin-primary" type="submit" disabled={creatingUser}>{creatingUser ? "Creating…" : "Create user"}</button><button className="admin-secondary" type="button" onClick={() => setCreateUserOpen(false)}>Cancel</button></div></form>}
               <div className="admin-users-toolbar">
                 <label className="admin-user-search">Search accounts<input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Search by name or email" /></label>
                 <span>{managedUsers.length} account{managedUsers.length === 1 ? "" : "s"}</span>
@@ -935,7 +991,7 @@ export default function AdminDashboard({
                       <article className="admin-user-card" key={user.id}>
                         <div className="admin-user-avatar" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</div>
                         <div className="admin-user-details"><strong>{user.name}</strong><span>{user.email}</span><small>Joined {formatUserDate(user.createdAt)} · Last sign-in {formatUserDate(user.lastSignInAt)}</small></div>
-                        <div className="admin-user-actions"><span className="admin-role-badge">{user.isBootstrapAdmin ? "Primary owner" : "Admin"}</span>{user.isBootstrapAdmin ? <small>Protected</small> : <button type="button" className="admin-secondary" disabled={updatingUserId === user.id} onClick={() => void updateUserAccess(user, false)}>{updatingUserId === user.id ? "Updating…" : "Remove admin"}</button>}</div>
+                        <div className="admin-user-actions"><span className="admin-role-badge">{user.isBootstrapAdmin ? "Primary owner" : "Admin"}</span>{user.isBootstrapAdmin ? <small>Protected</small> : <><button type="button" className="admin-secondary" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void updateUserAccess(user, false)}>{updatingUserId === user.id ? "Updating…" : "Remove admin"}</button><button type="button" className="admin-danger-button" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void deleteUser(user)}>{deletingUserId === user.id ? "Deleting…" : "Delete"}</button></>}</div>
                       </article>
                     ))}
                   </section>
@@ -945,7 +1001,7 @@ export default function AdminDashboard({
                       <article className="admin-user-card" key={user.id}>
                         <div className="admin-user-avatar customer" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</div>
                         <div className="admin-user-details"><strong>{user.name}</strong><span>{user.email}</span><small>Joined {formatUserDate(user.createdAt)} · Last sign-in {formatUserDate(user.lastSignInAt)}</small></div>
-                        <div className="admin-user-actions"><span className="admin-role-badge customer">Customer</span><button type="button" className="admin-primary" disabled={updatingUserId === user.id} onClick={() => void updateUserAccess(user, true)}>{updatingUserId === user.id ? "Updating…" : "Make admin"}</button></div>
+                        <div className="admin-user-actions"><span className="admin-role-badge customer">Customer</span><button type="button" className="admin-primary" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void updateUserAccess(user, true)}>{updatingUserId === user.id ? "Updating…" : "Make admin"}</button><button type="button" className="admin-danger-button" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void deleteUser(user)}>{deletingUserId === user.id ? "Deleting…" : "Delete"}</button></div>
                       </article>
                     ))}
                   </section>
