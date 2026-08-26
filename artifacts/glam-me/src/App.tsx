@@ -3,7 +3,7 @@ import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
-import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn } from '@clerk/react';
+import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
@@ -100,6 +100,8 @@ type CustomerOrder = {
     total: number;
   }>;
 };
+
+type AccountSection = "dashboard" | "orders" | "addresses" | "payment-methods" | "account-details";
 
 type StripeCardElement = {
   mount: (target: HTMLElement) => void;
@@ -1035,9 +1037,15 @@ function formatCustomerOrderDate(value: string | null) {
 function CustomerAccountPage() {
   const { isLoaded, isSignedIn } = useAuth();
   const { signOut } = useClerk();
+  const { user } = useUser();
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [accountSection, setAccountSection] = useState<AccountSection>("dashboard");
+  const [details, setDetails] = useState({ firstName: "", lastName: "" });
+  const [detailsSaving, setDetailsSaving] = useState(false);
+  const [detailsNotice, setDetailsNotice] = useState("");
+  const [detailsError, setDetailsError] = useState("");
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) {
@@ -1067,8 +1075,51 @@ function CustomerAccountPage() {
     };
   }, [isLoaded, isSignedIn]);
 
+  useEffect(() => {
+    if (!user) return;
+    setDetails({
+      firstName: user.firstName ?? "",
+      lastName: user.lastName ?? "",
+    });
+  }, [user]);
+
+  async function saveAccountDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!user) return;
+    setDetailsSaving(true);
+    setDetailsNotice("");
+    setDetailsError("");
+    try {
+      await user.update({
+        firstName: details.firstName.trim(),
+        lastName: details.lastName.trim(),
+      });
+      setDetailsNotice("Your account details have been saved.");
+    } catch (caught) {
+      setDetailsError(caught instanceof Error ? caught.message : "Your account details could not be saved.");
+    } finally {
+      setDetailsSaving(false);
+    }
+  }
+
   if (!isLoaded) return <Shell><div className="customer-auth-page"><p>Loading your account…</p></div></Shell>;
   if (!isSignedIn) return <CustomerSignInContent />;
+
+  const accountName = user?.firstName || user?.username || "there";
+  const accountSections: Array<{ id: AccountSection; label: string }> = [
+    { id: "dashboard", label: "Dashboard" },
+    { id: "orders", label: "Orders" },
+    { id: "addresses", label: "Addresses" },
+    { id: "payment-methods", label: "Payment methods" },
+    { id: "account-details", label: "Account details" },
+  ];
+  const sectionCopy: Record<AccountSection, { title: string; description: string }> = {
+    dashboard: { title: "Your account.", description: "Manage your orders, details, and delivery preferences in one place." },
+    orders: { title: "Your orders.", description: "Everything you’ve bought from us, in one lovely place." },
+    addresses: { title: "Your addresses.", description: "Keep your delivery details close for a smoother checkout." },
+    "payment-methods": { title: "Payment methods.", description: "Your payments stay protected by Stripe from checkout to confirmation." },
+    "account-details": { title: "Account details.", description: "Keep your personal details up to date." },
+  };
 
   return (
     <Shell>
@@ -1076,65 +1127,137 @@ function CustomerAccountPage() {
         <div className="account-heading">
           <div>
             <div className="eyebrow">Your Glam Too account</div>
-            <h1>Your orders.</h1>
-            <p>Everything you&apos;ve bought from us, in one lovely place.</p>
+            <h1>{sectionCopy[accountSection].title}</h1>
+            <p>{sectionCopy[accountSection].description}</p>
           </div>
-          <button className="account-signout" type="button" onClick={() => void signOut({ redirectUrl: basePath || "/" })}>Sign out</button>
         </div>
 
-        {error && <div className="account-message account-error" role="alert">{error}</div>}
-        {loading ? (
-          <div className="account-message">Loading your orders…</div>
-        ) : orders.length === 0 ? (
-          <section className="account-empty">
-            <div className="eyebrow">Nothing here yet</div>
-            <h2>Your next favourite is out there.</h2>
-            <p>Once you place an order while signed in, it will appear here with its delivery details.</p>
-            <a className="button button-pink" href="/shop">Start shopping</a>
-          </section>
-        ) : (
-          <div className="account-orders">
-            {orders.map((order) => {
-              const addressParts = [
-                order.delivery.address.line1,
-                order.delivery.address.line2,
-                order.delivery.address.city,
-                order.delivery.address.postcode,
-              ].filter(Boolean);
-              return (
-                <article className="account-order-card" key={order.id}>
-                  <header className="account-order-header">
-                    <div>
-                      <div className="eyebrow">Order {order.id}</div>
-                      <p>Placed {formatCustomerOrderDate(order.placedAt)}</p>
-                    </div>
-                    <div className="account-order-total">
-                      <strong>{formatPounds(order.total / 100)}</strong>
-                      <span className={`account-order-status ${order.status.toLowerCase().replace(/\s+/g, "-")}`}>{order.status}</span>
-                    </div>
-                  </header>
-                  <div className="account-order-body">
-                    <section className="account-order-items" aria-label={`Items in order ${order.id}`}>
-                      <h2>Items</h2>
-                      {order.items.length > 0 ? order.items.map((item, index) => (
-                        <div className="account-order-item" key={`${item.productId ?? item.name}-${index}`}>
-                          <div><strong>{item.name}</strong><span>Quantity {item.quantity}</span></div>
-                          <strong>{formatPounds(item.total / 100)}</strong>
-                        </div>
-                      )) : <p className="account-muted">Item details are being prepared.</p>}
-                    </section>
-                    <section className="account-delivery">
-                      <h2>Delivery details</h2>
-                      <p><strong>{order.delivery.method}</strong></p>
-                      {order.delivery.name && <p>{order.delivery.name}</p>}
-                      {addressParts.length > 0 && <p>{addressParts.map((part, index) => <span key={`${part}-${index}`}>{part}{index < addressParts.length - 1 && <br />}</span>)}</p>}
-                    </section>
+        <div className="account-layout">
+          <nav className="account-nav" aria-label="Account navigation">
+            <div className="account-nav-links">
+              {accountSections.map((section) => (
+                <button
+                  className={accountSection === section.id ? "is-active" : ""}
+                  type="button"
+                  key={section.id}
+                  onClick={() => setAccountSection(section.id)}
+                  aria-current={accountSection === section.id ? "page" : undefined}
+                >
+                  {section.label}
+                </button>
+              ))}
+            </div>
+            <button className="account-nav-logout" type="button" onClick={() => void signOut({ redirectUrl: basePath || "/" })}>Log out</button>
+          </nav>
+
+          <div className="account-content">
+            {accountSection === "dashboard" && (
+              <section className="account-panel account-dashboard">
+                <div className="eyebrow">Hello, {accountName}</div>
+                <h2>Welcome back.</h2>
+                <p>From your account dashboard you can view your recent orders, manage your addresses, and edit your account details.</p>
+                <div className="account-shortcuts">
+                  <button type="button" onClick={() => setAccountSection("orders")}><span>Orders</span><strong>{orders.length}</strong><small>View your purchases</small></button>
+                  <button type="button" onClick={() => setAccountSection("addresses")}><span>Addresses</span><strong>→</strong><small>Manage delivery details</small></button>
+                  <button type="button" onClick={() => setAccountSection("account-details")}><span>Account details</span><strong>→</strong><small>Update your information</small></button>
+                </div>
+              </section>
+            )}
+
+            {accountSection === "orders" && (
+              <>
+                {error && <div className="account-message account-error" role="alert">{error}</div>}
+                {loading ? (
+                  <div className="account-message">Loading your orders…</div>
+                ) : orders.length === 0 ? (
+                  <section className="account-empty">
+                    <div className="eyebrow">Nothing here yet</div>
+                    <h2>Your next favourite is out there.</h2>
+                    <p>Once you place an order while signed in, it will appear here with its delivery details.</p>
+                    <a className="button button-pink" href="/shop">Start shopping</a>
+                  </section>
+                ) : (
+                  <div className="account-orders">
+                    {orders.map((order) => {
+                      const addressParts = [
+                        order.delivery.address.line1,
+                        order.delivery.address.line2,
+                        order.delivery.address.city,
+                        order.delivery.address.postcode,
+                      ].filter(Boolean);
+                      return (
+                        <article className="account-order-card" key={order.id}>
+                          <header className="account-order-header">
+                            <div>
+                              <div className="eyebrow">Order {order.id}</div>
+                              <p>Placed {formatCustomerOrderDate(order.placedAt)}</p>
+                            </div>
+                            <div className="account-order-total">
+                              <strong>{formatPounds(order.total / 100)}</strong>
+                              <span className={`account-order-status ${order.status.toLowerCase().replace(/\s+/g, "-")}`}>{order.status}</span>
+                            </div>
+                          </header>
+                          <div className="account-order-body">
+                            <section className="account-order-items" aria-label={`Items in order ${order.id}`}>
+                              <h2>Items</h2>
+                              {order.items.length > 0 ? order.items.map((item, index) => (
+                                <div className="account-order-item" key={`${item.productId ?? item.name}-${index}`}>
+                                  <div><strong>{item.name}</strong><span>Quantity {item.quantity}</span></div>
+                                  <strong>{formatPounds(item.total / 100)}</strong>
+                                </div>
+                              )) : <p className="account-muted">Item details are being prepared.</p>}
+                            </section>
+                            <section className="account-delivery">
+                              <h2>Delivery details</h2>
+                              <p><strong>{order.delivery.method}</strong></p>
+                              {order.delivery.name && <p>{order.delivery.name}</p>}
+                              {addressParts.length > 0 && <p>{addressParts.map((part, index) => <span key={`${part}-${index}`}>{part}{index < addressParts.length - 1 && <br />}</span>)}</p>}
+                            </section>
+                          </div>
+                        </article>
+                      );
+                    })}
                   </div>
-                </article>
-              );
-            })}
+                )}
+              </>
+            )}
+
+            {accountSection === "addresses" && (
+              <section className="account-panel">
+                <div className="eyebrow">Delivery book</div>
+                <h2>Addresses.</h2>
+                <p>There are no saved addresses yet. Your delivery address is collected securely during checkout for each order.</p>
+                <a className="button button-pink" href="/shop">Shop to add an address</a>
+              </section>
+            )}
+
+            {accountSection === "payment-methods" && (
+              <section className="account-panel">
+                <div className="eyebrow">Protected by Stripe</div>
+                <h2>Payment methods.</h2>
+                <p>You don&apos;t have any saved payment methods. When you check out, Stripe securely handles your card details without sharing them with Glam Too.</p>
+                <a className="button button-pink" href="/shop">Shop securely</a>
+              </section>
+            )}
+
+            {accountSection === "account-details" && (
+              <section className="account-panel">
+                <div className="eyebrow">Your information</div>
+                <h2>Account details.</h2>
+                <form className="account-details-form" onSubmit={(event) => void saveAccountDetails(event)}>
+                  <div className="account-details-fields">
+                    <div className="field"><label htmlFor="account-first-name">First name</label><input id="account-first-name" type="text" value={details.firstName} onChange={(event) => setDetails((current) => ({ ...current, firstName: event.target.value }))} /></div>
+                    <div className="field"><label htmlFor="account-last-name">Last name</label><input id="account-last-name" type="text" value={details.lastName} onChange={(event) => setDetails((current) => ({ ...current, lastName: event.target.value }))} /></div>
+                    <div className="field account-field-wide"><label htmlFor="account-email">Email address</label><input id="account-email" type="email" value={user?.primaryEmailAddress?.emailAddress ?? ""} readOnly /></div>
+                  </div>
+                  {detailsError && <p className="account-form-error" role="alert">{detailsError}</p>}
+                  {detailsNotice && <p className="account-form-success" role="status">{detailsNotice}</p>}
+                  <button className="button button-pink" type="submit" disabled={detailsSaving}>{detailsSaving ? "Saving details…" : "Save changes"}</button>
+                </form>
+              </section>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </Shell>
   );
