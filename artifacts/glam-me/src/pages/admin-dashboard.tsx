@@ -194,6 +194,14 @@ function isOrderOnDate(value: string | null, dayOffset: number) {
     && date.getDate() === target.getDate();
 }
 
+function isOrderWithinLastDays(value: string | null, days: number) {
+  if (!value) return false;
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return false;
+  const now = Date.now();
+  return timestamp <= now && timestamp >= now - days * 24 * 60 * 60 * 1000;
+}
+
 function toAdminOrder(order: OrderPayload): Order {
   return {
     id: order.id,
@@ -780,6 +788,13 @@ export default function AdminDashboard({
   const salesChangeLabel = salesChange === null
     ? "No sales recorded yesterday"
     : `${salesChange >= 0 ? "+" : ""}${salesChange.toFixed(1)}% from yesterday`;
+  const recentOrders = orders.filter((order) => isOrderWithinLastDays(order.placedAt, 30));
+  const averageOrderValue = recentOrders.length > 0
+    ? recentOrders.reduce((total, order) => total + order.amount, 0) / recentOrders.length / 100
+    : 0;
+  const averageOrderLabel = recentOrders.length > 0
+    ? `Last 30 days · ${recentOrders.length} order${recentOrders.length === 1 ? "" : "s"}`
+    : "No orders in the last 30 days";
   const selectedOrder = selectedOrderId ? orders.find((order) => order.id === selectedOrderId) ?? null : null;
 
   function openNewProduct() {
@@ -1113,7 +1128,7 @@ export default function AdminDashboard({
               <article><p>Sales today</p><strong>{formatPounds(salesToday)}</strong><span>{salesChangeLabel}</span></article>
               <article><p>Open orders</p><strong>{orders.filter((order) => order.status !== "Delivered").length}</strong><span>Ready for fulfilment</span></article>
               <article><p>Products in stock</p><strong>{inventoryTotal}</strong><span>Across {products.length} styles</span></article>
-              <article><p>Average order</p><strong>£74.25</strong><span>Last 30 days</span></article>
+              <article><p>Average order</p><strong>{formatPounds(averageOrderValue)}</strong><span>{averageOrderLabel}</span></article>
             </div>
             <div className="admin-two-column">
               <section className="admin-panel"><div className="admin-panel-header"><div><p className="admin-eyebrow">Fulfilment</p><h2>Recent orders</h2></div><button type="button" onClick={() => setSection("orders")}>View all</button></div><div className="admin-list">{orders.map((order) => <div className="admin-order-row" key={order.id}><div><strong>{order.id}</strong><span>{order.customer} · {order.date}</span></div><div><strong>{order.total}</strong><span className={`order-status ${order.status.toLowerCase()}`}>{order.status}</span></div></div>)}</div></section>
