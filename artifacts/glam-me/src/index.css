@@ -559,7 +559,7 @@ img { display: block; max-width: 100%; }
 .account-order-detail-item > div { display: grid; gap: 5px; }
 .account-order-detail-item strong { font-size: 16px; }
 .account-order-detail-item span { color: var(--muted); font-size: 14px; }
-.account-order-detail-totals { display: grid; max-width: 300px; margin: 6px 0 0 auto; border-top: 1px solid var(--line); }
+.account-order-detail-totals { display: grid; max-width: 300px; margin: 6px 0 0 auto; }
 .account-order-detail-totals > div { display: flex; justify-content: space-between; gap: 18px; padding: 11px 0; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 14px; }
 .account-order-detail-totals strong { color: var(--ink); font-size: 16px; }
 .account-order-detail-totals .account-order-detail-total { color: var(--ink); font-weight: 700; }
