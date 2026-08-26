@@ -1123,7 +1123,7 @@ export default function AdminDashboard({
 
         {section === "overview" && (
           <>
-            <SectionTitle eyebrow="Glam Too administration" title="Good Morning" description="Your storefront is looking beautiful. Here’s what needs your attention today." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add a product</button>} />
+            <SectionTitle eyebrow="Glam Too administration" title="Overview" description="Your storefront is looking beautiful. Here’s what needs your attention today." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add a product</button>} />
             <div className="admin-stat-grid">
               <article><p>Sales today</p><strong>{formatPounds(salesToday)}</strong><span>{salesChangeLabel}</span></article>
               <article><p>Open orders</p><strong>{orders.filter((order) => order.status !== "Delivered").length}</strong><span>Ready for fulfilment</span></article>
