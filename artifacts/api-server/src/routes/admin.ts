@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
+import { customerProfilesTable, db } from "@workspace/db";
 import { getAdminAccess, requireAdmin } from "../adminAuth";
 
 const router: IRouter = Router();
@@ -40,13 +41,13 @@ function serializeUser(user: {
   createdAt: number;
   lastSignInAt: number | null;
   privateMetadata?: Record<string, unknown>;
-}) {
+}, profile?: { firstName: string; lastName: string }) {
   const primaryEmail = user.emailAddresses.find((email) => email.id === user.primaryEmailAddressId)?.emailAddress
     ?? user.emailAddresses[0]?.emailAddress
     ?? "";
   return {
     id: user.id,
-    name: [user.firstName, user.lastName].filter(Boolean).join(" ") || "Unnamed customer",
+    name: [profile?.firstName || user.firstName, profile?.lastName || user.lastName].filter(Boolean).join(" ") || "Unnamed customer",
     email: primaryEmail,
     createdAt: user.createdAt,
     lastSignInAt: user.lastSignInAt,
@@ -80,7 +81,15 @@ router.get("/admin/users", requireAdmin, async (request, response) => {
       if (users.length >= page.totalCount || page.data.length === 0) break;
       offset += page.data.length;
     }
-    return response.set("Cache-Control", "no-store").json({ users: users.map(serializeUser) });
+    const profiles = await db.select({
+      userId: customerProfilesTable.userId,
+      firstName: customerProfilesTable.firstName,
+      lastName: customerProfilesTable.lastName,
+    }).from(customerProfilesTable);
+    const profileByUserId = new Map(profiles.map((profile) => [profile.userId, profile]));
+    return response.set("Cache-Control", "no-store").json({
+      users: users.map((user) => serializeUser(user, profileByUserId.get(user.id))),
+    });
   } catch (error) {
     request.log?.error({ error }, "Admin user list failed");
     return response.status(503).json({ error: "User accounts could not be loaded right now." });

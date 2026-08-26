@@ -1390,7 +1390,13 @@ function CustomerAccountPage() {
       .then(async (response) => {
         const result = await response.json() as { profile?: CustomerProfile; error?: string };
         if (!response.ok || !result.profile) throw new Error(result.error || "Your saved details could not be loaded.");
-        if (!cancelled) setProfile(result.profile);
+        if (!cancelled) {
+          setProfile(result.profile);
+          setDetails({
+            firstName: result.profile.firstName,
+            lastName: result.profile.lastName,
+          });
+        }
       })
       .catch((caught) => {
         if (!cancelled) setAddressError(caught instanceof Error ? caught.message : "Your saved details could not be loaded.");
