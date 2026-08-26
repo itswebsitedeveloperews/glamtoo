@@ -6,7 +6,7 @@ import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPri
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
-import { CreditCard, LayoutDashboard, LogOut, MapPin, ShoppingBag, UserRound, type LucideIcon } from 'lucide-react';
+import { CreditCard, LayoutDashboard, LogOut, MapPin, ShoppingBag, UserRound, X, type LucideIcon } from 'lucide-react';
 import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin-dashboard';
@@ -1713,6 +1713,7 @@ function CustomerAccountPage() {
           }}
         >
           <div className="account-logout-dialog" role="dialog" aria-modal="true" aria-labelledby="logout-dialog-title" aria-describedby="logout-dialog-description">
+            <button className="account-logout-close" type="button" onClick={() => setLogoutConfirmOpen(false)} aria-label="Close logout confirmation"><X aria-hidden="true" /></button>
             <div className="eyebrow">Sign out</div>
             <h2 id="logout-dialog-title">Log out of your account?</h2>
             <p id="logout-dialog-description">You&apos;ll need to sign in again to view your orders and account details.</p>
