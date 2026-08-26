@@ -1140,6 +1140,84 @@ function formatCustomerOrderDate(value: string | null) {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date(value));
 }
 
+function CustomerOrderDetailPage({ order, onBack }: { order: CustomerOrder; onBack: () => void }) {
+  const itemSubtotal = order.items.reduce((total, item) => total + item.total, 0);
+  const deliveryAmount = Math.max(order.total - itemSubtotal, 0);
+  const itemCount = order.items.reduce((total, item) => total + item.quantity, 0);
+  const addressParts = [
+    order.delivery.address.line1,
+    order.delivery.address.line2,
+    order.delivery.address.city,
+    order.delivery.address.postcode,
+    order.delivery.address.country,
+  ].filter(Boolean);
+
+  return (
+    <div className="account-order-page">
+      <div className="account-order-page-topbar">
+        <button className="account-order-back" type="button" onClick={onBack}>← Back to orders</button>
+        <span>Order {order.id}</span>
+      </div>
+      <div className="account-order-page-heading">
+        <div>
+          <div className="eyebrow">Order details</div>
+          <h2>{order.id}</h2>
+          <p>Placed {formatCustomerOrderDate(order.placedAt)}</p>
+        </div>
+        <div className="account-order-page-total">
+          <strong>{formatPounds(order.total / 100)}</strong>
+          <span className={`account-order-status ${order.status.toLowerCase().replace(/\s+/g, "-")}`}>{order.status}</span>
+        </div>
+      </div>
+
+      <div className="account-order-page-layout">
+        <section className="account-order-detail-card">
+          <div className="account-order-detail-heading">
+            <div><div className="eyebrow">Your purchase</div><h3>Items</h3></div>
+            <span>{itemCount} item{itemCount === 1 ? "" : "s"}</span>
+          </div>
+          {order.items.length > 0 ? (
+            <div className="account-order-detail-items">
+              {order.items.map((item, index) => (
+                <div className="account-order-detail-item" key={`${item.productId ?? item.name}-${index}`}>
+                  <div><strong>{item.name}</strong><span>Quantity {item.quantity}</span></div>
+                  <strong>{formatPounds(item.total / 100)}</strong>
+                </div>
+              ))}
+            </div>
+          ) : <p className="account-muted">Item details are being prepared.</p>}
+          <div className="account-order-detail-totals">
+            <div><span>Items subtotal</span><strong>{formatPounds(itemSubtotal / 100)}</strong></div>
+            {deliveryAmount > 0 && <div><span>{order.delivery.method}</span><strong>{formatPounds(deliveryAmount / 100)}</strong></div>}
+            <div className="account-order-detail-total"><span>Order total</span><strong>{formatPounds(order.total / 100)}</strong></div>
+          </div>
+        </section>
+
+        <aside className="account-order-page-sidebar">
+          <section className="account-order-detail-card">
+            <div className="account-order-detail-heading"><div><div className="eyebrow">Delivery</div><h3>Delivery details</h3></div></div>
+            <dl className="account-order-detail-list">
+              <div><dt>Method</dt><dd>{order.delivery.method}</dd></div>
+              <div><dt>Recipient</dt><dd>{order.delivery.name || "Recipient unavailable"}</dd></div>
+            </dl>
+            <address className="account-order-detail-address">
+              {addressParts.length > 0 ? addressParts.map((part, index) => <span key={`${part}-${index}`}>{part}</span>) : <span>Address unavailable</span>}
+            </address>
+          </section>
+          <section className="account-order-detail-card">
+            <div className="account-order-detail-heading"><div><div className="eyebrow">Payment</div><h3>Payment details</h3></div></div>
+            <dl className="account-order-detail-list">
+              <div><dt>Payment status</dt><dd>Paid</dd></div>
+              <div><dt>Payment method</dt><dd>Card via Stripe</dd></div>
+              <div><dt>Email receipt</dt><dd>{order.email || "Email unavailable"}</dd></div>
+            </dl>
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 function PaymentMethodsPanel({ profile }: { profile: CustomerProfile }) {
   const [paymentMethods, setPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [publishableKey, setPublishableKey] = useState("");
@@ -1324,6 +1402,7 @@ function CustomerAccountPage() {
   const { signOut } = useClerk();
   const { user } = useUser();
   const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accountSection, setAccountSection] = useState<AccountSection>("dashboard");
@@ -1464,6 +1543,7 @@ function CustomerAccountPage() {
   if (!isSignedIn) return <CustomerSignInContent />;
 
   const accountName = profile.firstName || user?.firstName || user?.username || "there";
+  const selectedOrder = selectedOrderId ? orders.find((order) => order.id === selectedOrderId) ?? null : null;
   const accountSections: Array<{ id: AccountSection; label: string }> = [
     { id: "dashboard", label: "Dashboard" },
     { id: "orders", label: "Orders" },
@@ -1498,7 +1578,7 @@ function CustomerAccountPage() {
                   className={accountSection === section.id ? "is-active" : ""}
                   type="button"
                   key={section.id}
-                  onClick={() => setAccountSection(section.id)}
+                  onClick={() => { setAccountSection(section.id); setSelectedOrderId(null); }}
                   aria-current={accountSection === section.id ? "page" : undefined}
                 >
                   {section.label}
@@ -1524,58 +1604,38 @@ function CustomerAccountPage() {
 
             {accountSection === "orders" && (
               <>
-                {error && <div className="account-message account-error" role="alert">{error}</div>}
-                {loading ? (
-                  <div className="account-message">Loading your orders…</div>
-                ) : orders.length === 0 ? (
-                  <section className="account-empty">
-                    <div className="eyebrow">Nothing here yet</div>
-                    <h2>Your next favourite is out there.</h2>
-                    <p>Once you place an order while signed in, it will appear here with its delivery details.</p>
-                    <a className="button button-pink" href="/shop">Start shopping</a>
-                  </section>
-                ) : (
-                  <div className="account-orders">
-                    {orders.map((order) => {
-                      const addressParts = [
-                        order.delivery.address.line1,
-                        order.delivery.address.line2,
-                        order.delivery.address.city,
-                        order.delivery.address.postcode,
-                      ].filter(Boolean);
-                      return (
-                        <article className="account-order-card" key={order.id}>
-                          <header className="account-order-header">
-                            <div>
-                              <div className="eyebrow">Order {order.id}</div>
-                              <p>Placed {formatCustomerOrderDate(order.placedAt)}</p>
-                            </div>
-                            <div className="account-order-total">
-                              <strong>{formatPounds(order.total / 100)}</strong>
+                {selectedOrder ? <CustomerOrderDetailPage order={selectedOrder} onBack={() => setSelectedOrderId(null)} /> : (
+                  <>
+                    {error && <div className="account-message account-error" role="alert">{error}</div>}
+                    {loading ? (
+                      <div className="account-message">Loading your orders…</div>
+                    ) : orders.length === 0 ? (
+                      <section className="account-empty">
+                        <div className="eyebrow">Nothing here yet</div>
+                        <h2>Your next favourite is out there.</h2>
+                        <p>Once you place an order while signed in, it will appear here with its delivery details.</p>
+                        <a className="button button-pink" href="/shop">Start shopping</a>
+                      </section>
+                    ) : (
+                      <div className="account-orders-table" role="table" aria-label="Your orders">
+                        <div className="account-orders-table-head" role="row">
+                          <span>Order</span><span>Date</span><span>Status</span><span>Total</span><span>Actions</span>
+                        </div>
+                        {orders.map((order) => {
+                          const itemCount = order.items.reduce((total, item) => total + item.quantity, 0);
+                          return (
+                            <div className="account-orders-table-row" role="row" key={order.id}>
+                              <button className="account-order-number" type="button" onClick={() => setSelectedOrderId(order.id)}>{order.id}</button>
+                              <span>{formatCustomerOrderDate(order.placedAt)}</span>
                               <span className={`account-order-status ${order.status.toLowerCase().replace(/\s+/g, "-")}`}>{order.status}</span>
+                              <span className="account-order-total-cell"><strong>{formatPounds(order.total / 100)}</strong><small>{itemCount} item{itemCount === 1 ? "" : "s"}</small></span>
+                              <button className="account-order-view-button" type="button" onClick={() => setSelectedOrderId(order.id)}>View</button>
                             </div>
-                          </header>
-                          <div className="account-order-body">
-                            <section className="account-order-items" aria-label={`Items in order ${order.id}`}>
-                              <h2>Items</h2>
-                              {order.items.length > 0 ? order.items.map((item, index) => (
-                                <div className="account-order-item" key={`${item.productId ?? item.name}-${index}`}>
-                                  <div><strong>{item.name}</strong><span>Quantity {item.quantity}</span></div>
-                                  <strong>{formatPounds(item.total / 100)}</strong>
-                                </div>
-                              )) : <p className="account-muted">Item details are being prepared.</p>}
-                            </section>
-                            <section className="account-delivery">
-                              <h2>Delivery details</h2>
-                              <p><strong>{order.delivery.method}</strong></p>
-                              {order.delivery.name && <p>{order.delivery.name}</p>}
-                              {addressParts.length > 0 && <p>{addressParts.map((part, index) => <span key={`${part}-${index}`}>{part}{index < addressParts.length - 1 && <br />}</span>)}</p>}
-                            </section>
-                          </div>
-                        </article>
-                      );
-                    })}
-                  </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </>
                 )}
               </>
             )}
