@@ -107,6 +107,39 @@ function credentialMode(value: string, prefix: "sk" | "pk") {
   return match?.[1] as "test" | "live" | undefined;
 }
 
+async function findStripeCustomer(stripe: Stripe, userId: string) {
+  const customers = await stripe.customers.search({
+    query: `metadata['clerk_user_id']:'${userId}'`,
+    limit: 1,
+  });
+  return customers.data[0] ?? null;
+}
+
+async function getOrCreateStripeCustomer(stripe: Stripe, userId: string, email: string, name: string) {
+  const existing = await findStripeCustomer(stripe, userId);
+  if (existing) {
+    if (existing.email !== email || existing.name !== name) {
+      return stripe.customers.update(existing.id, { email, name });
+    }
+    return existing;
+  }
+  return stripe.customers.create({
+    email,
+    name,
+    metadata: { clerk_user_id: userId, store: "Glam Too" },
+  });
+}
+
+function serializePaymentMethod(paymentMethod: Stripe.PaymentMethod) {
+  return {
+    id: paymentMethod.id,
+    brand: paymentMethod.card?.brand || "card",
+    last4: paymentMethod.card?.last4 || "",
+    expMonth: paymentMethod.card?.exp_month || 0,
+    expYear: paymentMethod.card?.exp_year || 0,
+  };
+}
+
 router.get("/stripe/status", requireAdmin, async (_request, response) => {
   try {
     const { connection, source } = await getStripeConnectionInfoWithSource();
@@ -149,6 +182,69 @@ router.get("/stripe/payment-config", async (_request, response) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Stripe card payments are not available right now.";
     return response.status(503).json({ error: message });
+  }
+});
+
+router.get("/stripe/payment-methods", async (request, response) => {
+  const { userId } = getAuth(request);
+  if (!userId) return response.status(401).json({ error: "Sign in to view your saved payment methods." });
+
+  try {
+    const stripe = await getUncachableStripeClient();
+    const customer = await findStripeCustomer(stripe, userId);
+    if (!customer) return response.set("Cache-Control", "no-store").json({ paymentMethods: [] });
+    const paymentMethods = await stripe.paymentMethods.list({ customer: customer.id, type: "card" });
+    return response.set("Cache-Control", "no-store").json({
+      paymentMethods: paymentMethods.data.map(serializePaymentMethod),
+    });
+  } catch (error) {
+    request.log?.error({ error }, "Saved payment methods could not be loaded");
+    return response.status(503).json({ error: "Your saved payment methods could not be loaded right now." });
+  }
+});
+
+router.post("/stripe/payment-method-setup", async (request, response) => {
+  const { userId } = getAuth(request);
+  if (!userId) return response.status(401).json({ error: "Sign in to save a payment method." });
+
+  const email = safeText(request.body?.email, 250);
+  const name = safeText(request.body?.name, 120);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !name) {
+    return response.status(400).json({ error: "Enter your name and a valid email address before saving a card." });
+  }
+
+  try {
+    const stripe = await getUncachableStripeClient();
+    const customer = await getOrCreateStripeCustomer(stripe, userId, email, name);
+    const setupIntent = await stripe.setupIntents.create({
+      customer: customer.id,
+      payment_method_types: ["card"],
+      usage: "off_session",
+    });
+    if (!setupIntent.client_secret) throw new Error("Stripe did not return a setup secret.");
+    return response.json({ clientSecret: setupIntent.client_secret });
+  } catch (error) {
+    request.log?.error({ error }, "Payment method setup could not be started");
+    return response.status(503).json({ error: "A saved card could not be set up right now." });
+  }
+});
+
+router.delete("/stripe/payment-methods/:paymentMethodId", async (request, response) => {
+  const { userId } = getAuth(request);
+  if (!userId) return response.status(401).json({ error: "Sign in to remove a payment method." });
+  const paymentMethodId = safeText(request.params.paymentMethodId, 120);
+  if (!/^pm_[A-Za-z0-9_]+$/.test(paymentMethodId)) return response.status(400).json({ error: "Choose a valid payment method." });
+
+  try {
+    const stripe = await getUncachableStripeClient();
+    const customer = await findStripeCustomer(stripe, userId);
+    const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+    if (!customer || paymentMethod.customer !== customer.id) return response.status(404).json({ error: "That payment method was not found." });
+    await stripe.paymentMethods.detach(paymentMethodId);
+    return response.status(204).send();
+  } catch (error) {
+    request.log?.error({ error }, "Payment method could not be removed");
+    return response.status(503).json({ error: "That payment method could not be removed right now." });
   }
 });
 
@@ -229,6 +325,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
     const email = safeText(request.body?.email, 250);
     const customerName = safeText(request.body?.customerName, 120);
     const phone = safeText(request.body?.phone, 40);
+    const paymentMethodId = safeText(request.body?.paymentMethodId, 120);
     const address = asRecord(request.body?.address);
     const addressLine1 = safeText(address.line1, 200);
     const addressLine2 = safeText(address.line2, 200);
@@ -244,6 +341,9 @@ router.post("/stripe/payment-intent", async (request, response) => {
     }
     if (!customerName || !addressLine1 || !city || !postcode || country !== "GB") {
       return response.status(400).json({ error: "Complete your billing and UK delivery address before paying." });
+    }
+    if (paymentMethodId && !/^pm_[A-Za-z0-9_]+$/.test(paymentMethodId)) {
+      return response.status(400).json({ error: "Choose a valid saved payment method." });
     }
 
     const lines = checkoutLines as CheckoutLine[];
@@ -262,10 +362,20 @@ router.post("/stripe/payment-intent", async (request, response) => {
     }
 
     const stripe = await getUncachableStripeClient();
+    const customer = await getOrCreateStripeCustomer(stripe, userId, email, customerName);
+    if (paymentMethodId) {
+      const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
+      if (paymentMethod.customer !== customer.id) {
+        return response.status(403).json({ error: "That saved payment method does not belong to your account." });
+      }
+    }
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency: "gbp",
       payment_method_types: ["card"],
+      customer: customer.id,
+      payment_method: paymentMethodId || undefined,
+      setup_future_usage: "off_session",
       receipt_email: email,
       description: `Glam Too order for ${customerName}`,
       shipping: {

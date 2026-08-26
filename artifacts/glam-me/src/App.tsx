@@ -103,6 +103,38 @@ type CustomerOrder = {
 
 type AccountSection = "dashboard" | "orders" | "addresses" | "payment-methods" | "account-details";
 
+type CustomerProfile = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  postcode: string;
+  country: string;
+};
+
+type SavedPaymentMethod = {
+  id: string;
+  brand: string;
+  last4: string;
+  expMonth: number;
+  expYear: number;
+};
+
+const emptyCustomerProfile: CustomerProfile = {
+  firstName: "",
+  lastName: "",
+  email: "",
+  phone: "",
+  addressLine1: "",
+  addressLine2: "",
+  city: "",
+  postcode: "",
+  country: "GB",
+};
+
 type StripeCardElement = {
   mount: (target: HTMLElement) => void;
   destroy: () => void;
@@ -114,7 +146,7 @@ type StripeJs = {
   confirmCardPayment: (
     clientSecret: string,
     data: {
-      payment_method: {
+      payment_method: string | {
         card: StripeCardElement;
         billing_details: {
           name: string;
@@ -126,6 +158,20 @@ type StripeJs = {
       return_url: string;
     },
   ) => Promise<{ error?: { message?: string }; paymentIntent?: { id: string; status: string } }>;
+  confirmCardSetup: (
+    clientSecret: string,
+    data: {
+      payment_method: {
+        card: StripeCardElement;
+        billing_details: {
+          name: string;
+          email: string;
+          phone?: string;
+          address?: { line1?: string; line2?: string; city?: string; postal_code?: string; country?: string };
+        };
+      };
+    },
+  ) => Promise<{ error?: { message?: string }; setupIntent?: { id: string; status: string } }>;
 };
 
 declare global {
@@ -809,6 +855,9 @@ function Checkout() {
   const [delivery, setDelivery] = useState<"standard" | "express">("standard");
   const [publishableKey, setPublishableKey] = useState("");
   const [paymentSetupError, setPaymentSetupError] = useState("");
+  const [checkoutProfile, setCheckoutProfile] = useState<CustomerProfile>(emptyCustomerProfile);
+  const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("");
   const cardMountRef = useRef<HTMLDivElement | null>(null);
   const stripePaymentRef = useRef<{ stripe: StripeJs; card: StripeCardElement } | null>(null);
   const products = getStorefrontProducts();
@@ -847,7 +896,34 @@ function Checkout() {
   }, []);
 
   useEffect(() => {
-    if (!publishableKey || !cardMountRef.current) return;
+    if (!isLoaded || !isSignedIn) return;
+    let cancelled = false;
+    Promise.all([
+      fetch("/api/account/profile", { credentials: "include" }).then(async (response) => {
+        const result = await response.json() as { profile?: CustomerProfile };
+        return response.ok ? result.profile : undefined;
+      }),
+      fetch("/api/stripe/payment-methods", { credentials: "include" }).then(async (response) => {
+        const result = await response.json() as { paymentMethods?: SavedPaymentMethod[] };
+        return response.ok && Array.isArray(result.paymentMethods) ? result.paymentMethods : [];
+      }),
+    ])
+      .then(([profile, paymentMethods]) => {
+        if (cancelled) return;
+        if (profile) setCheckoutProfile(profile);
+        setSavedPaymentMethods(paymentMethods);
+        if (paymentMethods[0]) setSelectedPaymentMethodId(paymentMethods[0].id);
+      })
+      .catch(() => {
+        // Checkout stays available with blank fields if saved details cannot be loaded.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (!publishableKey || selectedPaymentMethodId || !cardMountRef.current) return;
     let cancelled = false;
     let card: StripeCardElement | null = null;
     void loadStripeJs()
@@ -882,7 +958,7 @@ function Checkout() {
       stripePaymentRef.current = null;
       card?.destroy();
     };
-  }, [publishableKey]);
+  }, [publishableKey, selectedPaymentMethodId]);
 
   async function beginStripeCheckout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -895,7 +971,7 @@ function Checkout() {
       return;
     }
 
-    if (!stripePaymentRef.current) {
+    if (!selectedPaymentMethodId && !stripePaymentRef.current) {
       setPaymentError(paymentSetupError || "Stripe card fields are still loading. Please wait a moment and try again.");
       return;
     }
@@ -921,6 +997,7 @@ function Checkout() {
           phone: formData.get("phone"),
           lines,
           delivery,
+          paymentMethodId: selectedPaymentMethodId || undefined,
           address: {
             line1: formData.get("address"),
             line2: formData.get("addressTwo"),
@@ -945,9 +1022,11 @@ function Checkout() {
           country: String(formData.get("country") ?? "GB"),
         },
       };
-      const confirmation = await stripePaymentRef.current.stripe.confirmCardPayment(result.clientSecret, {
-        payment_method: {
-          card: stripePaymentRef.current.card,
+      const stripe = stripePaymentRef.current?.stripe;
+      if (!stripe) throw new Error("Stripe card fields are still loading. Please wait a moment and try again.");
+      const confirmation = await stripe.confirmCardPayment(result.clientSecret, {
+        payment_method: selectedPaymentMethodId || {
+          card: stripePaymentRef.current?.card as StripeCardElement,
           billing_details: billingDetails,
         },
         return_url: `${window.location.origin}${basePath}/order-confirmation`,
@@ -964,6 +1043,9 @@ function Checkout() {
 
   const deliveryAmount = delivery === "express" ? 6.95 : 0;
   const total = subtotal + deliveryAmount;
+  const updateCheckoutProfile = (field: keyof CustomerProfile, value: string) => {
+    setCheckoutProfile((current) => ({ ...current, [field]: value }));
+  };
 
   return (
     <Shell>
@@ -982,15 +1064,15 @@ function Checkout() {
             <section className="checkout-section">
               <div className="checkout-section-heading"><span>01</span><div><h2>Billing details</h2><p>We&apos;ll use these details for your payment confirmation.</p></div></div>
               <div className="checkout-field-grid">
-                <div className="field"><label htmlFor="checkout-first-name">First name</label><input id="checkout-first-name" name="firstName" type="text" required data-testid="input-checkout-first-name" /></div>
-                <div className="field"><label htmlFor="checkout-last-name">Last name</label><input id="checkout-last-name" name="lastName" type="text" required data-testid="input-checkout-last-name" /></div>
-                <div className="field checkout-field-wide"><label htmlFor="checkout-email">Email address</label><input id="checkout-email" name="email" type="email" required autoComplete="email" data-testid="input-checkout-email" /></div>
-                <div className="field checkout-field-wide"><label htmlFor="checkout-country">Country / region</label><select id="checkout-country" name="country" defaultValue="GB"><option value="GB">United Kingdom</option></select></div>
-                <div className="field checkout-field-wide"><label htmlFor="checkout-address">Street address</label><input id="checkout-address" name="address" type="text" required autoComplete="address-line1" placeholder="House number and street name" data-testid="input-checkout-address" /></div>
-                <div className="field checkout-field-wide"><label htmlFor="checkout-address-two">Address line 2 <span>Optional</span></label><input id="checkout-address-two" name="addressTwo" type="text" autoComplete="address-line2" placeholder="Apartment, suite, unit, etc." /></div>
-                <div className="field"><label htmlFor="checkout-city">Town or city</label><input id="checkout-city" name="city" type="text" required autoComplete="address-level2" data-testid="input-checkout-city" /></div>
-                <div className="field"><label htmlFor="checkout-postcode">Postcode</label><input id="checkout-postcode" name="postcode" type="text" required autoComplete="postal-code" data-testid="input-checkout-postcode" /></div>
-                <div className="field checkout-field-wide"><label htmlFor="checkout-phone">Phone <span>Optional</span></label><input id="checkout-phone" name="phone" type="tel" autoComplete="tel" placeholder="For delivery updates only" /></div>
+                <div className="field"><label htmlFor="checkout-first-name">First name</label><input id="checkout-first-name" name="firstName" type="text" required data-testid="input-checkout-first-name" value={checkoutProfile.firstName} onChange={(event) => updateCheckoutProfile("firstName", event.target.value)} /></div>
+                <div className="field"><label htmlFor="checkout-last-name">Last name</label><input id="checkout-last-name" name="lastName" type="text" required data-testid="input-checkout-last-name" value={checkoutProfile.lastName} onChange={(event) => updateCheckoutProfile("lastName", event.target.value)} /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-email">Email address</label><input id="checkout-email" name="email" type="email" required autoComplete="email" data-testid="input-checkout-email" value={checkoutProfile.email} onChange={(event) => updateCheckoutProfile("email", event.target.value)} /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-country">Country / region</label><select id="checkout-country" name="country" value={checkoutProfile.country} onChange={(event) => updateCheckoutProfile("country", event.target.value)}><option value="GB">United Kingdom</option></select></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-address">Street address</label><input id="checkout-address" name="address" type="text" required autoComplete="address-line1" placeholder="House number and street name" data-testid="input-checkout-address" value={checkoutProfile.addressLine1} onChange={(event) => updateCheckoutProfile("addressLine1", event.target.value)} /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-address-two">Address line 2 <span>Optional</span></label><input id="checkout-address-two" name="addressTwo" type="text" autoComplete="address-line2" placeholder="Apartment, suite, unit, etc." value={checkoutProfile.addressLine2} onChange={(event) => updateCheckoutProfile("addressLine2", event.target.value)} /></div>
+                <div className="field"><label htmlFor="checkout-city">Town or city</label><input id="checkout-city" name="city" type="text" required autoComplete="address-level2" data-testid="input-checkout-city" value={checkoutProfile.city} onChange={(event) => updateCheckoutProfile("city", event.target.value)} /></div>
+                <div className="field"><label htmlFor="checkout-postcode">Postcode</label><input id="checkout-postcode" name="postcode" type="text" required autoComplete="postal-code" data-testid="input-checkout-postcode" value={checkoutProfile.postcode} onChange={(event) => updateCheckoutProfile("postcode", event.target.value)} /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-phone">Phone <span>Optional</span></label><input id="checkout-phone" name="phone" type="tel" autoComplete="tel" placeholder="For delivery updates only" value={checkoutProfile.phone} onChange={(event) => updateCheckoutProfile("phone", event.target.value)} /></div>
               </div>
             </section>
             <section className="checkout-section">
@@ -1003,7 +1085,12 @@ function Checkout() {
             <section className="checkout-section checkout-payment-section">
               <div className="checkout-section-heading"><span>03</span><div><h2>Payment</h2><p>Your card details are encrypted and sent directly to Stripe.</p></div></div>
               <div className="checkout-stripe-note"><strong>Pay securely with Stripe</strong><span>Card payments · protected checkout</span></div>
-              {paymentSetupError ? <p className="checkout-payment-error" role="alert">{paymentSetupError}</p> : <div className="checkout-card-field" ref={cardMountRef} data-testid="stripe-card-field" aria-label="Card details" />}
+              {savedPaymentMethods.length > 0 && <div className="checkout-saved-cards" aria-label="Saved payment methods">
+                <p>Choose a saved card or enter a new one.</p>
+                {savedPaymentMethods.map((method) => <label key={method.id}><input type="radio" name="saved-payment-method" checked={selectedPaymentMethodId === method.id} onChange={() => setSelectedPaymentMethodId(method.id)} /><span><strong>{method.brand.toUpperCase()} ending in {method.last4}</strong><small>Expires {String(method.expMonth).padStart(2, "0")}/{method.expYear}</small></span></label>)}
+                <label><input type="radio" name="saved-payment-method" checked={!selectedPaymentMethodId} onChange={() => setSelectedPaymentMethodId("")} /><span><strong>Use a new card</strong><small>Securely save it with Stripe for later</small></span></label>
+              </div>}
+              {paymentSetupError ? <p className="checkout-payment-error" role="alert">{paymentSetupError}</p> : !selectedPaymentMethodId && <div className="checkout-card-field" ref={cardMountRef} data-testid="stripe-card-field" aria-label="Card details" />}
               {cardError && <p className="checkout-payment-error" role="alert">{cardError}</p>}
             </section>
             {paymentError && <p className="checkout-payment-error" role="alert">{paymentError}</p>}
@@ -1045,6 +1132,184 @@ function formatCustomerOrderDate(value: string | null) {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date(value));
 }
 
+function PaymentMethodsPanel({ profile }: { profile: CustomerProfile }) {
+  const [paymentMethods, setPaymentMethods] = useState<SavedPaymentMethod[]>([]);
+  const [publishableKey, setPublishableKey] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [removingId, setRemovingId] = useState("");
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const cardMountRef = useRef<HTMLDivElement | null>(null);
+  const stripeSetupRef = useRef<{ stripe: StripeJs; card: StripeCardElement } | null>(null);
+
+  async function loadPaymentMethods() {
+    const response = await fetch("/api/stripe/payment-methods", { credentials: "include" });
+    const result = await response.json() as { paymentMethods?: SavedPaymentMethod[]; error?: string };
+    if (!response.ok) throw new Error(result.error || "Your saved payment methods could not be loaded.");
+    setPaymentMethods(Array.isArray(result.paymentMethods) ? result.paymentMethods : []);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      fetch("/api/stripe/payment-config", { credentials: "include" }).then(async (response) => {
+        const result = await response.json() as { publishableKey?: string; error?: string };
+        if (!response.ok || !result.publishableKey) throw new Error(result.error || "Stripe card fields are unavailable.");
+        return result.publishableKey;
+      }),
+      fetch("/api/stripe/payment-methods", { credentials: "include" }).then(async (response) => {
+        const result = await response.json() as { paymentMethods?: SavedPaymentMethod[]; error?: string };
+        if (!response.ok) throw new Error(result.error || "Your saved payment methods could not be loaded.");
+        return Array.isArray(result.paymentMethods) ? result.paymentMethods : [];
+      }),
+    ])
+      .then(([key, methods]) => {
+        if (cancelled) return;
+        setPublishableKey(key);
+        setPaymentMethods(methods);
+      })
+      .catch((caught) => {
+        if (!cancelled) setError(caught instanceof Error ? caught.message : "Your payment methods could not be loaded.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!publishableKey || !cardMountRef.current) return;
+    let cancelled = false;
+    let card: StripeCardElement | null = null;
+    void loadStripeJs()
+      .then(() => {
+        const stripe = window.Stripe?.(publishableKey);
+        if (!stripe || !cardMountRef.current) throw new Error("Stripe card fields could not be initialized.");
+        card = stripe.elements().create("card", {
+          hidePostalCode: true,
+          style: {
+            base: { color: "#171615", fontFamily: "DM Sans, sans-serif", fontSize: "16px", "::placeholder": { color: "#827975" } },
+            invalid: { color: "#b42342" },
+          },
+        });
+        if (cancelled) {
+          card.destroy();
+          return;
+        }
+        card.mount(cardMountRef.current);
+        card.on("change", (event) => setError(event.error?.message ?? ""));
+        stripeSetupRef.current = { stripe, card };
+      })
+      .catch((caught) => {
+        if (!cancelled) setError(caught instanceof Error ? caught.message : "Stripe card fields are unavailable.");
+      });
+    return () => {
+      cancelled = true;
+      stripeSetupRef.current = null;
+      card?.destroy();
+    };
+  }, [publishableKey]);
+
+  async function savePaymentMethod(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!stripeSetupRef.current) {
+      setError("Stripe card fields are still loading. Please wait a moment and try again.");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const name = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+      const setupResponse = await fetch("/api/stripe/payment-method-setup", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email: profile.email }),
+      });
+      const setup = await setupResponse.json() as { clientSecret?: string; error?: string };
+      if (!setupResponse.ok || !setup.clientSecret) throw new Error(setup.error || "Your card could not be saved.");
+      const confirmation = await stripeSetupRef.current.stripe.confirmCardSetup(setup.clientSecret, {
+        payment_method: {
+          card: stripeSetupRef.current.card,
+          billing_details: {
+            name,
+            email: profile.email,
+            phone: profile.phone || undefined,
+            address: {
+              line1: profile.addressLine1 || undefined,
+              line2: profile.addressLine2 || undefined,
+              city: profile.city || undefined,
+              postal_code: profile.postcode || undefined,
+              country: profile.country || "GB",
+            },
+          },
+        },
+      });
+      if (confirmation.error) throw new Error(confirmation.error.message || "Your card could not be saved.");
+      if (confirmation.setupIntent?.status !== "succeeded") throw new Error("Your card needs additional confirmation. Please try again.");
+      await loadPaymentMethods();
+      setNotice("Your card has been saved securely with Stripe.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Your card could not be saved.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removePaymentMethod(paymentMethodId: string) {
+    setRemovingId(paymentMethodId);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`/api/stripe/payment-methods/${encodeURIComponent(paymentMethodId)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const result = await response.json() as { error?: string };
+        throw new Error(result.error || "That card could not be removed.");
+      }
+      setPaymentMethods((current) => current.filter((method) => method.id !== paymentMethodId));
+      setNotice("Your saved card has been removed.");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "That card could not be removed.");
+    } finally {
+      setRemovingId("");
+    }
+  }
+
+  return (
+    <section className="account-panel account-payment-panel">
+      <div className="eyebrow">Protected by Stripe</div>
+      <h2>Payment methods.</h2>
+      <p>Your card details are encrypted and saved by Stripe. Glam Too never stores your full card number.</p>
+      {loading ? <p className="account-muted">Loading your saved cards…</p> : (
+        <div className="saved-payment-methods">
+          {paymentMethods.length === 0 ? <p className="account-empty-copy">No payment methods saved yet.</p> : paymentMethods.map((method) => (
+            <div className="saved-payment-method" key={method.id}>
+              <div><strong>{method.brand.toUpperCase()} ending in {method.last4}</strong><span>Expires {String(method.expMonth).padStart(2, "0")}/{method.expYear}</span></div>
+              <button type="button" onClick={() => void removePaymentMethod(method.id)} disabled={removingId === method.id}>{removingId === method.id ? "Removing…" : "Remove"}</button>
+            </div>
+          ))}
+        </div>
+      )}
+      <form className="account-payment-form" onSubmit={(event) => void savePaymentMethod(event)}>
+        <h3>Add a card</h3>
+        <div className="checkout-card-field account-card-field" ref={cardMountRef} aria-label="Card details to save" />
+        {error && <p className="account-form-error" role="alert">{error}</p>}
+        {notice && <p className="account-form-success" role="status">{notice}</p>}
+        <button className="button button-pink" type="submit" disabled={saving || loading || !publishableKey}>{saving ? "Saving card…" : "Save payment method"}</button>
+      </form>
+    </section>
+  );
+}
+
 function CustomerAccountPage() {
   const { isLoaded, isSignedIn } = useAuth();
   const { signOut } = useClerk();
@@ -1057,6 +1322,11 @@ function CustomerAccountPage() {
   const [detailsSaving, setDetailsSaving] = useState(false);
   const [detailsNotice, setDetailsNotice] = useState("");
   const [detailsError, setDetailsError] = useState("");
+  const [profile, setProfile] = useState<CustomerProfile>(emptyCustomerProfile);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [addressSaving, setAddressSaving] = useState(false);
+  const [addressNotice, setAddressNotice] = useState("");
+  const [addressError, setAddressError] = useState("");
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) {
@@ -1092,7 +1362,49 @@ function CustomerAccountPage() {
       firstName: user.firstName ?? "",
       lastName: user.lastName ?? "",
     });
+    setProfile((current) => ({
+      ...current,
+      firstName: current.firstName || user.firstName || "",
+      lastName: current.lastName || user.lastName || "",
+      email: current.email || user.primaryEmailAddress?.emailAddress || "",
+    }));
   }, [user]);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      setProfileLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setProfileLoading(true);
+    fetch("/api/account/profile", { credentials: "include" })
+      .then(async (response) => {
+        const result = await response.json() as { profile?: CustomerProfile; error?: string };
+        if (!response.ok || !result.profile) throw new Error(result.error || "Your saved details could not be loaded.");
+        if (!cancelled) setProfile(result.profile);
+      })
+      .catch((caught) => {
+        if (!cancelled) setAddressError(caught instanceof Error ? caught.message : "Your saved details could not be loaded.");
+      })
+      .finally(() => {
+        if (!cancelled) setProfileLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn]);
+
+  async function saveProfile(nextProfile: CustomerProfile) {
+    const response = await fetch("/api/account/profile", {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nextProfile),
+    });
+    const result = await response.json() as { profile?: CustomerProfile; error?: string };
+    if (!response.ok || !result.profile) throw new Error(result.error || "Your saved details could not be saved.");
+    setProfile((current) => ({ ...current, ...result.profile, email: current.email }));
+  }
 
   async function saveAccountDetails(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1105,11 +1417,35 @@ function CustomerAccountPage() {
         firstName: details.firstName.trim(),
         lastName: details.lastName.trim(),
       });
+      await saveProfile({
+        ...profile,
+        firstName: details.firstName.trim(),
+        lastName: details.lastName.trim(),
+      });
       setDetailsNotice("Your account details have been saved.");
     } catch (caught) {
       setDetailsError(caught instanceof Error ? caught.message : "Your account details could not be saved.");
     } finally {
       setDetailsSaving(false);
+    }
+  }
+
+  async function saveAddress(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAddressSaving(true);
+    setAddressError("");
+    setAddressNotice("");
+    try {
+      await saveProfile({
+        ...profile,
+        firstName: details.firstName.trim() || profile.firstName,
+        lastName: details.lastName.trim() || profile.lastName,
+      });
+      setAddressNotice("Your delivery address has been saved and will be ready at checkout.");
+    } catch (caught) {
+      setAddressError(caught instanceof Error ? caught.message : "Your delivery address could not be saved.");
+    } finally {
+      setAddressSaving(false);
     }
   }
 
@@ -1237,18 +1573,25 @@ function CustomerAccountPage() {
               <section className="account-panel">
                 <div className="eyebrow">Delivery book</div>
                 <h2>Addresses.</h2>
-                <p>There are no saved addresses yet. Your delivery address is collected securely during checkout for each order.</p>
-                <a className="button button-pink" href="/shop">Shop to add an address</a>
+                <p>Save your default UK delivery address here and we&apos;ll prefill it at checkout.</p>
+                <form className="account-details-form" onSubmit={(event) => void saveAddress(event)}>
+                  <div className="account-details-fields">
+                    <div className="field account-field-wide"><label htmlFor="account-address-line-one">Street address</label><input id="account-address-line-one" type="text" required value={profile.addressLine1} onChange={(event) => setProfile((current) => ({ ...current, addressLine1: event.target.value }))} placeholder="House number and street name" /></div>
+                    <div className="field account-field-wide"><label htmlFor="account-address-line-two">Address line 2 <span>Optional</span></label><input id="account-address-line-two" type="text" value={profile.addressLine2} onChange={(event) => setProfile((current) => ({ ...current, addressLine2: event.target.value }))} placeholder="Apartment, suite, unit, etc." /></div>
+                    <div className="field"><label htmlFor="account-address-city">Town or city</label><input id="account-address-city" type="text" required value={profile.city} onChange={(event) => setProfile((current) => ({ ...current, city: event.target.value }))} /></div>
+                    <div className="field"><label htmlFor="account-address-postcode">Postcode</label><input id="account-address-postcode" type="text" required value={profile.postcode} onChange={(event) => setProfile((current) => ({ ...current, postcode: event.target.value }))} /></div>
+                    <div className="field"><label htmlFor="account-address-phone">Phone <span>Optional</span></label><input id="account-address-phone" type="tel" value={profile.phone} onChange={(event) => setProfile((current) => ({ ...current, phone: event.target.value }))} /></div>
+                    <div className="field"><label htmlFor="account-address-country">Country / region</label><input id="account-address-country" type="text" value="United Kingdom" readOnly /></div>
+                  </div>
+                  {addressError && <p className="account-form-error" role="alert">{addressError}</p>}
+                  {addressNotice && <p className="account-form-success" role="status">{addressNotice}</p>}
+                  <button className="button button-pink" type="submit" disabled={addressSaving || profileLoading}>{addressSaving ? "Saving address…" : "Save delivery address"}</button>
+                </form>
               </section>
             )}
 
             {accountSection === "payment-methods" && (
-              <section className="account-panel">
-                <div className="eyebrow">Protected by Stripe</div>
-                <h2>Payment methods.</h2>
-                <p>You don&apos;t have any saved payment methods. When you check out, Stripe securely handles your card details without sharing them with Glam Too.</p>
-                <a className="button button-pink" href="/shop">Shop securely</a>
-              </section>
+              <PaymentMethodsPanel profile={profile} />
             )}
 
             {accountSection === "account-details" && (
