@@ -903,6 +903,8 @@ img { display: block; max-width: 100%; }
 .admin-product-catalog-actions { display: flex; gap: 16px; align-self: flex-start; flex-wrap: wrap; margin: 20px 28px 28px; }
 .admin-product-catalog-actions a, .admin-product-catalog-actions button { border: 0; border-bottom: 1px solid currentColor; background: transparent; padding: 0 0 4px; color: #a6516e; cursor: pointer; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-decoration: none; text-transform: uppercase; }
 .admin-product-catalog-actions button:last-child { color: #b42342; }
+input, select, textarea,
+input:focus, select:focus, textarea:focus { outline: none; }
 
 @media (max-width: 980px) {
   .admin-app { grid-template-columns: 1fr; min-width: 0; }
