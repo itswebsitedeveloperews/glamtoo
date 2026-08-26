@@ -7,7 +7,8 @@ type AdminSection =
   | "categories"
   | "orders"
   | "shipping"
-  | "payments";
+  | "payments"
+  | "users";
 
 type ProductStatus = "Published" | "Draft";
 type ProductType = "Simple" | "Variable";
@@ -43,6 +44,16 @@ type Order = {
   status: "Processing" | "Shipped" | "Delivered";
 };
 
+type ManagedUser = {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: number;
+  lastSignInAt: number | null;
+  isAdmin: boolean;
+  isBootstrapAdmin: boolean;
+};
+
 const navItems: Array<{ id: AdminSection; label: string; hint: string }> = [
   { id: "overview", label: "Overview", hint: "Today" },
   { id: "products", label: "Products", hint: "Catalog" },
@@ -50,6 +61,7 @@ const navItems: Array<{ id: AdminSection; label: string; hint: string }> = [
   { id: "orders", label: "Orders", hint: "Fulfilment" },
   { id: "shipping", label: "Shipping", hint: "Delivery rules" },
   { id: "payments", label: "Payments", hint: "Stripe" },
+  { id: "users", label: "Users", hint: "Access" },
 ];
 
 const productsStorageKey = "glam-me-admin-products-v4";
@@ -110,6 +122,11 @@ function parseOrderTotal(total: string) {
 
 function formatPounds(amount: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
+}
+
+function formatUserDate(value: number | null) {
+  if (!value) return "Not signed in yet";
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value));
 }
 
 function useStoredState<T>(key: string, fallback: T) {
@@ -507,6 +524,11 @@ export default function AdminDashboard({
   const [orders, setOrders] = useStoredState<Order[]>("glam-me-admin-orders", initialOrders);
   const [stripeStatus, setStripeStatus] = useState<StripeStatus>({ connected: false, configured: false, mode: "unknown", paymentMethods: [] });
   const [stripeStatusLoading, setStripeStatusLoading] = useState(true);
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState("");
+  const [userSearch, setUserSearch] = useState("");
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [editorProductId, setEditorProductId] = useState<number | "new" | null>(null);
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft>(blankCategory);
@@ -661,11 +683,60 @@ export default function AdminDashboard({
     }
   }
 
+  async function refreshUsers() {
+    setUsersLoading(true);
+    setUsersError("");
+    try {
+      const response = await fetch("/api/admin/users", { credentials: "include" });
+      const payload = await response.json() as { users?: ManagedUser[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || "User accounts could not be loaded.");
+      setManagedUsers(payload.users ?? []);
+    } catch (error) {
+      setUsersError(error instanceof Error ? error.message : "User accounts could not be loaded.");
+    } finally {
+      setUsersLoading(false);
+    }
+  }
+
+  async function updateUserAccess(user: ManagedUser, isAdmin: boolean) {
+    if (!isAdmin && user.isBootstrapAdmin) return;
+    const action = isAdmin ? "grant admin access to" : "remove admin access from";
+    if (!window.confirm(`Are you sure you want to ${action} ${user.email}?`)) return;
+    setUpdatingUserId(user.id);
+    setUsersError("");
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}/access`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isAdmin }),
+      });
+      const payload = await response.json() as { user?: ManagedUser; error?: string };
+      if (!response.ok || !payload.user) throw new Error(payload.error || "Admin access could not be updated.");
+      setManagedUsers((current) => current.map((item) => item.id === user.id ? payload.user as ManagedUser : item));
+      setNotice(`${user.email} is now ${isAdmin ? "an administrator" : "a customer account"}.`);
+    } catch (error) {
+      setUsersError(error instanceof Error ? error.message : "Admin access could not be updated.");
+    } finally {
+      setUpdatingUserId(null);
+    }
+  }
+
   useEffect(() => {
     void refreshStripeStatus();
   }, []);
 
+  useEffect(() => {
+    if (section === "users") void refreshUsers();
+  }, [section]);
+
   const editorProduct = typeof editorProductId === "number" ? products.find((product) => product.id === editorProductId) : undefined;
+  const visibleUsers = useMemo(() => {
+    const query = userSearch.trim().toLowerCase();
+    return managedUsers.filter((user) => !query || user.name.toLowerCase().includes(query) || user.email.toLowerCase().includes(query));
+  }, [managedUsers, userSearch]);
+  const adminUsers = visibleUsers.filter((user) => user.isAdmin);
+  const customerUsers = visibleUsers.filter((user) => !user.isAdmin);
 
   return (
     <div className="admin-app">
@@ -792,6 +863,43 @@ export default function AdminDashboard({
           <>
             <SectionTitle eyebrow="Store settings" title="Shipping" description="Set delivery methods, rates, and your free-shipping threshold." />
             <form className="admin-shipping-grid" onSubmit={(event) => { event.preventDefault(); setNotice("Shipping settings saved."); }}><section className="admin-panel admin-simple-form"><p className="admin-eyebrow">Standard delivery</p><h2>UK Standard</h2><label>Rate<input defaultValue="£3.99" /></label><label>Estimated delivery<input defaultValue="3–5 working days" /></label></section><section className="admin-panel admin-simple-form"><p className="admin-eyebrow">Free shipping</p><h2>Delivery incentive</h2><label>Free shipping over<input defaultValue="£75.00" /></label><label>Announcement text<input defaultValue="Free delivery on orders over £75" /></label></section><button className="admin-primary" type="submit">Save shipping rules</button></form>
+          </>
+        )}
+
+        {section === "users" && (
+          <>
+            <SectionTitle eyebrow="Private studio" title="Users & access" description="Review all customer accounts and grant admin access manually. Passwords and private account data are never shown here." action={<button className="admin-secondary" type="button" onClick={() => void refreshUsers()} disabled={usersLoading}>{usersLoading ? "Refreshing…" : "Refresh users"}</button>} />
+            <section className="admin-panel admin-users-panel">
+              <div className="admin-users-toolbar">
+                <label className="admin-user-search">Search accounts<input value={userSearch} onChange={(event) => setUserSearch(event.target.value)} placeholder="Search by name or email" /></label>
+                <span>{managedUsers.length} account{managedUsers.length === 1 ? "" : "s"}</span>
+              </div>
+              {usersError && <p className="admin-payment-error" role="alert">{usersError}</p>}
+              {usersLoading ? <p className="admin-users-state">Loading user accounts…</p> : (
+                <div className="admin-user-groups">
+                  <section className="admin-user-group">
+                    <div className="admin-user-group-heading"><div><p className="admin-eyebrow">Approved access</p><h2>Administrators</h2></div><span>{adminUsers.length}</span></div>
+                    {adminUsers.length === 0 ? <p className="admin-users-state">No administrator accounts match this search.</p> : adminUsers.map((user) => (
+                      <article className="admin-user-card" key={user.id}>
+                        <div className="admin-user-avatar" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</div>
+                        <div className="admin-user-details"><strong>{user.name}</strong><span>{user.email}</span><small>Joined {formatUserDate(user.createdAt)} · Last sign-in {formatUserDate(user.lastSignInAt)}</small></div>
+                        <div className="admin-user-actions"><span className="admin-role-badge">{user.isBootstrapAdmin ? "Primary owner" : "Admin"}</span>{user.isBootstrapAdmin ? <small>Protected</small> : <button type="button" className="admin-secondary" disabled={updatingUserId === user.id} onClick={() => void updateUserAccess(user, false)}>{updatingUserId === user.id ? "Updating…" : "Remove admin"}</button>}</div>
+                      </article>
+                    ))}
+                  </section>
+                  <section className="admin-user-group">
+                    <div className="admin-user-group-heading"><div><p className="admin-eyebrow">Customer accounts</p><h2>Customers</h2></div><span>{customerUsers.length}</span></div>
+                    {customerUsers.length === 0 ? <p className="admin-users-state">No customer accounts match this search.</p> : customerUsers.map((user) => (
+                      <article className="admin-user-card" key={user.id}>
+                        <div className="admin-user-avatar customer" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</div>
+                        <div className="admin-user-details"><strong>{user.name}</strong><span>{user.email}</span><small>Joined {formatUserDate(user.createdAt)} · Last sign-in {formatUserDate(user.lastSignInAt)}</small></div>
+                        <div className="admin-user-actions"><span className="admin-role-badge customer">Customer</span><button type="button" className="admin-primary" disabled={updatingUserId === user.id} onClick={() => void updateUserAccess(user, true)}>{updatingUserId === user.id ? "Updating…" : "Make admin"}</button></div>
+                      </article>
+                    ))}
+                  </section>
+                </div>
+              )}
+            </section>
           </>
         )}
 

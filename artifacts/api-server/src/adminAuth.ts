@@ -18,9 +18,10 @@ export async function getAdminAccess(request: Request) {
 
   const user = await clerkClient.users.getUser(userId);
   const userEmails = user.emailAddresses.map((email) => email.emailAddress.toLowerCase());
-  const authorized = userEmails.some((email) => configuredAdminEmails().has(email));
+  const isBootstrapAdmin = userEmails.some((email) => configuredAdminEmails().has(email));
+  const authorized = isBootstrapAdmin || user.privateMetadata?.role === "admin";
 
-  return { authenticated: true, authorized };
+  return { authenticated: true, authorized, userId, isBootstrapAdmin };
 }
 
 export async function requireAdmin(request: Request, response: Response, next: NextFunction) {

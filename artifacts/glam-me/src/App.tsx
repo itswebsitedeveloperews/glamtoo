@@ -3,7 +3,7 @@ import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
-import { ClerkProvider, SignIn, SignUp, useAuth, useClerk } from '@clerk/react';
+import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
@@ -256,7 +256,7 @@ function Header() {
         </a>
         <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Glam Too" /></a>
         <div className="header-tools">
-          <a href="/about" className="tool-label icon-link" aria-label="Account" data-testid="link-account">
+          <a href="/account" className="tool-label icon-link" aria-label="Account" data-testid="link-account">
             <span className="tool-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" role="img"><circle cx="12" cy="8" r="3.2" /><path d="M5.8 20c.6-3.3 2.7-5.1 6.2-5.1s5.6 1.8 6.2 5.1" /></svg>
             </span>
@@ -778,12 +778,101 @@ function Confirmation() {
   return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order GM-260214 is being wrapped with care. We&apos;ve sent all the details to your inbox.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
 }
 
-function SignInPage() {
-  return <div className="admin-auth-page"><SignIn signUpUrl={`${basePath}/sign-up`} fallbackRedirectUrl={`${basePath}/admin`} /></div>;
+function CustomerSignInPage() {
+  return <Shell><div className="customer-auth-page"><div className="customer-auth-copy"><div className="eyebrow">Your Glam Too account</div><h1>Welcome back.</h1><p>Sign in to manage your details and make shopping your next plan even easier.</p></div><div className="customer-auth-card"><SignIn signUpUrl={`${basePath}/register`} fallbackRedirectUrl={basePath || '/'} /><a className="customer-recovery-link" href={`${basePath}/account/recovery`}>Forgot your password?</a></div></div></Shell>;
 }
 
-function SignUpPage() {
-  return <div className="admin-auth-page"><SignUp signInUrl={`${basePath}/sign-in`} fallbackRedirectUrl={`${basePath}/admin`} /></div>;
+function CustomerSignUpPage() {
+  return <Shell><div className="customer-auth-page"><div className="customer-auth-copy"><div className="eyebrow">New here?</div><h1>Create your account.</h1><p>Register to keep your Glam Too details ready for every checkout.</p></div><SignUp signInUrl={`${basePath}/account`} fallbackRedirectUrl={basePath || '/'} /></div></Shell>;
+}
+
+function PasswordRecoveryPage() {
+  const { signIn } = useSignIn();
+  const [, setLocation] = useLocation();
+  const [step, setStep] = useState<"email" | "code" | "password">("email");
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const getErrorMessage = (caught: unknown) => {
+    if (typeof caught === "object" && caught && "errors" in caught) {
+      const errors = (caught as { errors?: Array<{ longMessage?: string; message?: string }> }).errors;
+      return errors?.[0]?.longMessage || errors?.[0]?.message || "We could not complete that step. Please try again.";
+    }
+    return "We could not complete that step. Please try again.";
+  };
+
+  async function requestCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!signIn) return;
+    setLoading(true);
+    setError("");
+    try {
+      const createResult = await signIn.create({ identifier: email });
+      if (createResult.error) throw createResult.error;
+      const sendResult = await signIn.resetPasswordEmailCode.sendCode();
+      if (sendResult.error) throw sendResult.error;
+      setStep("code");
+    } catch (caught) {
+      setError(caught instanceof Error && caught.message.includes("No password") ? caught.message : getErrorMessage(caught));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyCode(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!signIn) return;
+    setLoading(true);
+    setError("");
+    try {
+      const verifyResult = await signIn.resetPasswordEmailCode.verifyCode({ code });
+      if (verifyResult.error || signIn.status !== "needs_new_password") throw new Error("That code could not be verified. Please try again.");
+      setStep("password");
+    } catch (caught) {
+      setError(caught instanceof Error && caught.message.includes("code could") ? caught.message : getErrorMessage(caught));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!signIn) return;
+    setLoading(true);
+    setError("");
+    try {
+      const passwordResult = await signIn.resetPasswordEmailCode.submitPassword({ password });
+      if (passwordResult.error || signIn.status !== "complete") throw new Error("Your password could not be updated. Please try again.");
+      const finalizeResult = await signIn.finalize();
+      if (finalizeResult.error) throw finalizeResult.error;
+      setLocation("/");
+    } catch (caught) {
+      setError(caught instanceof Error && caught.message.includes("could not") ? caught.message : getErrorMessage(caught));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const titles = {
+    email: ["Reset your password.", "Enter the email address on your Glam Too account and we’ll send a secure verification code."],
+    code: ["Check your inbox.", "Enter the verification code sent to your email address."],
+    password: ["Choose a new password.", "Your new password will replace your previous one after you save it."],
+  } as const;
+
+  return <Shell><div className="customer-auth-page"><div className="customer-auth-copy"><div className="eyebrow">Account recovery</div><h1>{titles[step][0]}</h1><p>{titles[step][1]}</p></div><section className="customer-recovery-card">
+    {step === "email" && <form onSubmit={requestCode}><label>Email address<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label><button type="submit" className="customer-recovery-button" disabled={loading}>{loading ? "Sending…" : "Send recovery code"}</button></form>}
+    {step === "code" && <form onSubmit={verifyCode}><label>Verification code<input inputMode="numeric" autoComplete="one-time-code" required value={code} onChange={(event) => setCode(event.target.value)} /></label><button type="submit" className="customer-recovery-button" disabled={loading}>{loading ? "Checking…" : "Verify code"}</button></form>}
+    {step === "password" && <form onSubmit={resetPassword}><label>New password<input type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} /></label><button type="submit" className="customer-recovery-button" disabled={loading}>{loading ? "Saving…" : "Save new password"}</button></form>}
+    {error && <p className="customer-recovery-error" role="alert">{error}</p>}
+    <a href={`${basePath}/account`}>Back to sign in</a>
+  </section></div></Shell>;
+}
+
+function AdminSignInPage() {
+  return <div className="admin-auth-page"><div className="admin-signin-wrap"><SignIn signUpUrl={`${basePath}/register`} fallbackRedirectUrl={`${basePath}/admin`} /><p>Customer registration does not grant admin access. Admin access is granted manually by an approved administrator.</p></div></div>;
 }
 
 function AdminAccessDenied({ onSignOut }: { onSignOut: () => void }) {
@@ -818,7 +907,7 @@ function AdminRoute() {
   }, [isLoaded, isSignedIn]);
 
   if (!isLoaded) return <div className="admin-auth-page"><p>Loading secure admin access…</p></div>;
-  if (!isSignedIn) return <SignInPage />;
+  if (!isSignedIn) return <AdminSignInPage />;
   if (accessState === "checking") return <div className="admin-auth-page"><p>Verifying admin access…</p></div>;
   if (accessState === "denied") return <AdminAccessDenied onSignOut={() => void signOut({ redirectUrl: basePath || '/' })} />;
   if (accessState === "error") return <div className="admin-auth-page"><div className="admin-access-denied"><div className="eyebrow">Private studio</div><h1>Access check unavailable.</h1><p>We could not verify this account right now. Please try again shortly.</p><div className="admin-access-actions"><button className="button" type="button" onClick={() => window.location.reload()}>Try again</button><a className="text-link" href="/">Return to storefront</a></div></div></div>;
@@ -842,8 +931,11 @@ function AppRoutes() {
     <Route path="/checkout" component={Checkout} />
     <Route path="/order-confirmation" component={Confirmation} />
     <Route path="/admin" component={AdminRoute} />
-    <Route path="/sign-in/*?" component={SignInPage} />
-    <Route path="/sign-up/*?" component={SignUpPage} />
+    <Route path="/account/recovery/*?" component={PasswordRecoveryPage} />
+    <Route path="/account/*?" component={CustomerSignInPage} />
+    <Route path="/register/*?" component={CustomerSignUpPage} />
+    <Route path="/sign-in/*?" component={CustomerSignInPage} />
+    <Route path="/sign-up/*?" component={CustomerSignUpPage} />
     <Route component={NotFound} />
   </Switch>;
 }
@@ -855,8 +947,8 @@ function ClerkProviderWithRoutes() {
       publishableKey={clerkPubKey}
       proxyUrl={clerkProxyUrl}
       appearance={clerkAppearance}
-      signInUrl={`${basePath}/sign-in`}
-      signUpUrl={`${basePath}/sign-up`}
+      signInUrl={`${basePath}/account`}
+      signUpUrl={`${basePath}/register`}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
