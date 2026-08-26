@@ -618,12 +618,94 @@ function PageHero({ eyebrow, title, copy }: { eyebrow: string; title: string; co
 
 function Shop() {
   const products = getStorefrontProducts();
-  const searchQuery = new URLSearchParams(window.location.search).get("search")?.trim() ?? "";
+  const searchParams = new URLSearchParams(window.location.search);
+  const searchQuery = searchParams.get("search")?.trim() ?? "";
+  const categoryFilter = searchParams.get("category")?.trim().toLowerCase() ?? "";
+  const sortFilter = searchParams.get("sort")?.trim().toLowerCase() ?? "";
+  const categoryOptions = [
+    { value: "", label: "All pieces", matches: [] },
+    { value: "dresses", label: "Dresses", matches: ["dresses"] },
+    { value: "occasion", label: "Occasionwear", matches: ["occasion"] },
+    { value: "tops-tailoring", label: "Tops & tailoring", matches: ["co-ords", "tops", "tailoring"] },
+    { value: "accessories", label: "Accessories", matches: ["accessories"] },
+  ];
+  const sortOptions = [
+    { value: "new", label: "New in" },
+    { value: "bestsellers", label: "Bestsellers" },
+    { value: "price-asc", label: "Price: low to high" },
+  ];
+  const selectedCategory = categoryOptions.find((option) => option.value === categoryFilter) ?? categoryOptions[0];
+  const activeSort = sortOptions.find((option) => option.value === sortFilter);
   const normalizedQuery = searchQuery.toLowerCase();
-  const visibleProducts = normalizedQuery
-    ? products.filter((product) => [product.name, product.category, product.slug].some((value) => value.toLowerCase().includes(normalizedQuery)))
-    : products;
-  return <Shell><PageHero eyebrow="The shop" title="Pieces with presence." copy="A considered wardrobe of colour, texture and easy confidence. Find something for the plan you have, and the one you haven't made yet." /><div className="container shop-layout"><aside className="filter"><h3>Browse</h3><a href="/shop">All pieces</a><a href="/category">Dresses</a><a href="/category">Occasionwear</a><a href="/shop">Tops &amp; tailoring</a><a href="/shop">Accessories</a><h3 style={{ marginTop: 36 }}>Sort by</h3><a href="/shop">New in</a><a href="/shop">Bestsellers</a><a href="/shop">Price: low to high</a></aside><section className="shop-main"><div className="shop-toolbar"><span>{visibleProducts.length} {visibleProducts.length === 1 ? "piece" : "pieces"}</span><span>{searchQuery ? `Search results for “${searchQuery}”` : "Showing all"}</span></div>{visibleProducts.length > 0 ? <div className="product-grid">{visibleProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={index < 2} />)}</div> : <div className="shop-empty-state"><h2>No pieces found.</h2><p>Try searching for a different style, category, or product name.</p><a className="button" href="/shop">View all pieces</a></div>}</section></div></Shell>;
+  const buildShopUrl = (nextCategory = selectedCategory.value, nextSort = activeSort?.value ?? "") => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("search", searchQuery);
+    if (nextCategory) params.set("category", nextCategory);
+    if (nextSort) params.set("sort", nextSort);
+    const query = params.toString();
+    return `${basePath}/shop${query ? `?${query}` : ""}`;
+  };
+  const visibleProducts = products.filter((product) => {
+    const matchesSearch = !normalizedQuery || [product.name, product.category, product.slug].some((value) => value.toLowerCase().includes(normalizedQuery));
+    const matchesCategory = !selectedCategory.value || selectedCategory.matches.includes(slugify(product.category));
+    return matchesSearch && matchesCategory;
+  });
+  if (activeSort?.value === "price-asc") visibleProducts.sort((a, b) => parsePounds(a.price) - parsePounds(b.price));
+  if (activeSort?.value === "bestsellers") visibleProducts.sort((a, b) => a.stock - b.stock);
+  const toolbarDescription = searchQuery
+    ? `Search results for “${searchQuery}”`
+    : selectedCategory.value
+      ? `${selectedCategory.label} pieces`
+      : "Showing all";
+  const toolbarSort = activeSort ? ` · ${activeSort.label}` : "";
+  return (
+    <Shell>
+      <PageHero eyebrow="The shop" title="Pieces with presence." copy="A considered wardrobe of colour, texture and easy confidence. Find something for the plan you have, and the one you haven't made yet." />
+      <div className="container shop-layout">
+        <aside className="filter">
+          <h3>Browse</h3>
+          {categoryOptions.map((option) => (
+            <a
+              key={option.value || "all"}
+              href={buildShopUrl(option.value, activeSort?.value)}
+              className={selectedCategory.value === option.value ? "is-active" : ""}
+              aria-current={selectedCategory.value === option.value ? "page" : undefined}
+              data-testid={`filter-category-${option.value || "all"}`}
+            >
+              {option.label}
+            </a>
+          ))}
+          <h3 style={{ marginTop: 36 }}>Sort by</h3>
+          {sortOptions.map((option) => (
+            <a
+              key={option.value}
+              href={buildShopUrl(selectedCategory.value, option.value)}
+              className={activeSort?.value === option.value ? "is-active" : ""}
+              aria-current={activeSort?.value === option.value ? "page" : undefined}
+              data-testid={`filter-sort-${option.value}`}
+            >
+              {option.label}
+            </a>
+          ))}
+        </aside>
+        <section className="shop-main">
+          <div className="shop-toolbar">
+            <span>{visibleProducts.length} {visibleProducts.length === 1 ? "piece" : "pieces"}</span>
+            <span>{toolbarDescription}{toolbarSort}</span>
+          </div>
+          {visibleProducts.length > 0 ? (
+            <div className="product-grid">{visibleProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={index < 2} />)}</div>
+          ) : (
+            <div className="shop-empty-state">
+              <h2>No pieces found.</h2>
+              <p>Try changing your search or browse filters.</p>
+              <a className="button" href={`${basePath}/shop`}>View all pieces</a>
+            </div>
+          )}
+        </section>
+      </div>
+    </Shell>
+  );
 }
 
 function CategoryCard({ category }: { category: CatalogCategory }) {
