@@ -513,12 +513,17 @@ function ProductEditor({
 
   function save(status: ProductStatus) {
     const formattedPrice = formatCatalogPrice(draft.price);
-    if (!draft.name.trim() || !formattedPrice) {
-      setValidationMessage("Add a product name and a valid price before saving.");
+    const isVariableProduct = draft.type === "Variable";
+    if (!draft.name.trim() || (!isVariableProduct && !formattedPrice)) {
+      setValidationMessage(isVariableProduct ? "Add a product name before saving." : "Add a product name and a valid price before saving.");
       return;
     }
-    if (draft.type === "Variable" && draft.variations.length === 0) {
+    if (isVariableProduct && draft.variations.length === 0) {
       setValidationMessage("Add at least one variation or change the product type to Simple.");
+      return;
+    }
+    if (isVariableProduct && draft.variations.some((variation) => !formatCatalogPrice(variation.price))) {
+      setValidationMessage("Add a valid price for every variation before saving.");
       return;
     }
     onSave({
@@ -527,9 +532,9 @@ function ProductEditor({
       name: draft.name.trim(),
       price: formattedPrice,
       status,
-      variations: draft.type === "Variable" ? draft.variations.map((variation) => ({
+      variations: isVariableProduct ? draft.variations.map((variation) => ({
         ...variation,
-        price: formatCatalogPrice(variation.price) || formattedPrice,
+        price: formatCatalogPrice(variation.price),
       })) : [],
     });
   }
@@ -644,8 +649,9 @@ function ProductEditor({
               <label className="admin-editor-label">SKU
                 <input className="admin-editor-input" value={draft.sku} onChange={(event) => updateDraft({ sku: event.target.value })} placeholder="e.g. GM-SIENNA" />
               </label>
-              <label className="admin-editor-label">Regular price *
-                <input className="admin-editor-input" type="number" min="0.01" step="0.01" value={draft.price} onChange={(event) => updateDraft({ price: event.target.value })} inputMode="decimal" placeholder="89.99" required />
+              <label className="admin-editor-label">{draft.type === "Variable" ? "Regular price (optional)" : "Regular price *"}
+                <input className="admin-editor-input" type="number" min="0.01" step="0.01" value={draft.price} onChange={(event) => updateDraft({ price: event.target.value })} inputMode="decimal" placeholder="89.99" required={draft.type === "Simple"} />
+                {draft.type === "Variable" && <small>Set the selling price on each variation below.</small>}
               </label>
               <label className="admin-editor-label">Stock quantity
                 <input className="admin-editor-input" type="number" min="0" value={draft.stock} onChange={(event) => updateDraft({ stock: Number(event.target.value) || 0 })} />
@@ -663,13 +669,13 @@ function ProductEditor({
                 <div className="admin-empty-variations"><strong>No variations yet</strong><span>Add your first size and colour combination to make this product ready to sell.</span><button className="admin-primary" type="button" onClick={addVariation}>Add first variation</button></div>
               ) : (
                 <div className="admin-variation-table">
-                  <div className="admin-variation-table-head"><span>Size</span><span>Colour</span><span>Variation SKU</span><span>Price</span><span>Stock</span><span /></div>
+                  <div className="admin-variation-table-head"><span>Size</span><span>Colour</span><span>Variation SKU</span><span>Price *</span><span>Stock</span><span /></div>
                   {draft.variations.map((variation) => (
                     <div className="admin-variation-row" key={variation.id}>
                       <input aria-label="Variation size" value={variation.size} onChange={(event) => updateVariation(variation.id, { size: event.target.value })} placeholder="UK 8" />
                       <input aria-label="Variation colour" value={variation.colour} onChange={(event) => updateVariation(variation.id, { colour: event.target.value })} placeholder="Blush" />
                       <input aria-label="Variation SKU" value={variation.sku} onChange={(event) => updateVariation(variation.id, { sku: event.target.value })} placeholder="GM-001-8" />
-                      <input aria-label="Variation price" type="number" min="0.01" step="0.01" value={variation.price} onChange={(event) => updateVariation(variation.id, { price: event.target.value })} inputMode="decimal" placeholder="89.99" />
+                      <input aria-label="Variation price" type="number" min="0.01" step="0.01" value={variation.price} onChange={(event) => updateVariation(variation.id, { price: event.target.value })} inputMode="decimal" placeholder="89.99" required />
                       <input aria-label="Variation stock" type="number" min="0" value={variation.stock} onChange={(event) => updateVariation(variation.id, { stock: Number(event.target.value) || 0 })} />
                       <button className="admin-remove-button" type="button" onClick={() => removeVariation(variation.id)} aria-label={`Remove ${variation.size || "variation"}`}>×</button>
                     </div>
@@ -720,7 +726,7 @@ function ProductEditor({
             <p className="admin-eyebrow">Editor checklist</p>
             <ul className="admin-checklist">
               <li className={draft.name ? "is-complete" : ""}>Product name</li>
-              <li className={draft.price ? "is-complete" : ""}>Price</li>
+              <li className={(draft.type === "Variable" ? draft.variations.length > 0 && draft.variations.every((variation) => Boolean(formatCatalogPrice(variation.price))) : Boolean(formatCatalogPrice(draft.price))) ? "is-complete" : ""}>{draft.type === "Variable" ? "Variation prices" : "Price"}</li>
               <li className={draft.type === "Simple" || draft.variations.length > 0 ? "is-complete" : ""}>{draft.type === "Variable" ? "At least one variation" : "Stock quantity"}</li>
             </ul>
           </section>
