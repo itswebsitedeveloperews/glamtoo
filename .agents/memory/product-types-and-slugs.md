@@ -9,4 +9,4 @@ Each product has a title-derived slug that can be edited in the admin. Storefron
 
 **Why:** The storefront previously showed hard-coded variation UI for every product, which contradicted the selected product type and could not represent variation-level prices accurately.
 
-**How to apply:** When changing catalog, cart, or detail-page behavior, keep Simple and Variable flows separate. Generate a slug from the product name until an editor supplies a custom slug, and maintain slug uniqueness when saving.
+**How to apply:** When changing catalog, cart, or detail-page behavior, keep Simple and Variable flows separate. Disable variation values that cannot combine with the other selected value, clear a selection when it becomes invalid, and only enable Add to bag for an exact in-stock match. Generate a slug from the product name until an editor supplies a custom slug, and maintain slug uniqueness when saving.

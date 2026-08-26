@@ -537,13 +537,20 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColour, setSelectedColour] = useState('');
   const [variationMessage, setVariationMessage] = useState('');
-  const availableVariations = product?.type === 'Variable'
-    ? product.variations.filter((variation) => variation.stock > 0)
+  const productVariations = product?.type === 'Variable'
+    ? product.variations
     : [];
-  const sizes = [...new Set(availableVariations.map((variation) => variation.size).filter(Boolean))];
-  const colours = [...new Set(availableVariations.map((variation) => variation.colour).filter(Boolean))];
+  const availableVariations = productVariations.filter((variation) => variation.stock > 0);
+  const sizes = [...new Set(productVariations.map((variation) => variation.size).filter(Boolean))];
+  const colours = [...new Set(productVariations.map((variation) => variation.colour).filter(Boolean))];
+  const hasCompatibleVariation = (size?: string, colour?: string) =>
+    availableVariations.some((variation) =>
+      (!size || variation.size === size) && (!colour || variation.colour === colour),
+    );
   const selectedVariation = product?.type === 'Variable'
-    ? availableVariations.find((variation) =>
+    ? (sizes.length > 0 && !selectedSize) || (colours.length > 0 && !selectedColour)
+      ? undefined
+      : availableVariations.find((variation) =>
       (!sizes.length || variation.size === selectedSize)
       && (!colours.length || variation.colour === selectedColour),
     )
@@ -588,8 +595,8 @@ function ProductDetail({ params }: { params: { slug: string } }) {
               <input type="hidden" name="product" value={product.id} />
                {product.type === 'Variable' && (
                  <>
-                   {sizes.length > 0 && <div className="field"><label htmlFor={`product-size-${product.id}`}>Select size</label><select id={`product-size-${product.id}`} name="size" value={selectedSize} onChange={(event) => { setSelectedSize(event.target.value); setVariationMessage(''); }} required data-testid={`select-product-size-${product.id}`}><option value="" disabled>Choose a size</option>{sizes.map((size) => <option key={size}>{size}</option>)}</select></div>}
-                   {colours.length > 0 && <div className="field"><label htmlFor={`product-colour-${product.id}`}>Select colour</label><select id={`product-colour-${product.id}`} name="colour" value={selectedColour} onChange={(event) => { setSelectedColour(event.target.value); setVariationMessage(''); }} required data-testid={`select-product-colour-${product.id}`}><option value="" disabled>Choose a colour</option>{colours.map((colour) => <option key={colour}>{colour}</option>)}</select></div>}
+                   {sizes.length > 0 && <div className="field"><label htmlFor={`product-size-${product.id}`}>Select size</label><select id={`product-size-${product.id}`} name="size" value={selectedSize} onChange={(event) => { const nextSize = event.target.value; setSelectedSize(nextSize); if (selectedColour && !hasCompatibleVariation(nextSize, selectedColour)) setSelectedColour(''); setVariationMessage(''); }} required data-testid={`select-product-size-${product.id}`}><option value="" disabled>Choose a size</option>{sizes.map((size) => <option key={size} disabled={!hasCompatibleVariation(size, selectedColour || undefined)}>{size}</option>)}</select></div>}
+                   {colours.length > 0 && <div className="field"><label htmlFor={`product-colour-${product.id}`}>Select colour</label><select id={`product-colour-${product.id}`} name="colour" value={selectedColour} onChange={(event) => { const nextColour = event.target.value; setSelectedColour(nextColour); if (selectedSize && !hasCompatibleVariation(selectedSize, nextColour)) setSelectedSize(''); setVariationMessage(''); }} required data-testid={`select-product-colour-${product.id}`}><option value="" disabled>Choose a colour</option>{colours.map((colour) => <option key={colour} disabled={!hasCompatibleVariation(selectedSize || undefined, colour)}>{colour}</option>)}</select></div>}
                    {availableVariations.length === 0 && <p className="variation-message">This product is currently unavailable.</p>}
                    {variationMessage && <p className="variation-message" role="alert">{variationMessage}</p>}
                  </>
