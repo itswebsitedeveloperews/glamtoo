@@ -849,6 +849,7 @@ function Cart() {
 
 function Checkout() {
   const { isLoaded, isSignedIn } = useAuth();
+  const [, setLocation] = useLocation();
   const [isPaying, setIsPaying] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [cardError, setCardError] = useState("");
@@ -877,6 +878,10 @@ function Checkout() {
     return product ? [{ item, product, variation }] : [];
   });
   const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
+
+  useEffect(() => {
+    if (cartLines.length === 0) setLocation(`${basePath}/cart`);
+  }, [cartLines.length, setLocation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1047,6 +1052,8 @@ function Checkout() {
   const updateCheckoutProfile = (field: keyof CustomerProfile, value: string) => {
     setCheckoutProfile((current) => ({ ...current, [field]: value }));
   };
+
+  if (cartLines.length === 0) return null;
 
   return (
     <Shell>
