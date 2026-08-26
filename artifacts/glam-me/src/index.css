@@ -580,7 +580,7 @@ img { display: block; max-width: 100%; }
 .account-content { min-width: 0; }
 .account-panel { border: 1px solid var(--line); background: #fffdfb; padding: clamp(28px, 4vw, 48px); }
 .account-panel h2 { margin: 9px 0 17px; font: 400 52px/.9 var(--display); letter-spacing: -.05em; }
-.account-panel > p { max-width: 540px; margin: 0 0 27px; color: var(--muted); font-size: 16px; line-height: 1.65; }
+.account-panel > p { margin: 0 0 27px; color: var(--muted); font-size: 16px; line-height: 1.65; }
 .account-dashboard { min-height: 360px; }
 .account-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 38px; }
 .account-shortcuts button { display: grid; align-content: start; min-height: 132px; border: 1px solid var(--line); background: #f8f1ed; padding: 17px; color: var(--ink); cursor: pointer; text-align: left; transition: border-color .2s ease, transform .2s ease; }
