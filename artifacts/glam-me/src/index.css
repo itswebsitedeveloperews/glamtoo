@@ -850,6 +850,7 @@ img { display: block; max-width: 100%; }
 .admin-product-image-preview { display: block; width: 100%; aspect-ratio: .92; margin: 10px 0 16px; object-fit: cover; background: var(--paper-deep); }
 .admin-image-placeholder { display: grid; min-height: 150px; place-items: center; margin: 10px 0 16px; padding: 18px; border: 1px dashed #cfc7c1; color: #746f6b; text-align: center; font-size: 14px; font-weight: 400; line-height: 1.45; }
 .admin-field-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 21px 13px; }
+.admin-field-grid > .admin-editor-label { align-self: start; }
 .admin-field-grid .admin-editor-label:first-child { grid-column: 1 / -1; max-width: 430px; }
 .admin-variations-card .admin-card-heading { align-items: center; }
 .admin-card-description { max-width: 440px; margin: 9px 0 0; color: var(--muted); font: 400 14px/1.55 var(--body); }
