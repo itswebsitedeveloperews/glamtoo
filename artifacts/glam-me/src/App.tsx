@@ -357,6 +357,8 @@ function getStorefrontCategories(): CatalogCategory[] {
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(getCartCount);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
 
   useEffect(() => {
     const updateCartCount = () => setCartCount(getCartCount());
@@ -378,12 +380,19 @@ function Header() {
         >
           <span className="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
         </button>
-        <a href="/shop" className="tool-label search-link" data-testid="link-search">
+        <button
+          className="tool-label search-link"
+          type="button"
+          aria-expanded={searchOpen}
+          aria-controls="header-search-panel"
+          data-testid="button-search"
+          onClick={() => setSearchOpen((open) => !open)}
+        >
           <span className="tool-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
           </span>
           <span>Search</span>
-        </a>
+        </button>
         <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Glam Too" /></a>
         <div className="header-tools">
           <a href="/account" className="tool-label icon-link" aria-label="Account" data-testid="link-account">
@@ -399,6 +408,33 @@ function Header() {
           </a>
         </div>
       </div>
+      {searchOpen && (
+        <form
+          id="header-search-panel"
+          className="header-search-panel"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const query = searchQuery.trim();
+            setSearchOpen(false);
+            window.location.assign(`${basePath}/shop${query ? `?search=${encodeURIComponent(query)}` : ""}`);
+          }}
+        >
+          <label htmlFor="header-search-input">Search the shop</label>
+          <div className="header-search-form-row">
+            <input
+              id="header-search-input"
+              name="search"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search dresses, accessories..."
+              autoFocus
+              data-testid="input-header-search"
+            />
+            <button type="submit" className="header-search-submit" data-testid="button-header-search-submit">Search</button>
+          </div>
+        </form>
+      )}
       {menuOpen && <button className="nav-overlay" type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
       <nav id="primary-navigation" className={menuOpen ? 'nav nav-open' : 'nav'} aria-label="Primary navigation">
         <div className="mobile-nav-head">
@@ -582,7 +618,12 @@ function PageHero({ eyebrow, title, copy }: { eyebrow: string; title: string; co
 
 function Shop() {
   const products = getStorefrontProducts();
-  return <Shell><PageHero eyebrow="The shop" title="Pieces with presence." copy="A considered wardrobe of colour, texture and easy confidence. Find something for the plan you have, and the one you haven't made yet." /><div className="container shop-layout"><aside className="filter"><h3>Browse</h3><a href="/shop">All pieces</a><a href="/category">Dresses</a><a href="/category">Occasionwear</a><a href="/shop">Tops &amp; tailoring</a><a href="/shop">Accessories</a><h3 style={{ marginTop: 36 }}>Sort by</h3><a href="/shop">New in</a><a href="/shop">Bestsellers</a><a href="/shop">Price: low to high</a></aside><section className="shop-main"><div className="shop-toolbar"><span>{products.length} pieces</span><span>Showing all</span></div><div className="product-grid">{products.map((product, index) => <ProductCard key={product.id} product={product} featured={index < 2} />)}</div></section></div></Shell>;
+  const searchQuery = new URLSearchParams(window.location.search).get("search")?.trim() ?? "";
+  const normalizedQuery = searchQuery.toLowerCase();
+  const visibleProducts = normalizedQuery
+    ? products.filter((product) => [product.name, product.category, product.slug].some((value) => value.toLowerCase().includes(normalizedQuery)))
+    : products;
+  return <Shell><PageHero eyebrow="The shop" title="Pieces with presence." copy="A considered wardrobe of colour, texture and easy confidence. Find something for the plan you have, and the one you haven't made yet." /><div className="container shop-layout"><aside className="filter"><h3>Browse</h3><a href="/shop">All pieces</a><a href="/category">Dresses</a><a href="/category">Occasionwear</a><a href="/shop">Tops &amp; tailoring</a><a href="/shop">Accessories</a><h3 style={{ marginTop: 36 }}>Sort by</h3><a href="/shop">New in</a><a href="/shop">Bestsellers</a><a href="/shop">Price: low to high</a></aside><section className="shop-main"><div className="shop-toolbar"><span>{visibleProducts.length} {visibleProducts.length === 1 ? "piece" : "pieces"}</span><span>{searchQuery ? `Search results for “${searchQuery}”` : "Showing all"}</span></div>{visibleProducts.length > 0 ? <div className="product-grid">{visibleProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={index < 2} />)}</div> : <div className="shop-empty-state"><h2>No pieces found.</h2><p>Try searching for a different style, category, or product name.</p><a className="button" href="/shop">View all pieces</a></div>}</section></div></Shell>;
 }
 
 function CategoryCard({ category }: { category: CatalogCategory }) {
