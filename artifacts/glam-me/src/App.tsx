@@ -75,6 +75,32 @@ type CartItem = {
   quantity: number;
 };
 
+type CustomerOrder = {
+  id: string;
+  placedAt: string | null;
+  status: string;
+  total: number;
+  currency: string;
+  email: string;
+  delivery: {
+    method: string;
+    name: string;
+    address: {
+      line1: string;
+      line2: string;
+      city: string;
+      postcode: string;
+      country: string;
+    };
+  };
+  items: Array<{
+    name: string;
+    productId: string | null;
+    quantity: number;
+    total: number;
+  }>;
+};
+
 function getCartItems(): CartItem[] {
   try {
     const stored = window.localStorage.getItem(cartStorageKey);
@@ -719,6 +745,7 @@ function Cart() {
 }
 
 function Checkout() {
+  const { isLoaded, isSignedIn } = useAuth();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const products = getStorefrontProducts();
@@ -733,6 +760,10 @@ function Checkout() {
 
   async function beginStripeCheckout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isSignedIn) {
+      setPaymentError("Sign in before checkout so this order is saved to your account.");
+      return;
+    }
     if (cartLines.length === 0) {
       setPaymentError("Your bag is empty. Add a piece before checking out.");
       return;
@@ -771,7 +802,7 @@ function Checkout() {
 
   const deliveryCharge = "Free";
   const total = subtotal;
-  return <Shell><div className="container form-page"><div className="form-layout"><div className="form-copy"><div className="eyebrow">Nearly yours</div><h1>Checkout.</h1><p>Complete your details below, then pay securely on Stripe&apos;s hosted checkout.</p><a className="text-link" href="/cart">Return to bag</a></div><form className="form-stack" onSubmit={beginStripeCheckout}><div className="field"><label htmlFor="checkout-email">Email address</label><input id="checkout-email" name="email" type="email" required data-testid="input-checkout-email" /></div><div className="field"><label htmlFor="checkout-name">Full name</label><input id="checkout-name" name="name" type="text" required data-testid="input-checkout-name" /></div><div className="field"><label htmlFor="checkout-address">Address</label><input id="checkout-address" name="address" type="text" required data-testid="input-checkout-address" /></div><div className="field"><label htmlFor="checkout-city">Town or city</label><input id="checkout-city" name="city" type="text" required data-testid="input-checkout-city" /></div><div className="field"><label htmlFor="checkout-postcode">Postcode</label><input id="checkout-postcode" name="postcode" type="text" required data-testid="input-checkout-postcode" /></div><div className="field"><label htmlFor="checkout-delivery">Delivery method</label><select id="checkout-delivery" name="delivery" defaultValue="standard" data-testid="select-checkout-delivery"><option value="standard">Standard · {deliveryCharge}</option><option value="express">Express · £6.95</option></select></div>{paymentError && <p className="checkout-payment-error" role="alert">{paymentError}</p>}<button className="button" type="submit" disabled={isRedirecting || cartLines.length === 0} data-testid="button-place-order">{isRedirecting ? "Opening secure checkout…" : `Pay securely · ${formatPounds(total)}`}</button></form></div></div></Shell>;
+  return <Shell><div className="container form-page"><div className="form-layout"><div className="form-copy"><div className="eyebrow">Nearly yours</div><h1>Checkout.</h1><p>Complete your details below, then pay securely on Stripe&apos;s hosted checkout.</p><a className="text-link" href="/cart">Return to bag</a></div><form className="form-stack" onSubmit={beginStripeCheckout}>{!isSignedIn && <div className="checkout-account-notice"><strong>Sign in to save this order to your account.</strong><a className="text-link" href="/account">Sign in or create an account</a></div>}<div className="field"><label htmlFor="checkout-email">Email address</label><input id="checkout-email" name="email" type="email" required data-testid="input-checkout-email" /></div><div className="field"><label htmlFor="checkout-name">Full name</label><input id="checkout-name" name="name" type="text" required data-testid="input-checkout-name" /></div><div className="field"><label htmlFor="checkout-address">Address</label><input id="checkout-address" name="address" type="text" required data-testid="input-checkout-address" /></div><div className="field"><label htmlFor="checkout-city">Town or city</label><input id="checkout-city" name="city" type="text" required data-testid="input-checkout-city" /></div><div className="field"><label htmlFor="checkout-postcode">Postcode</label><input id="checkout-postcode" name="postcode" type="text" required data-testid="input-checkout-postcode" /></div><div className="field"><label htmlFor="checkout-delivery">Delivery method</label><select id="checkout-delivery" name="delivery" defaultValue="standard" data-testid="select-checkout-delivery"><option value="standard">Standard · {deliveryCharge}</option><option value="express">Express · £6.95</option></select></div>{paymentError && <p className="checkout-payment-error" role="alert">{paymentError}</p>}<button className="button" type="submit" disabled={!isLoaded || !isSignedIn || isRedirecting || cartLines.length === 0} data-testid="button-place-order">{isRedirecting ? "Opening secure checkout…" : !isLoaded ? "Checking account…" : !isSignedIn ? "Sign in to checkout" : `Pay securely · ${formatPounds(total)}`}</button></form></div></div></Shell>;
 }
 
 function Confirmation() {
@@ -779,7 +810,126 @@ function Confirmation() {
 }
 
 function CustomerSignInPage() {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return <Shell><div className="customer-auth-page"><p>Loading your account…</p></div></Shell>;
+  return isSignedIn ? <CustomerAccountPage /> : <CustomerSignInContent />;
+}
+
+function CustomerSignInContent() {
   return <Shell><div className="customer-auth-page"><div className="customer-auth-copy"><div className="eyebrow">Your Glam Too account</div><h1>Welcome back.</h1><p>Sign in to manage your details and make shopping your next plan even easier.</p></div><div className="customer-auth-card"><SignIn signUpUrl={`${basePath}/register`} fallbackRedirectUrl={basePath || '/'} /><a className="customer-recovery-link" href={`${basePath}/account/recovery`}>Forgot your password?</a></div></div></Shell>;
+}
+
+function formatCustomerOrderDate(value: string | null) {
+  if (!value) return "Date unavailable";
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric" }).format(new Date(value));
+}
+
+function CustomerAccountPage() {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { signOut } = useClerk();
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError("");
+    fetch("/api/stripe/orders", { credentials: "include" })
+      .then(async (response) => {
+        const result = await response.json() as { orders?: CustomerOrder[]; error?: string };
+        if (!response.ok) throw new Error(result.error || "Your orders could not be loaded right now.");
+        if (!cancelled) setOrders(Array.isArray(result.orders) ? result.orders : []);
+      })
+      .catch((caught) => {
+        if (!cancelled) setError(caught instanceof Error ? caught.message : "Your orders could not be loaded right now.");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, isSignedIn]);
+
+  if (!isLoaded) return <Shell><div className="customer-auth-page"><p>Loading your account…</p></div></Shell>;
+  if (!isSignedIn) return <CustomerSignInContent />;
+
+  return (
+    <Shell>
+      <div className="account-page">
+        <div className="account-heading">
+          <div>
+            <div className="eyebrow">Your Glam Too account</div>
+            <h1>Your orders.</h1>
+            <p>Everything you&apos;ve bought from us, in one lovely place.</p>
+          </div>
+          <button className="account-signout" type="button" onClick={() => void signOut({ redirectUrl: basePath || "/" })}>Sign out</button>
+        </div>
+
+        {error && <div className="account-message account-error" role="alert">{error}</div>}
+        {loading ? (
+          <div className="account-message">Loading your orders…</div>
+        ) : orders.length === 0 ? (
+          <section className="account-empty">
+            <div className="eyebrow">Nothing here yet</div>
+            <h2>Your next favourite is out there.</h2>
+            <p>Once you place an order while signed in, it will appear here with its delivery details.</p>
+            <a className="button button-pink" href="/shop">Start shopping</a>
+          </section>
+        ) : (
+          <div className="account-orders">
+            {orders.map((order) => {
+              const addressParts = [
+                order.delivery.address.line1,
+                order.delivery.address.line2,
+                order.delivery.address.city,
+                order.delivery.address.postcode,
+              ].filter(Boolean);
+              return (
+                <article className="account-order-card" key={order.id}>
+                  <header className="account-order-header">
+                    <div>
+                      <div className="eyebrow">Order {order.id}</div>
+                      <p>Placed {formatCustomerOrderDate(order.placedAt)}</p>
+                    </div>
+                    <div className="account-order-total">
+                      <strong>{formatPounds(order.total / 100)}</strong>
+                      <span className={`account-order-status ${order.status.toLowerCase().replace(/\s+/g, "-")}`}>{order.status}</span>
+                    </div>
+                  </header>
+                  <div className="account-order-body">
+                    <section className="account-order-items" aria-label={`Items in order ${order.id}`}>
+                      <h2>Items</h2>
+                      {order.items.length > 0 ? order.items.map((item, index) => (
+                        <div className="account-order-item" key={`${item.productId ?? item.name}-${index}`}>
+                          <div><strong>{item.name}</strong><span>Quantity {item.quantity}</span></div>
+                          <strong>{formatPounds(item.total / 100)}</strong>
+                        </div>
+                      )) : <p className="account-muted">Item details are being prepared.</p>}
+                    </section>
+                    <section className="account-delivery">
+                      <h2>Delivery details</h2>
+                      <p><strong>{order.delivery.method}</strong></p>
+                      {order.delivery.name && <p>{order.delivery.name}</p>}
+                      {addressParts.length > 0 && <p>{addressParts.map((part, index) => <span key={`${part}-${index}`}>{part}{index < addressParts.length - 1 && <br />}</span>)}</p>}
+                    </section>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </Shell>
+  );
 }
 
 function CustomerSignUpPage() {

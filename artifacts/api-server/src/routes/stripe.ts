@@ -5,6 +5,8 @@ import { getAdminAccess, requireAdmin } from "../adminAuth";
 import { getStripeConnectionInfoWithSource, getUncachableStripeClient } from "../stripeClient";
 import { clearSavedStripeCredentials, saveStripeCredentials } from "../stripeCredentials";
 import { initializeStripe } from "../stripeBootstrap";
+import { getAuth } from "@clerk/express";
+import { pool } from "@workspace/db";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -87,6 +89,12 @@ function getRequestOrigin(request: Request) {
   return `${request.protocol}://${request.get("host")}`;
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
 function credentialText(value: unknown) {
   return typeof value === "string" ? value.trim().slice(0, 500) : "";
 }
@@ -110,7 +118,7 @@ router.get("/stripe/status", requireAdmin, async (_request, response) => {
       webhookSecretConfigured: Boolean(connection.webhookSecret),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Stripe is not ready.";
+    const message = error instanceof Error ? error.message : "Unable to start Stripe checkout.";
     const connectionAttached = message.includes("Stripe is connected but has no secret key");
     response.status(503).json({
       connected: connectionAttached,
@@ -169,7 +177,7 @@ router.put("/stripe/credentials", requireAdmin, async (request, response) => {
       webhookSecretConfigured: Boolean(connection.webhookSecret),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Stripe keys could not be saved.";
+    const message = error instanceof Error ? error.message : "Unable to start Stripe checkout.";
     request.log?.warn({ error: { message } }, "Stripe credential update failed");
     return response.status(400).json({ error: secretKey ? "Stripe could not verify that secret key. Check it and try again." : message });
   }
@@ -180,7 +188,7 @@ router.delete("/stripe/credentials", requireAdmin, async (_request, response) =>
     await clearSavedStripeCredentials();
     return response.status(204).send();
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Saved Stripe keys could not be cleared.";
+    const message = error instanceof Error ? error.message : "Unable to start Stripe checkout.";
     return response.status(500).json({ error: message });
   }
 });
@@ -232,6 +240,8 @@ router.post("/stripe/checkout", async (request, response) => {
       metadata: {
         store: "Glam Too",
         customer_name: safeText(request.body?.customerName, 120),
+        delivery: request.body?.delivery === "express" ? "express" : "standard",
+        clerk_user_id: userId,
       },
     });
 
@@ -247,3 +257,102 @@ router.post("/stripe/checkout", async (request, response) => {
 });
 
 export default router;
+
+function orderNumber(stripeSessionId: string) {
+  const suffix = stripeSessionId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase();
+  return `#GM-${suffix}`;
+}
+
+          const customerDetails = asRecord(row.customer_details);
+
+          const deliveryAddress = serializeAddress(deliveryDetails.address ?? customerDetails.address);
+
+              const itemRecord = asRecord(item);
+
+          const metadata = asRecord(row.metadata);
+
+    const { userId } = getAuth(request);
+
+          const shippingDetails = asRecord(row.shipping_details);
+
+          const deliveryName = stringValue(deliveryDetails.name) || stringValue(customerDetails.name);
+
+    const result = await pool.query<{
+      id: string;
+      created: number | null;
+      amount_total: number | null;
+      currency: string | null;
+      payment_status: string | null;
+      status: string | null;
+      customer_email: string | null;
+      customer_details: unknown;
+      shipping_details: unknown;
+      metadata: unknown;
+      items: unknown;
+    }>(
+      `SELECT
+        sessions.id,
+        sessions.created,
+        sessions.amount_total,
+        sessions.currency,
+        sessions.payment_status,
+        sessions.status,
+        sessions.customer_email,
+        sessions.customer_details,
+        sessions.shipping_details,
+        sessions.metadata,
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'name', COALESCE(products.name, line_items.description, 'Glam Too item'),
+              'productId', products.metadata ->> 'glam_too_product_id',
+              'quantity', COALESCE(line_items.quantity, 1),
+              'total', COALESCE(line_items.amount_total, 0)
+            )
+            ORDER BY line_items.id
+          ) FILTER (WHERE line_items.id IS NOT NULL),
+          '[]'::json
+        ) AS items
+      FROM stripe.checkout_sessions AS sessions
+      LEFT JOIN stripe.checkout_session_line_items AS line_items
+        ON line_items.checkout_session = sessions.id
+      LEFT JOIN stripe.prices AS prices
+        ON prices.id = line_items.price
+      LEFT JOIN stripe.products AS products
+        ON products.id = prices.product
+      WHERE sessions.metadata ->> 'clerk_user_id' = $1
+        AND sessions.payment_status = 'paid'
+      GROUP BY
+        sessions.id,
+        sessions.created,
+        sessions.amount_total,
+        sessions.currency,
+        sessions.payment_status,
+        sessions.status,
+        sessions.customer_email,
+        sessions.customer_details,
+        sessions.shipping_details,
+        sessions.metadata
+      ORDER BY sessions.created DESC NULLS LAST
+      LIMIT 50`,
+      [userId],
+    );
+
+          const parsedItems = Array.isArray(row.items) ? row.items : [];
+
+function serializeAddress(value: unknown) {
+  const address = asRecord(value);
+  return {
+    line1: stringValue(address.line1, 200),
+    line2: stringValue(address.line2, 200),
+    city: stringValue(address.city, 100),
+    postcode: stringValue(address.postal_code, 40),
+    country: stringValue(address.country, 80),
+  };
+}
+
+function stringValue(value: unknown, maximumLength = 160) {
+  return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
+}
+
+          const deliveryDetails = Object.keys(shippingDetails).length > 0 ? shippingDetails : customerDetails;
