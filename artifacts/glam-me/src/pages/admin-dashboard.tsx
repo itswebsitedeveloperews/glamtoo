@@ -115,8 +115,12 @@ function useStoredState<T>(key: string, fallback: T) {
   function persist(nextValue: T) {
     try {
       window.localStorage.setItem(key, JSON.stringify(nextValue));
+      return true;
     } catch {
-      // The editor still works if browser storage is unavailable.
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("glam-storage-error", { detail: { key } }));
+      }, 0);
+      return false;
     }
   }
 
@@ -178,6 +182,37 @@ function blankProduct(category: string): ProductDraft {
 
 function blankCategory(): CategoryDraft {
   return { name: "", image: "", description: "" };
+}
+
+function compressProductImage(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("The image could not be read."));
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("The image could not be read."));
+        return;
+      }
+      const image = new Image();
+      image.onerror = () => reject(new Error("The image could not be loaded."));
+      image.onload = () => {
+        const maxDimension = 1200;
+        const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const context = canvas.getContext("2d");
+        if (!context) {
+          reject(new Error("The image could not be processed."));
+          return;
+        }
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      image.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function ProductEditor({
@@ -279,7 +314,7 @@ function ProductEditor({
     save(draft.status);
   }
 
-  function handleProductImageUpload(event: ChangeEvent<HTMLInputElement>) {
+  async function handleProductImageUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -292,14 +327,14 @@ function ProductEditor({
       event.target.value = "";
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        updateDraft({ image: reader.result });
-        setProductImageFileName(file.name);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressedImage = await compressProductImage(file);
+      updateDraft({ image: compressedImage });
+      setProductImageFileName(file.name);
+    } catch {
+      setValidationMessage("The image could not be processed. Please choose another image.");
+      event.target.value = "";
+    }
   }
 
   return (
@@ -448,6 +483,17 @@ export default function AdminDashboard({
   const [categoryImageFileName, setCategoryImageFileName] = useState("");
   const [notice, setNotice] = useState("");
   const categoryNames = categories.map((category) => category.name);
+
+  useEffect(() => {
+    function handleStorageError(event: Event) {
+      const storageKey = (event as CustomEvent<{ key?: string }>).detail?.key;
+      if (storageKey === productsStorageKey) {
+        setNotice("This product could not be saved in your browser. Please use a smaller image and try again.");
+      }
+    }
+    window.addEventListener("glam-storage-error", handleStorageError);
+    return () => window.removeEventListener("glam-storage-error", handleStorageError);
+  }, []);
 
   const inventoryTotal = useMemo(
     () => products.reduce((total, product) => total + (product.type === "Variable" ? product.variations.reduce((sum, variation) => sum + variation.stock, 0) : product.stock), 0),
