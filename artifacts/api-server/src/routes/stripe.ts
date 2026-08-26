@@ -1,8 +1,10 @@
 import { Router, type IRouter, type Request } from "express";
-import type Stripe from "stripe";
+import Stripe from "stripe";
 import { checkoutCatalog } from "../checkoutCatalog";
-import { requireAdmin } from "../adminAuth";
-import { getStripeConnectionInfo, getUncachableStripeClient } from "../stripeClient";
+import { getAdminAccess, requireAdmin } from "../adminAuth";
+import { getStripeConnectionInfoWithSource, getUncachableStripeClient } from "../stripeClient";
+import { clearSavedStripeCredentials, saveStripeCredentials } from "../stripeCredentials";
+import { initializeStripe } from "../stripeBootstrap";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -85,13 +87,23 @@ function getRequestOrigin(request: Request) {
   return `${request.protocol}://${request.get("host")}`;
 }
 
+function credentialText(value: unknown) {
+  return typeof value === "string" ? value.trim().slice(0, 500) : "";
+}
+
+function credentialMode(value: string, prefix: "sk" | "pk") {
+  const match = new RegExp(`^${prefix}_(test|live)_[A-Za-z0-9_]+$`).exec(value);
+  return match?.[1] as "test" | "live" | undefined;
+}
+
 router.get("/stripe/status", requireAdmin, async (_request, response) => {
   try {
-    const connection = await getStripeConnectionInfo();
+    const { connection, source } = await getStripeConnectionInfoWithSource();
     const mode = connection.secretKey.startsWith("sk_live_") ? "live" : "test";
     response.json({
       connected: true,
       configured: true,
+      source,
       mode,
       paymentMethods: ["Card"],
       publishableKeyConfigured: Boolean(connection.publishableKey),
@@ -109,6 +121,67 @@ router.get("/stripe/status", requireAdmin, async (_request, response) => {
       webhookSecretConfigured: false,
       error: message,
     });
+  }
+});
+
+router.put("/stripe/credentials", requireAdmin, async (request, response) => {
+  const secretKey = credentialText(request.body?.secretKey);
+  const publishableKey = credentialText(request.body?.publishableKey);
+  const webhookSecret = credentialText(request.body?.webhookSecret);
+
+  if (secretKey && !credentialMode(secretKey, "sk")) {
+    return response.status(400).json({ error: "Enter a valid Stripe secret key beginning with sk_test_ or sk_live_." });
+  }
+  if (publishableKey && !credentialMode(publishableKey, "pk")) {
+    return response.status(400).json({ error: "Enter a valid Stripe publishable key beginning with pk_test_ or pk_live_." });
+  }
+  if (secretKey && publishableKey && credentialMode(secretKey, "sk") !== credentialMode(publishableKey, "pk")) {
+    return response.status(400).json({ error: "Use publishable and secret keys from the same Stripe environment." });
+  }
+  if (webhookSecret && !/^whsec_[A-Za-z0-9_]+$/.test(webhookSecret)) {
+    return response.status(400).json({ error: "Enter a valid webhook signing secret beginning with whsec_." });
+  }
+
+  try {
+    if (secretKey) {
+      await new Stripe(secretKey).balance.retrieve();
+    }
+    const access = await getAdminAccess(request);
+    await saveStripeCredentials({
+      secretKey: secretKey || undefined,
+      publishableKey: publishableKey || undefined,
+      webhookSecret: webhookSecret || undefined,
+    }, access.userId ?? "admin");
+    try {
+      await initializeStripe();
+    } catch (setupError) {
+      const setupMessage = setupError instanceof Error ? setupError.message : "Stripe webhook setup needs attention.";
+      request.log?.warn({ error: { message: setupMessage } }, "Stripe credentials saved but setup refresh failed");
+    }
+    const { connection, source } = await getStripeConnectionInfoWithSource();
+    return response.status(201).json({
+      connected: true,
+      configured: true,
+      source,
+      mode: connection.secretKey.startsWith("sk_live_") ? "live" : "test",
+      paymentMethods: ["Card"],
+      publishableKeyConfigured: Boolean(connection.publishableKey),
+      webhookSecretConfigured: Boolean(connection.webhookSecret),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Stripe keys could not be saved.";
+    request.log?.warn({ error: { message } }, "Stripe credential update failed");
+    return response.status(400).json({ error: secretKey ? "Stripe could not verify that secret key. Check it and try again." : message });
+  }
+});
+
+router.delete("/stripe/credentials", requireAdmin, async (_request, response) => {
+  try {
+    await clearSavedStripeCredentials();
+    return response.status(204).send();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Saved Stripe keys could not be cleared.";
+    return response.status(500).json({ error: message });
   }
 });
 

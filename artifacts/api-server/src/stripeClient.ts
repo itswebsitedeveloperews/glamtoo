@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { StripeSync } from "stripe-replit-sync";
+import { getSavedStripeCredentials } from "./stripeCredentials";
 
 type StripeConnectionSettings = {
   secret_key?: string;
@@ -12,6 +13,8 @@ export type StripeConnectionInfo = {
   publishableKey?: string;
   webhookSecret?: string;
 };
+
+export type StripeCredentialSource = "admin" | "connection";
 
 async function getStripeConnectionSettings(): Promise<StripeConnectionSettings> {
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
@@ -43,17 +46,30 @@ async function getStripeConnectionSettings(): Promise<StripeConnectionSettings> 
   return data.items?.[0]?.settings ?? {};
 }
 
-export async function getStripeConnectionInfo(): Promise<StripeConnectionInfo> {
+export async function getStripeConnectionInfoWithSource(): Promise<{ connection: StripeConnectionInfo; source: StripeCredentialSource }> {
+  const savedCredentials = await getSavedStripeCredentials();
+  if (savedCredentials) {
+    return { connection: savedCredentials, source: "admin" };
+  }
+
   const settings = await getStripeConnectionSettings();
   if (!settings.secret_key) {
     throw new Error("Stripe is connected but has no secret key configured.");
   }
 
   return {
-    secretKey: settings.secret_key,
-    publishableKey: settings.publishable_key,
-    webhookSecret: settings.webhook_secret,
+    source: "connection",
+    connection: {
+      secretKey: settings.secret_key,
+      publishableKey: settings.publishable_key,
+      webhookSecret: settings.webhook_secret,
+    },
   };
+}
+
+export async function getStripeConnectionInfo(): Promise<StripeConnectionInfo> {
+  const { connection } = await getStripeConnectionInfoWithSource();
+  return connection;
 }
 
 export async function getUncachableStripeClient(): Promise<Stripe> {

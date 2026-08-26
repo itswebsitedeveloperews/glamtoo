@@ -5,4 +5,4 @@
 - [Product types and slugs](product-types-and-slugs.md) — Simple products have no option controls; variable options and editable title-derived slugs drive storefront behavior.
 - [Stripe connector setup](stripe-connector-setup.md) — Treat an attached Stripe connection without credentials as “key setup needed,” not as a ready payment provider.
 - [Clerk recovery flow API](clerk-recovery-flow-api.md) — This app’s Clerk React version uses signal-based sign-in methods for custom password recovery.
-- [Stripe key management UI](stripe-key-management-ui.md) — Keep Stripe secrets in the secure workspace connection; the admin UI manages status, setup guidance, and safe dashboard links.
+- [Stripe key management UI](stripe-key-management-ui.md) — Admins can save Stripe credentials through a protected form; values are encrypted server-side and never returned to the browser.
