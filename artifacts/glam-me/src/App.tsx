@@ -1422,10 +1422,6 @@ function CustomerAccountPage() {
     setDetailsNotice("");
     setDetailsError("");
     try {
-      await user.update({
-        firstName: details.firstName.trim(),
-        lastName: details.lastName.trim(),
-      });
       await saveProfile({
         ...profile,
         firstName: details.firstName.trim(),
@@ -1461,7 +1457,7 @@ function CustomerAccountPage() {
   if (!isLoaded) return <Shell><div className="customer-auth-page"><p>Loading your account…</p></div></Shell>;
   if (!isSignedIn) return <CustomerSignInContent />;
 
-  const accountName = user?.firstName || user?.username || "there";
+  const accountName = profile.firstName || user?.firstName || user?.username || "there";
   const accountSections: Array<{ id: AccountSection; label: string }> = [
     { id: "dashboard", label: "Dashboard" },
     { id: "orders", label: "Orders" },
