@@ -6,7 +6,7 @@ import { getStripeConnectionInfoWithSource, getUncachableStripeClient } from "..
 import { clearSavedStripeCredentials, saveStripeCredentials } from "../stripeCredentials";
 import { initializeStripe } from "../stripeBootstrap";
 import { getAuth } from "@clerk/express";
-import { pool } from "@workspace/db";
+import { db, pool, orderFulfillmentTable } from "@workspace/db";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -20,6 +20,9 @@ type CheckoutLine = SubmittedCheckoutLine & {
   unitAmount: number;
 };
 
+type FulfillmentStatus = "Processing" | "Shipped" | "Delivered";
+
+const fulfillmentStatuses: FulfillmentStatus[] = ["Processing", "Shipped", "Delivered"];
 const router: IRouter = Router();
 
 function safeText(value: unknown, maximumLength: number) {
@@ -199,6 +202,7 @@ router.post("/stripe/checkout", async (request, response) => {
     if (!userId) {
       return response.status(401).json({ error: "Sign in before checkout so your order can be saved." });
     }
+
     const submittedLines: SubmittedCheckoutLine[] = Array.isArray(request.body?.lines)
       ? (request.body.lines as unknown[])
         .map(parseCheckoutLine)
@@ -280,37 +284,36 @@ function stringValue(value: unknown, maximumLength = 160) {
   return typeof value === "string" ? value.trim().slice(0, maximumLength) : "";
 }
 
-router.get("/stripe/orders", async (request, response) => {
-  const { userId } = getAuth(request);
-  if (!userId) {
-    return response.status(401).json({ error: "Sign in to view your orders." });
-  }
+type OrderRow = {
+  id: string;
+  created: number | null;
+  amount_total: number | null;
+  currency: string | null;
+  customer_email: string | null;
+  customer_details: unknown;
+  shipping_details: unknown;
+  metadata: unknown;
+  fulfillment_status: FulfillmentStatus;
+  items: unknown;
+};
 
-  try {
-    const result = await pool.query<{
-      id: string;
-      created: number | null;
-      amount_total: number | null;
-      currency: string | null;
-      payment_status: string | null;
-      status: string | null;
-      customer_email: string | null;
-      customer_details: unknown;
-      shipping_details: unknown;
-      metadata: unknown;
-      items: unknown;
-    }>(
-      `SELECT
+function orderQuery(userId?: string, stripeSessionId?: string) {
+  const ownerFilter = userId ? "AND sessions.metadata ->> 'clerk_user_id' = $1" : "";
+  const sessionFilter = stripeSessionId
+    ? `AND sessions.id = $${userId ? 2 : 1}`
+    : "";
+  return {
+    text: `
+      SELECT
         sessions.id,
         sessions.created,
         sessions.amount_total,
         sessions.currency,
-        sessions.payment_status,
-        sessions.status,
         sessions.customer_email,
         sessions.customer_details,
         sessions.shipping_details,
         sessions.metadata,
+        COALESCE(fulfillment.status, 'Processing') AS fulfillment_status,
         COALESCE(
           json_agg(
             json_build_object(
@@ -324,65 +327,123 @@ router.get("/stripe/orders", async (request, response) => {
           '[]'::json
         ) AS items
       FROM stripe.checkout_sessions AS sessions
+      LEFT JOIN order_fulfillment AS fulfillment
+        ON fulfillment.stripe_session_id = sessions.id
       LEFT JOIN stripe.checkout_session_line_items AS line_items
         ON line_items.checkout_session = sessions.id
       LEFT JOIN stripe.prices AS prices
         ON prices.id = line_items.price
       LEFT JOIN stripe.products AS products
         ON products.id = prices.product
-      WHERE sessions.metadata ->> 'clerk_user_id' = $1
-        AND sessions.payment_status = 'paid'
+      WHERE sessions.payment_status = 'paid'
+        ${ownerFilter}
+        ${sessionFilter}
       GROUP BY
         sessions.id,
         sessions.created,
         sessions.amount_total,
         sessions.currency,
-        sessions.payment_status,
-        sessions.status,
         sessions.customer_email,
         sessions.customer_details,
         sessions.shipping_details,
-        sessions.metadata
+        sessions.metadata,
+        fulfillment.status
       ORDER BY sessions.created DESC NULLS LAST
       LIMIT 50`,
-      [userId],
-    );
+    values: [userId, stripeSessionId].filter((value): value is string => Boolean(value)),
+  };
+}
 
-    const orders = result.rows.map((row) => {
-      const customerDetails = asRecord(row.customer_details);
-      const shippingDetails = asRecord(row.shipping_details);
-      const deliveryDetails = Object.keys(shippingDetails).length > 0 ? shippingDetails : customerDetails;
-      const metadata = asRecord(row.metadata);
-      const parsedItems = Array.isArray(row.items) ? row.items : [];
+function serializeOrder(row: OrderRow) {
+  const customerDetails = asRecord(row.customer_details);
+  const shippingDetails = asRecord(row.shipping_details);
+  const metadata = asRecord(row.metadata);
+  const deliveryDetails = Object.keys(shippingDetails).length > 0 ? shippingDetails : customerDetails;
+  const parsedItems = Array.isArray(row.items) ? row.items : [];
 
+  return {
+    id: orderNumber(row.id),
+    stripeSessionId: row.id,
+    placedAt: row.created ? new Date(row.created * 1000).toISOString() : null,
+    status: row.fulfillment_status,
+    total: row.amount_total ?? 0,
+    currency: row.currency || "gbp",
+    email: stringValue(row.customer_email, 250) || stringValue(customerDetails.email, 250),
+    delivery: {
+      method: metadata.delivery === "express" ? "Express delivery" : "Standard delivery",
+      name: stringValue(deliveryDetails.name) || stringValue(customerDetails.name),
+      address: serializeAddress(deliveryDetails.address ?? customerDetails.address),
+    },
+    items: parsedItems.map((item) => {
+      const itemRecord = asRecord(item);
       return {
-        id: orderNumber(row.id),
-        placedAt: row.created ? new Date(row.created * 1000).toISOString() : null,
-        status: row.status === "complete" ? "Paid" : stringValue(row.payment_status) || "Processing",
-        total: (row.amount_total ?? 0) / 100,
-        currency: stringValue(row.currency, 10).toUpperCase() || "GBP",
-        email: stringValue(row.customer_email) || stringValue(customerDetails.email),
-        delivery: {
-          method: stringValue(metadata.delivery) === "express" ? "Express delivery" : "Standard delivery",
-          name: stringValue(deliveryDetails.name) || stringValue(customerDetails.name),
-          address: serializeAddress(deliveryDetails.address ?? customerDetails.address),
-        },
-        items: parsedItems.map((item) => {
-          const itemRecord = asRecord(item);
-          return {
-            name: stringValue(itemRecord.name) || "Glam Too item",
-            productId: stringValue(itemRecord.productId) || null,
-            quantity: Number(itemRecord.quantity) || 1,
-            total: (Number(itemRecord.total) || 0) / 100,
-          };
-        }),
+        name: stringValue(itemRecord.name) || "Glam Too item",
+        productId: stringValue(itemRecord.productId, 80) || null,
+        quantity: Number(itemRecord.quantity) || 1,
+        total: Number(itemRecord.total) || 0,
       };
+    }),
+  };
+}
+
+async function getOrderBySessionId(stripeSessionId: string) {
+  const query = orderQuery(undefined, stripeSessionId);
+  const result = await pool.query<OrderRow>(query.text, query.values);
+  return result.rows[0];
+}
+
+router.get("/stripe/orders", async (request, response) => {
+  const { userId } = getAuth(request);
+  if (!userId) return response.status(401).json({ error: "Sign in to view your orders." });
+
+  try {
+    const query = orderQuery(userId);
+    const result = await pool.query<OrderRow>(query.text, query.values);
+    return response.set("Cache-Control", "no-store").json({ orders: result.rows.map(serializeOrder) });
+  } catch (error) {
+    request.log?.error({ error }, "Customer orders could not be loaded");
+    return response.status(503).json({ error: "Your orders could not be loaded right now." });
+  }
+});
+
+router.get("/admin/orders", requireAdmin, async (request, response) => {
+  try {
+    const query = orderQuery();
+    const result = await pool.query<OrderRow>(query.text, query.values);
+    return response.set("Cache-Control", "no-store").json({ orders: result.rows.map(serializeOrder) });
+  } catch (error) {
+    request.log?.error({ error }, "Admin orders could not be loaded");
+    return response.status(503).json({ error: "Orders could not be loaded right now." });
+  }
+});
+
+router.patch("/admin/orders/:stripeSessionId/status", requireAdmin, async (request, response) => {
+  const stripeSessionId = safeText(request.params.stripeSessionId, 120);
+  const requestedStatus = safeText(request.body?.status, 20);
+  if (!/^cs_[A-Za-z0-9_]+$/.test(stripeSessionId) || !fulfillmentStatuses.includes(requestedStatus as FulfillmentStatus)) {
+    return response.status(400).json({ error: "Choose a valid order and fulfilment status." });
+  }
+  const status = requestedStatus as FulfillmentStatus;
+
+  try {
+    const existingOrder = await getOrderBySessionId(stripeSessionId);
+    if (!existingOrder) return response.status(404).json({ error: "That paid order could not be found." });
+
+    await db.insert(orderFulfillmentTable).values({
+      stripeSessionId,
+      status,
+      updatedAt: new Date(),
+    }).onConflictDoUpdate({
+      target: orderFulfillmentTable.stripeSessionId,
+      set: { status, updatedAt: new Date() },
     });
 
-    return response.set("Cache-Control", "no-store").json({ orders });
+    const updatedOrder = await getOrderBySessionId(stripeSessionId);
+    if (!updatedOrder) return response.status(404).json({ error: "That order could not be reloaded." });
+    return response.json({ order: serializeOrder(updatedOrder) });
   } catch (error) {
-    request.log?.error({ error }, "Customer order history query failed");
-    return response.status(503).json({ error: "Your orders could not be loaded right now." });
+    request.log?.error({ error, stripeSessionId }, "Order status could not be updated");
+    return response.status(503).json({ error: "Order status could not be updated right now." });
   }
 });
 

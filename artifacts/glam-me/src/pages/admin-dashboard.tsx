@@ -40,10 +40,24 @@ type StripeStatus = {
 
 type Order = {
   id: string;
+  stripeSessionId: string;
   customer: string;
+  placedAt: string | null;
   date: string;
   total: string;
   status: "Processing" | "Shipped" | "Delivered";
+};
+
+type OrderPayload = {
+  id: string;
+  stripeSessionId: string;
+  placedAt: string | null;
+  status: Order["status"];
+  total: number;
+  email: string;
+  delivery: {
+    name: string;
+  };
 };
 
 type ManagedUser = {
@@ -119,12 +133,6 @@ function getStoredProducts() {
 
 const initialCategories: Category[] = catalogCategories.map((category) => ({ ...category }));
 
-const initialOrders: Order[] = [
-  { id: "#GM-1048", customer: "Lily Carter", date: "Today, 10:42", total: "£148.98", status: "Processing" },
-  { id: "#GM-1047", customer: "Maya Patel", date: "Today, 09:18", total: "£89.99", status: "Shipped" },
-  { id: "#GM-1046", customer: "Amelia Jones", date: "Yesterday", total: "£59.99", status: "Delivered" },
-];
-
 function parseOrderTotal(total: string) {
   const amount = Number.parseFloat(total.replace(/[^0-9.-]/g, ""));
   return Number.isFinite(amount) ? amount : 0;
@@ -132,6 +140,40 @@ function parseOrderTotal(total: string) {
 
 function formatPounds(amount: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(amount);
+}
+
+function formatOrderDate(value: string | null) {
+  if (!value) return "Date unavailable";
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function isOrderOnDate(value: string | null, dayOffset: number) {
+  if (!value) return false;
+  const date = new Date(value);
+  const target = new Date();
+  target.setHours(0, 0, 0, 0);
+  target.setDate(target.getDate() + dayOffset);
+  return date.getFullYear() === target.getFullYear()
+    && date.getMonth() === target.getMonth()
+    && date.getDate() === target.getDate();
+}
+
+function toAdminOrder(order: OrderPayload): Order {
+  return {
+    id: order.id,
+    stripeSessionId: order.stripeSessionId,
+    customer: order.delivery.name || order.email || "Customer",
+    placedAt: order.placedAt,
+    date: formatOrderDate(order.placedAt),
+    total: formatPounds(order.total / 100),
+    status: order.status,
+  };
 }
 
 function formatUserDate(value: number | null) {
@@ -531,7 +573,10 @@ export default function AdminDashboard({
   const [section, setSection] = useState<AdminSection>("overview");
   const [products, setProducts] = useStoredState<Product[]>(productsStorageKey, getStoredProducts());
   const [categories, setCategories] = useStoredState<Category[]>("glam-me-admin-categories-v2", initialCategories);
-  const [orders, setOrders] = useStoredState<Order[]>("glam-me-admin-orders", initialOrders);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
   const [stripeStatus, setStripeStatus] = useState<StripeStatus>({ connected: false, configured: false, mode: "unknown", paymentMethods: [] });
   const [stripeStatusLoading, setStripeStatusLoading] = useState(true);
   const [stripeGuideOpen, setStripeGuideOpen] = useState(false);
@@ -571,8 +616,8 @@ export default function AdminDashboard({
     () => products.reduce((total, product) => total + (product.type === "Variable" ? product.variations.reduce((sum, variation) => sum + variation.stock, 0) : product.stock), 0),
     [products],
   );
-  const salesToday = orders.filter((order) => order.date.startsWith("Today")).reduce((total, order) => total + parseOrderTotal(order.total), 0);
-  const salesYesterday = orders.filter((order) => order.date.startsWith("Yesterday")).reduce((total, order) => total + parseOrderTotal(order.total), 0);
+  const salesToday = orders.filter((order) => isOrderOnDate(order.placedAt, 0)).reduce((total, order) => total + parseOrderTotal(order.total), 0);
+  const salesYesterday = orders.filter((order) => isOrderOnDate(order.placedAt, -1)).reduce((total, order) => total + parseOrderTotal(order.total), 0);
   const salesChange = salesYesterday > 0 ? ((salesToday - salesYesterday) / salesYesterday) * 100 : null;
   const salesChangeLabel = salesChange === null
     ? "No sales recorded yesterday"
@@ -685,9 +730,41 @@ export default function AdminDashboard({
     reader.readAsDataURL(file);
   }
 
-  function updateOrderStatus(orderId: string, status: Order["status"]) {
-    setOrders((current) => current.map((order) => (order.id === orderId ? { ...order, status } : order)));
-    setNotice(`${orderId} is now marked ${status.toLowerCase()}.`);
+  async function refreshOrders() {
+    setOrdersLoading(true);
+    setOrdersError("");
+    try {
+      const response = await fetch("/api/admin/orders", { credentials: "include" });
+      const payload = await response.json() as { orders?: OrderPayload[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || "Orders could not be loaded.");
+      setOrders((payload.orders ?? []).map(toAdminOrder));
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : "Orders could not be loaded.");
+    } finally {
+      setOrdersLoading(false);
+    }
+  }
+
+  async function updateOrderStatus(order: Order, status: Order["status"]) {
+    setUpdatingOrderId(order.id);
+    setOrdersError("");
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.stripeSessionId)}/status`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      const payload = await response.json() as { order?: OrderPayload; error?: string };
+      if (!response.ok || !payload.order) throw new Error(payload.error || "Order status could not be updated.");
+      const updatedOrder = toAdminOrder(payload.order);
+      setOrders((current) => current.map((item) => item.id === order.id ? updatedOrder : item));
+      setNotice(`${order.id} is now marked ${status.toLowerCase()}.`);
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : "Order status could not be updated.");
+    } finally {
+      setUpdatingOrderId(null);
+    }
   }
 
   async function refreshStripeStatus() {
@@ -830,10 +907,12 @@ export default function AdminDashboard({
   }
 
   useEffect(() => {
+    void refreshOrders();
     void refreshStripeStatus();
   }, []);
 
   useEffect(() => {
+    if (section === "orders") void refreshOrders();
     if (section === "users") void refreshUsers();
   }, [section]);
 
@@ -961,8 +1040,11 @@ export default function AdminDashboard({
 
         {section === "orders" && (
           <>
-            <SectionTitle eyebrow="Fulfilment" title="Orders" description="Track customer purchases and move each order through delivery." />
-            <section className="admin-panel admin-table-panel"><div className="admin-table"><div className="admin-table-head admin-order-table-head"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span></div>{orders.map((order) => <div className="admin-table-row admin-order-table-row" key={order.id}><strong>{order.id}</strong><span>{order.customer}</span><span>{order.date}</span><span>{order.total}</span><select value={order.status} onChange={(event) => updateOrderStatus(order.id, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}><option>Processing</option><option>Shipped</option><option>Delivered</option></select></div>)}</div></section>
+            <SectionTitle eyebrow="Fulfilment" title="Orders" description="Track customer purchases and move each order through delivery." action={<button className="admin-secondary" type="button" onClick={() => void refreshOrders()} disabled={ordersLoading}>{ordersLoading ? "Refreshing…" : "Refresh orders"}</button>} />
+            <section className="admin-panel admin-table-panel">
+              {ordersError && <p className="admin-payment-error" role="alert">{ordersError}</p>}
+              {ordersLoading && orders.length === 0 ? <p className="admin-users-state">Loading orders…</p> : orders.length === 0 ? <p className="admin-users-state">No paid orders yet.</p> : <div className="admin-table"><div className="admin-table-head admin-order-table-head"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span></div>{orders.map((order) => <div className="admin-table-row admin-order-table-row" key={order.id}><strong>{order.id}</strong><span>{order.customer}</span><span>{order.date}</span><span>{order.total}</span><select value={order.status} disabled={updatingOrderId === order.id} onChange={(event) => void updateOrderStatus(order, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}><option>Processing</option><option>Shipped</option><option>Delivered</option></select></div>)}</div>}
+            </section>
           </>
         )}
 
