@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
@@ -70,6 +70,7 @@ const cartStorageKey = 'glam-me-cart-v1';
 const pendingCouponPaymentStorageKey = 'glam-me-pending-coupon-payment-v1';
 const checkoutPreferencesStorageKey = 'glam-me-checkout-preferences-v1';
 const inventoryStorageKey = 'glam-me-live-inventory-v1';
+const wishlistStorageKey = 'glam-me-wishlist-v1';
 const standardDeliveryAmount = 3.95;
 const expressDeliveryAmount = 6.95;
 const freeStandardDeliveryThreshold = 75;
@@ -155,6 +156,19 @@ type AppliedCoupon = {
 type CheckoutPreferences = {
   delivery?: "standard" | "express";
   couponCode?: string;
+};
+
+type WishlistContextValue = {
+  productIds: number[];
+  count: number;
+  isLoading: boolean;
+  error: string;
+  notice: string;
+  isSaved: (productId: number) => boolean;
+  isPending: (productId: number) => boolean;
+  toggleProduct: (productId: number, productName: string) => Promise<void>;
+  removeProduct: (productId: number, productName: string) => Promise<void>;
+  moveProductToCart: (productId: number, productName: string, addToCart: () => boolean) => Promise<void>;
 };
 
 const emptyCustomerProfile: CustomerProfile = {
@@ -251,6 +265,16 @@ function getCartItems(): CartItem[] {
       : [];
   } catch {
     return [];
+  }
+}
+
+function restoreCartItems(items: CartItem[]) {
+  try {
+    window.localStorage.setItem(cartStorageKey, JSON.stringify(items));
+    window.dispatchEvent(new Event('glam-cart-updated'));
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -472,11 +496,244 @@ function getStorefrontCategories(): CatalogCategory[] {
   }
 }
 
+function uniqueWishlistIds(productIds: number[]) {
+  return [...new Set(productIds.filter((productId) => Number.isInteger(productId) && productId > 0))];
+}
+
+function getGuestWishlistProductIds() {
+  try {
+    const stored = window.localStorage.getItem(wishlistStorageKey);
+    if (!stored) return [];
+    const parsed = JSON.parse(stored) as unknown;
+    return Array.isArray(parsed) ? uniqueWishlistIds(parsed.filter((productId): productId is number => typeof productId === "number")) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveGuestWishlistProductIds(productIds: number[]) {
+  window.localStorage.setItem(wishlistStorageKey, JSON.stringify(uniqueWishlistIds(productIds)));
+  window.dispatchEvent(new Event("glam-wishlist-updated"));
+}
+
+async function requestWishlist(path: string, init?: RequestInit) {
+  const response = await fetch(path, { ...init, credentials: "include", headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) } });
+  const result = await response.json().catch(() => ({})) as { productIds?: unknown; error?: string };
+  if (!response.ok) throw new Error(result.error || "Your wishlist could not be updated right now.");
+  return result;
+}
+
+function parseWishlistResponseProductIds(value: unknown) {
+  return Array.isArray(value)
+    ? uniqueWishlistIds(value.filter((productId): productId is number => typeof productId === "number"))
+    : [];
+}
+
+const WishlistContext = createContext<WishlistContextValue | null>(null);
+
+function WishlistProvider({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const [productIds, setProductIds] = useState<number[]>([]);
+  const [pendingIds, setPendingIds] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const productIdsRef = useRef(productIds);
+  const pendingIdsRef = useRef(pendingIds);
+  const mutationQueueRef = useRef(Promise.resolve());
+  const validProductIds = productIds.filter((productId) => getStorefrontProducts().some((product) => product.id === productId));
+  productIdsRef.current = productIds;
+  pendingIdsRef.current = pendingIds;
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    let active = true;
+    const guestIds = getGuestWishlistProductIds();
+    setError("");
+    if (!isSignedIn) {
+      productIdsRef.current = guestIds;
+      setProductIds(guestIds);
+      setIsLoading(false);
+      return () => {
+        active = false;
+      };
+    }
+
+    setIsLoading(true);
+    void (async () => {
+      try {
+        const remote = await requestWishlist("/api/account/wishlist");
+        let nextIds = parseWishlistResponseProductIds(remote.productIds);
+        if (guestIds.length > 0) {
+          const merged = await requestWishlist("/api/account/wishlist/merge", {
+            method: "POST",
+            body: JSON.stringify({ productIds: guestIds }),
+          });
+          nextIds = parseWishlistResponseProductIds(merged.productIds);
+          saveGuestWishlistProductIds([]);
+        }
+        if (active) {
+          productIdsRef.current = nextIds;
+          setProductIds(nextIds);
+        }
+      } catch (caught) {
+        if (active) {
+          productIdsRef.current = guestIds;
+          setProductIds(guestIds);
+          setError(caught instanceof Error ? caught.message : "Your wishlist could not be loaded right now.");
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [isLoaded, isSignedIn]);
+
+  function showNotice(message: string) {
+    setNotice(message);
+    window.setTimeout(() => setNotice(""), 2800);
+  }
+
+  function setPending(productId: number, pending: boolean) {
+    const nextPendingIds = pending
+      ? pendingIdsRef.current.includes(productId) ? pendingIdsRef.current : [...pendingIdsRef.current, productId]
+      : pendingIdsRef.current.filter((id) => id !== productId);
+    pendingIdsRef.current = nextPendingIds;
+    setPendingIds(nextPendingIds);
+  }
+
+  function replaceProductIds(nextProductIds: number[]) {
+    productIdsRef.current = nextProductIds;
+    setProductIds(nextProductIds);
+  }
+
+  function enqueueWishlistMutation(mutation: () => Promise<void>) {
+    const queuedMutation = mutationQueueRef.current.then(mutation, mutation);
+    mutationQueueRef.current = queuedMutation.catch(() => undefined);
+    return queuedMutation;
+  }
+
+  async function toggleProduct(productId: number, productName: string) {
+    if (!isLoaded || pendingIdsRef.current.includes(productId)) return;
+    setPending(productId, true);
+    return enqueueWishlistMutation(async () => {
+      const previousIds = productIdsRef.current;
+      const saved = previousIds.includes(productId);
+      const nextIds = saved ? previousIds.filter((id) => id !== productId) : [productId, ...previousIds];
+      replaceProductIds(nextIds);
+      setError("");
+      try {
+        if (isSignedIn) {
+          const response = await requestWishlist(saved ? `/api/account/wishlist/${productId}` : "/api/account/wishlist", {
+            method: saved ? "DELETE" : "POST",
+            ...(saved ? {} : { body: JSON.stringify({ productId }) }),
+          });
+          if (Array.isArray(response.productIds)) replaceProductIds(parseWishlistResponseProductIds(response.productIds));
+        } else {
+          saveGuestWishlistProductIds(nextIds);
+        }
+        showNotice(saved ? `${productName} removed from your wishlist.` : `${productName} saved to your wishlist.`);
+      } catch (caught) {
+        replaceProductIds(previousIds);
+        setError(caught instanceof Error ? caught.message : "Your wishlist could not be updated right now.");
+      } finally {
+        setPending(productId, false);
+      }
+    });
+  }
+
+  async function removeProduct(productId: number, productName: string) {
+    if (productIdsRef.current.includes(productId)) await toggleProduct(productId, productName);
+  }
+
+  async function moveProductToCart(productId: number, productName: string, addToCart: () => boolean) {
+    if (!isLoaded || pendingIdsRef.current.includes(productId) || !productIdsRef.current.includes(productId)) return;
+    setPending(productId, true);
+    return enqueueWishlistMutation(async () => {
+      const previousIds = productIdsRef.current;
+      if (!previousIds.includes(productId)) {
+        setPending(productId, false);
+        return;
+      }
+      const previousCartItems = getCartItems();
+      const nextIds = previousIds.filter((id) => id !== productId);
+      replaceProductIds(nextIds);
+      setError("");
+      try {
+        if (!addToCart()) throw new Error("This product could not be added to your bag. Please check your browser storage and try again.");
+        if (isSignedIn) {
+          const response = await requestWishlist(`/api/account/wishlist/${productId}/move-to-cart`, { method: "POST" });
+          if (Array.isArray(response.productIds)) replaceProductIds(parseWishlistResponseProductIds(response.productIds));
+        } else {
+          saveGuestWishlistProductIds(nextIds);
+        }
+        showNotice(`${productName} added to your bag.`);
+      } catch (caught) {
+        restoreCartItems(previousCartItems);
+        replaceProductIds(previousIds);
+        setError(caught instanceof Error ? caught.message : "This product could not be moved to your bag right now.");
+      } finally {
+        setPending(productId, false);
+      }
+    });
+  }
+
+  const value: WishlistContextValue = {
+    productIds,
+    count: validProductIds.length,
+    isLoading,
+    error,
+    notice,
+    isSaved: (productId) => productIds.includes(productId),
+    isPending: (productId) => pendingIds.includes(productId),
+    toggleProduct,
+    removeProduct,
+    moveProductToCart,
+  };
+
+  return (
+    <WishlistContext.Provider value={value}>
+      {children}
+      {notice && <div className="wishlist-notice" role="status" aria-live="polite">{notice}</div>}
+      {error && window.location.pathname !== "/wishlist" && <div className="wishlist-notice wishlist-notice-error" role="alert">{error}</div>}
+    </WishlistContext.Provider>
+  );
+}
+
+function useWishlist() {
+  const context = useContext(WishlistContext);
+  if (!context) throw new Error("Wishlist controls must be rendered inside WishlistProvider.");
+  return context;
+}
+
+function WishlistButton({ product, detail = false }: { product: CatalogProduct; detail?: boolean }) {
+  const { isLoading, isSaved, isPending, toggleProduct } = useWishlist();
+  const saved = isSaved(product.id);
+  return (
+    <button
+      className={`wishlist-button${detail ? " wishlist-button-detail" : ""}${saved ? " is-saved" : ""}`}
+      type="button"
+      aria-label={saved ? `Remove ${product.name} from wishlist` : `Save ${product.name} to wishlist`}
+      aria-pressed={saved}
+      disabled={isLoading || isPending(product.id)}
+      onClick={() => void toggleProduct(product.id, product.name)}
+      data-testid={`button-wishlist-${product.id}`}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 8.7c0 5.1-8.8 10.2-8.8 10.2S3.2 13.8 3.2 8.7A4.6 4.6 0 0 1 12 6a4.6 4.6 0 0 1 8.8 2.7Z" /></svg>
+      <span className="sr-only">{saved ? "Saved" : "Save"}</span>
+    </button>
+  );
+}
+
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [cartCount, setCartCount] = useState(getCartCount);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
+  const { count: wishlistCount } = useWishlist();
 
   useEffect(() => {
     const updateCartCount = () => setCartCount(getCartCount());
@@ -516,6 +773,12 @@ function Header() {
           <a href="/account" className="tool-label icon-link" aria-label="Account" data-testid="link-account">
             <span className="tool-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" role="img"><circle cx="12" cy="8" r="3.2" /><path d="M5.8 20c.6-3.3 2.7-5.1 6.2-5.1s5.6 1.8 6.2 5.1" /></svg>
+            </span>
+          </a>
+          <a href="/wishlist" className="tool-label icon-link wishlist-link" aria-label={`Wishlist, ${wishlistCount} saved product${wishlistCount === 1 ? '' : 's'}`} data-testid="link-wishlist">
+            <span className="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="img"><path d="M20.8 8.7c0 5.1-8.8 10.2-8.8 10.2S3.2 13.8 3.2 8.7A4.6 4.6 0 0 1 12 6a4.6 4.6 0 0 1 8.8 2.7Z" /></svg>
+              {wishlistCount > 0 && <span className="wishlist-count">{wishlistCount}</span>}
             </span>
           </a>
           <a href="/cart" className="tool-label icon-link bag-link" aria-label={`Shopping bag, ${cartCount} item${cartCount === 1 ? '' : 's'}`} data-testid="link-cart">
@@ -637,17 +900,17 @@ function Shell({ children }: { children: ReactNode }) {
 function ProductCard({ product, featured = false, showShopNow = false }: { product: CatalogProduct; featured?: boolean; showShopNow?: boolean }) {
   return (
     <article className="product-card" data-testid={`card-product-${product.id}`}>
-      <a href={`/product/${product.slug}`} data-testid={`link-product-${product.id}`}>
-        <div className="product-image">
+      <div className="product-image">
+        <a className="product-card-image-link" href={`/product/${product.slug}`} data-testid={`link-product-${product.id}`} aria-label={`View ${product.name}`}>
           {product.type === 'Simple' && product.stock <= 0 ? <span className="badge">Out of stock</span> : featured && <span className="badge">Just in</span>}
-          <span className="heart" aria-hidden="true">♡</span>
           <img src={product.image} alt={product.name} />
-        </div>
-        <div className="product-info">
-          <div><div className="product-name">{product.name}</div><div className="product-meta">{product.category}</div></div>
-          <div className="price">{product.price}</div>
-            {showShopNow && <span className="product-shop-now">Shop now</span>}
-        </div>
+        </a>
+        <WishlistButton product={product} />
+      </div>
+      <a className="product-info product-info-link" href={`/product/${product.slug}`} aria-label={`View ${product.name}`}>
+        <div><div className="product-name">{product.name}</div><div className="product-meta">{product.category}</div></div>
+        <div className="price">{product.price}</div>
+        {showShopNow && <span className="product-shop-now">Shop now</span>}
       </a>
     </article>
   );
@@ -990,8 +1253,10 @@ function ProductDetail({ params }: { params: { slug: string } }) {
           </div>
           <div className="detail-copy">
             <div className="eyebrow">{product.category} edit · Glam Too</div>
-            <h1>{product.name}</h1>
-              <div className="detail-price">{displayedPrice}</div>
+            <div className="detail-title-row">
+              <div><h1>{product.name}</h1><div className="detail-price">{displayedPrice}</div></div>
+              <WishlistButton product={product} detail />
+            </div>
             <p>{product.description}</p>
             <form className="detail-form" onSubmit={handleAddToCart}>
               <input type="hidden" name="product" value={product.id} />
@@ -1009,6 +1274,93 @@ function ProductDetail({ params }: { params: { slug: string } }) {
             <div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with an easy, considered fit.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery on orders of £75 or more. Return unworn pieces within 28 days.</p></details></div>
           </div>
         </div>
+      </div>
+    </Shell>
+  );
+}
+
+function WishlistPage() {
+  useLiveInventory();
+  const { productIds, isLoading, error, isPending, removeProduct, moveProductToCart } = useWishlist();
+  const [cartError, setCartError] = useState("");
+  const products = getStorefrontProducts();
+  const wishlistProducts = productIds.flatMap((productId) => {
+    const product = products.find((candidate) => candidate.id === productId);
+    return product ? [product] : [];
+  });
+
+  function isAvailable(product: CatalogProduct) {
+    return product.type === "Simple"
+      ? product.stock > 0
+      : product.variations.some((variation) => variation.stock > 0);
+  }
+
+  async function handleAddToCart(product: CatalogProduct) {
+    setCartError("");
+    if (!isAvailable(product)) return;
+    await moveProductToCart(product.id, product.name, () => addProductToCart(product));
+  }
+
+  return (
+    <Shell>
+      <section className="wishlist-hero">
+        <div className="container">
+          <div className="eyebrow">Saved for later</div>
+          <h1>Your wishlist.</h1>
+          <p>Keep the pieces you love close by, ready for your next plan.</p>
+        </div>
+      </section>
+      <div className="container wishlist-page">
+        {error && <p className="wishlist-message wishlist-message-error" role="alert">{error}</p>}
+        {cartError && <p className="wishlist-message wishlist-message-error" role="alert">{cartError}</p>}
+        {isLoading ? (
+          <div className="wishlist-empty-state"><p>Loading your saved pieces…</p></div>
+        ) : wishlistProducts.length === 0 ? (
+          <div className="wishlist-empty-state">
+            <div className="wishlist-empty-heart" aria-hidden="true">♡</div>
+            <h2>Your wishlist is empty.</h2>
+            <p>Save your favourite pieces and they’ll be waiting here whenever you’re ready.</p>
+            <a className="button button-pink" href="/shop">Continue Shopping</a>
+          </div>
+        ) : (
+          <div className="wishlist-grid">
+            {wishlistProducts.map((product) => {
+              const available = isAvailable(product);
+              const salePrice = product.salePrice;
+              const hasSalePrice = Boolean(salePrice && parsePounds(salePrice) < parsePounds(product.price));
+              return (
+                <article className="wishlist-item" key={product.id}>
+                  <a className="wishlist-item-image" href={`/product/${product.slug}`} aria-label={`View ${product.name}`}>
+                    {!available && <span className="badge">Out of stock</span>}
+                    <img src={product.image} alt={product.name} style={{ objectPosition: product.position }} />
+                  </a>
+                  <div className="wishlist-item-content">
+                    <div>
+                      <p className="wishlist-item-category">{product.category}</p>
+                      <h2><a href={`/product/${product.slug}`}>{product.name}</a></h2>
+                      <div className={`wishlist-item-price${hasSalePrice ? " is-on-sale" : ""}`}>
+                        {hasSalePrice && <del>{product.price}</del>}
+                        <strong>{hasSalePrice ? salePrice : product.price}</strong>
+                      </div>
+                      <p className={`wishlist-stock${available ? " is-in-stock" : ""}`}>{available ? "In stock" : "Out of stock"}</p>
+                    </div>
+                    <div className="wishlist-item-actions">
+                      <a className="button wishlist-view-button" href={`/product/${product.slug}`}>View Product</a>
+                      {product.type === "Variable" ? (
+                        <a className="button button-pink" href={`/product/${product.slug}`}>Add to Cart</a>
+                      ) : (
+                        <button className="button button-pink" type="button" disabled={!available || isPending(product.id)} onClick={() => void handleAddToCart(product)} data-testid={`button-wishlist-cart-${product.id}`}>
+                          {!available ? "Out of stock" : isPending(product.id) ? "Adding…" : "Add to Cart"}
+                        </button>
+                      )}
+                      <button className="wishlist-remove-button" type="button" disabled={isPending(product.id)} onClick={() => void removeProduct(product.id, product.name)} data-testid={`button-wishlist-remove-${product.id}`}>Remove</button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
       </div>
     </Shell>
   );
@@ -2340,6 +2692,7 @@ function AppRoutes() {
     <Route path="/terms" component={() => <LegalPage type="terms" />} />
     <Route path="/delivery-returns" component={() => <LegalPage type="delivery" />} />
     <Route path="/cart" component={Cart} />
+    <Route path="/wishlist" component={WishlistPage} />
     <Route path="/checkout" component={Checkout} />
     <Route path="/order-confirmation" component={Confirmation} />
     <Route path="/admin" component={AdminRoute} />
@@ -2364,7 +2717,7 @@ function ClerkProviderWithRoutes() {
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
-      <AppRoutes />
+      <WishlistProvider><AppRoutes /></WishlistProvider>
     </ClerkProvider>
   );
 }

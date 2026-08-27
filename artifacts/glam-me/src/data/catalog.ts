@@ -26,6 +26,7 @@ export type CatalogProduct = {
   name: string;
   category: string;
   price: string;
+  salePrice?: string;
   stock: number;
   status: "Published" | "Draft";
   type: "Simple" | "Variable";
