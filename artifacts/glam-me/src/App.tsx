@@ -68,6 +68,7 @@ const adminProductsStorageKey = 'glam-me-admin-products-v4';
 const adminCategoriesStorageKey = 'glam-me-admin-categories-v2';
 const cartStorageKey = 'glam-me-cart-v1';
 const pendingCouponPaymentStorageKey = 'glam-me-pending-coupon-payment-v1';
+const checkoutPreferencesStorageKey = 'glam-me-checkout-preferences-v1';
 
 type CartItem = {
   productId: number;
@@ -135,6 +136,11 @@ type AppliedCoupon = {
   };
   discountAmount: number;
   total: number;
+};
+
+type CheckoutPreferences = {
+  delivery?: "standard" | "express";
+  couponCode?: string;
 };
 
 const emptyCustomerProfile: CustomerProfile = {
@@ -237,6 +243,30 @@ function getCartItems(): CartItem[] {
 function clearCart() {
   window.localStorage.removeItem(cartStorageKey);
   window.dispatchEvent(new Event('glam-cart-updated'));
+}
+
+function getCheckoutPreferences(): CheckoutPreferences {
+  try {
+    const stored = window.localStorage.getItem(checkoutPreferencesStorageKey);
+    if (!stored) return {};
+    const parsed = JSON.parse(stored) as Partial<CheckoutPreferences>;
+    return {
+      delivery: parsed.delivery === "express" ? "express" : parsed.delivery === "standard" ? "standard" : undefined,
+      couponCode: typeof parsed.couponCode === "string" && parsed.couponCode.trim() ? parsed.couponCode.trim().toUpperCase() : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function saveCheckoutPreferences(updates: Partial<CheckoutPreferences>) {
+  try {
+    const next = { ...getCheckoutPreferences(), ...updates };
+    if (!next.couponCode) delete next.couponCode;
+    window.localStorage.setItem(checkoutPreferencesStorageKey, JSON.stringify(next));
+  } catch {
+    // Checkout remains usable if browser storage is unavailable.
+  }
 }
 
 function getCartQueryItem(): CartItem | null {
@@ -990,13 +1020,13 @@ function Checkout() {
   const [isPaying, setIsPaying] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [cardError, setCardError] = useState("");
-  const [delivery, setDelivery] = useState<"standard" | "express">("standard");
+  const [delivery, setDelivery] = useState<"standard" | "express">(() => getCheckoutPreferences().delivery ?? "standard");
   const [publishableKey, setPublishableKey] = useState("");
   const [paymentSetupError, setPaymentSetupError] = useState("");
   const [checkoutProfile, setCheckoutProfile] = useState<CustomerProfile>(emptyCustomerProfile);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("");
-  const [couponCode, setCouponCode] = useState("");
+  const [couponCode, setCouponCode] = useState(() => getCheckoutPreferences().couponCode ?? "");
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const [couponMessage, setCouponMessage] = useState("");
   const [couponError, setCouponError] = useState("");
@@ -1052,9 +1082,11 @@ function Checkout() {
       }
       setCouponCode(result.coupon.code);
       setAppliedCoupon({ coupon: result.coupon, discountAmount: result.discountAmount, total: result.total });
+      saveCheckoutPreferences({ delivery, couponCode: result.coupon.code });
       if (!silent) setCouponMessage(`${result.coupon.code} has been applied.`);
     } catch (error) {
       setAppliedCoupon(null);
+      if (silent) saveCheckoutPreferences({ couponCode: undefined });
       setCouponError(error instanceof Error ? error.message : "That coupon could not be applied.");
     } finally {
       setCouponLoading(false);
@@ -1114,6 +1146,13 @@ function Checkout() {
   // Recalculate percent discounts whenever delivery changes; the server remains authoritative.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [delivery]);
+
+  useEffect(() => {
+    const restoredCouponCode = getCheckoutPreferences().couponCode;
+    if (restoredCouponCode) void applyCoupon(restoredCouponCode, true);
+  // Restore and revalidate a coupon saved before the page reload.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!publishableKey || selectedPaymentMethodId || !cardMountRef.current) return;
@@ -1318,8 +1357,8 @@ function Checkout() {
             <section className="checkout-section">
               <div className="checkout-section-heading"><span>02</span><div><h2>Shipping</h2><p>Choose how quickly you&apos;d like your order to arrive.</p></div></div>
               <div className="checkout-delivery-options">
-                <label className={`checkout-delivery-option ${delivery === "standard" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="standard" checked={delivery === "standard"} onChange={() => setDelivery("standard")} /><span><strong>Standard delivery</strong><small>3–5 working days</small></span><b>Free</b></label>
-                <label className={`checkout-delivery-option ${delivery === "express" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="express" checked={delivery === "express"} onChange={() => setDelivery("express")} /><span><strong>Express delivery</strong><small>1–2 working days</small></span><b>£6.95</b></label>
+                <label className={`checkout-delivery-option ${delivery === "standard" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="standard" checked={delivery === "standard"} onChange={() => { setDelivery("standard"); saveCheckoutPreferences({ delivery: "standard" }); }} /><span><strong>Standard delivery</strong><small>3–5 working days</small></span><b>Free</b></label>
+                <label className={`checkout-delivery-option ${delivery === "express" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="express" checked={delivery === "express"} onChange={() => { setDelivery("express"); saveCheckoutPreferences({ delivery: "express" }); }} /><span><strong>Express delivery</strong><small>1–2 working days</small></span><b>£6.95</b></label>
               </div>
             </section>
             <section className="checkout-section checkout-payment-section">
@@ -1341,7 +1380,7 @@ function Checkout() {
             <div className="checkout-coupon" aria-label="Coupon code">
               <label htmlFor="checkout-coupon-code">Coupon code</label>
               {appliedCoupon ? (
-                <div className="checkout-applied-coupon"><span><strong>{appliedCoupon.coupon.code}</strong><small>{appliedCoupon.coupon.discountType === "percentage" ? `${appliedCoupon.coupon.discountValue}% off` : `${formatPounds(appliedCoupon.coupon.discountValue / 100)} off`}</small></span><button type="button" onClick={() => { setAppliedCoupon(null); setCouponMessage("Coupon removed."); setCouponError(""); }}>Remove</button></div>
+                <div className="checkout-applied-coupon"><span><strong>{appliedCoupon.coupon.code}</strong><small>{appliedCoupon.coupon.discountType === "percentage" ? `${appliedCoupon.coupon.discountValue}% off` : `${formatPounds(appliedCoupon.coupon.discountValue / 100)} off`}</small></span><button type="button" onClick={() => { setAppliedCoupon(null); saveCheckoutPreferences({ couponCode: undefined }); setCouponMessage("Coupon removed."); setCouponError(""); }}>Remove</button></div>
               ) : (
                 <div className="checkout-coupon-form"><input id="checkout-coupon-code" value={couponCode} onChange={(event) => { setCouponCode(event.target.value.toUpperCase()); setCouponError(""); }} placeholder="Enter code" autoComplete="off" data-testid="input-coupon-code" /><button type="button" onClick={() => void applyCoupon()} disabled={couponLoading} data-testid="button-apply-coupon">{couponLoading ? "Applying…" : "Apply"}</button></div>
               )}
