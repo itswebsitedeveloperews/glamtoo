@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import http from "node:http";
 import { after, test } from "node:test";
+import express from "express";
 import { pool } from "@workspace/db";
 import {
   cancelPendingOrder,
@@ -11,11 +13,14 @@ import {
 import { attemptPaymentRefund } from "../src/paymentResolution";
 import { buildRefundNotificationMessage } from "../src/refundNotifications";
 import { reconcileLegacyOrders } from "../src/routes/stripe";
+import { createAccountRouter } from "../src/routes/account";
 
 const runId = `task18_${crypto.randomUUID().replace(/-/g, "")}`;
+const wishlistRunId = `task24_${crypto.randomUUID().replace(/-/g, "")}`;
 const createdProducts: string[] = [];
 const createdCoupons: number[] = [];
 const createdOrders: string[] = [];
+const createdWishlistProducts: string[] = [];
 
 function pendingOrderInput(productId: string, couponId: number) {
   return {
@@ -111,6 +116,155 @@ async function createPaymentFixture(label: string) {
   }, paymentReference, `${runId}_user`, new Date(Date.now() + 30 * 60 * 1000));
   return { orderId: order.id, productId, couponId, paymentReference };
 }
+
+async function createWishlistProduct(productId: number, active = true, stock = 3) {
+  const inventoryProductId = `${wishlistRunId}_${productId}`;
+  createdWishlistProducts.push(inventoryProductId);
+  await pool.query(
+    `INSERT INTO product_inventory
+      (product_id, catalog_product_id, variation_id, name, description, unit_amount, stock, active)
+     VALUES ($1, $2, NULL, 'Task 24 wishlist product', '', 2500, $3, $4)`,
+    [inventoryProductId, String(productId), stock, active],
+  );
+  return inventoryProductId;
+}
+
+async function withWishlistApi<T>(userId: string, callback: (baseUrl: string) => Promise<T>) {
+  const app = express();
+  app.use(express.json());
+  app.use("/api", createAccountRouter({ getUserId: async () => userId }));
+  const server = http.createServer(app);
+  await new Promise<void>((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => resolve());
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") {
+    server.close();
+    throw new Error("Wishlist test server did not expose a TCP address.");
+  }
+
+  try {
+    return await callback(`http://127.0.0.1:${address.port}`);
+  } finally {
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => error ? reject(error) : resolve());
+    });
+  }
+}
+
+async function wishlistApiRequest(baseUrl: string, path: string, init?: RequestInit) {
+  const response = await fetch(`${baseUrl}/api/account/wishlist${path}`, {
+    ...init,
+    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+  });
+  const body = await response.json() as { productIds?: number[]; saved?: boolean; error?: string };
+  return { response, body };
+}
+
+function nextWishlistProductId() {
+  return 100_000_000 + Number.parseInt(crypto.randomUUID().replace(/-/g, "").slice(0, 8), 16) % 800_000_000;
+}
+
+test("wishlist API persists saved state, prevents duplicates, and honors the saved response contract", async () => {
+  const productId = nextWishlistProductId();
+  await createWishlistProduct(productId);
+  const userId = `${wishlistRunId}_persistence`;
+
+  await withWishlistApi(userId, async (baseUrl) => {
+    const initial = await wishlistApiRequest(baseUrl, "");
+    assert.equal(initial.response.status, 200);
+    assert.deepEqual(initial.body.productIds, []);
+
+    const saved = await wishlistApiRequest(baseUrl, "", {
+      method: "POST",
+      body: JSON.stringify({ productId }),
+    });
+    assert.equal(saved.response.status, 201);
+    assert.deepEqual(saved.body, { saved: true });
+
+    const repeated = await wishlistApiRequest(baseUrl, "", {
+      method: "POST",
+      body: JSON.stringify({ productId }),
+    });
+    assert.equal(repeated.response.status, 201);
+    assert.deepEqual(repeated.body, { saved: true });
+
+    const listed = await wishlistApiRequest(baseUrl, "");
+    assert.deepEqual(listed.body.productIds, [productId]);
+    const checked = await wishlistApiRequest(baseUrl, `/${productId}`);
+    assert.deepEqual(checked.body, { saved: true });
+
+    const rowCount = await pool.query<{ count: string }>(
+      "SELECT COUNT(*)::text AS count FROM store_wishlists WHERE user_id = $1 AND product_id = $2",
+      [userId, productId],
+    );
+    assert.equal(rowCount.rows[0].count, "1");
+
+    const removed = await wishlistApiRequest(baseUrl, `/${productId}`, { method: "DELETE" });
+    assert.equal(removed.response.status, 200);
+    assert.deepEqual(removed.body, { saved: false });
+    const afterRemoval = await wishlistApiRequest(baseUrl, "");
+    assert.deepEqual(afterRemoval.body.productIds, []);
+  });
+});
+
+test("wishlist API merges guest items, removes stale products, isolates accounts, and moves items", async () => {
+  const retainedProductId = nextWishlistProductId();
+  const mergedProductId = nextWishlistProductId();
+  const otherUserProductId = nextWishlistProductId();
+  const staleProductId = nextWishlistProductId();
+  await Promise.all([
+    createWishlistProduct(retainedProductId),
+    createWishlistProduct(mergedProductId),
+    createWishlistProduct(otherUserProductId),
+    createWishlistProduct(staleProductId, false),
+  ]);
+
+  const firstUserId = `${wishlistRunId}_first`;
+  const otherUserId = `${wishlistRunId}_other`;
+  await pool.query(
+    `INSERT INTO store_wishlists (user_id, product_id)
+     VALUES ($1, $2), ($1, $3), ($4, $5)`,
+    [firstUserId, retainedProductId, staleProductId, otherUserId, otherUserProductId],
+  );
+
+  await withWishlistApi(firstUserId, async (baseUrl) => {
+    const beforeMerge = await wishlistApiRequest(baseUrl, "");
+    assert.deepEqual(beforeMerge.body.productIds, [retainedProductId]);
+
+    const merged = await wishlistApiRequest(baseUrl, "/merge", {
+      method: "POST",
+      body: JSON.stringify({
+        productIds: [retainedProductId, mergedProductId, mergedProductId, staleProductId, "not-a-product"],
+      }),
+    });
+    assert.equal(merged.response.status, 200);
+    assert.deepEqual(merged.body.productIds?.slice().sort((a, b) => a - b), [mergedProductId, retainedProductId].sort((a, b) => a - b));
+
+    const staleRows = await pool.query<{ count: string }>(
+      "SELECT COUNT(*)::text AS count FROM store_wishlists WHERE user_id = $1 AND product_id = $2",
+      [firstUserId, staleProductId],
+    );
+    assert.equal(staleRows.rows[0].count, "0");
+
+    const moved = await wishlistApiRequest(baseUrl, `/${retainedProductId}/move-to-cart`, { method: "POST" });
+    assert.equal(moved.response.status, 200);
+    assert.deepEqual(moved.body, { saved: false });
+    const afterMove = await wishlistApiRequest(baseUrl, "");
+    assert.deepEqual(afterMove.body.productIds, [mergedProductId]);
+  });
+
+  await withWishlistApi(otherUserId, async (baseUrl) => {
+    const otherUserItems = await wishlistApiRequest(baseUrl, "");
+    assert.deepEqual(otherUserItems.body.productIds, [otherUserProductId]);
+
+    const crossAccountDelete = await wishlistApiRequest(baseUrl, `/${retainedProductId}`, { method: "DELETE" });
+    assert.deepEqual(crossAccountDelete.body, { saved: false });
+    const stillOwned = await wishlistApiRequest(baseUrl, "");
+    assert.deepEqual(stillOwned.body.productIds, [otherUserProductId]);
+  });
+});
 
 test("repeated paid callbacks settle an order, inventory, and coupon once", async () => {
   const fixture = await createPaymentFixture("duplicate");
@@ -564,6 +718,10 @@ test("legacy checkout-session reconciliation upgrades a numeric offset cursor", 
 });
 
 after(async () => {
+  await pool.query("DELETE FROM store_wishlists WHERE user_id LIKE $1", [`${wishlistRunId}%`]);
+  if (createdWishlistProducts.length) {
+    await pool.query("DELETE FROM product_inventory WHERE product_id = ANY($1::text[])", [createdWishlistProducts]);
+  }
   await pool.query("DELETE FROM inventory_reservations WHERE payment_reference LIKE $1", [`pi_${runId}%`]);
   await pool.query("DELETE FROM coupon_redemptions WHERE payment_reference LIKE $1", [`pi_${runId}%`]);
   await pool.query("DELETE FROM coupon_reservations WHERE payment_reference LIKE $1", [`pi_${runId}%`]);
