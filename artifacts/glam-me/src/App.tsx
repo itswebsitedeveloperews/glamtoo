@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type FormEvent,
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
-import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
+import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogProductImages, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
@@ -452,6 +452,7 @@ function getStorefrontProducts(): CatalogProduct[] {
           slugify(category.name) === slugify(String(product.category ?? '')),
         );
         const productId = Number(product.id);
+        const primaryImage = product.image || matchingCatalogProduct?.image || matchingCategory?.image || fashionImage;
         return {
           ...matchingCatalogProduct,
           ...product,
@@ -460,8 +461,9 @@ function getStorefrontProducts(): CatalogProduct[] {
           name: product.name || matchingCatalogProduct?.name || 'Glam Too piece',
           category: product.category || matchingCatalogProduct?.category || '',
           price: formatCatalogPrice(product.price || matchingCatalogProduct?.price || ''),
-          image: product.image || matchingCatalogProduct?.image || matchingCategory?.image || fashionImage,
+          image: primaryImage,
           position: product.position || matchingCatalogProduct?.position || '50% 50%',
+          galleryImages: getCatalogProductImages({ image: primaryImage, galleryImages: product.galleryImages }),
           variations: (product.variations ?? matchingCatalogProduct?.variations ?? []).map((variation) => ({
             ...variation,
             price: formatCatalogPrice(variation.price),
@@ -1195,9 +1197,15 @@ function Product() {
 function ProductDetail({ params }: { params: { slug: string } }) {
   useLiveInventory();
   const product = getStorefrontProducts().find((item) => item.slug === params.slug || String(item.id) === params.slug);
+  const galleryImages = getCatalogProductImages(product ?? { image: "" });
+  const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
+  const galleryTouchStartX = useRef<number | null>(null);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColour, setSelectedColour] = useState('');
   const [variationMessage, setVariationMessage] = useState('');
+  useEffect(() => {
+    setActiveGalleryIndex(0);
+  }, [product?.id, params.slug]);
   const productVariations = product?.type === 'Variable'
     ? product.variations
     : [];
@@ -1224,6 +1232,12 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   if (!product) return <NotFound />;
   const selectedProduct = product;
   const isSoldOut = product.type === 'Simple' ? product.stock <= 0 : availableVariations.length === 0;
+  const displayedGalleryIndex = Math.min(activeGalleryIndex, Math.max(galleryImages.length - 1, 0));
+
+  function changeGallery(direction: number) {
+    if (galleryImages.length < 2) return;
+    setActiveGalleryIndex((current) => (current + direction + galleryImages.length) % galleryImages.length);
+  }
 
   function handleAddToCart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1249,7 +1263,62 @@ function ProductDetail({ params }: { params: { slug: string } }) {
       <div className="container product-detail">
         <div className="product-detail-layout">
           <div className="product-gallery">
-            <div className="gallery-image"><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /></div>
+            <div
+              className="gallery-viewer"
+              role="group"
+              aria-roledescription="carousel"
+              tabIndex={galleryImages.length > 1 ? 0 : -1}
+              aria-label={`${product.name} product gallery`}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowLeft") {
+                  event.preventDefault();
+                  changeGallery(-1);
+                }
+                if (event.key === "ArrowRight") {
+                  event.preventDefault();
+                  changeGallery(1);
+                }
+              }}
+              onTouchStart={(event) => {
+                galleryTouchStartX.current = event.touches[0]?.clientX ?? null;
+              }}
+              onTouchEnd={(event) => {
+                const startX = galleryTouchStartX.current;
+                galleryTouchStartX.current = null;
+                const endX = event.changedTouches[0]?.clientX;
+                if (startX === null || endX === undefined || Math.abs(endX - startX) < 40) return;
+                changeGallery(endX < startX ? 1 : -1);
+              }}
+            >
+              <div className="gallery-image">
+                <img src={galleryImages[displayedGalleryIndex] || product.image} alt={`${product.name} view ${displayedGalleryIndex + 1}`} style={{ objectPosition: product.position }} />
+              </div>
+              <span className="sr-only" aria-live="polite" aria-atomic="true">
+                Image {displayedGalleryIndex + 1} of {galleryImages.length}
+              </span>
+              {galleryImages.length > 1 && (
+                <>
+                  <button className="gallery-control gallery-control-prev" type="button" onClick={() => changeGallery(-1)} aria-label="View previous product image">←</button>
+                  <button className="gallery-control gallery-control-next" type="button" onClick={() => changeGallery(1)} aria-label="View next product image">→</button>
+                </>
+              )}
+            </div>
+            {galleryImages.length > 1 && (
+              <div className="gallery-thumbnails" aria-label="Choose product image">
+                {galleryImages.map((image, index) => (
+                  <button
+                    className={`gallery-thumbnail ${index === displayedGalleryIndex ? "is-active" : ""}`}
+                    type="button"
+                    key={`${image}-${index}`}
+                    onClick={() => setActiveGalleryIndex(index)}
+                    aria-label={`View ${product.name} image ${index + 1}`}
+                    aria-current={index === displayedGalleryIndex ? "true" : undefined}
+                  >
+                    <img src={image} alt="" style={{ objectPosition: product.position }} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div className="detail-copy">
             <div className="eyebrow">{product.category} edit · Glam Too</div>

@@ -170,6 +170,12 @@ function withoutProductDetail(product: Product): Product {
     ...cleanedProduct,
     slug: createProductSlug(cleanedProduct.slug || cleanedProduct.name),
     price: formatCatalogPrice(cleanedProduct.price),
+    galleryImages: Array.isArray(cleanedProduct.galleryImages)
+      ? [...new Set(cleanedProduct.galleryImages
+        .filter((image): image is string => typeof image === "string" && image.trim().length > 0)
+        .map((image) => image.trim())
+        .filter((image) => image !== cleanedProduct.image.trim()))]
+      : undefined,
     variations: (cleanedProduct.variations ?? []).map((variation) => ({
       ...variation,
       price: formatCatalogPrice(variation.price),
@@ -506,6 +512,7 @@ function blankProduct(category: string): ProductDraft {
     sku: "",
     image: "",
     position: "50% 50%",
+    galleryImages: [],
     variations: [],
   };
 }
@@ -604,12 +611,15 @@ function ProductEditor({
           sku: product.sku,
            image: product.image,
            position: product.position,
+           galleryImages: [...new Set((product.galleryImages ?? []).filter((image) => image !== product.image))],
            variations: product.variations.map((variation) => ({ ...variation, price: getCatalogPriceInput(variation.price) })),
         }
       : blankProduct(categories[0] ?? "Dresses"),
   );
   const [validationMessage, setValidationMessage] = useState("");
   const [productImageFileName, setProductImageFileName] = useState("");
+  const [galleryImageUrl, setGalleryImageUrl] = useState("");
+  const [galleryImageFileName, setGalleryImageFileName] = useState("");
 
   const publishLabel = product && draft.status === "Published" ? "Update product" : "Publish product";
   const totalVariationStock = draft.variations.reduce((total, variation) => total + variation.stock, 0);
@@ -651,6 +661,8 @@ function ProductEditor({
       name: draft.name.trim(),
       price: formattedPrice,
       status,
+      image: draft.image.trim(),
+      galleryImages: Array.from(new Set((draft.galleryImages ?? []).map((image) => image.trim()).filter((image) => image && image !== draft.image.trim()))),
       variations: isVariableProduct ? draft.variations.map((variation) => ({
         ...variation,
         price: formatCatalogPrice(variation.price),
@@ -715,6 +727,55 @@ function ProductEditor({
       setProductImageFileName(file.name);
     } catch {
       setValidationMessage("The image could not be processed. Please choose another image.");
+      event.target.value = "";
+    }
+  }
+
+  function addGalleryImage(image: string) {
+    const normalizedImage = image.trim();
+    if (!normalizedImage) return;
+    if (normalizedImage === draft.image.trim() || (draft.galleryImages ?? []).includes(normalizedImage)) {
+      setValidationMessage("This image is already in the product gallery.");
+      return;
+    }
+    updateDraft({
+      galleryImages: [...new Set([...(draft.galleryImages ?? []), normalizedImage])],
+    });
+    setGalleryImageUrl("");
+    setGalleryImageFileName("");
+  }
+
+  function removeGalleryImage(index: number) {
+    updateDraft({ galleryImages: (draft.galleryImages ?? []).filter((_, imageIndex) => imageIndex !== index) });
+  }
+
+  function moveGalleryImage(index: number, direction: -1 | 1) {
+    const currentImages = [...(draft.galleryImages ?? [])];
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= currentImages.length) return;
+    [currentImages[index], currentImages[nextIndex]] = [currentImages[nextIndex], currentImages[index]];
+    updateDraft({ galleryImages: currentImages });
+  }
+
+  async function handleGalleryImageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setValidationMessage("Please choose an image file.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setValidationMessage("Please choose an image smaller than 4MB.");
+      event.target.value = "";
+      return;
+    }
+    try {
+      const compressedImage = await compressProductImage(file);
+      addGalleryImage(compressedImage);
+      setGalleryImageFileName(file.name);
+    } catch {
+      setValidationMessage("The gallery image could not be processed. Please choose another image.");
       event.target.value = "";
     }
   }
@@ -839,6 +900,34 @@ function ProductEditor({
                <label className="admin-upload-button">Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
                <span>{productImageFileName || "PNG, JPG, WEBP or GIF · max 4MB"}</span>
              </div>
+              <div className="admin-gallery-divider" />
+              <div className="admin-gallery-heading">
+                <p className="admin-eyebrow">Gallery images</p>
+                <small>Add supporting views for the product page. The primary image stays first.</small>
+              </div>
+              <div className="admin-gallery-add">
+                <input className="admin-editor-input" value={galleryImageUrl} onChange={(event) => setGalleryImageUrl(event.target.value)} placeholder="https://... gallery image URL" aria-label="Gallery image URL" />
+                <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add image</button>
+              </div>
+              <div className="admin-image-upload">
+                <label className="admin-upload-button">Upload gallery image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                <span>{galleryImageFileName || "Add another view · max 4MB"}</span>
+              </div>
+              {(draft.galleryImages ?? []).length > 0 ? (
+                <div className="admin-product-gallery-list" aria-label="Gallery image order">
+                  {(draft.galleryImages ?? []).map((image, index) => (
+                    <div className="admin-product-gallery-item" key={`${image}-${index}`}>
+                      <img src={image} alt={`${draft.name || "Product"} gallery view ${index + 1}`} />
+                      <div className="admin-product-gallery-item-actions">
+                        <span>View {index + 2}</span>
+                        <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label={`Move gallery image ${index + 1} earlier`}>↑</button>
+                        <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === (draft.galleryImages ?? []).length - 1} aria-label={`Move gallery image ${index + 1} later`}>↓</button>
+                        <button className="admin-remove-button" type="button" onClick={() => removeGalleryImage(index)} aria-label={`Remove gallery image ${index + 1}`}>×</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="admin-gallery-empty">No additional gallery images yet.</p>}
            </section>
 
           <section className="admin-editor-card admin-sidebar-card">

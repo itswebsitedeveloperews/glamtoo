@@ -34,6 +34,7 @@ export type CatalogProduct = {
   sku: string;
   image: string;
   position: string;
+  galleryImages?: string[];
   variations: CatalogVariation[];
 };
 
@@ -68,6 +69,17 @@ export function createProductSlug(value: string) {
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+export function getCatalogProductImages(product: Pick<CatalogProduct, "image" | "galleryImages">) {
+  const primaryImage = typeof product.image === "string" ? product.image.trim() : "";
+  const galleryImages = Array.isArray(product.galleryImages)
+    ? product.galleryImages
+      .filter((image): image is string => typeof image === "string" && image.trim().length > 0)
+      .map((image) => image.trim())
+    : [];
+  const supportingImages = [...new Set(galleryImages)].filter((image) => image !== primaryImage);
+  return primaryImage ? [primaryImage, ...supportingImages] : supportingImages;
 }
 
 export const catalogCategories: CatalogCategory[] = [
