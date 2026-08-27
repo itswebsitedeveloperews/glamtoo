@@ -249,6 +249,7 @@ function getCartItems(): CartItem[] {
 
 function clearCart() {
   window.localStorage.removeItem(cartStorageKey);
+  saveCheckoutPreferences({ couponCode: undefined });
   window.dispatchEvent(new Event('glam-cart-updated'));
 }
 
@@ -1030,6 +1031,7 @@ function Cart() {
     setItems(nextItems);
     try {
       window.localStorage.setItem(cartStorageKey, JSON.stringify(nextItems));
+      if (nextItems.length === 0) saveCheckoutPreferences({ couponCode: undefined });
     } catch {
       // The visible cart still updates if browser storage is unavailable.
     }
@@ -1164,7 +1166,12 @@ function Checkout() {
   }
 
   useEffect(() => {
-    if (cartLines.length === 0) setLocation(`${basePath}/cart`);
+    if (cartLines.length === 0) {
+      setCouponCode("");
+      setAppliedCoupon(null);
+      saveCheckoutPreferences({ couponCode: undefined });
+      setLocation(`${basePath}/cart`);
+    }
   }, [cartLines.length, setLocation]);
 
   useEffect(() => {

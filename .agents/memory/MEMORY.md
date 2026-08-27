@@ -1,6 +1,7 @@
 - [Clerk embedded sign-in](clerk-embedded-sign-in.md) — In this Wouter/Vite app, use Clerk’s default embedded sign-in mode; path routing left the auth widget empty.
 - [Vite catalog state](vite-catalog-state.md) — Hot reload can preserve browser state when a localStorage-backed catalog changes; verify seeded data in a fresh context.
 - [Cart storage](cart-storage.md) — Persist only cart line identifiers, size, and quantity; derive product media from the catalog.
+- [Coupon cart lifecycle](coupon-cart-lifecycle.md) — Clear a saved coupon when the bag is emptied; preserve it only while the shopper is retrying the same bag.
 - [Admin image persistence](admin-image-persistence.md) — Compress uploaded product images before localStorage persistence to prevent save failures and disappearing products.
 - [Product types and slugs](product-types-and-slugs.md) — Simple products have no option controls; variable options and editable title-derived slugs drive storefront behavior.
 - [Stripe connector setup](stripe-connector-setup.md) — Treat an attached Stripe connection without credentials as “key setup needed,” not as a ready payment provider.
