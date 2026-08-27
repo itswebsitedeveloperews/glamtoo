@@ -1199,12 +1199,14 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const product = getStorefrontProducts().find((item) => item.slug === params.slug || String(item.id) === params.slug);
   const galleryImages = getCatalogProductImages(product ?? { image: "" });
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
+  const [galleryTransitionDirection, setGalleryTransitionDirection] = useState<1 | -1>(1);
   const galleryTouchStartX = useRef<number | null>(null);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColour, setSelectedColour] = useState('');
   const [variationMessage, setVariationMessage] = useState('');
   useEffect(() => {
     setActiveGalleryIndex(0);
+    setGalleryTransitionDirection(1);
   }, [product?.id, params.slug]);
   const productVariations = product?.type === 'Variable'
     ? product.variations
@@ -1236,7 +1238,13 @@ function ProductDetail({ params }: { params: { slug: string } }) {
 
   function changeGallery(direction: number) {
     if (galleryImages.length < 2) return;
+    setGalleryTransitionDirection(direction >= 0 ? 1 : -1);
     setActiveGalleryIndex((current) => (current + direction + galleryImages.length) % galleryImages.length);
+  }
+
+  function selectGalleryImage(index: number) {
+    setGalleryTransitionDirection(index >= displayedGalleryIndex ? 1 : -1);
+    setActiveGalleryIndex(index);
   }
 
   function handleAddToCart(event: FormEvent<HTMLFormElement>) {
@@ -1291,7 +1299,13 @@ function ProductDetail({ params }: { params: { slug: string } }) {
               }}
             >
               <div className="gallery-image">
-                <img src={galleryImages[displayedGalleryIndex] || product.image} alt={`${product.name} view ${displayedGalleryIndex + 1}`} style={{ objectPosition: product.position }} />
+                <img
+                  key={galleryImages[displayedGalleryIndex] || product.image}
+                  className={galleryTransitionDirection > 0 ? "gallery-slide-next" : "gallery-slide-prev"}
+                  src={galleryImages[displayedGalleryIndex] || product.image}
+                  alt={`${product.name} view ${displayedGalleryIndex + 1}`}
+                  style={{ objectPosition: product.position }}
+                />
               </div>
               <span className="sr-only" aria-live="polite" aria-atomic="true">
                 Image {displayedGalleryIndex + 1} of {galleryImages.length}
@@ -1310,7 +1324,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                     className={`gallery-thumbnail ${index === displayedGalleryIndex ? "is-active" : ""}`}
                     type="button"
                     key={`${image}-${index}`}
-                    onClick={() => setActiveGalleryIndex(index)}
+                    onClick={() => selectGalleryImage(index)}
                     aria-label={`View ${product.name} image ${index + 1}`}
                     aria-current={index === displayedGalleryIndex ? "true" : undefined}
                   >
