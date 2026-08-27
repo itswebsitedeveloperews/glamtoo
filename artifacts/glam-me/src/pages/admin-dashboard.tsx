@@ -873,10 +873,19 @@ export default function AdminDashboard({
       .then(({ inventory }) => {
         if (!active || !inventory) return;
         setProducts((current) => current.map((product) => {
+          if (product.type === "Variable") {
+            return {
+              ...product,
+              variations: product.variations.map((variation) => {
+                const stock = inventory[`${product.id}:${variation.id}`];
+                return typeof stock === "number" && Number.isInteger(stock) && stock >= 0
+                  ? { ...variation, stock }
+                  : variation;
+              }),
+            };
+          }
           const stock = inventory[String(product.id)];
-          return typeof stock === "number" && Number.isInteger(stock) && stock >= 0
-            ? { ...product, stock }
-            : product;
+          return typeof stock === "number" && Number.isInteger(stock) && stock >= 0 ? { ...product, stock } : product;
         }));
       })
       .catch(() => {
@@ -931,34 +940,47 @@ export default function AdminDashboard({
       const newProduct: Product = { id: Date.now(), ...savedDraft };
       setProducts((current) => [newProduct, ...current]);
       setNotice(`${newProduct.name} was ${newProduct.status === "Published" ? "published" : "saved as a draft"}.`);
+      syncProductInventory(newProduct);
     } else if (typeof editorProductId === "number") {
-      setProducts((current) => current.map((product) => product.id === editorProductId ? { id: product.id, ...savedDraft } : product));
+      const updatedProduct: Product = { id: editorProductId, ...savedDraft };
+      setProducts((current) => current.map((product) => product.id === editorProductId ? updatedProduct : product));
       setNotice(`${savedDraft.name} was ${savedDraft.status === "Published" ? "updated and published" : "moved to draft"}.`);
-      if (savedDraft.type === "Simple") {
-        void fetch(`/api/admin/inventory/${editorProductId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ stock: savedDraft.stock }),
-        })
-          .then(async (response) => {
-            if (!response.ok) {
-              const result = await response.json().catch(() => ({})) as { error?: string };
-              throw new Error(result.error || "Inventory could not be updated.");
-            }
-            return response.json() as Promise<{ stock: number }>;
-          })
-          .then(({ stock }) => {
-            setProducts((current) => current.map((product) =>
-              product.id === editorProductId ? { ...product, stock } : product,
-            ));
-          })
-          .catch((error: unknown) => {
-            setNotice(`${savedDraft.name} was saved locally, but its server stock did not update: ${error instanceof Error ? error.message : "try again."}`);
-          });
-      }
+      syncProductInventory(updatedProduct);
     }
     setEditorProductId(null);
     setSection("products");
+  }
+
+  function syncProductInventory(product: Product) {
+    void fetch(`/api/admin/catalog/products/${product.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(product),
+    })
+      .then(async (response) => {
+        const result = await response.json().catch(() => ({})) as { inventory?: Record<string, unknown>; error?: string };
+        if (!response.ok || !result.inventory) throw new Error(result.error || "The server catalog could not be updated.");
+        return result.inventory;
+      })
+      .then((inventory) => {
+        setProducts((current) => current.map((currentProduct) => {
+          if (currentProduct.id !== product.id) return currentProduct;
+          if (currentProduct.type === "Variable") {
+            return {
+              ...currentProduct,
+              variations: currentProduct.variations.map((variation) => {
+                const stock = inventory[`${currentProduct.id}:${variation.id}`];
+                return typeof stock === "number" ? { ...variation, stock } : variation;
+              }),
+            };
+          }
+          const stock = inventory[String(currentProduct.id)];
+          return typeof stock === "number" ? { ...currentProduct, stock } : currentProduct;
+        }));
+      })
+      .catch((error: unknown) => {
+        setNotice(`${product.name} was saved locally, but checkout could not use its server catalog: ${error instanceof Error ? error.message : "try again."}`);
+      });
   }
 
   function removeProduct(product: Product) {

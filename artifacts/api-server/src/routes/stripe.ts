@@ -1,6 +1,5 @@
 import { Router, type IRouter, type Request } from "express";
 import Stripe from "stripe";
-import { checkoutCatalog } from "../checkoutCatalog";
 import { getAdminAccess, requireAdmin } from "../adminAuth";
 import { getStripeConnectionInfoWithSource, getUncachableStripeClient } from "../stripeClient";
 import { clearSavedStripeCredentials, saveStripeCredentials } from "../stripeCredentials";
@@ -16,11 +15,13 @@ import {
 } from "../couponService";
 import {
   commitInventoryReservation,
+  getCheckoutCatalogLine,
   getInventoryLevels,
   InventoryError,
   releaseInventoryReservation,
   reserveInventory,
-  setInventoryLevel,
+  syncCatalogProduct,
+  type CatalogProductInput,
 } from "../inventoryService";
 
 type SubmittedCheckoutLine = {
@@ -30,6 +31,7 @@ type SubmittedCheckoutLine = {
 };
 
 type CheckoutLine = SubmittedCheckoutLine & {
+  inventoryKey?: string;
   name: string;
   description: string;
   unitAmount: number;
@@ -64,9 +66,8 @@ function parseCheckoutLine(value: unknown): SubmittedCheckoutLine | null {
   return { productId, variationId: variationId || undefined, quantity };
 }
 
-function resolveCheckoutLine(line: SubmittedCheckoutLine): CheckoutLine | null {
-  if (line.variationId) return null;
-  const product = checkoutCatalog[line.productId];
+async function resolveCheckoutLine(line: SubmittedCheckoutLine): Promise<CheckoutLine | null> {
+  const product = await getCheckoutCatalogLine(line.productId, line.variationId);
   return product ? { ...line, ...product } : null;
 }
 
@@ -215,16 +216,57 @@ router.get("/inventory", async (request, response) => {
   }
 });
 
-router.put("/admin/inventory/:productId", requireAdmin, async (request, response) => {
-  const productId = safeText(request.params.productId, 80);
-  const stock = Number(request.body?.stock);
+function inventoryIdentifier(value: unknown) {
+  const identifier = typeof value === "string" || typeof value === "number"
+    ? String(value).trim().slice(0, 80)
+    : "";
+  return /^[a-zA-Z0-9_-]+$/.test(identifier) ? identifier : "";
+}
+
+function parseCatalogProductInput(value: unknown, productId: string): CatalogProductInput {
+  const product = asRecord(value);
+  const type = product.type === "Variable" ? "Variable" : product.type === "Simple" ? "Simple" : null;
+  const status = product.status === "Published" ? "Published" : product.status === "Draft" ? "Draft" : null;
+  const name = safeText(product.name, 200);
+  const description = safeText(product.description, 1000);
+  const price = safeText(product.price, 40);
+  const stock = Number(product.stock);
+  const variations = Array.isArray(product.variations)
+    ? product.variations.map((variation) => {
+      const item = asRecord(variation);
+      return {
+        id: inventoryIdentifier(item.id),
+        size: safeText(item.size, 80),
+        colour: safeText(item.colour, 80),
+        price: safeText(item.price, 40),
+        stock: Number(item.stock),
+      };
+    })
+    : [];
+  if (!type || !status || !name || !Number.isInteger(stock) || stock < 0) {
+    throw new InventoryError("Enter a product name and a whole stock quantity before saving.");
+  }
+  if (
+    type === "Variable"
+    && (!variations.length
+      || variations.some((variation) => !variation.id || !Number.isInteger(variation.stock) || variation.stock < 0)
+      || new Set(variations.map((variation) => variation.id)).size !== variations.length)
+  ) {
+    throw new InventoryError("Every variation needs a unique identifier and a whole stock quantity.");
+  }
+  return { id: productId, name, description, price, stock, status, type, variations };
+}
+
+router.put("/admin/catalog/products/:productId", requireAdmin, async (request, response) => {
+  const productId = inventoryIdentifier(request.params.productId);
   try {
-    const updatedStock = await setInventoryLevel(productId, stock);
-    return response.json({ productId, stock: updatedStock });
+    if (!productId) throw new InventoryError("That product identifier is not valid.");
+    await syncCatalogProduct(parseCatalogProductInput(request.body, productId));
+    return response.json({ productId, inventory: await getInventoryLevels() });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Inventory could not be updated.";
+    const message = error instanceof Error ? error.message : "Product inventory could not be updated.";
     const statusCode = error instanceof InventoryError ? error.statusCode : 503;
-    request.log?.error({ error, productId }, "Inventory update failed");
+    request.log?.error({ error, productId }, "Catalog inventory update failed");
     return response.status(statusCode).json({ error: message });
   }
 });
@@ -365,7 +407,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
         .map(parseCheckoutLine)
         .filter((line: SubmittedCheckoutLine | null): line is SubmittedCheckoutLine => line !== null)
       : [];
-    const checkoutLines = submittedLines.map(resolveCheckoutLine);
+    const checkoutLines = await Promise.all(submittedLines.map(resolveCheckoutLine));
     const email = safeText(request.body?.email, 250);
     const customerName = safeText(request.body?.customerName, 120);
     const phone = safeText(request.body?.phone, 40);
@@ -454,7 +496,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
       throw new Error("Stripe did not return a payment secret.");
     }
     try {
-      await reserveInventory(lines, paymentIntent.id);
+      await reserveInventory(lines.filter((line): line is CheckoutLine & { inventoryKey: string } => Boolean(line.inventoryKey)), paymentIntent.id);
       if (pricing) {
         await reserveCouponRedemption(
           pricing.coupon,
@@ -491,7 +533,7 @@ router.post("/stripe/checkout", async (request, response) => {
         .filter((line: SubmittedCheckoutLine | null): line is SubmittedCheckoutLine => line !== null)
       : [];
     const email = safeText(request.body?.email, 250);
-    const checkoutLines = submittedLines.map(resolveCheckoutLine);
+    const checkoutLines = await Promise.all(submittedLines.map(resolveCheckoutLine));
 
     if (submittedLines.length === 0 || checkoutLines.some((line) => line === null)) {
       return response.status(400).json({ error: "Your bag is empty or contains an invalid item." });
@@ -565,7 +607,7 @@ router.post("/stripe/checkout", async (request, response) => {
       throw new Error("Stripe did not return a Checkout URL.");
     }
     try {
-      await reserveInventory(inventoryLines, session.id);
+      await reserveInventory(inventoryLines.filter((line): line is CheckoutLine & { inventoryKey: string } => Boolean(line.inventoryKey)), session.id);
       if (pricing) {
         await reserveCouponRedemption(
           pricing.coupon,
@@ -596,7 +638,7 @@ router.post("/stripe/coupon/validate", async (request, response) => {
         .map(parseCheckoutLine)
         .filter((line: SubmittedCheckoutLine | null): line is SubmittedCheckoutLine => line !== null)
       : [];
-    const checkoutLines = submittedLines.map(resolveCheckoutLine);
+    const checkoutLines = await Promise.all(submittedLines.map(resolveCheckoutLine));
     if (submittedLines.length === 0 || checkoutLines.some((line) => line === null)) {
       return response.status(400).json({ error: "Your bag is empty or contains an invalid item." });
     }

@@ -351,11 +351,19 @@ function getStoredInventory() {
 
 function applyLiveInventory(products: CatalogProduct[]) {
   const inventory = getStoredInventory();
-  return products.map((product) =>
-    typeof inventory[String(product.id)] === 'number'
-      ? { ...product, stock: inventory[String(product.id)] }
-      : product,
-  );
+  return products.map((product) => {
+    if (product.type === 'Variable') {
+      return {
+        ...product,
+        variations: product.variations.map((variation) => {
+          const stock = inventory[`${product.id}:${variation.id}`];
+          return typeof stock === 'number' ? { ...variation, stock } : variation;
+        }),
+      };
+    }
+    const stock = inventory[String(product.id)];
+    return typeof stock === 'number' ? { ...product, stock } : product;
+  });
 }
 
 function useLiveInventory() {
