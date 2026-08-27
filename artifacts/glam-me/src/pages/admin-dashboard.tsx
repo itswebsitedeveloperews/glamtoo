@@ -1,6 +1,18 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { CreditCard, LayoutDashboard, Package, ShoppingBag, Tags, TicketPercent, Truck, Users, type LucideIcon } from "lucide-react";
-import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogPriceInput, type CatalogProduct, type CatalogVariation } from "@/data/catalog";
+import {
+  catalogCategories,
+  catalogProducts,
+  createProductSlug,
+  formatCatalogPrice,
+  getCatalogMediaSource,
+  getCatalogPriceInput,
+  hydrateCatalogProductMedia,
+  isCatalogMediaReference,
+  persistCatalogProductMedia,
+  type CatalogProduct,
+  type CatalogVariation,
+} from "@/data/catalog";
 
 type AdminSection =
   | "overview"
@@ -464,16 +476,24 @@ function useStoredState<T>(key: string, fallback: T) {
       const resolvedValue = typeof nextValue === "function"
         ? (nextValue as (current: T) => T)(current)
         : nextValue;
-      persist(resolvedValue);
-      return resolvedValue;
+      return persist(resolvedValue) ? resolvedValue : current;
     });
   };
 
   useEffect(() => {
     persist(value);
-  }, [key, value]);
+  // This retains the existing first-load migration from the legacy catalog key.
+    // Updates are persisted synchronously through setStoredValue or commitStoredValue.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  return [value, setStoredValue] as const;
+  function commitStoredValue(nextValue: T) {
+    if (!persist(nextValue)) return false;
+    setValue(nextValue);
+    return true;
+  }
+
+  return [value, setStoredValue, commitStoredValue] as const;
 }
 
 function SectionTitle({
@@ -586,7 +606,7 @@ function compressProductImage(file: File) {
   });
 }
 
-function ProductEditor({
+function ProductEditorWithMultipleUploads({
   product,
   categories,
   onCancel,
@@ -970,6 +990,404 @@ function ProductEditor({
     </form>
   );
 }
+// The active editor below combines the multi-upload UI with storage-safe persistence.
+function ProductEditor({
+  product,
+  categories,
+  onCancel,
+  onSave,
+}: {
+  product?: Product;
+  categories: string[];
+  onCancel: () => void;
+  onSave: (draft: ProductDraft) => Promise<boolean>;
+}) {
+  const [draft, setDraft] = useState<ProductDraft>(() =>
+    product
+      ? {
+           slug: product.slug || createProductSlug(product.name),
+          name: product.name,
+          category: product.category,
+           price: getCatalogPriceInput(product.price),
+          stock: product.stock,
+          status: product.status,
+          type: product.type,
+          description: product.description,
+          sku: product.sku,
+           image: product.image,
+           position: product.position,
+           galleryImages: [...new Set((product.galleryImages ?? []).filter((image) => image !== product.image))],
+           variations: product.variations.map((variation) => ({ ...variation, price: getCatalogPriceInput(variation.price) })),
+        }
+      : blankProduct(categories[0] ?? "Dresses"),
+  );
+  const [validationMessage, setValidationMessage] = useState("");
+  const [productImageFileName, setProductImageFileName] = useState("");
+  const [galleryImageUrl, setGalleryImageUrl] = useState("");
+  const [galleryImageFileNames, setGalleryImageFileNames] = useState<string[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [pendingGalleryUploads, setPendingGalleryUploads] = useState(0);
+  const productImagePreview = getCatalogMediaSource(draft.image);
+
+  const publishLabel = product && draft.status === "Published" ? "Update product" : "Publish product";
+  const totalVariationStock = draft.variations.reduce((total, variation) => total + variation.stock, 0);
+
+  function updateDraft(patch: Partial<ProductDraft>) {
+    setDraft((current) => ({ ...current, ...patch }));
+    setValidationMessage("");
+  }
+
+  function updateProductName(name: string) {
+    setDraft((current) => ({
+      ...current,
+      name,
+      slug: !current.slug || current.slug === createProductSlug(current.name)
+        ? createProductSlug(name)
+        : current.slug,
+    }));
+    setValidationMessage("");
+  }
+
+  async function save(status: ProductStatus) {
+    if (pendingGalleryUploads > 0) {
+      setValidationMessage("Your gallery images are still being prepared. Please wait a moment before saving.");
+      return;
+    }
+    const formattedPrice = formatCatalogPrice(draft.price);
+    const isVariableProduct = draft.type === "Variable";
+    if (!draft.name.trim() || (!isVariableProduct && !formattedPrice)) {
+      setValidationMessage(isVariableProduct ? "Add a product name before saving." : "Add a product name and a valid price before saving.");
+      return;
+    }
+    if (isVariableProduct && draft.variations.length === 0) {
+      setValidationMessage("Add at least one variation or change the product type to Simple.");
+      return;
+    }
+    if (isVariableProduct && draft.variations.some((variation) => !formatCatalogPrice(variation.price))) {
+      setValidationMessage("Add a valid price for every variation before saving.");
+      return;
+    }
+    setIsSaving(true);
+    const wasSaved = await onSave({
+      ...draft,
+      slug: createProductSlug(draft.slug || draft.name),
+      name: draft.name.trim(),
+      price: formattedPrice,
+      status,
+      image: draft.image.trim(),
+      galleryImages: Array.from(new Set((draft.galleryImages ?? []).map((image) => image.trim()).filter((image) => image && image !== draft.image.trim()))),
+      variations: isVariableProduct ? draft.variations.map((variation) => ({
+        ...variation,
+        price: formatCatalogPrice(variation.price),
+      })) : [],
+    });
+    setIsSaving(false);
+    if (!wasSaved) {
+      setValidationMessage("Your product is still open and nothing was discarded. Free browser storage or use smaller images, then try again.");
+    }
+  }
+
+  function addVariation() {
+    setDraft((current) => ({
+      ...current,
+      variations: [
+        ...current.variations,
+        {
+          id: Date.now(),
+          size: "",
+          colour: "",
+          sku: current.sku ? `${current.sku}-${current.variations.length + 1}` : "",
+          price: current.price,
+          stock: 0,
+        },
+      ],
+    }));
+  }
+
+  function updateVariation(id: number, patch: Partial<ProductVariation>) {
+    setDraft((current) => ({
+      ...current,
+      variations: current.variations.map((variation) =>
+        variation.id === id ? { ...variation, ...patch } : variation,
+      ),
+    }));
+  }
+
+  function removeVariation(id: number) {
+    setDraft((current) => ({
+      ...current,
+      variations: current.variations.filter((variation) => variation.id !== id),
+    }));
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void save(draft.status);
+  }
+
+  async function handleProductImageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setValidationMessage("Please choose an image file.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      setValidationMessage("Please choose an image smaller than 4MB.");
+      event.target.value = "";
+      return;
+    }
+    try {
+      const compressedImage = await compressProductImage(file);
+      updateDraft({ image: compressedImage });
+      setProductImageFileName(file.name);
+    } catch {
+      setValidationMessage("The image could not be processed. Please choose another image.");
+      event.target.value = "";
+    }
+  }
+
+  function addGalleryImage(image: string) {
+    const normalizedImage = image.trim();
+    if (!normalizedImage) return;
+    if (normalizedImage === draft.image.trim() || (draft.galleryImages ?? []).includes(normalizedImage)) {
+      setValidationMessage("This image is already in the product gallery.");
+      return;
+    }
+    updateDraft({
+      galleryImages: [...new Set([...(draft.galleryImages ?? []), normalizedImage])],
+    });
+    setGalleryImageUrl("");
+    setGalleryImageFileNames((current) => [...current, ""]);
+  }
+
+  function addGalleryImages(images: string[], fileNames: string[]) {
+    const incomingImages = images.map((image, index) => ({ image: image.trim(), fileName: fileNames[index] ?? "" }));
+    setDraft((current) => {
+      const existingImageSet = new Set([current.image.trim(), ...(current.galleryImages ?? [])]);
+      const additions = incomingImages.filter(({ image }) => {
+        if (!image || existingImageSet.has(image)) return false;
+        existingImageSet.add(image);
+        return true;
+      });
+      if (additions.length === 0) return current;
+      return {
+        ...current,
+        galleryImages: [...(current.galleryImages ?? []), ...additions.map(({ image }) => image)],
+      };
+    });
+    setGalleryImageFileNames((current) => [...current, ...incomingImages.map(({ fileName }) => fileName)]);
+    setValidationMessage("");
+  }
+
+  function removeGalleryImage(index: number) {
+    updateDraft({ galleryImages: (draft.galleryImages ?? []).filter((_, imageIndex) => imageIndex !== index) });
+    setGalleryImageFileNames((current) => current.filter((_, imageIndex) => imageIndex !== index));
+  }
+
+  function moveGalleryImage(index: number, direction: -1 | 1) {
+    const currentImages = [...(draft.galleryImages ?? [])];
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= currentImages.length) return;
+    [currentImages[index], currentImages[nextIndex]] = [currentImages[nextIndex], currentImages[index]];
+    updateDraft({ galleryImages: currentImages });
+    setGalleryImageFileNames((current) => {
+      const nextNames = [...current];
+      [nextNames[index], nextNames[nextIndex]] = [nextNames[nextIndex], nextNames[index]];
+      return nextNames;
+    });
+  }
+
+  async function handleGalleryImageUpload(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+    if (files.some((file) => !file.type.startsWith("image/"))) {
+      setValidationMessage("Please choose an image file.");
+      event.target.value = "";
+      return;
+    }
+    if (files.some((file) => file.size > 4 * 1024 * 1024)) {
+      setValidationMessage("Please choose an image smaller than 4MB.");
+      event.target.value = "";
+      return;
+    }
+    setPendingGalleryUploads((count) => count + 1);
+    try {
+      const compressedImages = await Promise.all(files.map((file) => compressProductImage(file)));
+      addGalleryImages(compressedImages, files.map((file) => file.name));
+    } catch {
+      setValidationMessage("One or more gallery images could not be processed. Please choose another selection.");
+      event.target.value = "";
+    } finally {
+      setPendingGalleryUploads((count) => Math.max(0, count - 1));
+    }
+    event.target.value = "";
+  }
+
+  return (
+    <form className="admin-product-editor" onSubmit={handleSubmit}>
+      <div className="admin-editor-topbar">
+        <button className="admin-back-button" type="button" onClick={onCancel}>← Back to products</button>
+        <span>{product ? "Edit product" : "Add new product"}</span>
+      </div>
+      <div className="admin-editor-heading">
+        <div>
+          <p className="admin-eyebrow">Catalog / {product ? "Edit" : "New"}</p>
+          <h1>{product ? product.name : "Add new product"}</h1>
+          <p>{product ? "Update the product details, variations, or publishing status." : "Create a product customers will love to add to their next plan."}</p>
+        </div>
+        <div className="admin-editor-heading-actions">
+          <button className="admin-secondary" type="button" onClick={() => void save("Draft")} disabled={isSaving || pendingGalleryUploads > 0}>{isSaving ? "Saving…" : pendingGalleryUploads > 0 ? "Preparing images…" : "Save draft"}</button>
+          <button className="admin-primary" type="button" onClick={() => void save("Published")} disabled={isSaving || pendingGalleryUploads > 0}>{isSaving ? "Saving…" : pendingGalleryUploads > 0 ? "Preparing images…" : publishLabel}</button>
+        </div>
+      </div>
+
+      {validationMessage && <div className="admin-validation" role="alert">{validationMessage}</div>}
+
+      <div className="admin-editor-layout">
+        <div className="admin-editor-column">
+          <section className="admin-editor-card">
+            <div className="admin-card-heading"><div><p className="admin-eyebrow">Product details</p><h2>Tell the story</h2></div><span className="admin-required-note">* Required</span></div>
+            <label className="admin-editor-label">Product name *
+               <input className="admin-editor-input admin-editor-title-input" value={draft.name} onChange={(event) => updateProductName(event.target.value)} placeholder="e.g. Sienna Slip Dress" required />
+            </label>
+            <label className="admin-editor-label">Product slug
+              <input className="admin-editor-input" value={draft.slug} onChange={(event) => updateDraft({ slug: event.target.value })} placeholder="sienna-slip-dress" />
+              <small>Auto-generated from the product name. Edit it to change this product&apos;s storefront URL.</small>
+            </label>
+            <label className="admin-editor-label">Description
+              <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="Describe the fit, feeling, and details customers should know." rows={5} />
+            </label>
+          </section>
+
+          <section className="admin-editor-card">
+            <div className="admin-card-heading"><div><p className="admin-eyebrow">Product data</p><h2>What are you selling?</h2></div></div>
+            <div className="admin-field-grid">
+              <label className="admin-editor-label">Product type
+                <select className="admin-editor-input" value={draft.type} onChange={(event) => updateDraft({ type: event.target.value as ProductType })}>
+                  <option value="Simple">Simple product</option>
+                  <option value="Variable">Variable product</option>
+                </select>
+                <small>{draft.type === "Variable" ? "Customers will choose from the variations below." : "One price and stock level for this product."}</small>
+              </label>
+              <label className="admin-editor-label">SKU
+                <input className="admin-editor-input" value={draft.sku} onChange={(event) => updateDraft({ sku: event.target.value })} placeholder="e.g. GM-SIENNA" />
+              </label>
+              <label className="admin-editor-label">{draft.type === "Variable" ? "Regular price (optional)" : "Regular price *"}
+                <input className="admin-editor-input" type="number" min="0.01" step="0.01" value={draft.price} onChange={(event) => updateDraft({ price: event.target.value })} inputMode="decimal" placeholder="89.99" required={draft.type === "Simple"} />
+                {draft.type === "Variable" && <small>Set the selling price on each variation below.</small>}
+              </label>
+              <label className="admin-editor-label">Stock quantity
+                <input className="admin-editor-input" type="number" min="0" value={draft.stock} onChange={(event) => updateDraft({ stock: Number(event.target.value) || 0 })} />
+              </label>
+            </div>
+          </section>
+
+          {draft.type === "Variable" && (
+            <section className="admin-editor-card admin-variations-card">
+              <div className="admin-card-heading">
+                <div><p className="admin-eyebrow">Variable product</p><h2>Variations</h2><p className="admin-card-description">Add each purchasable combination of size, colour, price, and stock.</p></div>
+                <button className="admin-secondary" type="button" onClick={addVariation}>+ Add variation</button>
+              </div>
+              {draft.variations.length === 0 ? (
+                <div className="admin-empty-variations"><strong>No variations yet</strong><span>Add your first size and colour combination to make this product ready to sell.</span><button className="admin-primary" type="button" onClick={addVariation}>Add first variation</button></div>
+              ) : (
+                <div className="admin-variation-table">
+                  <div className="admin-variation-table-head"><span>Size</span><span>Colour</span><span>Variation SKU</span><span>Price *</span><span>Stock</span><span /></div>
+                  {draft.variations.map((variation) => (
+                    <div className="admin-variation-row" key={variation.id}>
+                      <input aria-label="Variation size" value={variation.size} onChange={(event) => updateVariation(variation.id, { size: event.target.value })} placeholder="UK 8" />
+                      <input aria-label="Variation colour" value={variation.colour} onChange={(event) => updateVariation(variation.id, { colour: event.target.value })} placeholder="Blush" />
+                      <input aria-label="Variation SKU" value={variation.sku} onChange={(event) => updateVariation(variation.id, { sku: event.target.value })} placeholder="GM-001-8" />
+                      <input aria-label="Variation price" type="number" min="0.01" step="0.01" value={variation.price} onChange={(event) => updateVariation(variation.id, { price: event.target.value })} inputMode="decimal" placeholder="89.99" required />
+                      <input aria-label="Variation stock" type="number" min="0" value={variation.stock} onChange={(event) => updateVariation(variation.id, { stock: Number(event.target.value) || 0 })} />
+                      <button className="admin-remove-button" type="button" onClick={() => removeVariation(variation.id)} aria-label={`Remove ${variation.size || "variation"}`}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {draft.variations.length > 0 && <p className="admin-variation-summary">{draft.variations.length} variation{draft.variations.length === 1 ? "" : "s"} · {totalVariationStock} units in stock</p>}
+            </section>
+          )}
+        </div>
+
+        <aside className="admin-editor-sidebar">
+          <section className="admin-publish-card">
+            <div className="admin-card-heading"><div><p className="admin-eyebrow">Publishing</p><h2>Product status</h2></div><span className={`admin-publish-dot ${draft.status.toLowerCase()}`} /></div>
+            <label className="admin-editor-label">Status
+              <select className="admin-editor-input" value={draft.status} onChange={(event) => updateDraft({ status: event.target.value as ProductStatus })}>
+                <option value="Draft">Draft</option>
+                <option value="Published">Published</option>
+              </select>
+            </label>
+            <p className="admin-publish-help">{draft.status === "Published" ? "This product is visible on your storefront." : "This product is hidden until you publish it."}</p>
+            <div className="admin-publish-actions">
+              <button className="admin-secondary" type="button" onClick={() => save("Draft")}>Move to draft</button>
+              <button className="admin-primary" type="button" onClick={() => save("Published")}>{publishLabel}</button>
+            </div>
+          </section>
+
+          <section className="admin-editor-card admin-sidebar-card">
+            <p className="admin-eyebrow">Organization</p>
+            <label className="admin-editor-label">Category
+              <select className="admin-editor-input" value={draft.category} onChange={(event) => updateDraft({ category: event.target.value })}>{categories.map((category) => <option key={category}>{category}</option>)}</select>
+            </label>
+          </section>
+
+           <section className="admin-editor-card admin-sidebar-card">
+             <p className="admin-eyebrow">Product media</p>
+             {productImagePreview ? <img className="admin-product-image-preview" src={productImagePreview} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder">Add an image URL or upload an image to preview your product.</div>}
+             <label className="admin-editor-label">Image URL
+               <input className="admin-editor-input" value={draft.image.startsWith("data:") || isCatalogMediaReference(draft.image) ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="https://..." />
+             </label>
+             <div className="admin-image-upload">
+               <label className="admin-upload-button">Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
+               <span>{productImageFileName || "PNG, JPG, WEBP or GIF · max 4MB"}</span>
+             </div>
+              <div className="admin-gallery-divider" />
+              <div className="admin-gallery-heading">
+                <p className="admin-eyebrow">Gallery images</p>
+                <small>Add supporting views for the product page. The primary image stays first.</small>
+              </div>
+              <div className="admin-gallery-add">
+                <input className="admin-editor-input" value={galleryImageUrl} onChange={(event) => setGalleryImageUrl(event.target.value)} placeholder="https://... gallery image URL" aria-label="Gallery image URL" />
+                <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add image</button>
+              </div>
+              <div className="admin-image-upload">
+                <label className="admin-upload-button">Upload gallery images<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                <span>{galleryImageFileNames.filter(Boolean).join(", ") || "Select one or more · max 4MB each"}</span>
+              </div>
+              {(draft.galleryImages ?? []).length > 0 ? (
+                <div className="admin-product-gallery-list" aria-label="Gallery image order">
+                  {(draft.galleryImages ?? []).map((image, index) => (
+                    <div className="admin-product-gallery-item" key={`${image}-${index}`}>
+                      {getCatalogMediaSource(image) ? <img src={getCatalogMediaSource(image)} alt={`${draft.name || "Product"} gallery view ${index + 1}`} /> : <div className="admin-image-placeholder">Loading gallery image…</div>}
+                      <div className="admin-product-gallery-item-actions">
+                        <span>View {index + 2}</span>
+                        <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label={`Move gallery image ${index + 1} earlier`}>↑</button>
+                        <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === (draft.galleryImages ?? []).length - 1} aria-label={`Move gallery image ${index + 1} later`}>↓</button>
+                        <button className="admin-remove-button" type="button" onClick={() => removeGalleryImage(index)} aria-label={`Remove gallery image ${index + 1}`}>×</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="admin-gallery-empty">No additional gallery images yet.</p>}
+           </section>
+
+          <section className="admin-editor-card admin-sidebar-card">
+            <p className="admin-eyebrow">Editor checklist</p>
+            <ul className="admin-checklist">
+              <li className={draft.name ? "is-complete" : ""}>Product name</li>
+              <li className={(draft.type === "Variable" ? draft.variations.length > 0 && draft.variations.every((variation) => Boolean(formatCatalogPrice(variation.price))) : Boolean(formatCatalogPrice(draft.price))) ? "is-complete" : ""}>{draft.type === "Variable" ? "Variation prices" : "Price"}</li>
+              <li className={draft.type === "Simple" || draft.variations.length > 0 ? "is-complete" : ""}>{draft.type === "Variable" ? "At least one variation" : "Stock quantity"}</li>
+            </ul>
+          </section>
+        </aside>
+      </div>
+    </form>
+  );
+}
 
 export default function AdminDashboard({
   onSignOut,
@@ -977,7 +1395,7 @@ export default function AdminDashboard({
   onSignOut: () => void;
 }) {
   const [section, setSection] = useState<AdminSection>("overview");
-  const [products, setProducts] = useStoredState<Product[]>(productsStorageKey, getStoredProducts());
+  const [products, setProducts, commitProducts] = useStoredState<Product[]>(productsStorageKey, getStoredProducts());
   const [categories, setCategories] = useStoredState<Category[]>("glam-me-admin-categories-v2", initialCategories);
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
@@ -1015,18 +1433,29 @@ export default function AdminDashboard({
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft>(blankCategory);
   const [categoryImageFileName, setCategoryImageFileName] = useState("");
   const [notice, setNotice] = useState("");
+  const [, setCatalogMediaVersion] = useState(0);
   const categoryNames = categories.map((category) => category.name);
 
   useEffect(() => {
     function handleStorageError(event: Event) {
       const storageKey = (event as CustomEvent<{ key?: string }>).detail?.key;
       if (storageKey === productsStorageKey) {
-        setNotice("This product could not be saved in your browser. Please use a smaller image and try again.");
+        setNotice("This product was not saved because browser storage is full. Your product details are still open. Free some browser storage or use smaller images, then try again.");
       }
     }
     window.addEventListener("glam-storage-error", handleStorageError);
     return () => window.removeEventListener("glam-storage-error", handleStorageError);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    void hydrateCatalogProductMedia(products).then(() => {
+      if (active) setCatalogMediaVersion((version) => version + 1);
+    });
+    return () => {
+      active = false;
+    };
+  }, [products]);
 
   useEffect(() => {
     let active = true;
@@ -1097,23 +1526,45 @@ export default function AdminDashboard({
     return candidate;
   }
 
-  function saveProduct(draft: ProductDraft) {
+  async function saveProduct(draft: ProductDraft) {
     const productId = typeof editorProductId === "number" ? editorProductId : undefined;
     const slug = getUniqueProductSlug(draft.slug || draft.name, productId);
     const savedDraft = { ...draft, slug };
-    if (editorProductId === "new") {
-      const newProduct: Product = { id: Date.now(), ...savedDraft };
-      setProducts((current) => [newProduct, ...current]);
-      setNotice(`${newProduct.name} was ${newProduct.status === "Published" ? "published" : "saved as a draft"}.`);
-      syncProductInventory(newProduct);
-    } else if (typeof editorProductId === "number") {
-      const updatedProduct: Product = { id: editorProductId, ...savedDraft };
-      setProducts((current) => current.map((product) => product.id === editorProductId ? updatedProduct : product));
-      setNotice(`${savedDraft.name} was ${savedDraft.status === "Published" ? "updated and published" : "moved to draft"}.`);
-      syncProductInventory(updatedProduct);
+    const product: Product | null = editorProductId === "new"
+      ? { id: Date.now(), ...savedDraft }
+      : typeof editorProductId === "number"
+        ? { id: editorProductId, ...savedDraft }
+        : null;
+    if (!product) return false;
+
+    try {
+      const productsWithStoredMedia = await Promise.all(products.map((currentProduct) =>
+        currentProduct.id === product.id ? persistCatalogProductMedia(product) : persistCatalogProductMedia(currentProduct),
+      ));
+      const productWithStoredMedia = editorProductId === "new"
+        ? await persistCatalogProductMedia(product)
+        : productsWithStoredMedia.find((currentProduct) => currentProduct.id === product.id) ?? product;
+      const nextProducts = editorProductId === "new"
+        ? [productWithStoredMedia, ...productsWithStoredMedia]
+        : productsWithStoredMedia;
+      if (!commitProducts(nextProducts)) {
+        setNotice("This product was not saved because browser storage is full. Your product details are still open. Free some browser storage or use smaller images, then try again.");
+        return false;
+      }
+
+      setNotice(`${product.name} was ${product.status === "Published"
+        ? editorProductId === "new" ? "published" : "updated and published"
+        : editorProductId === "new" ? "saved as a draft" : "moved to draft"}.`);
+      syncProductInventory(productWithStoredMedia);
+      setEditorProductId(null);
+      setSection("products");
+      return true;
+    } catch (error) {
+      setNotice(error instanceof Error
+        ? error.message
+        : "This product could not be saved. Your product details are still open; free browser storage or use smaller images, then try again.");
+      return false;
     }
-    setEditorProductId(null);
-    setSection("products");
   }
 
   function syncProductInventory(product: Product) {
@@ -1608,7 +2059,7 @@ export default function AdminDashboard({
                 {products.map((product) => (
                   <article className="admin-product-catalog-card" key={product.id} data-testid={`admin-card-product-${product.id}`}>
                     <div className="admin-product-catalog-image">
-                      {product.image ? <img src={product.image} alt={`${product.name} product preview`} /> : <div className="admin-image-placeholder">Add product media</div>}
+                      {getCatalogMediaSource(product.image) ? <img src={getCatalogMediaSource(product.image)} alt={`${product.name} product preview`} /> : <div className="admin-image-placeholder">Add product media</div>}
                       <span className="admin-product-catalog-heart" aria-hidden="true">♡</span>
                       <span className={`admin-product-catalog-status ${product.status.toLowerCase()}`}>{product.status}</span>
                     </div>

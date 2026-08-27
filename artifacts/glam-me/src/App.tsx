@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type FormEvent,
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
-import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogProductImages, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
+import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogMediaSource, getCatalogProductImages, hydrateCatalogProductMedia, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
@@ -452,7 +452,10 @@ function getStorefrontProducts(): CatalogProduct[] {
           slugify(category.name) === slugify(String(product.category ?? '')),
         );
         const productId = Number(product.id);
-        const primaryImage = product.image || matchingCatalogProduct?.image || matchingCategory?.image || fashionImage;
+        const primaryImage = getCatalogMediaSource(product.image || matchingCatalogProduct?.image || matchingCategory?.image || fashionImage)
+          || matchingCatalogProduct?.image
+          || matchingCategory?.image
+          || fashionImage;
         return {
           ...matchingCatalogProduct,
           ...product,
@@ -475,6 +478,22 @@ function getStorefrontProducts(): CatalogProduct[] {
   }
 }
 
+function getStoredCatalogMediaRecords(): Array<Pick<CatalogProduct, "image" | "galleryImages">> {
+  try {
+    const stored = window.localStorage.getItem(adminProductsStorageKey);
+    if (!stored) return [];
+    const products = JSON.parse(stored) as Array<Partial<CatalogProduct>>;
+    if (!Array.isArray(products)) return [];
+    return products.map((product) => ({
+      image: typeof product.image === "string" ? product.image : "",
+      galleryImages: Array.isArray(product.galleryImages)
+        ? product.galleryImages.filter((image): image is string => typeof image === "string")
+        : [],
+    }));
+  } catch {
+    return [];
+  }
+}
 function slugify(value: string): string {
   return value.toLowerCase().trim().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
@@ -532,6 +551,7 @@ function parseWishlistResponseProductIds(value: unknown) {
 }
 
 const WishlistContext = createContext<WishlistContextValue | null>(null);
+const CatalogMediaContext = createContext(0);
 
 function WishlistProvider({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
@@ -2787,7 +2807,8 @@ function AdminRoute() {
 }
 
 function AppRoutes() {
-  return <Switch>
+  const mediaVersion = useContext(CatalogMediaContext);
+  return <Switch key={mediaVersion}>
     <Route path="/" component={Home} />
     <Route path="/about" component={About} />
     <Route path="/shop" component={Shop} />
@@ -2825,11 +2846,26 @@ function ClerkProviderWithRoutes() {
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
-      <WishlistProvider><AppRoutes /></WishlistProvider>
+      <CatalogMediaHydrator><WishlistProvider><AppRoutes /></WishlistProvider></CatalogMediaHydrator>
     </ClerkProvider>
   );
 }
 
+function CatalogMediaHydrator({ children }: { children: ReactNode }) {
+  const [mediaVersion, setMediaVersion] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    void hydrateCatalogProductMedia(getStoredCatalogMediaRecords()).then(() => {
+      if (active) setMediaVersion((version) => version + 1);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return <CatalogMediaContext.Provider value={mediaVersion}>{children}</CatalogMediaContext.Provider>;
+}
 function App() {
   if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY');
   return <WouterRouter base={basePath}><ClerkProviderWithRoutes /></WouterRouter>;

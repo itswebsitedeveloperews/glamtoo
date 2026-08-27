@@ -1,10 +1,10 @@
 ---
 name: Admin image persistence
-description: Preserve admin-created products by keeping browser-stored image payloads compact.
+description: Keep gallery uploads reliable when browser storage is constrained.
 ---
 
-Product images selected in the admin must be resized and compressed before they are saved with catalog data. Product persistence should fail visibly rather than silently when browser storage is unavailable.
+Uploaded media must not be embedded in catalog metadata. Its reference must be immutable through gallery edits, and a failed save must leave the entered product intact.
 
-**Why:** Raw file-to-data-URL uploads can exceed browser localStorage capacity. The editor can show the in-memory product immediately, but it disappears after a reload and its storefront route cannot resolve.
+**Why:** Raw file-to-data-URL uploads can exceed localStorage capacity. A failed all-in-one write can make a newly entered product disappear after reload, especially with several gallery views.
 
-**How to apply:** Keep uploads compact before adding them to product state, retain the existing localStorage catalog key for normal persistence, and surface a clear admin notice if a write still fails.
+**How to apply:** Preserve each media reference independently from its gallery position, keep the editor open until persistence succeeds, and reload media from the underlying catalog references rather than a display fallback.

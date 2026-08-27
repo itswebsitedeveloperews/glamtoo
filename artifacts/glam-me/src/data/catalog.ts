@@ -45,6 +45,129 @@ export type CatalogCategory = {
   description: string;
 };
 
+const catalogMediaDatabaseName = "glam-too-catalog-media";
+const catalogMediaStoreName = "images";
+const catalogMediaReferencePrefix = "glam-too-media:";
+const catalogMediaCache = new Map<string, string>();
+
+function isDataImage(value: string) {
+  return value.startsWith("data:image/");
+}
+
+function mediaReference(productId: number) {
+  const mediaId = typeof crypto?.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${catalogMediaReferencePrefix}${productId}:${mediaId}`;
+}
+
+function openCatalogMediaDatabase(): Promise<IDBDatabase> {
+  if (typeof window === "undefined" || !("indexedDB" in window)) {
+    return Promise.reject(new Error("Browser image storage is unavailable."));
+  }
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open(catalogMediaDatabaseName, 1);
+    request.onupgradeneeded = () => {
+      request.result.createObjectStore(catalogMediaStoreName);
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error("Browser image storage is unavailable."));
+    request.onblocked = () => reject(new Error("Browser image storage is busy."));
+  });
+}
+
+function dataImageToBlob(value: string) {
+  const [header, encoded] = value.split(",", 2);
+  const mimeType = header.match(/^data:([^;]+);base64$/)?.[1];
+  if (!mimeType || !encoded) throw new Error("The uploaded image could not be stored.");
+  const binary = window.atob(encoded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return new Blob([bytes], { type: mimeType });
+}
+
+function catalogMediaStorageError() {
+  return new Error(
+    "Product media could not be saved in this browser. Your product details are still open. Free some browser storage or use smaller images, then try again.",
+  );
+}
+
+export function isCatalogMediaReference(value: string) {
+  return value.startsWith(catalogMediaReferencePrefix);
+}
+
+export async function persistCatalogProductMedia(product: CatalogProduct): Promise<CatalogProduct> {
+  const image = product.image.trim();
+  const galleryImages = (product.galleryImages ?? []).map((galleryImage) => galleryImage.trim()).filter(Boolean);
+  const storedImage = isDataImage(image) ? mediaReference(product.id) : image;
+  const storedGalleryImages = galleryImages.map((galleryImage) =>
+    isDataImage(galleryImage) ? mediaReference(product.id) : galleryImage,
+  );
+  const mediaToStore: Array<{ value: string; reference: string }> = [];
+  if (isDataImage(image)) mediaToStore.push({ value: image, reference: storedImage });
+  galleryImages.forEach((galleryImage, index) => {
+    if (isDataImage(galleryImage)) {
+      mediaToStore.push({ value: galleryImage, reference: storedGalleryImages[index] });
+    }
+  });
+  if (mediaToStore.length === 0) return product;
+
+  let database: IDBDatabase | undefined;
+  try {
+    database = await openCatalogMediaDatabase();
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database!.transaction(catalogMediaStoreName, "readwrite");
+      const store = transaction.objectStore(catalogMediaStoreName);
+      mediaToStore.forEach(({ value, reference }) => {
+        store.put(dataImageToBlob(value), reference);
+        catalogMediaCache.set(reference, value);
+      });
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error ?? new Error("The image could not be stored."));
+      transaction.onabort = () => reject(transaction.error ?? new Error("The image could not be stored."));
+    });
+    database.close();
+  } catch {
+    database?.close();
+    throw catalogMediaStorageError();
+  }
+
+  return {
+    ...product,
+    image: storedImage,
+    galleryImages: storedGalleryImages,
+  };
+}
+
+export async function hydrateCatalogProductMedia(products: Array<Pick<CatalogProduct, "image" | "galleryImages">>) {
+  const references = [...new Set(products.flatMap((product) => [
+    product.image,
+    ...(product.galleryImages ?? []),
+  ]).filter(isCatalogMediaReference))];
+  if (references.length === 0) return;
+
+  let database: IDBDatabase | undefined;
+  try {
+    database = await openCatalogMediaDatabase();
+    const storedMedia = await Promise.all(references.map((reference) => new Promise<{ reference: string; blob: Blob | undefined }>((resolve, reject) => {
+      const transaction = database!.transaction(catalogMediaStoreName, "readonly");
+      const request = transaction.objectStore(catalogMediaStoreName).get(reference);
+      request.onsuccess = () => resolve({ reference, blob: request.result as Blob | undefined });
+      request.onerror = () => reject(request.error);
+    })));
+    storedMedia.forEach(({ reference, blob }) => {
+      if (blob) catalogMediaCache.set(reference, URL.createObjectURL(blob));
+    });
+    database.close();
+  } catch {
+    database?.close();
+  }
+}
+
+export function getCatalogMediaSource(value: string) {
+  return catalogMediaCache.get(value) ?? (isCatalogMediaReference(value) ? "" : value);
+}
+
 function getPriceAmount(value: string | number) {
   const amount = Number.parseFloat(String(value).replace(/[^0-9.-]/g, ""));
   return Number.isFinite(amount) && amount >= 0 ? amount : null;
@@ -72,11 +195,11 @@ export function createProductSlug(value: string) {
 }
 
 export function getCatalogProductImages(product: Pick<CatalogProduct, "image" | "galleryImages">) {
-  const primaryImage = typeof product.image === "string" ? product.image.trim() : "";
+  const primaryImage = typeof product.image === "string" ? getCatalogMediaSource(product.image.trim()) : "";
   const galleryImages = Array.isArray(product.galleryImages)
     ? product.galleryImages
       .filter((image): image is string => typeof image === "string" && image.trim().length > 0)
-      .map((image) => image.trim())
+      .map((image) => getCatalogMediaSource(image.trim()))
     : [];
   const supportingImages = [...new Set(galleryImages)].filter((image) => image !== primaryImage);
   return primaryImage ? [primaryImage, ...supportingImages] : supportingImages;
