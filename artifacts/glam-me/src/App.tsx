@@ -1309,6 +1309,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 changeGallery(endX < startX ? 1 : -1);
               }}
             >
+              <WishlistButton product={product} detail />
               <div className="gallery-image">
                 <img
                   key={galleryImages[displayedGalleryIndex] || product.image}
@@ -1349,7 +1350,6 @@ function ProductDetail({ params }: { params: { slug: string } }) {
             <div className="eyebrow">{product.category} edit · Glam Too</div>
             <div className="detail-title-row">
               <div><h1>{product.name}</h1><div className="detail-price">{displayedPrice}</div></div>
-              <WishlistButton product={product} detail />
             </div>
             <p>{product.description}</p>
             <form className="detail-form" onSubmit={handleAddToCart}>
