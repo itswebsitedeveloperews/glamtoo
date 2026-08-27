@@ -44,6 +44,7 @@ import {
 } from "../orderService";
 import { attemptPaymentRefund } from "../paymentResolution";
 import { calculateIncludedVat, VAT_RATE_PERCENT } from "../taxService";
+import { calculateDeliveryAmount, EXPRESS_DELIVERY_AMOUNT } from "../shippingService";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -566,9 +567,9 @@ router.post("/stripe/payment-intent", async (request, response) => {
     }
 
     const lines = checkoutLines as CheckoutLine[];
-    const delivery = request.body?.delivery === "express" ? "express" : "standard";
-    const deliveryAmount = delivery === "express" ? 695 : 0;
     const subtotal = lines.reduce((total, line) => total + line.unitAmount * line.quantity, 0);
+    const delivery = request.body?.delivery === "express" ? "express" : "standard";
+    const deliveryAmount = calculateDeliveryAmount(delivery, subtotal);
     const couponCode = safeText(request.body?.couponCode, 80);
     const pricing = couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
     const amount = pricing?.total ?? subtotal + deliveryAmount;
@@ -700,9 +701,9 @@ router.post("/stripe/checkout", async (request, response) => {
 
     const lines = [...checkoutLines] as CheckoutLine[];
     const inventoryLines = [...lines];
-    const delivery = request.body?.delivery === "express" ? "express" : "standard";
-    const deliveryAmount = delivery === "express" ? 695 : 0;
     const subtotal = lines.reduce((total, line) => total + line.unitAmount * line.quantity, 0);
+    const delivery = request.body?.delivery === "express" ? "express" : "standard";
+    const deliveryAmount = calculateDeliveryAmount(delivery, subtotal);
     const couponCode = safeText(request.body?.couponCode, 80);
     const pricing = couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
     const amount = pricing?.total ?? subtotal + deliveryAmount;
@@ -733,13 +734,13 @@ router.post("/stripe/checkout", async (request, response) => {
     ));
     const stripe = await getUncachableStripeClient();
     await recoverExpiredPendingOrders(stripe);
-    if (delivery === "express") {
+    if (deliveryAmount > 0) {
       lines.push({
         productId: "delivery",
-        variationId: "express",
-        name: "Express delivery",
-        description: "1–2 working days",
-        unitAmount: 695,
+        variationId: delivery,
+        name: delivery === "express" ? "Express delivery" : "Standard delivery",
+        description: delivery === "express" ? "1–2 working days" : "2–4 working days",
+        unitAmount: delivery === "express" ? EXPRESS_DELIVERY_AMOUNT : deliveryAmount,
         quantity: 1,
       });
     }
@@ -829,8 +830,9 @@ router.post("/stripe/coupon/validate", async (request, response) => {
     if (submittedLines.length === 0 || checkoutLines.some((line) => line === null)) {
       return response.status(400).json({ error: "Your bag is empty or contains an invalid item." });
     }
-    const deliveryAmount = request.body?.delivery === "express" ? 695 : 0;
     const subtotal = (checkoutLines as CheckoutLine[]).reduce((total, line) => total + line.unitAmount * line.quantity, 0);
+    const delivery = request.body?.delivery === "express" ? "express" : "standard";
+    const deliveryAmount = calculateDeliveryAmount(delivery, subtotal);
     const pricing = await calculateCouponPricing(request.body?.code, subtotal, deliveryAmount);
     return response.set("Cache-Control", "no-store").json({
       coupon: {

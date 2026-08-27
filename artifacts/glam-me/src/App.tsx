@@ -70,6 +70,9 @@ const cartStorageKey = 'glam-me-cart-v1';
 const pendingCouponPaymentStorageKey = 'glam-me-pending-coupon-payment-v1';
 const checkoutPreferencesStorageKey = 'glam-me-checkout-preferences-v1';
 const inventoryStorageKey = 'glam-me-live-inventory-v1';
+const standardDeliveryAmount = 3.95;
+const expressDeliveryAmount = 6.95;
+const freeStandardDeliveryThreshold = 75;
 
 type CartItem = {
   productId: number;
@@ -146,6 +149,7 @@ type AppliedCoupon = {
   discountAmount: number;
   total: number;
   vatAmount: number;
+  deliveryAmount: number;
 };
 
 type CheckoutPreferences = {
@@ -316,6 +320,11 @@ function parsePounds(value: string) {
 
 function formatPounds(value: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
+}
+
+function calculateCheckoutDeliveryAmount(delivery: "standard" | "express", subtotal: number) {
+  if (delivery === "express") return expressDeliveryAmount;
+  return Math.round(subtotal * 100) >= freeStandardDeliveryThreshold * 100 ? 0 : standardDeliveryAmount;
 }
 
 function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'productId' | 'quantity'> = { size: 'One size' }) {
@@ -974,7 +983,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 {isSoldOut && <p className="variation-message">This product is currently out of stock.</p>}
                 <button className="button" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation)} data-testid={`button-add-to-bag-${product.id}`}>{isSoldOut ? 'Out of stock' : `Add to bag · ${displayedPrice}`}</button>
             </form>
-            <div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with an easy, considered fit.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery over £75. Return unworn pieces within 28 days.</p></details></div>
+            <div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with an easy, considered fit.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery on orders of £75 or more. Return unworn pieces within 28 days.</p></details></div>
           </div>
         </div>
       </div>
@@ -987,7 +996,7 @@ function About() {
 }
 
 function FAQ() {
-  const questions = [['How do Glam Too pieces fit?', 'Most pieces fit true to size. Every product page includes fit notes and garment measurements to help you choose. If you are between sizes, we recommend sizing up in fitted styles.'], ['When will my order arrive?', 'Standard delivery takes 2–4 working days and express delivery takes 1–2 working days. You will receive tracking as soon as your parcel leaves us.'], ['Can I return something?', 'Of course. Send unworn, unwashed items back within 28 days of delivery with tags attached. Visit Delivery & Returns for the full guide.'], ['Do you deliver internationally?', 'We currently deliver across the UK and selected European destinations. Delivery options and costs are shown at checkout.'], ['How can I contact you?', 'Our team is here Monday to Friday, 9am–5pm. Email hello@glamtoo.co.uk or use our contact form.']];
+  const questions = [['How do Glam Too pieces fit?', 'Most pieces fit true to size. Every product page includes fit notes and garment measurements to help you choose. If you are between sizes, we recommend sizing up in fitted styles.'], ['When will my order arrive?', 'Standard delivery takes 2–4 working days and express delivery takes 1–2 working days. You will receive tracking as soon as your parcel leaves us.'], ['Can I return something?', 'Of course. Send unworn, unwashed items back within 28 days of delivery with tags attached. Visit Delivery & Returns for the full guide.'], ['Do you deliver internationally?', 'We currently deliver within the UK. Delivery options and costs are shown at checkout.'], ['How can I contact you?', 'Our team is here Monday to Friday, 9am–5pm. Email hello@glamtoo.co.uk or use our contact form.']];
   return <Shell><PageHero eyebrow="Need to know" title="Questions, answered." copy="The useful details, without the fine-print maze." /><div className="container faq-list">{questions.map(([question, answer], index) => <details key={question} open={index === 0}><summary data-testid={`text-faq-question-${index}`}>{question}</summary><p>{answer}</p></details>)}</div></Shell>;
 }
 
@@ -996,7 +1005,7 @@ function Contact() {
 }
 
 function LegalPage({ type }: { type: 'privacy' | 'terms' | 'delivery' }) {
-  const copy = type === 'privacy' ? { eyebrow: 'The small print', title: 'Privacy policy', heads: ['The short version', 'What we collect', 'How we use your information'], paras: ['We respect your information and only collect what we need to make your Glam Too experience work well. This policy explains what happens to your details when you browse or shop with us.', 'When you place an order, sign up to our notes or contact us, we may collect your name, contact details, delivery address and order information. We never sell your personal information.', 'We use information to process orders, answer your questions, improve our website and send emails you have chosen to receive. You can unsubscribe at any time.'] } : type === 'terms' ? { eyebrow: 'The small print', title: 'Terms & conditions', heads: ['Using this site', 'Products and pricing', 'Orders'], paras: ['By using glamtoo.co.uk, you agree to use the site lawfully and with respect for our content, team and community. These terms apply to every visit and purchase.', 'We take care to keep product descriptions, colours and prices accurate. Occasionally a detail may change; if it affects your order, we will contact you before dispatch.', 'An order is confirmed when you receive our email confirmation. If we cannot fulfil an item, we will let you know and refund the unavailable part of your order.'] } : { eyebrow: 'The useful details', title: 'Delivery & returns', heads: ['Delivery', 'Returns', 'The good-to-know bit'], paras: ['Standard delivery is £3.95 and takes 2–4 working days. Express delivery is £6.95 and takes 1–2 working days. Standard delivery is free on orders over £75.', 'Changed your mind? Return unworn items with tags attached within 28 days of delivery. Start your return by emailing hello@glamtoo.co.uk with your order number.', 'Please try on occasionwear over underwear and keep makeup, perfume and deodorant away from garments. Items showing signs of wear may not be accepted.'] };
+  const copy = type === 'privacy' ? { eyebrow: 'The small print', title: 'Privacy policy', heads: ['The short version', 'What we collect', 'How we use your information'], paras: ['We respect your information and only collect what we need to make your Glam Too experience work well. This policy explains what happens to your details when you browse or shop with us.', 'When you place an order, sign up to our notes or contact us, we may collect your name, contact details, delivery address and order information. We never sell your personal information.', 'We use information to process orders, answer your questions, improve our website and send emails you have chosen to receive. You can unsubscribe at any time.'] } : type === 'terms' ? { eyebrow: 'The small print', title: 'Terms & conditions', heads: ['Using this site', 'Products and pricing', 'Orders'], paras: ['By using glamtoo.co.uk, you agree to use the site lawfully and with respect for our content, team and community. These terms apply to every visit and purchase.', 'We take care to keep product descriptions, colours and prices accurate. Occasionally a detail may change; if it affects your order, we will contact you before dispatch.', 'An order is confirmed when you receive our email confirmation. If we cannot fulfil an item, we will let you know and refund the unavailable part of your order.'] } : { eyebrow: 'The useful details', title: 'Delivery & returns', heads: ['Delivery', 'Returns', 'The good-to-know bit'], paras: ['Standard delivery is £3.95 and takes 2–4 working days. Express delivery is £6.95 and takes 1–2 working days. Standard delivery is free on orders of £75 or more.', 'Changed your mind? Return unworn items with tags attached within 28 days of delivery. Start your return by emailing hello@glamtoo.co.uk with your order number.', 'Please try on occasionwear over underwear and keep makeup, perfume and deodorant away from garments. Items showing signs of wear may not be accepted.'] };
   return <Shell><div className="container legal"><div className="eyebrow">{copy.eyebrow}</div><h1>{copy.title}</h1>{copy.heads.map((head, index) => <section key={head}><h2>{head}</h2><p>{copy.paras[index]}</p></section>)}<p>Last updated: February 2026. For any questions, please <a className="text-link" href="/contact">contact our team</a>.</p></div></Shell>;
 }
 
@@ -1023,6 +1032,7 @@ function Cart() {
     return product ? [{ item, product, variation }] : [];
   });
   const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
+  const deliveryAmount = calculateCheckoutDeliveryAmount("standard", subtotal);
 
   function removeCartItem(itemToRemove: CartItem) {
     const nextItems = items.filter((item) =>
@@ -1077,8 +1087,8 @@ function Cart() {
             <aside className="cart-summary">
               <h2>Summary</h2>
               <div className="summary-row"><span>Subtotal</span><span>{formatPounds(subtotal)}</span></div>
-              <div className="summary-row"><span>Delivery</span><span>Free</span></div>
-              <div className="summary-row total"><span>Total</span><span>{formatPounds(subtotal)}</span></div>
+              <div className="summary-row"><span>Standard delivery</span><span>{deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</span></div>
+              <div className="summary-row total"><span>Total</span><span>{formatPounds(subtotal + deliveryAmount)}</span></div>
               <a className="button button-pink" href="/checkout" data-testid="link-checkout">Go to checkout</a>
             </aside>
           </div>
@@ -1152,12 +1162,12 @@ function Checkout() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, lines: checkoutLinePayload(), delivery }),
       });
-      const result = await response.json() as { coupon?: AppliedCoupon["coupon"]; discountAmount?: number; total?: number; vatAmount?: number; error?: string };
-      if (!response.ok || !result.coupon || typeof result.discountAmount !== "number" || typeof result.total !== "number" || typeof result.vatAmount !== "number") {
+      const result = await response.json() as { coupon?: AppliedCoupon["coupon"]; discountAmount?: number; total?: number; vatAmount?: number; deliveryAmount?: number; error?: string };
+      if (!response.ok || !result.coupon || typeof result.discountAmount !== "number" || typeof result.total !== "number" || typeof result.vatAmount !== "number" || typeof result.deliveryAmount !== "number") {
         throw new Error(result.error || "That coupon could not be applied.");
       }
       setCouponCode(result.coupon.code);
-      setAppliedCoupon({ coupon: result.coupon, discountAmount: result.discountAmount, total: result.total, vatAmount: result.vatAmount });
+      setAppliedCoupon({ coupon: result.coupon, discountAmount: result.discountAmount, total: result.total, vatAmount: result.vatAmount, deliveryAmount: result.deliveryAmount });
       saveCheckoutPreferences({ delivery, couponCode: result.coupon.code });
       if (!silent) setCouponMessage(`${result.coupon.code} has been applied.`);
     } catch (error) {
@@ -1409,7 +1419,8 @@ function Checkout() {
     }
   }
 
-  const deliveryAmount = delivery === "express" ? 6.95 : 0;
+  const standardDeliveryCharge = calculateCheckoutDeliveryAmount("standard", subtotal);
+  const deliveryAmount = appliedCoupon ? appliedCoupon.deliveryAmount / 100 : calculateCheckoutDeliveryAmount(delivery, subtotal);
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount / 100 : 0;
   const total = Math.max(0, subtotal + deliveryAmount - discountAmount);
   const vatAmount = appliedCoupon ? appliedCoupon.vatAmount / 100 : Math.round(total * 100 / 6) / 100;
@@ -1450,8 +1461,8 @@ function Checkout() {
             <section className="checkout-section">
               <div className="checkout-section-heading"><span>02</span><div><h2>Shipping</h2><p>Choose how quickly you&apos;d like your order to arrive.</p></div></div>
               <div className="checkout-delivery-options">
-                <label className={`checkout-delivery-option ${delivery === "standard" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="standard" checked={delivery === "standard"} onChange={() => { setDelivery("standard"); saveCheckoutPreferences({ delivery: "standard" }); }} /><span><strong>Standard delivery</strong><small>3–5 working days</small></span><b>Free</b></label>
-                <label className={`checkout-delivery-option ${delivery === "express" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="express" checked={delivery === "express"} onChange={() => { setDelivery("express"); saveCheckoutPreferences({ delivery: "express" }); }} /><span><strong>Express delivery</strong><small>1–2 working days</small></span><b>£6.95</b></label>
+                <label className={`checkout-delivery-option ${delivery === "standard" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="standard" checked={delivery === "standard"} onChange={() => { setDelivery("standard"); saveCheckoutPreferences({ delivery: "standard" }); }} /><span><strong>Standard delivery</strong><small>2–4 working days</small></span><b>{standardDeliveryCharge === 0 ? "Free" : formatPounds(standardDeliveryCharge)}</b></label>
+                <label className={`checkout-delivery-option ${delivery === "express" ? "is-selected" : ""}`}><input type="radio" name="delivery" value="express" checked={delivery === "express"} onChange={() => { setDelivery("express"); saveCheckoutPreferences({ delivery: "express" }); }} /><span><strong>Express delivery</strong><small>1–2 working days</small></span><b>{formatPounds(expressDeliveryAmount)}</b></label>
               </div>
             </section>
             <section className="checkout-section checkout-payment-section">
