@@ -586,6 +586,17 @@ export async function listPaidOrders(userId?: string) {
   }
 }
 
+export async function getProductSales() {
+  const result = await pool.query<{ product_id: string; units_sold: string }>(
+    `SELECT items.product_id, SUM(items.quantity)::integer AS units_sold
+     FROM store_order_items items
+     INNER JOIN store_orders orders ON orders.id = items.order_id
+     WHERE orders.payment_status = 'paid'
+     GROUP BY items.product_id`,
+  );
+  return Object.fromEntries(result.rows.map((row) => [row.product_id, Number(row.units_sold)]));
+}
+
 export async function getPaidOrderByPaymentReference(paymentReference: string) {
   const client = await pool.connect();
   try {

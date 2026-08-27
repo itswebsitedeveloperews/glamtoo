@@ -30,6 +30,7 @@ import {
   finalizePaidOrder,
   getPaidOrderByPaymentReference,
   getOrderIdByPaymentReference,
+  getProductSales,
   importLegacyPaidOrder,
   listExpiredPendingPayments,
   listPaidOrders,
@@ -347,6 +348,17 @@ router.get("/inventory", async (request, response) => {
   } catch (error) {
     request.log?.error({ error }, "Inventory could not be loaded");
     return response.status(503).json({ error: "Stock availability could not be loaded right now." });
+  }
+});
+
+router.get("/stripe/product-sales", async (request, response) => {
+  try {
+    return response
+      .set("Cache-Control", "public, max-age=60")
+      .json({ sales: await getProductSales() });
+  } catch (error) {
+    request.log?.error({ error }, "Product sales could not be loaded");
+    return response.status(503).json({ error: "Product sales could not be loaded right now." });
   }
 });
 

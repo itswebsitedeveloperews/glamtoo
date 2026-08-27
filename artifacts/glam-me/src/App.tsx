@@ -737,6 +737,24 @@ function PageHero({ eyebrow, title, copy }: { eyebrow: string; title: string; co
 
 function Shop() {
   useLiveInventory();
+  const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let active = true;
+    fetch("/api/stripe/product-sales")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load product sales");
+        return response.json() as Promise<{ sales?: Record<string, number> }>;
+      })
+      .then(({ sales }) => {
+        if (active && sales) setSalesByProduct(sales);
+      })
+      .catch(() => {
+        // Keep the catalogue usable without pretending inventory is a sales ranking.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const products = getStorefrontProducts();
   const searchParams = new URLSearchParams(window.location.search);
   const searchQuery = searchParams.get("search")?.trim() ?? "";
@@ -771,7 +789,12 @@ function Shop() {
     return matchesSearch && matchesCategory;
   });
   if (activeSort?.value === "price-asc") visibleProducts.sort((a, b) => parsePounds(a.price) - parsePounds(b.price));
-  if (activeSort?.value === "bestsellers") visibleProducts.sort((a, b) => a.stock - b.stock);
+  if (activeSort?.value === "bestsellers") {
+    visibleProducts.sort((a, b) =>
+      (salesByProduct[String(b.id)] ?? 0) - (salesByProduct[String(a.id)] ?? 0)
+      || a.name.localeCompare(b.name),
+    );
+  }
   const toolbarDescription = searchQuery
     ? `Search results for “${searchQuery}”`
     : selectedCategory.value
