@@ -1,0 +1,113 @@
+Add a complete wishlist feature to existing site.
+
+Requirements:
+
+1. Wishlist button
+
+* Add a heart icon to every product card and product details page.
+* Show an outline heart when the product is not saved.
+* Show a filled heart when the product is saved.
+* Allow users to add or remove products with one click.
+* Display a small success notification after each action.
+* Prevent duplicate wishlist entries.
+* Include accessible labels and keyboard support.
+
+2. Wishlist page
+
+Create a responsive `/wishlist` page that displays:
+
+* Product image
+* Product name
+* Current price
+* Sale price, if applicable
+* Stock status
+* “View Product” button
+* “Add to Cart” button
+* “Remove” button
+
+Include a polished empty state with the message:
+
+“Your wishlist is empty.”
+
+Add a “Continue Shopping” button that returns users to the shop page.
+
+3. Header integration
+
+* Add a wishlist heart icon to the website header.
+* Display the number of saved products beside the icon.
+* Keep the count synchronized immediately when an item is added or removed.
+* Make the icon link to `/wishlist`.
+
+4. Logged-in users
+
+Store wishlist items permanently in the database.
+
+Create a wishlist table or model with fields similar to:
+
+* id
+* userId
+* productId
+* createdAt
+
+Add the required relationship constraints and a unique constraint for `userId + productId`.
+
+Create secure backend endpoints or server actions to:
+
+* Fetch the current user’s wishlist
+* Add a product
+* Remove a product
+* Check whether a product is saved
+* Move a wishlist product to the cart
+
+Users must only be able to access and modify their own wishlist.
+
+5. Guest users
+
+* Allow visitors to use the wishlist without logging in.
+* Store guest wishlist product IDs in localStorage.
+* When a guest signs in, merge their local wishlist into their account wishlist.
+* Avoid duplicate entries during the merge.
+* Clear the local guest wishlist only after the merge succeeds.
+
+6. Product handling
+
+* Remove or safely ignore wishlist entries for products that no longer exist.
+* Disable “Add to Cart” for unavailable products.
+* Do not store full product information inside the wishlist; store product IDs and retrieve the latest product data.
+* Handle loading, empty, success, and error states correctly.
+* Make optimistic updates where safe, but restore the previous state if a request fails.
+
+7. Code quality
+
+* Use the project’s existing language, framework, state management, database, authentication, UI components, icons, and notification system.
+* Do not install unnecessary libraries.
+* Keep the implementation reusable and properly typed.
+* Do not break existing product, cart, checkout, account, or authentication functionality.
+* Follow the current responsive breakpoints and visual styling.
+* Include database migrations if the schema changes.
+* Do not expose database credentials or sensitive information in client-side code.
+
+8. Testing
+
+Test the complete functionality for:
+
+* Guest users
+* Logged-in users
+* Adding and removing products
+* Duplicate prevention
+* Header wishlist count
+* Page refresh persistence
+* Guest-to-user wishlist merging
+* Out-of-stock products
+* Deleted or invalid products
+* Mobile and desktop layouts
+* Failed API requests
+* Existing cart and checkout flows
+
+After implementation:
+
+* Run the database migration.
+* Run type checking, linting, tests, and the production build.
+* Fix any errors caused by the implementation.
+* Summarize all files changed, database changes, routes added, and tests completed.
+* Tell me if any environment variable, database action, or deployment step is still required.
