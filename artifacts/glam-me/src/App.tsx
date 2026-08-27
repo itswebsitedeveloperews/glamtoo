@@ -1105,6 +1105,7 @@ function Checkout() {
   const [couponLoading, setCouponLoading] = useState(false);
   const cardMountRef = useRef<HTMLDivElement | null>(null);
   const stripePaymentRef = useRef<{ stripe: StripeJs; card: StripeCardElement } | null>(null);
+  const stripeClientRef = useRef<StripeJs | null>(null);
   const products = getStorefrontProducts();
   const storedItems = getCartItems();
   const queryItem = getCartQueryItem();
@@ -1232,13 +1233,16 @@ function Checkout() {
   }, []);
 
   useEffect(() => {
-    if (!publishableKey || selectedPaymentMethodId || !cardMountRef.current) return;
+    if (!publishableKey) return;
     let cancelled = false;
     let card: StripeCardElement | null = null;
     void loadStripeJs()
       .then(() => {
         const stripe = window.Stripe?.(publishableKey);
-        if (!stripe || !cardMountRef.current) throw new Error("Stripe card fields could not be initialized.");
+        if (!stripe) throw new Error("Stripe payments could not be initialized.");
+        if (cancelled) return;
+        stripeClientRef.current = stripe;
+        if (selectedPaymentMethodId || !cardMountRef.current) return;
         card = stripe.elements().create("card", {
           disableLink: true,
           hidePostalCode: true,
@@ -1252,19 +1256,16 @@ function Checkout() {
             invalid: { color: "#b42342" },
           },
         });
-        if (cancelled) {
-          card.destroy();
-          return;
-        }
         card.mount(cardMountRef.current);
         card.on("change", (event) => setCardError(event.error?.message ?? ""));
         stripePaymentRef.current = { stripe, card };
       })
       .catch((error) => {
-        if (!cancelled) setPaymentSetupError(error instanceof Error ? error.message : "Stripe card fields are unavailable.");
+        if (!cancelled) setPaymentSetupError(error instanceof Error ? error.message : "Stripe payments are unavailable.");
       });
     return () => {
       cancelled = true;
+      stripeClientRef.current = null;
       stripePaymentRef.current = null;
       card?.destroy();
     };
@@ -1350,13 +1351,24 @@ function Checkout() {
           country: String(formData.get("country") ?? "GB"),
         },
       };
-      const stripe = stripePaymentRef.current?.stripe;
-      if (!stripe) throw new Error("Stripe card fields are still loading. Please wait a moment and try again.");
+      let stripe = stripePaymentRef.current?.stripe ?? stripeClientRef.current;
+      if (!stripe) {
+        await loadStripeJs();
+        stripe = window.Stripe?.(publishableKey) ?? null;
+        if (stripe) stripeClientRef.current = stripe;
+      }
+      if (!stripe) throw new Error("Stripe payments are still loading. Please wait a moment and try again.");
+      const paymentMethod = selectedPaymentMethodId
+        ? selectedPaymentMethodId
+        : stripePaymentRef.current?.card
+          ? {
+              card: stripePaymentRef.current.card,
+              billing_details: billingDetails,
+            }
+          : null;
+      if (!paymentMethod) throw new Error("Stripe card fields are still loading. Please wait a moment and try again.");
       const confirmation = await stripe.confirmCardPayment(result.clientSecret, {
-        payment_method: selectedPaymentMethodId || {
-          card: stripePaymentRef.current?.card as StripeCardElement,
-          billing_details: billingDetails,
-        },
+        payment_method: paymentMethod,
         return_url: `${window.location.origin}${basePath}/order-confirmation`,
       });
       if (confirmation.error) {
