@@ -326,7 +326,7 @@ img { display: block; max-width: 100%; }
 .cart-summary .button { width: 100%; margin-top: 22px; }
 .wishlist-hero { border-bottom: 1px solid var(--line); padding: 82px 0 72px; background: #f0e4df; }
 .wishlist-hero h1 { margin: 12px 0 14px; font: 400 clamp(52px, 7vw, 82px)/.88 var(--display); letter-spacing: -.055em; }
-.wishlist-hero p { max-width: 390px; margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
+.wishlist-hero p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
 .wishlist-page { padding: 58px 0 112px; }
 .wishlist-message { margin: 0 0 20px; border: 1px solid #cc899c; background: #fff4f6; padding: 13px 15px; color: #8d2344; font-size: 16px; }
 .wishlist-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
