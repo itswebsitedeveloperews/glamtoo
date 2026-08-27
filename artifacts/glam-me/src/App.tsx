@@ -69,6 +69,7 @@ const adminCategoriesStorageKey = 'glam-me-admin-categories-v2';
 const cartStorageKey = 'glam-me-cart-v1';
 const pendingCouponPaymentStorageKey = 'glam-me-pending-coupon-payment-v1';
 const checkoutPreferencesStorageKey = 'glam-me-checkout-preferences-v1';
+const inventoryStorageKey = 'glam-me-live-inventory-v1';
 
 type CartItem = {
   productId: number;
@@ -337,13 +338,60 @@ function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'pr
   }
 }
 
+function getStoredInventory() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(inventoryStorageKey) ?? '{}') as Record<string, unknown>;
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, stock]) => Number.isInteger(stock) && Number(stock) >= 0),
+    ) as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function applyLiveInventory(products: CatalogProduct[]) {
+  const inventory = getStoredInventory();
+  return products.map((product) =>
+    typeof inventory[String(product.id)] === 'number'
+      ? { ...product, stock: inventory[String(product.id)] }
+      : product,
+  );
+}
+
+function useLiveInventory() {
+  const [, setInventoryVersion] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/inventory')
+      .then(async (response) => {
+        if (!response.ok) throw new Error('Unable to load inventory');
+        return response.json() as Promise<{ inventory?: Record<string, unknown> }>;
+      })
+      .then(({ inventory }) => {
+        if (!active || !inventory) return;
+        const validInventory = Object.fromEntries(
+          Object.entries(inventory).filter(([, stock]) => Number.isInteger(stock) && Number(stock) >= 0),
+        );
+        window.localStorage.setItem(inventoryStorageKey, JSON.stringify(validInventory));
+        setInventoryVersion((version) => version + 1);
+      })
+      .catch(() => {
+        // The server rechecks stock before payment even if availability cannot be refreshed here.
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+}
+
 function getStorefrontProducts(): CatalogProduct[] {
   try {
     const stored = window.localStorage.getItem(adminProductsStorageKey);
-    if (!stored) return catalogProducts;
+    if (!stored) return applyLiveInventory(catalogProducts);
     const products = JSON.parse(stored) as Array<Partial<CatalogProduct>>;
-    if (!Array.isArray(products)) return catalogProducts;
-    return products
+    if (!Array.isArray(products)) return applyLiveInventory(catalogProducts);
+    return applyLiveInventory(products
       .filter((product) => String(product.status ?? '').toLowerCase() === 'published')
       .map((product, index) => {
         const matchingCatalogProduct = catalogProducts.find((candidate) =>
@@ -368,9 +416,9 @@ function getStorefrontProducts(): CatalogProduct[] {
             price: formatCatalogPrice(variation.price),
           })),
         } as CatalogProduct;
-      })
+      }));
   } catch {
-    return catalogProducts;
+    return applyLiveInventory(catalogProducts);
   }
 }
 
@@ -564,7 +612,7 @@ function ProductCard({ product, featured = false, showShopNow = false }: { produ
     <article className="product-card" data-testid={`card-product-${product.id}`}>
       <a href={`/product/${product.slug}`} data-testid={`link-product-${product.id}`}>
         <div className="product-image">
-          {featured && <span className="badge">Just in</span>}
+          {product.type === 'Simple' && product.stock <= 0 ? <span className="badge">Out of stock</span> : featured && <span className="badge">Just in</span>}
           <span className="heart" aria-hidden="true">♡</span>
           <img src={product.image} alt={product.name} />
         </div>
@@ -579,7 +627,8 @@ function ProductCard({ product, featured = false, showShopNow = false }: { produ
 }
 
 function Home() {
-  const [products] = useState<CatalogProduct[]>(getStorefrontProducts);
+  useLiveInventory();
+  const products = getStorefrontProducts();
   const categories = getStorefrontCategories();
   const categoryImage = (name: string, fallback: string) =>
     categories.find((category) => slugify(category.name) === slugify(name))?.image || fallback;
@@ -660,6 +709,7 @@ function PageHero({ eyebrow, title, copy }: { eyebrow: string; title: string; co
 }
 
 function Shop() {
+  useLiveInventory();
   const products = getStorefrontProducts();
   const searchParams = new URLSearchParams(window.location.search);
   const searchQuery = searchParams.get("search")?.trim() ?? "";
@@ -789,6 +839,7 @@ function CategoryIndex() {
 }
 
 function CategoryDetail({ params }: { params: { slug: string } }) {
+  useLiveInventory();
   const categories = getStorefrontCategories();
   const category = categories.find((item) => slugify(item.name) === params.slug);
   if (!category) return <NotFound />;
@@ -829,6 +880,7 @@ function Product() {
 }
 
 function ProductDetail({ params }: { params: { slug: string } }) {
+  useLiveInventory();
   const product = getStorefrontProducts().find((item) => item.slug === params.slug || String(item.id) === params.slug);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColour, setSelectedColour] = useState('');
@@ -858,6 +910,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
 
   if (!product) return <NotFound />;
   const selectedProduct = product;
+  const isSoldOut = product.type === 'Simple' ? product.stock <= 0 : availableVariations.length === 0;
 
   function handleAddToCart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -900,7 +953,8 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                    {variationMessage && <p className="variation-message" role="alert">{variationMessage}</p>}
                  </>
                )}
-               <button className="button" type="submit" disabled={product.type === 'Variable' && !selectedVariation} data-testid={`button-add-to-bag-${product.id}`}>Add to bag · {displayedPrice}</button>
+                {isSoldOut && <p className="variation-message">This product is currently out of stock.</p>}
+                <button className="button" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation)} data-testid={`button-add-to-bag-${product.id}`}>{isSoldOut ? 'Out of stock' : `Add to bag · ${displayedPrice}`}</button>
             </form>
             <div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with an easy, considered fit.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery over £75. Return unworn pieces within 28 days.</p></details></div>
           </div>
@@ -929,6 +983,7 @@ function LegalPage({ type }: { type: 'privacy' | 'terms' | 'delivery' }) {
 }
 
 function Cart() {
+  useLiveInventory();
   const [items, setItems] = useState<CartItem[]>(() => {
     const storedItems = getCartItems();
     const queryItem = getCartQueryItem();
@@ -1015,6 +1070,7 @@ function Cart() {
 }
 
 function Checkout() {
+  useLiveInventory();
   const { isLoaded, isSignedIn } = useAuth();
   const [, setLocation] = useLocation();
   const [isPaying, setIsPaying] = useState(false);

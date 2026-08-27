@@ -863,6 +863,30 @@ export default function AdminDashboard({
     return () => window.removeEventListener("glam-storage-error", handleStorageError);
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    fetch("/api/inventory")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unable to load inventory");
+        return response.json() as Promise<{ inventory?: Record<string, unknown> }>;
+      })
+      .then(({ inventory }) => {
+        if (!active || !inventory) return;
+        setProducts((current) => current.map((product) => {
+          const stock = inventory[String(product.id)];
+          return typeof stock === "number" && Number.isInteger(stock) && stock >= 0
+            ? { ...product, stock }
+            : product;
+        }));
+      })
+      .catch(() => {
+        if (active) setNotice("Live inventory could not be loaded. Try refreshing before changing stock.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [setProducts]);
+
   const inventoryTotal = useMemo(
     () => products.reduce((total, product) => total + (product.type === "Variable" ? product.variations.reduce((sum, variation) => sum + variation.stock, 0) : product.stock), 0),
     [products],
@@ -910,6 +934,28 @@ export default function AdminDashboard({
     } else if (typeof editorProductId === "number") {
       setProducts((current) => current.map((product) => product.id === editorProductId ? { id: product.id, ...savedDraft } : product));
       setNotice(`${savedDraft.name} was ${savedDraft.status === "Published" ? "updated and published" : "moved to draft"}.`);
+      if (savedDraft.type === "Simple") {
+        void fetch(`/api/admin/inventory/${editorProductId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stock: savedDraft.stock }),
+        })
+          .then(async (response) => {
+            if (!response.ok) {
+              const result = await response.json().catch(() => ({})) as { error?: string };
+              throw new Error(result.error || "Inventory could not be updated.");
+            }
+            return response.json() as Promise<{ stock: number }>;
+          })
+          .then(({ stock }) => {
+            setProducts((current) => current.map((product) =>
+              product.id === editorProductId ? { ...product, stock } : product,
+            ));
+          })
+          .catch((error: unknown) => {
+            setNotice(`${savedDraft.name} was saved locally, but its server stock did not update: ${error instanceof Error ? error.message : "try again."}`);
+          });
+      }
     }
     setEditorProductId(null);
     setSection("products");

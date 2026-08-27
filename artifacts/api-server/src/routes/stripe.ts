@@ -14,6 +14,14 @@ import {
   releaseCouponReservation,
   reserveCouponRedemption,
 } from "../couponService";
+import {
+  commitInventoryReservation,
+  getInventoryLevels,
+  InventoryError,
+  releaseInventoryReservation,
+  reserveInventory,
+  setInventoryLevel,
+} from "../inventoryService";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -75,7 +83,7 @@ function couponMetadata(pricing: Awaited<ReturnType<typeof calculateCouponPricin
 }
 
 function checkoutErrorStatus(error: unknown) {
-  return error instanceof CouponValidationError ? error.statusCode : 500;
+  return error instanceof CouponValidationError || error instanceof InventoryError ? error.statusCode : 500;
 }
 
 async function getOrCreatePrice(stripe: Stripe, line: CheckoutLine) {
@@ -195,6 +203,29 @@ router.get("/stripe/payment-config", async (_request, response) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Stripe card payments are not available right now.";
     return response.status(503).json({ error: message });
+  }
+});
+
+router.get("/inventory", async (request, response) => {
+  try {
+    return response.set("Cache-Control", "no-store").json({ inventory: await getInventoryLevels() });
+  } catch (error) {
+    request.log?.error({ error }, "Inventory could not be loaded");
+    return response.status(503).json({ error: "Stock availability could not be loaded right now." });
+  }
+});
+
+router.put("/admin/inventory/:productId", requireAdmin, async (request, response) => {
+  const productId = safeText(request.params.productId, 80);
+  const stock = Number(request.body?.stock);
+  try {
+    const updatedStock = await setInventoryLevel(productId, stock);
+    return response.json({ productId, stock: updatedStock });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Inventory could not be updated.";
+    const statusCode = error instanceof InventoryError ? error.statusCode : 503;
+    request.log?.error({ error, productId }, "Inventory update failed");
+    return response.status(statusCode).json({ error: message });
   }
 });
 
@@ -418,24 +449,26 @@ router.post("/stripe/payment-intent", async (request, response) => {
         glam_too_items: encodedItems,
       },
     });
-    if (pricing) {
-      try {
+    if (!paymentIntent.client_secret) {
+      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => undefined);
+      throw new Error("Stripe did not return a payment secret.");
+    }
+    try {
+      await reserveInventory(lines, paymentIntent.id);
+      if (pricing) {
         await reserveCouponRedemption(
           pricing.coupon,
           paymentIntent.id,
           userId,
           new Date(Date.now() + 30 * 60 * 1000),
         );
-      } catch (error) {
-        if (paymentIntent.status === "requires_payment_method") {
-          await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => undefined);
-        }
-        throw error;
       }
-    }
-
-    if (!paymentIntent.client_secret) {
-      throw new Error("Stripe did not return a payment secret.");
+    } catch (error) {
+      await releaseInventoryReservation(paymentIntent.id).catch(() => undefined);
+      if (paymentIntent.status === "requires_payment_method") {
+        await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => undefined);
+      }
+      throw error;
     }
     return response.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
   } catch (error) {
@@ -467,7 +500,8 @@ router.post("/stripe/checkout", async (request, response) => {
       return response.status(400).json({ error: "Enter a valid email address to continue." });
     }
 
-    const lines = checkoutLines as CheckoutLine[];
+    const lines = [...checkoutLines] as CheckoutLine[];
+    const inventoryLines = [...lines];
     const delivery = request.body?.delivery === "express" ? "express" : "standard";
     const deliveryAmount = delivery === "express" ? 695 : 0;
     const subtotal = lines.reduce((total, line) => total + line.unitAmount * line.quantity, 0);
@@ -530,20 +564,22 @@ router.post("/stripe/checkout", async (request, response) => {
     if (!session.url) {
       throw new Error("Stripe did not return a Checkout URL.");
     }
-    if (pricing) {
-      try {
+    try {
+      await reserveInventory(inventoryLines, session.id);
+      if (pricing) {
         await reserveCouponRedemption(
           pricing.coupon,
           session.id,
           userId,
           new Date((session.expires_at ?? Math.floor(Date.now() / 1000) + 30 * 60) * 1000),
         );
-      } catch (error) {
-        if (session.status === "open") {
-          await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
-        }
-        throw error;
       }
+    } catch (error) {
+      await releaseInventoryReservation(session.id).catch(() => undefined);
+      if (session.status === "open") {
+        await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
+      }
+      throw error;
     }
 
     return response.json({ url: session.url });
@@ -607,6 +643,7 @@ router.post("/stripe/finalize-payment", async (request, response) => {
     if (!paid || metadata.store !== "Glam Too" || metadata.clerk_user_id !== userId) {
       return response.status(400).json({ error: "This payment is not ready to finalise." });
     }
+    await commitInventoryReservation(paymentIntentId || checkoutSessionId);
     const couponId = Number(metadata.coupon_id);
     if (Number.isInteger(couponId) && couponId > 0) {
       await recordCouponRedemption(
@@ -646,6 +683,7 @@ router.post("/stripe/abandon-payment", async (request, response) => {
     }
     await stripe.paymentIntents.cancel(paymentIntentId);
     await releaseCouponReservation(paymentIntentId);
+    await releaseInventoryReservation(paymentIntentId);
     return response.json({ abandoned: true });
   } catch (error) {
     const message = error instanceof Error ? error.message : "This payment could not be cancelled.";

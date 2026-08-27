@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { recordCouponRedemption, releaseCouponReservation } from "./couponService";
+import { commitInventoryReservation, releaseInventoryReservation } from "./inventoryService";
 import { getStripeSync } from "./stripeClient";
 
 export class WebhookHandlers {
@@ -21,6 +22,7 @@ export class WebhookHandlers {
       || event.type === "checkout.session.expired"
     ) {
       await releaseCouponReservation(payment.id);
+      await releaseInventoryReservation(payment.id);
       return;
     }
     const isSucceededPaymentIntent = event.type === "payment_intent.succeeded";
@@ -31,6 +33,9 @@ export class WebhookHandlers {
     if (!isSucceededPaymentIntent && !isPaidCheckoutSession) return;
 
     const metadata = payment.metadata ?? {};
+    if (metadata.store === "Glam Too") {
+      await commitInventoryReservation(payment.id);
+    }
     const couponId = Number(metadata.coupon_id);
     const userId = metadata.clerk_user_id;
     if (
