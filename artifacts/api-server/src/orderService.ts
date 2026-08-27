@@ -141,7 +141,7 @@ export class OrderFinalizationError extends Error {
   statusCode = 409;
 }
 
-function publicOrderNumber(orderId: string) {
+export function publicOrderNumber(orderId: string) {
   return `#GM-${orderId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase()}`;
 }
 
@@ -600,15 +600,23 @@ export async function recordPaymentResolution(
   orderId: string,
   resolution: "manual_resolution",
 ) {
-  const result = await pool.query(
-    `UPDATE store_orders
-     SET payment_resolution = $2,
-         payment_resolved_at = COALESCE(payment_resolved_at, NOW()),
-         updated_at = NOW()
-     WHERE id = $1
-       AND payment_status = 'cancelled'
-        AND payment_resolution = 'refund_pending'
-     RETURNING id`,
+  const result = await pool.query<{ id: string }>(
+    `WITH changed AS (
+       UPDATE store_orders
+       SET payment_resolution = $2,
+           payment_resolved_at = COALESCE(payment_resolved_at, NOW()),
+           updated_at = NOW()
+       WHERE id = $1
+         AND payment_status = 'cancelled'
+         AND payment_resolution = 'refund_pending'
+       RETURNING id
+     )
+     , queued AS (
+       INSERT INTO store_order_email_notifications (order_id, notification_type)
+       SELECT id, $2 FROM changed
+       ON CONFLICT (order_id, notification_type) DO NOTHING
+     )
+     SELECT id FROM changed`,
     [orderId, resolution],
   );
   if (!result.rows[0]) return null;
@@ -619,15 +627,23 @@ export async function recordPaymentResolutionByPaymentReference(
   paymentReference: string,
   resolution: "manual_resolution",
 ) {
-  const result = await pool.query(
-    `UPDATE store_orders
-     SET payment_resolution = $2,
-         payment_resolved_at = COALESCE(payment_resolved_at, NOW()),
-         updated_at = NOW()
-     WHERE payment_reference = $1
-       AND payment_status = 'cancelled'
-        AND payment_resolution = 'refund_pending'
-     RETURNING id`,
+  const result = await pool.query<{ id: string }>(
+    `WITH changed AS (
+       UPDATE store_orders
+       SET payment_resolution = $2,
+           payment_resolved_at = COALESCE(payment_resolved_at, NOW()),
+           updated_at = NOW()
+       WHERE payment_reference = $1
+         AND payment_status = 'cancelled'
+         AND payment_resolution = 'refund_pending'
+       RETURNING id
+     )
+     , queued AS (
+       INSERT INTO store_order_email_notifications (order_id, notification_type)
+       SELECT id, $2 FROM changed
+       ON CONFLICT (order_id, notification_type) DO NOTHING
+     )
+     SELECT id FROM changed`,
     [paymentReference, resolution],
   );
   if (!result.rows[0]) return null;
@@ -645,15 +661,23 @@ export async function getOrderById(orderId: string) {
 
 export async function claimPaymentRefund(orderId: string) {
   const result = await pool.query<{ id: string; refund_attempt: number; refund_idempotency_key: string }>(
-    `UPDATE store_orders
-     SET payment_resolution = 'refund_processing',
-         refund_attempt = refund_attempt + 1,
-         refund_idempotency_key = 'glam-too-order-refund-' || id || '-' || (refund_attempt + 1)::text,
-         updated_at = NOW()
-     WHERE id = $1
-       AND payment_status = 'cancelled'
-       AND payment_resolution = 'refund_pending'
-     RETURNING id, refund_attempt, refund_idempotency_key`,
+    `WITH changed AS (
+       UPDATE store_orders
+       SET payment_resolution = 'refund_processing',
+           refund_attempt = refund_attempt + 1,
+           refund_idempotency_key = 'glam-too-order-refund-' || id || '-' || (refund_attempt + 1)::text,
+           updated_at = NOW()
+       WHERE id = $1
+         AND payment_status = 'cancelled'
+         AND payment_resolution = 'refund_pending'
+       RETURNING id, refund_attempt, refund_idempotency_key
+     )
+     , queued AS (
+       INSERT INTO store_order_email_notifications (order_id, notification_type)
+       SELECT id, 'refund_processing' FROM changed
+       ON CONFLICT (order_id, notification_type) DO NOTHING
+     )
+     SELECT id, refund_attempt, refund_idempotency_key FROM changed`,
     [orderId],
   );
   const claimed = result.rows[0];
@@ -686,16 +710,25 @@ export async function recordStripeRefundStatus(
       ? "refund_pending"
       : "refund_processing";
   const result = await pool.query<{ id: string }>(
-    `UPDATE store_orders
-     SET payment_resolution = $2,
-         stripe_refund_id = COALESCE($3, stripe_refund_id),
-         refund_idempotency_key = CASE WHEN $2 = 'refund_pending' THEN NULL ELSE refund_idempotency_key END,
-         payment_resolved_at = CASE WHEN $2 = 'refunded' THEN COALESCE(payment_resolved_at, NOW()) ELSE NULL END,
-         updated_at = NOW()
-     WHERE id = $1
-       AND payment_status = 'cancelled'
-       AND payment_resolution = 'refund_processing'
-     RETURNING id`,
+    `WITH changed AS (
+       UPDATE store_orders
+       SET payment_resolution = $2,
+           stripe_refund_id = COALESCE($3, stripe_refund_id),
+           refund_idempotency_key = CASE WHEN $2 = 'refund_pending' THEN NULL ELSE refund_idempotency_key END,
+           payment_resolved_at = CASE WHEN $2 = 'refunded' THEN COALESCE(payment_resolved_at, NOW()) ELSE NULL END,
+           updated_at = NOW()
+       WHERE id = $1
+         AND payment_status = 'cancelled'
+         AND payment_resolution = 'refund_processing'
+       RETURNING id
+     )
+     , queued AS (
+       INSERT INTO store_order_email_notifications (order_id, notification_type)
+       SELECT id, 'refunded' FROM changed
+       WHERE $2 = 'refunded'
+       ON CONFLICT (order_id, notification_type) DO NOTHING
+     )
+     SELECT id FROM changed`,
     [orderId, resolution, refundId],
   );
   if (!result.rows[0]) return null;
@@ -708,16 +741,25 @@ export async function recordStripeRefundWebhook(
   orderId?: string,
 ) {
   const result = await pool.query<{ id: string }>(
-    `UPDATE store_orders
-     SET payment_resolution = $2,
-         stripe_refund_id = $1,
-         refund_idempotency_key = CASE WHEN $2 = 'refund_pending' THEN NULL ELSE refund_idempotency_key END,
-         payment_resolved_at = CASE WHEN $2 = 'refunded' THEN COALESCE(payment_resolved_at, NOW()) ELSE NULL END,
-         updated_at = NOW()
-     WHERE (stripe_refund_id = $1 OR ($3::text IS NOT NULL AND id = $3))
-       AND payment_status = 'cancelled'
-       AND payment_resolution = 'refund_processing'
-     RETURNING id`,
+    `WITH changed AS (
+       UPDATE store_orders
+       SET payment_resolution = $2,
+           stripe_refund_id = $1,
+           refund_idempotency_key = CASE WHEN $2 = 'refund_pending' THEN NULL ELSE refund_idempotency_key END,
+           payment_resolved_at = CASE WHEN $2 = 'refunded' THEN COALESCE(payment_resolved_at, NOW()) ELSE NULL END,
+           updated_at = NOW()
+       WHERE (stripe_refund_id = $1 OR ($3::text IS NOT NULL AND id = $3))
+         AND payment_status = 'cancelled'
+         AND payment_resolution = 'refund_processing'
+       RETURNING id
+     )
+     , queued AS (
+       INSERT INTO store_order_email_notifications (order_id, notification_type)
+       SELECT id, 'refunded' FROM changed
+       WHERE $2 = 'refunded'
+       ON CONFLICT (order_id, notification_type) DO NOTHING
+     )
+     SELECT id FROM changed`,
     [refundId, status === "succeeded" ? "refunded" : "refund_pending", orderId ?? null],
   );
   if (!result.rows[0]) return null;

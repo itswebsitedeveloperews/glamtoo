@@ -9,6 +9,7 @@ import {
   recordStripeRefundWebhook,
 } from "../src/orderService";
 import { attemptPaymentRefund } from "../src/paymentResolution";
+import { buildRefundNotificationMessage } from "../src/refundNotifications";
 import { reconcileLegacyOrders } from "../src/routes/stripe";
 
 const runId = `task18_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -268,6 +269,67 @@ test("a refund is only resolved after Stripe confirms it and cannot race manual 
   assert.equal(afterConfirmation.rows[0].stock, 1);
   assert.equal(afterConfirmation.rows[0].usage_count, 0);
   assert.equal(afterConfirmation.rows[0].redemptions, "0");
+});
+
+test("refund status changes queue one safe customer email per status", async () => {
+  const fixture = await createPaymentFixture("refund-notifications");
+  await cancelPendingOrder(fixture.orderId, fixture.paymentReference);
+  await pool.query("UPDATE product_inventory SET stock = 1 WHERE product_id = $1", [fixture.productId]);
+  const unresolved = await finalizePaidOrder(fixture.orderId, fixture.paymentReference);
+  assert.equal(unresolved?.paymentResolution, "refund_pending");
+
+  const refundId = `re_${runId}_notification`;
+  const fakeStripe = {
+    refunds: {
+      create: async () => ({ id: refundId, status: "pending" }),
+      list: async () => ({ data: [{ id: refundId, status: "pending", metadata: { store: "Glam Too", glam_too_order_id: fixture.orderId } }] }),
+    },
+  };
+  const processing = await attemptPaymentRefund(
+    fakeStripe as never,
+    fixture.orderId,
+    unresolved!,
+    { id: fixture.paymentReference } as never,
+    true,
+  );
+  assert.equal(processing?.paymentResolution, "refund_processing");
+  await attemptPaymentRefund(fakeStripe as never, fixture.orderId, processing!, { id: fixture.paymentReference } as never, true);
+  await recordStripeRefundWebhook(refundId, "succeeded", fixture.orderId);
+  await recordStripeRefundWebhook(refundId, "succeeded", fixture.orderId);
+
+  const notifications = await pool.query<{ notification_type: string; count: string }>(
+    `SELECT notification_type, COUNT(*)::text AS count
+     FROM store_order_email_notifications
+     WHERE order_id = $1
+     GROUP BY notification_type
+     ORDER BY notification_type`,
+    [fixture.orderId],
+  );
+  assert.deepEqual(notifications.rows, [
+    { notification_type: "refund_processing", count: "1" },
+    { notification_type: "refunded", count: "1" },
+  ]);
+
+  const message = buildRefundNotificationMessage("manual_resolution", fixture.orderId, "<Taylor>");
+  assert.match(message.subject, /#GM-/);
+  assert.match(message.text, /will not be fulfilled/);
+  assert.match(message.html, /&lt;Taylor&gt;/);
+});
+
+test("manual refund resolution queues a customer update only once", async () => {
+  const fixture = await createPaymentFixture("manual-refund-notification");
+  await cancelPendingOrder(fixture.orderId, fixture.paymentReference);
+  await pool.query("UPDATE product_inventory SET stock = 1 WHERE product_id = $1", [fixture.productId]);
+  await finalizePaidOrder(fixture.orderId, fixture.paymentReference);
+  assert.equal((await recordPaymentResolution(fixture.orderId, "manual_resolution"))?.paymentResolution, "manual_resolution");
+  assert.equal(await recordPaymentResolution(fixture.orderId, "manual_resolution"), null);
+  const notifications = await pool.query<{ count: string }>(
+    `SELECT COUNT(*)::text AS count
+     FROM store_order_email_notifications
+     WHERE order_id = $1 AND notification_type = 'manual_resolution'`,
+    [fixture.orderId],
+  );
+  assert.equal(notifications.rows[0].count, "1");
 });
 
 test("an ambiguous Stripe refund request replays its saved idempotency key", async () => {
