@@ -1,7 +1,14 @@
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
-import { customerProfilesTable, db } from "@workspace/db";
+import { desc, eq } from "drizzle-orm";
+import { couponsTable, customerProfilesTable, db } from "@workspace/db";
 import { getAdminAccess, requireAdmin } from "../adminAuth";
+import {
+  CouponValidationError,
+  getCouponById,
+  updateCouponWithUsageLimit,
+  validateCouponInput,
+} from "../couponService";
 
 const router: IRouter = Router();
 
@@ -185,6 +192,142 @@ router.delete("/admin/users/:userId", requireAdmin, async (request, response) =>
   } catch (error) {
     request.log?.error({ error, userId }, "Admin user deletion failed");
     return response.status(503).json({ error: "This user could not be deleted right now." });
+  }
+});
+
+function serializeCoupon(coupon: typeof couponsTable.$inferSelect) {
+  return {
+    id: coupon.id,
+    code: coupon.code,
+    discountType: coupon.discountType,
+    discountValue: coupon.discountValue,
+    active: coupon.active,
+    startsAt: coupon.startsAt,
+    endsAt: coupon.endsAt,
+    minimumSpend: coupon.minimumSpend,
+    usageLimit: coupon.usageLimit,
+    usageCount: coupon.usageCount,
+    createdAt: coupon.createdAt.toISOString(),
+    updatedAt: coupon.updatedAt.toISOString(),
+  };
+}
+
+function couponId(value: string | string[]) {
+  const parsed = Number(Array.isArray(value) ? value[0] : value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
+function couponError(error: unknown) {
+  if (error instanceof CouponValidationError) return error;
+  return null;
+}
+
+router.get("/admin/coupons", requireAdmin, async (request, response) => {
+  try {
+    const coupons = await db.select().from(couponsTable).orderBy(desc(couponsTable.createdAt));
+    return response.set("Cache-Control", "no-store").json({ coupons: coupons.map(serializeCoupon) });
+  } catch (error) {
+    request.log?.error({ error }, "Admin coupon list failed");
+    return response.status(503).json({ error: "Coupons could not be loaded right now." });
+  }
+});
+
+router.post("/admin/coupons", requireAdmin, async (request, response) => {
+  try {
+    const input = validateCouponInput(request.body ?? {});
+    if (
+      input.code === undefined
+      || input.discountType === undefined
+      || input.discountValue === undefined
+      || input.discountValue === null
+    ) {
+      throw new CouponValidationError("Complete the coupon code and discount details.");
+    }
+    const [coupon] = await db.insert(couponsTable).values({
+      code: input.code,
+      discountType: input.discountType,
+      discountValue: input.discountValue,
+      active: input.active ?? true,
+      startsAt: input.startsAt ?? null,
+      endsAt: input.endsAt ?? null,
+      minimumSpend: input.minimumSpend ?? 0,
+      usageLimit: input.usageLimit ?? null,
+    }).returning();
+    return response.status(201).json({ coupon: serializeCoupon(coupon) });
+  } catch (error) {
+    const validationError = couponError(error);
+    if (validationError) return response.status(validationError.statusCode).json({ error: validationError.message });
+    if (error instanceof Error && error.message.toLowerCase().includes("duplicate")) {
+      return response.status(409).json({ error: "That coupon code already exists." });
+    }
+    request.log?.error({ error }, "Admin coupon creation failed");
+    return response.status(503).json({ error: "This coupon could not be created right now." });
+  }
+});
+
+router.patch("/admin/coupons/:couponId", requireAdmin, async (request, response) => {
+  const id = couponId(request.params.couponId);
+  if (!id) return response.status(400).json({ error: "Choose a valid coupon." });
+
+  try {
+    const existing = await getCouponById(id);
+    if (!existing) return response.status(404).json({ error: "That coupon could not be found." });
+    const input = validateCouponInput(request.body ?? {}, true);
+    const merged = validateCouponInput({
+      code: input.code ?? existing.code,
+      discountType: input.discountType ?? existing.discountType,
+      discountValue: input.discountValue ?? existing.discountValue,
+      startsAt: input.startsAt === undefined ? existing.startsAt : input.startsAt,
+      endsAt: input.endsAt === undefined ? existing.endsAt : input.endsAt,
+      minimumSpend: input.minimumSpend ?? existing.minimumSpend,
+      usageLimit: input.usageLimit === undefined ? existing.usageLimit : input.usageLimit,
+      active: input.active ?? existing.active,
+    });
+    if (
+      merged.code === undefined
+      || merged.discountType === undefined
+      || merged.discountValue === undefined
+      || merged.discountValue === null
+    ) {
+      throw new CouponValidationError("Complete the coupon code and discount details.");
+    }
+    const updated = await updateCouponWithUsageLimit(id, {
+      code: merged.code,
+      discountType: merged.discountType,
+      discountValue: merged.discountValue,
+      startsAt: merged.startsAt ?? null,
+      endsAt: merged.endsAt ?? null,
+      minimumSpend: merged.minimumSpend ?? 0,
+      usageLimit: merged.usageLimit ?? null,
+      active: merged.active ?? true,
+    });
+    if (!updated) return response.status(404).json({ error: "That coupon could not be found." });
+    return response.json({ coupon: serializeCoupon(updated) });
+  } catch (error) {
+    const validationError = couponError(error);
+    if (validationError) return response.status(validationError.statusCode).json({ error: validationError.message });
+    if (error instanceof Error && error.message.toLowerCase().includes("duplicate")) {
+      return response.status(409).json({ error: "That coupon code already exists." });
+    }
+    request.log?.error({ error, id }, "Admin coupon update failed");
+    return response.status(503).json({ error: "This coupon could not be updated right now." });
+  }
+});
+
+router.delete("/admin/coupons/:couponId", requireAdmin, async (request, response) => {
+  const id = couponId(request.params.couponId);
+  if (!id) return response.status(400).json({ error: "Choose a valid coupon." });
+  try {
+    const existing = await getCouponById(id);
+    if (!existing) return response.status(404).json({ error: "That coupon could not be found." });
+    if (existing.usageCount > 0) {
+      return response.status(409).json({ error: "Coupons with recorded redemptions cannot be deleted. Deactivate it instead." });
+    }
+    await db.delete(couponsTable).where(eq(couponsTable.id, id));
+    return response.json({ deletedCouponId: id });
+  } catch (error) {
+    request.log?.error({ error, id }, "Admin coupon deletion failed");
+    return response.status(503).json({ error: "This coupon could not be deleted right now." });
   }
 });
 

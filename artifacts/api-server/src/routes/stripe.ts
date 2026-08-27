@@ -7,6 +7,13 @@ import { clearSavedStripeCredentials, saveStripeCredentials } from "../stripeCre
 import { initializeStripe } from "../stripeBootstrap";
 import { getAuth } from "@clerk/express";
 import { db, pool, orderFulfillmentTable } from "@workspace/db";
+import {
+  calculateCouponPricing,
+  CouponValidationError,
+  recordCouponRedemption,
+  releaseCouponReservation,
+  reserveCouponRedemption,
+} from "../couponService";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -57,6 +64,18 @@ function resolveCheckoutLine(line: SubmittedCheckoutLine): CheckoutLine | null {
 
 function getLineKey(line: CheckoutLine) {
   return `${line.productId}${line.variationId ? `-${line.variationId}` : ""}`;
+}
+
+function couponMetadata(pricing: Awaited<ReturnType<typeof calculateCouponPricing>> | null): Record<string, string> {
+  return pricing ? {
+    coupon_id: String(pricing.coupon.id),
+    coupon_code: pricing.coupon.code,
+    coupon_discount: String(pricing.discountAmount),
+  } : {};
+}
+
+function checkoutErrorStatus(error: unknown) {
+  return error instanceof CouponValidationError ? error.statusCode : 500;
 }
 
 async function getOrCreatePrice(stripe: Stripe, line: CheckoutLine) {
@@ -343,7 +362,13 @@ router.post("/stripe/payment-intent", async (request, response) => {
     const lines = checkoutLines as CheckoutLine[];
     const delivery = request.body?.delivery === "express" ? "express" : "standard";
     const deliveryAmount = delivery === "express" ? 695 : 0;
-    const amount = lines.reduce((total, line) => total + line.unitAmount * line.quantity, deliveryAmount);
+    const subtotal = lines.reduce((total, line) => total + line.unitAmount * line.quantity, 0);
+    const couponCode = safeText(request.body?.couponCode, 80);
+    const pricing = couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
+    const amount = pricing?.total ?? subtotal + deliveryAmount;
+    if (amount < 30) {
+      return response.status(400).json({ error: "This coupon makes the order too small for card payment. Add another item or use a different coupon." });
+    }
     const orderItems = lines.map((line) => ({
       name: line.name,
       productId: line.productId,
@@ -389,18 +414,34 @@ router.post("/stripe/payment-intent", async (request, response) => {
         customer_name: customerName,
         customer_email: email,
         delivery,
+         ...couponMetadata(pricing),
         glam_too_items: encodedItems,
       },
     });
+    if (pricing) {
+      try {
+        await reserveCouponRedemption(
+          pricing.coupon,
+          paymentIntent.id,
+          userId,
+          new Date(Date.now() + 30 * 60 * 1000),
+        );
+      } catch (error) {
+        if (paymentIntent.status === "requires_payment_method") {
+          await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => undefined);
+        }
+        throw error;
+      }
+    }
 
     if (!paymentIntent.client_secret) {
       throw new Error("Stripe did not return a payment secret.");
     }
-    return response.json({ clientSecret: paymentIntent.client_secret });
+    return response.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to prepare secure card payment.";
     request.log?.error({ error }, "Stripe payment intent could not be created");
-    return response.status(500).json({ error: message });
+    return response.status(checkoutErrorStatus(error)).json({ error: message });
   }
 });
 
@@ -426,9 +467,18 @@ router.post("/stripe/checkout", async (request, response) => {
       return response.status(400).json({ error: "Enter a valid email address to continue." });
     }
 
-    const stripe = await getUncachableStripeClient();
     const lines = checkoutLines as CheckoutLine[];
-    if (request.body?.delivery === "express") {
+    const delivery = request.body?.delivery === "express" ? "express" : "standard";
+    const deliveryAmount = delivery === "express" ? 695 : 0;
+    const subtotal = lines.reduce((total, line) => total + line.unitAmount * line.quantity, 0);
+    const couponCode = safeText(request.body?.couponCode, 80);
+    const pricing = couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
+    const amount = pricing?.total ?? subtotal + deliveryAmount;
+    if (amount < 30) {
+      return response.status(400).json({ error: "This coupon makes the order too small for card payment. Add another item or use a different coupon." });
+    }
+    const stripe = await getUncachableStripeClient();
+    if (delivery === "express") {
       lines.push({
         productId: "delivery",
         variationId: "express",
@@ -448,6 +498,21 @@ router.post("/stripe/checkout", async (request, response) => {
       mode: "payment",
       payment_method_types: ["card"],
       line_items: priceLines,
+      ...(pricing ? {
+        discounts: [{
+          coupon: (await stripe.coupons.create({
+            ...(pricing.coupon.discountType === "percentage"
+              ? { percent_off: pricing.coupon.discountValue }
+              : { amount_off: pricing.discountAmount, currency: "gbp" }),
+            duration: "once",
+            name: pricing.coupon.code,
+            metadata: {
+              glam_too_coupon_id: String(pricing.coupon.id),
+              glam_too_coupon_code: pricing.coupon.code,
+            },
+          })).id,
+        }],
+      } : {}),
       customer_email: email,
       billing_address_collection: "required",
       shipping_address_collection: { allowed_countries: ["GB"] },
@@ -458,17 +523,134 @@ router.post("/stripe/checkout", async (request, response) => {
         customer_name: safeText(request.body?.customerName, 120),
         delivery: request.body?.delivery === "express" ? "express" : "standard",
         clerk_user_id: userId,
+         ...couponMetadata(pricing),
       },
     });
 
     if (!session.url) {
       throw new Error("Stripe did not return a Checkout URL.");
     }
+    if (pricing) {
+      try {
+        await reserveCouponRedemption(
+          pricing.coupon,
+          session.id,
+          userId,
+          new Date((session.expires_at ?? Math.floor(Date.now() / 1000) + 30 * 60) * 1000),
+        );
+      } catch (error) {
+        if (session.status === "open") {
+          await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
+        }
+        throw error;
+      }
+    }
 
     return response.json({ url: session.url });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to start Stripe checkout.";
-    return response.status(500).json({ error: message });
+    return response.status(checkoutErrorStatus(error)).json({ error: message });
+  }
+});
+
+router.post("/stripe/coupon/validate", async (request, response) => {
+  try {
+    const submittedLines: SubmittedCheckoutLine[] = Array.isArray(request.body?.lines)
+      ? (request.body.lines as unknown[])
+        .map(parseCheckoutLine)
+        .filter((line: SubmittedCheckoutLine | null): line is SubmittedCheckoutLine => line !== null)
+      : [];
+    const checkoutLines = submittedLines.map(resolveCheckoutLine);
+    if (submittedLines.length === 0 || checkoutLines.some((line) => line === null)) {
+      return response.status(400).json({ error: "Your bag is empty or contains an invalid item." });
+    }
+    const deliveryAmount = request.body?.delivery === "express" ? 695 : 0;
+    const subtotal = (checkoutLines as CheckoutLine[]).reduce((total, line) => total + line.unitAmount * line.quantity, 0);
+    const pricing = await calculateCouponPricing(request.body?.code, subtotal, deliveryAmount);
+    return response.set("Cache-Control", "no-store").json({
+      coupon: {
+        code: pricing.coupon.code,
+        discountType: pricing.coupon.discountType,
+        discountValue: pricing.coupon.discountValue,
+      },
+      subtotal: pricing.subtotal,
+      deliveryAmount: pricing.deliveryAmount,
+      discountAmount: pricing.discountAmount,
+      total: pricing.total,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "That coupon could not be applied.";
+    return response.status(checkoutErrorStatus(error)).json({ error: message });
+  }
+});
+
+router.post("/stripe/finalize-payment", async (request, response) => {
+  const { userId } = getAuth(request);
+  if (!userId) return response.status(401).json({ error: "Sign in to finalise this order." });
+  const paymentIntentId = safeText(request.body?.paymentIntentId, 120);
+  const checkoutSessionId = safeText(request.body?.checkoutSessionId, 120);
+  if ((!paymentIntentId && !checkoutSessionId) || (paymentIntentId && checkoutSessionId)
+    || (paymentIntentId && !/^pi_[A-Za-z0-9_]+$/.test(paymentIntentId))
+    || (checkoutSessionId && !/^cs_[A-Za-z0-9_]+$/.test(checkoutSessionId))) {
+    return response.status(400).json({ error: "Choose a valid Stripe payment." });
+  }
+
+  try {
+    const stripe = await getUncachableStripeClient();
+    const payment = paymentIntentId
+      ? await stripe.paymentIntents.retrieve(paymentIntentId)
+      : await stripe.checkout.sessions.retrieve(checkoutSessionId);
+    const metadata = payment.metadata ?? {};
+    const paid = paymentIntentId
+      ? (payment as Stripe.PaymentIntent).status === "succeeded"
+      : (payment as Stripe.Checkout.Session).payment_status === "paid";
+    if (!paid || metadata.store !== "Glam Too" || metadata.clerk_user_id !== userId) {
+      return response.status(400).json({ error: "This payment is not ready to finalise." });
+    }
+    const couponId = Number(metadata.coupon_id);
+    if (Number.isInteger(couponId) && couponId > 0) {
+      await recordCouponRedemption(
+        couponId,
+        paymentIntentId || checkoutSessionId,
+        userId,
+        Number(metadata.coupon_discount) || 0,
+      );
+    }
+    return response.json({ finalised: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "The order could not be finalised.";
+    request.log?.error({ error }, "Stripe payment finalisation failed");
+    return response.status(checkoutErrorStatus(error)).json({ error: message });
+  }
+});
+
+router.post("/stripe/abandon-payment", async (request, response) => {
+  const { userId } = getAuth(request);
+  const paymentIntentId = safeText(request.body?.paymentIntentId, 120);
+  if (!userId) return response.status(401).json({ error: "Sign in to manage this payment." });
+  if (!/^pi_[A-Za-z0-9_]+$/.test(paymentIntentId)) {
+    return response.status(400).json({ error: "Choose a valid Stripe payment." });
+  }
+
+  try {
+    const stripe = await getUncachableStripeClient();
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (
+      paymentIntent.metadata.store !== "Glam Too"
+      || paymentIntent.metadata.clerk_user_id !== userId
+    ) {
+      return response.status(400).json({ error: "This payment cannot be cancelled." });
+    }
+    if (paymentIntent.status === "succeeded") {
+      return response.status(409).json({ paymentSucceeded: true });
+    }
+    await stripe.paymentIntents.cancel(paymentIntentId);
+    await releaseCouponReservation(paymentIntentId);
+    return response.json({ abandoned: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "This payment could not be cancelled.";
+    request.log?.error({ error }, "Stripe payment abandonment failed");
+    return response.status(checkoutErrorStatus(error)).json({ error: message });
   }
 });
 
@@ -577,6 +759,8 @@ function serializeOrder(row: OrderRow) {
     total: row.amount_total ?? 0,
     currency: row.currency || "gbp",
     email: stringValue(row.customer_email, 250) || stringValue(customerDetails.email, 250),
+    couponCode: stringValue(metadata.coupon_code, 40) || null,
+    discountAmount: Number(metadata.coupon_discount) || 0,
     delivery: {
       method: metadata.delivery === "express" ? "Express delivery" : "Standard delivery",
       name: stringValue(deliveryDetails.name) || stringValue(customerDetails.name),
@@ -625,6 +809,8 @@ function serializePaymentIntentOrder(paymentIntent: Stripe.PaymentIntent, fulfil
     total: paymentIntent.amount_received || paymentIntent.amount,
     currency: paymentIntent.currency || "gbp",
     email: paymentIntent.receipt_email || metadata.customer_email || "",
+    couponCode: stringValue(metadata.coupon_code, 40) || null,
+    discountAmount: Number(metadata.coupon_discount) || 0,
     delivery: {
       method: metadata.delivery === "express" ? "Express delivery" : "Standard delivery",
       name: stringValue(shipping.name) || metadata.customer_name || "",

@@ -9,3 +9,4 @@
 - [Embedded Stripe card checkout](embedded-stripe-card-checkout.md) — Use Stripe.js Card Element with server-created PaymentIntents so card details never reach Glam Too.
 - [Database declaration rebuild](db-declaration-rebuild.md) — Rebuild database declarations after adding schemas before dependent packages can resolve new exports.
 - [Stripe regional Search API](stripe-regional-search-api.md) — Use Stripe list APIs, not Search API, for customer and product lookup in this account region.
+- [Coupon payment allocations](coupon-payment-allocations.md) — Keep each coupon allocation until Stripe reports a verified terminal outcome; do not free it on retryable card failures.

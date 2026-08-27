@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { CreditCard, LayoutDashboard, Package, ShoppingBag, Tags, Truck, Users, type LucideIcon } from "lucide-react";
+import { CreditCard, LayoutDashboard, Package, ShoppingBag, Tags, TicketPercent, Truck, Users, type LucideIcon } from "lucide-react";
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogPriceInput, type CatalogProduct, type CatalogVariation } from "@/data/catalog";
 
 type AdminSection =
@@ -9,6 +9,7 @@ type AdminSection =
   | "orders"
   | "shipping"
   | "payments"
+  | "coupons"
   | "users";
 
 type ProductStatus = "Published" | "Draft";
@@ -49,6 +50,8 @@ type Order = {
   amount: number;
   total: string;
   currency: string;
+  couponCode?: string | null;
+  discountAmount?: number;
   status: "Processing" | "Shipped" | "Delivered";
   delivery: {
     method: string;
@@ -76,6 +79,8 @@ type OrderPayload = {
   status: Order["status"];
   total: number;
   currency: string;
+  couponCode?: string | null;
+  discountAmount?: number;
   email: string;
   delivery: {
     name: string;
@@ -109,6 +114,32 @@ type NewUserDraft = {
   role: "customer" | "admin";
 };
 
+type CouponRecord = {
+  id: number;
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  active: boolean;
+  startsAt: string | null;
+  endsAt: string | null;
+  minimumSpend: number;
+  usageLimit: number | null;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+type CouponDraft = {
+  code: string;
+  discountType: CouponRecord["discountType"];
+  discountValue: string;
+  startsAt: string;
+  endsAt: string;
+  minimumSpend: string;
+  usageLimit: string;
+  active: boolean;
+};
+
 const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "products", label: "Products", icon: Package },
@@ -116,6 +147,7 @@ const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "orders", label: "Orders", icon: ShoppingBag },
   { id: "shipping", label: "Shipping", icon: Truck },
   { id: "payments", label: "Payments", icon: CreditCard },
+  { id: "coupons", label: "Coupons", icon: TicketPercent },
   { id: "users", label: "Users", icon: Users },
 ];
 
@@ -214,6 +246,8 @@ function toAdminOrder(order: OrderPayload): Order {
     amount: order.total,
     total: formatPounds(order.total / 100),
     currency: order.currency,
+    couponCode: order.couponCode,
+    discountAmount: order.discountAmount,
     status: order.status,
     delivery: order.delivery,
     items: order.items,
@@ -232,7 +266,8 @@ function AdminOrderDetailPage({
   onBack: () => void;
 }) {
   const itemSubtotal = order.items.reduce((total, item) => total + item.total, 0);
-  const deliveryAmount = Math.max(order.amount - itemSubtotal, 0);
+  const discountAmount = order.discountAmount ?? 0;
+  const deliveryAmount = Math.max(order.amount - itemSubtotal + discountAmount, 0);
   const addressParts = [
     order.delivery.address.line1,
     order.delivery.address.line2,
@@ -283,6 +318,7 @@ function AdminOrderDetailPage({
             <div className="admin-order-totals">
               <div><span>Items subtotal</span><strong>{formatPounds(itemSubtotal / 100)}</strong></div>
               {deliveryAmount > 0 && <div><span>{order.delivery.method}</span><strong>{formatPounds(deliveryAmount / 100)}</strong></div>}
+               {discountAmount > 0 && <div><span>Coupon {order.couponCode || ""}</span><strong>−{formatPounds(discountAmount / 100)}</strong></div>}
               <div className="admin-order-total-row"><span>Order total</span><strong>{order.total}</strong></div>
             </div>
           </section>
@@ -428,6 +464,40 @@ function blankProduct(category: string): ProductDraft {
 
 function blankCategory(): CategoryDraft {
   return { name: "", image: "", description: "" };
+}
+
+function blankCoupon(): CouponDraft {
+  return {
+    code: "",
+    discountType: "percentage",
+    discountValue: "",
+    startsAt: "",
+    endsAt: "",
+    minimumSpend: "",
+    usageLimit: "",
+    active: true,
+  };
+}
+
+function couponDraftFromRecord(coupon: CouponRecord): CouponDraft {
+  return {
+    code: coupon.code,
+    discountType: coupon.discountType,
+    discountValue: coupon.discountType === "fixed"
+      ? (coupon.discountValue / 100).toFixed(2)
+      : String(coupon.discountValue),
+    startsAt: coupon.startsAt ?? "",
+    endsAt: coupon.endsAt ?? "",
+    minimumSpend: coupon.minimumSpend ? (coupon.minimumSpend / 100).toFixed(2) : "",
+    usageLimit: coupon.usageLimit ? String(coupon.usageLimit) : "",
+    active: coupon.active,
+  };
+}
+
+function formatCouponDiscount(coupon: CouponRecord) {
+  return coupon.discountType === "percentage"
+    ? `${coupon.discountValue}% off`
+    : `${formatPounds(coupon.discountValue / 100)} off`;
 }
 
 function compressProductImage(file: File) {
@@ -757,6 +827,14 @@ export default function AdminDashboard({
   const [stripeCredentialsSaving, setStripeCredentialsSaving] = useState(false);
   const [stripeCredentialsError, setStripeCredentialsError] = useState("");
   const [stripeCredentialsNotice, setStripeCredentialsNotice] = useState("");
+  const [coupons, setCoupons] = useState<CouponRecord[]>([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
+  const [couponsError, setCouponsError] = useState("");
+  const [couponEditorOpen, setCouponEditorOpen] = useState(false);
+  const [editingCouponId, setEditingCouponId] = useState<number | null>(null);
+  const [couponDraft, setCouponDraft] = useState<CouponDraft>(blankCoupon);
+  const [couponSaving, setCouponSaving] = useState(false);
+  const [deletingCouponId, setDeletingCouponId] = useState<number | null>(null);
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState("");
@@ -1021,6 +1099,118 @@ export default function AdminDashboard({
     }
   }
 
+  async function refreshCoupons() {
+    setCouponsLoading(true);
+    setCouponsError("");
+    try {
+      const response = await fetch("/api/admin/coupons", { credentials: "include" });
+      const payload = await response.json() as { coupons?: CouponRecord[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || "Coupons could not be loaded.");
+      setCoupons(payload.coupons ?? []);
+    } catch (error) {
+      setCouponsError(error instanceof Error ? error.message : "Coupons could not be loaded.");
+    } finally {
+      setCouponsLoading(false);
+    }
+  }
+
+  function openNewCoupon() {
+    setCouponDraft(blankCoupon());
+    setEditingCouponId(null);
+    setCouponEditorOpen(true);
+    setCouponsError("");
+    setNotice("");
+  }
+
+  function editCoupon(coupon: CouponRecord) {
+    setCouponDraft(couponDraftFromRecord(coupon));
+    setEditingCouponId(coupon.id);
+    setCouponEditorOpen(true);
+    setCouponsError("");
+    setNotice("");
+  }
+
+  function closeCouponEditor() {
+    setCouponEditorOpen(false);
+    setEditingCouponId(null);
+    setCouponDraft(blankCoupon());
+    setCouponsError("");
+  }
+
+  async function saveCoupon(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCouponSaving(true);
+    setCouponsError("");
+    const fixedAmount = Number(couponDraft.discountValue);
+    const minimumSpend = couponDraft.minimumSpend.trim() ? Number(couponDraft.minimumSpend) : 0;
+    const usageLimit = couponDraft.usageLimit.trim() ? Number(couponDraft.usageLimit) : null;
+    const payload = {
+      code: couponDraft.code,
+      discountType: couponDraft.discountType,
+      discountValue: couponDraft.discountType === "fixed" ? Math.round(fixedAmount * 100) : fixedAmount,
+      startsAt: couponDraft.startsAt || null,
+      endsAt: couponDraft.endsAt || null,
+      minimumSpend: Math.round(minimumSpend * 100),
+      usageLimit,
+      active: couponDraft.active,
+    };
+    try {
+      const isEditing = editingCouponId !== null;
+      const response = await fetch(isEditing ? `/api/admin/coupons/${editingCouponId}` : "/api/admin/coupons", {
+        method: isEditing ? "PATCH" : "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json() as { coupon?: CouponRecord; error?: string };
+      if (!response.ok || !result.coupon) throw new Error(result.error || "Coupon could not be saved.");
+      setCoupons((current) => isEditing
+        ? current.map((coupon) => coupon.id === result.coupon!.id ? result.coupon! : coupon)
+        : [result.coupon!, ...current]);
+      setNotice(`${result.coupon.code} was ${isEditing ? "updated" : "created"}.`);
+      closeCouponEditor();
+    } catch (error) {
+      setCouponsError(error instanceof Error ? error.message : "Coupon could not be saved.");
+    } finally {
+      setCouponSaving(false);
+    }
+  }
+
+  async function toggleCoupon(coupon: CouponRecord) {
+    setCouponsError("");
+    try {
+      const response = await fetch(`/api/admin/coupons/${coupon.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active: !coupon.active }),
+      });
+      const result = await response.json() as { coupon?: CouponRecord; error?: string };
+      if (!response.ok || !result.coupon) throw new Error(result.error || "Coupon status could not be updated.");
+      setCoupons((current) => current.map((item) => item.id === coupon.id ? result.coupon! : item));
+      setNotice(`${coupon.code} is now ${result.coupon.active ? "active" : "inactive"}.`);
+    } catch (error) {
+      setCouponsError(error instanceof Error ? error.message : "Coupon status could not be updated.");
+    }
+  }
+
+  async function deleteCoupon(coupon: CouponRecord) {
+    if (!window.confirm(`Delete ${coupon.code}? This cannot be undone.`)) return;
+    setDeletingCouponId(coupon.id);
+    setCouponsError("");
+    try {
+      const response = await fetch(`/api/admin/coupons/${coupon.id}`, { method: "DELETE", credentials: "include" });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Coupon could not be deleted.");
+      setCoupons((current) => current.filter((item) => item.id !== coupon.id));
+      setNotice(`${coupon.code} was deleted.`);
+    } catch (error) {
+      setCouponsError(error instanceof Error ? error.message : "Coupon could not be deleted.");
+    } finally {
+      setDeletingCouponId(null);
+    }
+  }
+
   async function updateUserAccess(user: ManagedUser, isAdmin: boolean) {
     if (!isAdmin && user.isBootstrapAdmin) return;
     const action = isAdmin ? "grant admin access to" : "remove admin access from";
@@ -1095,6 +1285,7 @@ export default function AdminDashboard({
   useEffect(() => {
     if (section === "orders") void refreshOrders();
     if (section === "users") void refreshUsers();
+    if (section === "coupons") void refreshCoupons();
   }, [section]);
 
   const editorProduct = typeof editorProductId === "number" ? products.find((product) => product.id === editorProductId) : undefined;
@@ -1244,6 +1435,52 @@ export default function AdminDashboard({
                       <span>{order.total}</span>
                       <select value={order.status} disabled={updatingOrderId === order.id} onChange={(event) => void updateOrderStatus(order, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}><option>Processing</option><option>Shipped</option><option>Delivered</option></select>
                       <button className="admin-order-details-button" type="button" onClick={() => setSelectedOrderId(order.id)}>View order</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          </>
+        )}
+
+        {section === "coupons" && (
+          <>
+            <SectionTitle
+              eyebrow="Promotions"
+              title="Coupons"
+              description="Create one-off promotional codes and keep a close eye on their availability and redemptions."
+              action={<div className="admin-section-actions"><button className="admin-secondary" type="button" onClick={() => void refreshCoupons()} disabled={couponsLoading}>{couponsLoading ? "Refreshing…" : "Refresh"}</button><button className="admin-primary" type="button" onClick={openNewCoupon}>Create coupon</button></div>}
+            />
+            {couponEditorOpen && (
+              <form className="admin-panel admin-coupon-editor" onSubmit={saveCoupon}>
+                <div className="admin-panel-header"><div><p className="admin-eyebrow">{editingCouponId ? "Edit coupon" : "New promotion"}</p><h2>{editingCouponId ? "Update coupon" : "Create a coupon"}</h2></div><button type="button" onClick={closeCouponEditor}>Cancel</button></div>
+                <div className="admin-coupon-fields">
+                  <label>Coupon code<input required maxLength={40} autoComplete="off" value={couponDraft.code} onChange={(event) => setCouponDraft((current) => ({ ...current, code: event.target.value.toUpperCase().replace(/\s+/g, "") }))} placeholder="e.g. WELCOME10" /></label>
+                  <label>Discount type<select value={couponDraft.discountType} onChange={(event) => setCouponDraft((current) => ({ ...current, discountType: event.target.value as CouponDraft["discountType"] }))}><option value="percentage">Percentage off</option><option value="fixed">Fixed amount off</option></select></label>
+                  <label>{couponDraft.discountType === "percentage" ? "Percentage" : "Amount (GBP)"}<input required type="number" min={couponDraft.discountType === "percentage" ? 1 : 0.01} max={couponDraft.discountType === "percentage" ? 100 : undefined} step={couponDraft.discountType === "percentage" ? 1 : 0.01} value={couponDraft.discountValue} onChange={(event) => setCouponDraft((current) => ({ ...current, discountValue: event.target.value }))} placeholder={couponDraft.discountType === "percentage" ? "10" : "10.00"} /></label>
+                  <label>Minimum spend (GBP) <span>Optional</span><input type="number" min="0" step="0.01" value={couponDraft.minimumSpend} onChange={(event) => setCouponDraft((current) => ({ ...current, minimumSpend: event.target.value }))} placeholder="0.00" /></label>
+                  <label>Starts on <span>Optional</span><input type="date" value={couponDraft.startsAt} onChange={(event) => setCouponDraft((current) => ({ ...current, startsAt: event.target.value }))} /></label>
+                  <label>Ends on <span>Optional</span><input type="date" value={couponDraft.endsAt} onChange={(event) => setCouponDraft((current) => ({ ...current, endsAt: event.target.value }))} /></label>
+                  <label>Usage limit <span>Optional</span><input type="number" min="1" step="1" value={couponDraft.usageLimit} onChange={(event) => setCouponDraft((current) => ({ ...current, usageLimit: event.target.value }))} placeholder="Unlimited" /></label>
+                  <label className="admin-coupon-active"><input type="checkbox" checked={couponDraft.active} onChange={(event) => setCouponDraft((current) => ({ ...current, active: event.target.checked }))} /><span>Make this coupon active when saved</span></label>
+                </div>
+                {couponsError && <p className="admin-payment-error" role="alert">{couponsError}</p>}
+                <div className="admin-coupon-form-actions"><button className="admin-primary" type="submit" disabled={couponSaving}>{couponSaving ? "Saving…" : editingCouponId ? "Save coupon" : "Create coupon"}</button><button className="admin-secondary" type="button" onClick={closeCouponEditor} disabled={couponSaving}>Cancel</button></div>
+              </form>
+            )}
+            {!couponEditorOpen && couponsError && <p className="admin-payment-error" role="alert">{couponsError}</p>}
+            <section className="admin-panel admin-table-panel admin-coupons-panel">
+              {couponsLoading ? <p className="admin-users-state">Loading coupons…</p> : coupons.length === 0 ? <div className="admin-coupon-empty"><strong>No coupons yet.</strong><span>Create a code when you are ready to run your first promotion.</span><button className="admin-primary" type="button" onClick={openNewCoupon}>Create coupon</button></div> : (
+                <div className="admin-table admin-coupons-table">
+                  <div className="admin-table-head"><span>Code</span><span>Discount</span><span>Availability</span><span>Uses</span><span>Status</span><span>Actions</span></div>
+                  {coupons.map((coupon) => (
+                    <div className="admin-table-row" key={coupon.id}>
+                      <strong>{coupon.code}</strong>
+                      <span>{formatCouponDiscount(coupon)}{coupon.minimumSpend > 0 ? <small>Min. {formatPounds(coupon.minimumSpend / 100)}</small> : null}</span>
+                      <span>{coupon.startsAt || coupon.endsAt ? `${coupon.startsAt ? `From ${coupon.startsAt}` : "Now"}${coupon.endsAt ? ` · Until ${coupon.endsAt}` : ""}` : "Always available"}</span>
+                      <span>{coupon.usageCount}{coupon.usageLimit !== null ? ` / ${coupon.usageLimit}` : " / ∞"}</span>
+                      <span className={`product-status ${coupon.active ? "active" : "draft"}`}>{coupon.active ? "Active" : "Inactive"}</span>
+                      <div className="admin-coupon-actions"><button type="button" onClick={() => editCoupon(coupon)}>Edit</button><button type="button" onClick={() => void toggleCoupon(coupon)}>{coupon.active ? "Deactivate" : "Activate"}</button><button type="button" disabled={deletingCouponId === coupon.id} onClick={() => void deleteCoupon(coupon)}>{deletingCouponId === coupon.id ? "Deleting…" : "Delete"}</button></div>
                     </div>
                   ))}
                 </div>

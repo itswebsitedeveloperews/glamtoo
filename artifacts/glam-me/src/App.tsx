@@ -67,6 +67,7 @@ const clerkAppearance = {
 const adminProductsStorageKey = 'glam-me-admin-products-v4';
 const adminCategoriesStorageKey = 'glam-me-admin-categories-v2';
 const cartStorageKey = 'glam-me-cart-v1';
+const pendingCouponPaymentStorageKey = 'glam-me-pending-coupon-payment-v1';
 
 type CartItem = {
   productId: number;
@@ -83,6 +84,8 @@ type CustomerOrder = {
   total: number;
   currency: string;
   email: string;
+  couponCode?: string | null;
+  discountAmount?: number;
   delivery: {
     method: string;
     name: string;
@@ -122,6 +125,16 @@ type SavedPaymentMethod = {
   last4: string;
   expMonth: number;
   expYear: number;
+};
+
+type AppliedCoupon = {
+  coupon: {
+    code: string;
+    discountType: "percentage" | "fixed";
+    discountValue: number;
+  };
+  discountAmount: number;
+  total: number;
 };
 
 const emptyCustomerProfile: CustomerProfile = {
@@ -983,6 +996,11 @@ function Checkout() {
   const [checkoutProfile, setCheckoutProfile] = useState<CustomerProfile>(emptyCustomerProfile);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponMessage, setCouponMessage] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
   const cardMountRef = useRef<HTMLDivElement | null>(null);
   const stripePaymentRef = useRef<{ stripe: StripeJs; card: StripeCardElement } | null>(null);
   const products = getStorefrontProducts();
@@ -1002,6 +1020,46 @@ function Checkout() {
     return product ? [{ item, product, variation }] : [];
   });
   const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
+
+  function checkoutLinePayload() {
+    return cartLines.map(({ item, product, variation }) => ({
+      productId: String(product.id),
+      variationId: variation ? String(variation.id) : undefined,
+      quantity: item.quantity,
+    }));
+  }
+
+  async function applyCoupon(codeValue = couponCode, silent = false) {
+    const code = codeValue.trim();
+    if (!code) {
+      setCouponError("Enter a coupon code.");
+      setCouponMessage("");
+      return;
+    }
+    setCouponLoading(true);
+    setCouponError("");
+    if (!silent) setCouponMessage("");
+    try {
+      const response = await fetch("/api/stripe/coupon/validate", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, lines: checkoutLinePayload(), delivery }),
+      });
+      const result = await response.json() as { coupon?: AppliedCoupon["coupon"]; discountAmount?: number; total?: number; error?: string };
+      if (!response.ok || !result.coupon || typeof result.discountAmount !== "number" || typeof result.total !== "number") {
+        throw new Error(result.error || "That coupon could not be applied.");
+      }
+      setCouponCode(result.coupon.code);
+      setAppliedCoupon({ coupon: result.coupon, discountAmount: result.discountAmount, total: result.total });
+      if (!silent) setCouponMessage(`${result.coupon.code} has been applied.`);
+    } catch (error) {
+      setAppliedCoupon(null);
+      setCouponError(error instanceof Error ? error.message : "That coupon could not be applied.");
+    } finally {
+      setCouponLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (cartLines.length === 0) setLocation(`${basePath}/cart`);
@@ -1050,6 +1108,12 @@ function Checkout() {
       cancelled = true;
     };
   }, [isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (appliedCoupon) void applyCoupon(appliedCoupon.coupon.code, true);
+  // Recalculate percent discounts whenever delivery changes; the server remains authoritative.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [delivery]);
 
   useEffect(() => {
     if (!publishableKey || selectedPaymentMethodId || !cardMountRef.current) return;
@@ -1109,13 +1173,25 @@ function Checkout() {
     setIsPaying(true);
     setPaymentError("");
     const formData = new FormData(event.currentTarget);
-    const lines = cartLines.map(({ item, product, variation }) => ({
-      productId: String(product.id),
-      variationId: variation ? String(variation.id) : undefined,
-      quantity: item.quantity,
-    }));
+    const lines = checkoutLinePayload();
 
     try {
+      const pendingPaymentIntentId = localStorage.getItem(pendingCouponPaymentStorageKey);
+      if (pendingPaymentIntentId) {
+        const abandonmentResponse = await fetch("/api/stripe/abandon-payment", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentIntentId: pendingPaymentIntentId }),
+        });
+        if (!abandonmentResponse.ok) {
+          const abandonmentResult = await abandonmentResponse.json() as { paymentSucceeded?: boolean };
+          if (!abandonmentResult.paymentSucceeded) {
+            throw new Error("We still need to cancel your earlier coupon payment attempt. Please try again in a moment.");
+          }
+        }
+        localStorage.removeItem(pendingCouponPaymentStorageKey);
+      }
       const customerName = [formData.get("firstName"), formData.get("lastName")].filter(Boolean).join(" ");
       const response = await fetch("/api/stripe/payment-intent", {
         method: "POST",
@@ -1127,6 +1203,7 @@ function Checkout() {
           phone: formData.get("phone"),
           lines,
           delivery,
+          couponCode: appliedCoupon?.coupon.code,
           paymentMethodId: selectedPaymentMethodId || undefined,
           address: {
             line1: formData.get("address"),
@@ -1137,8 +1214,11 @@ function Checkout() {
           },
         }),
       });
-      const result = await response.json() as { clientSecret?: string; error?: string };
+      const result = await response.json() as { clientSecret?: string; paymentIntentId?: string; error?: string };
       if (!response.ok || !result.clientSecret) throw new Error(result.error || "Stripe checkout is not available right now.");
+      if (appliedCoupon && result.paymentIntentId) {
+        localStorage.setItem(pendingCouponPaymentStorageKey, result.paymentIntentId);
+      }
 
       const billingDetails = {
         name: customerName,
@@ -1161,8 +1241,35 @@ function Checkout() {
         },
         return_url: `${window.location.origin}${basePath}/order-confirmation`,
       });
-      if (confirmation.error) throw new Error(confirmation.error.message || "Your card could not be confirmed.");
+      if (confirmation.error) {
+        if (result.paymentIntentId) {
+          const abandonmentResponse = await fetch("/api/stripe/abandon-payment", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ paymentIntentId: result.paymentIntentId }),
+          }).catch(() => undefined);
+          if (!abandonmentResponse?.ok) {
+            throw new Error("Your card was not charged, but we still need to cancel this coupon payment attempt. Please try again in a moment.");
+          }
+          localStorage.removeItem(pendingCouponPaymentStorageKey);
+        }
+        throw new Error(confirmation.error.message || "Your card could not be confirmed.");
+      }
       if (confirmation.paymentIntent?.status !== "succeeded") throw new Error("Your payment needs additional confirmation. Please try again.");
+      if (appliedCoupon) {
+        const finaliseResponse = await fetch("/api/stripe/finalize-payment", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentIntentId: confirmation.paymentIntent.id }),
+        });
+        if (!finaliseResponse.ok) {
+          const finaliseResult = await finaliseResponse.json() as { error?: string };
+          throw new Error(finaliseResult.error || "Your payment succeeded, but the order could not be finalised yet.");
+        }
+      }
+      localStorage.removeItem(pendingCouponPaymentStorageKey);
       clearCart();
       window.location.assign(`${basePath}/order-confirmation?payment_intent=${encodeURIComponent(confirmation.paymentIntent.id)}`);
     } catch (error) {
@@ -1172,7 +1279,8 @@ function Checkout() {
   }
 
   const deliveryAmount = delivery === "express" ? 6.95 : 0;
-  const total = subtotal + deliveryAmount;
+  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount / 100 : 0;
+  const total = Math.max(0, subtotal + deliveryAmount - discountAmount);
   const updateCheckoutProfile = (field: keyof CustomerProfile, value: string) => {
     setCheckoutProfile((current) => ({ ...current, [field]: value }));
   };
@@ -1230,7 +1338,17 @@ function Checkout() {
           <aside className="checkout-order-review">
             <div className="checkout-order-heading"><h2>Your order</h2><span>{cartLines.reduce((count, { item }) => count + item.quantity, 0)} item{cartLines.reduce((count, { item }) => count + item.quantity, 0) === 1 ? "" : "s"}</span></div>
             {cartLines.length === 0 ? <div className="checkout-empty-order"><p>Your bag is empty.</p><a className="text-link" href="/shop">Continue shopping</a></div> : <div className="checkout-order-items">{cartLines.map(({ item, product, variation }) => <article className="checkout-order-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ""}`}><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /><div><h3>{product.name}</h3><p>{[item.size !== "One size" ? item.size : "", item.colour ?? ""].filter(Boolean).join(" · ") || "One size"} · Qty {item.quantity}</p></div><strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong></article>)}</div>}
-            <div className="checkout-totals"><div><span>Subtotal</span><strong>{formatPounds(subtotal)}</strong></div><div><span>Delivery</span><strong>{deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</strong></div><div className="checkout-total"><span>Total</span><strong>{formatPounds(total)}</strong></div></div>
+            <div className="checkout-coupon" aria-label="Coupon code">
+              <label htmlFor="checkout-coupon-code">Coupon code</label>
+              {appliedCoupon ? (
+                <div className="checkout-applied-coupon"><span><strong>{appliedCoupon.coupon.code}</strong><small>{appliedCoupon.coupon.discountType === "percentage" ? `${appliedCoupon.coupon.discountValue}% off` : `${formatPounds(appliedCoupon.coupon.discountValue / 100)} off`}</small></span><button type="button" onClick={() => { setAppliedCoupon(null); setCouponMessage("Coupon removed."); setCouponError(""); }}>Remove</button></div>
+              ) : (
+                <div className="checkout-coupon-form"><input id="checkout-coupon-code" value={couponCode} onChange={(event) => { setCouponCode(event.target.value.toUpperCase()); setCouponError(""); }} placeholder="Enter code" autoComplete="off" data-testid="input-coupon-code" /><button type="button" onClick={() => void applyCoupon()} disabled={couponLoading} data-testid="button-apply-coupon">{couponLoading ? "Applying…" : "Apply"}</button></div>
+              )}
+              {couponError && <p className="checkout-coupon-error" role="alert">{couponError}</p>}
+              {couponMessage && <p className="checkout-coupon-success" role="status">{couponMessage}</p>}
+            </div>
+            <div className="checkout-totals"><div><span>Subtotal</span><strong>{formatPounds(subtotal)}</strong></div><div><span>Delivery</span><strong>{deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</strong></div>{appliedCoupon && <div className="checkout-discount-row"><span>Discount · {appliedCoupon.coupon.code}</span><strong>−{formatPounds(discountAmount)}</strong></div>}<div className="checkout-total"><span>Total</span><strong>{formatPounds(total)}</strong></div></div>
             <button className="button checkout-pay-button" type="submit" disabled={!isLoaded || !isSignedIn || isPaying || !publishableKey || Boolean(paymentSetupError) || cartLines.length === 0} data-testid="button-place-order">{isPaying ? "Processing secure payment…" : !isLoaded ? "Checking account…" : !isSignedIn ? "Sign in to checkout" : !publishableKey ? "Loading secure payment…" : `Pay securely · ${formatPounds(total)}`}</button>
             <p className="checkout-security-copy">Your card details never touch Glam Too&apos;s servers. Stripe processes your payment securely.</p>
           </aside>
@@ -1243,7 +1361,19 @@ function Checkout() {
 function Confirmation() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.has("payment_intent") || params.has("stripe_session_id")) clearCart();
+    const paymentIntentId = params.get("payment_intent");
+    const checkoutSessionId = params.get("stripe_session_id");
+    if (paymentIntentId || checkoutSessionId) {
+      if (paymentIntentId === localStorage.getItem(pendingCouponPaymentStorageKey)) {
+        localStorage.removeItem(pendingCouponPaymentStorageKey);
+      }
+      void fetch("/api/stripe/finalize-payment", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(paymentIntentId ? { paymentIntentId } : { checkoutSessionId }),
+      }).finally(clearCart);
+    }
   }, []);
 
   return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order GM-260214 is being wrapped with care. We&apos;ve sent all the details to your inbox.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
@@ -1271,7 +1401,8 @@ function formatCustomerOrderCountry(value: string) {
 
 function CustomerOrderDetailPage({ order, onBack }: { order: CustomerOrder; onBack: () => void }) {
   const itemSubtotal = order.items.reduce((total, item) => total + item.total, 0);
-  const deliveryAmount = Math.max(order.total - itemSubtotal, 0);
+  const discountAmount = order.discountAmount ?? 0;
+  const deliveryAmount = Math.max(order.total - itemSubtotal + discountAmount, 0);
   const itemCount = order.items.reduce((total, item) => total + item.quantity, 0);
   const addressParts = [
     order.delivery.address.line1,
@@ -1318,6 +1449,7 @@ function CustomerOrderDetailPage({ order, onBack }: { order: CustomerOrder; onBa
           <div className="account-order-detail-totals">
             <div><span>Items subtotal</span><strong>{formatPounds(itemSubtotal / 100)}</strong></div>
             {deliveryAmount > 0 && <div><span>{order.delivery.method}</span><strong>{formatPounds(deliveryAmount / 100)}</strong></div>}
+            {discountAmount > 0 && <div><span>Coupon {order.couponCode || ""}</span><strong>−{formatPounds(discountAmount / 100)}</strong></div>}
             <div className="account-order-detail-total"><span>Order total</span><strong>{formatPounds(order.total / 100)}</strong></div>
           </div>
         </section>
