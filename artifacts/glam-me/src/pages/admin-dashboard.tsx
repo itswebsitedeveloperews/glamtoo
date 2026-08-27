@@ -619,7 +619,7 @@ function ProductEditor({
   const [validationMessage, setValidationMessage] = useState("");
   const [productImageFileName, setProductImageFileName] = useState("");
   const [galleryImageUrl, setGalleryImageUrl] = useState("");
-  const [galleryImageFileName, setGalleryImageFileName] = useState("");
+  const [galleryImageFileNames, setGalleryImageFileNames] = useState<string[]>([]);
 
   const publishLabel = product && draft.status === "Published" ? "Update product" : "Publish product";
   const totalVariationStock = draft.variations.reduce((total, variation) => total + variation.stock, 0);
@@ -742,25 +742,31 @@ function ProductEditor({
       galleryImages: [...new Set([...(draft.galleryImages ?? []), normalizedImage])],
     });
     setGalleryImageUrl("");
-    setGalleryImageFileName("");
+    setGalleryImageFileNames((current) => [...current, ""]);
   }
 
   function addGalleryImages(images: string[], fileNames: string[]) {
     const primaryImage = draft.image.trim();
     const existingImages = draft.galleryImages ?? [];
-    const newImages = [...new Set(images.map((image) => image.trim()).filter((image) =>
-      image && image !== primaryImage && !existingImages.includes(image),
-    ))];
-    if (newImages.length === 0) {
+    const existingImageSet = new Set([primaryImage, ...existingImages]);
+    const newImageEntries = images
+      .map((image, index) => ({ image: image.trim(), fileName: fileNames[index] ?? "" }))
+      .filter(({ image }) => {
+        if (!image || existingImageSet.has(image)) return false;
+        existingImageSet.add(image);
+        return true;
+      });
+    if (newImageEntries.length === 0) {
       setValidationMessage("Those images are already in the product gallery.");
       return;
     }
-    updateDraft({ galleryImages: [...existingImages, ...newImages] });
-    setGalleryImageFileName(fileNames.join(", "));
+    updateDraft({ galleryImages: [...existingImages, ...newImageEntries.map(({ image }) => image)] });
+    setGalleryImageFileNames((current) => [...current, ...newImageEntries.map(({ fileName }) => fileName)]);
   }
 
   function removeGalleryImage(index: number) {
     updateDraft({ galleryImages: (draft.galleryImages ?? []).filter((_, imageIndex) => imageIndex !== index) });
+    setGalleryImageFileNames((current) => current.filter((_, imageIndex) => imageIndex !== index));
   }
 
   function moveGalleryImage(index: number, direction: -1 | 1) {
@@ -769,6 +775,11 @@ function ProductEditor({
     if (nextIndex < 0 || nextIndex >= currentImages.length) return;
     [currentImages[index], currentImages[nextIndex]] = [currentImages[nextIndex], currentImages[index]];
     updateDraft({ galleryImages: currentImages });
+    setGalleryImageFileNames((current) => {
+      const nextNames = [...current];
+      [nextNames[index], nextNames[nextIndex]] = [nextNames[nextIndex], nextNames[index]];
+      return nextNames;
+    });
   }
 
   async function handleGalleryImageUpload(event: ChangeEvent<HTMLInputElement>) {
@@ -927,7 +938,7 @@ function ProductEditor({
               </div>
               <div className="admin-image-upload">
                 <label className="admin-upload-button">Upload gallery images<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
-                <span>{galleryImageFileName || "Select one or more · max 4MB each"}</span>
+                <span>{galleryImageFileNames.filter(Boolean).join(", ") || "Select one or more · max 4MB each"}</span>
               </div>
               {(draft.galleryImages ?? []).length > 0 ? (
                 <div className="admin-product-gallery-list" aria-label="Gallery image order">
