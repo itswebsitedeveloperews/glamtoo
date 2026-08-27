@@ -745,6 +745,20 @@ function ProductEditor({
     setGalleryImageFileName("");
   }
 
+  function addGalleryImages(images: string[], fileNames: string[]) {
+    const primaryImage = draft.image.trim();
+    const existingImages = draft.galleryImages ?? [];
+    const newImages = [...new Set(images.map((image) => image.trim()).filter((image) =>
+      image && image !== primaryImage && !existingImages.includes(image),
+    ))];
+    if (newImages.length === 0) {
+      setValidationMessage("Those images are already in the product gallery.");
+      return;
+    }
+    updateDraft({ galleryImages: [...existingImages, ...newImages] });
+    setGalleryImageFileName(fileNames.join(", "));
+  }
+
   function removeGalleryImage(index: number) {
     updateDraft({ galleryImages: (draft.galleryImages ?? []).filter((_, imageIndex) => imageIndex !== index) });
   }
@@ -758,26 +772,28 @@ function ProductEditor({
   }
 
   async function handleGalleryImageUpload(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
+    const invalidFile = files.find((file) => !file.type.startsWith("image/"));
+    if (invalidFile) {
       setValidationMessage("Please choose an image file.");
       event.target.value = "";
       return;
     }
-    if (file.size > 4 * 1024 * 1024) {
+    const oversizedFile = files.find((file) => file.size > 4 * 1024 * 1024);
+    if (oversizedFile) {
       setValidationMessage("Please choose an image smaller than 4MB.");
       event.target.value = "";
       return;
     }
     try {
-      const compressedImage = await compressProductImage(file);
-      addGalleryImage(compressedImage);
-      setGalleryImageFileName(file.name);
+      const compressedImages = await Promise.all(files.map((file) => compressProductImage(file)));
+      addGalleryImages(compressedImages, files.map((file) => file.name));
     } catch {
-      setValidationMessage("The gallery image could not be processed. Please choose another image.");
+      setValidationMessage("One or more gallery images could not be processed. Please choose another selection.");
       event.target.value = "";
     }
+    event.target.value = "";
   }
 
   return (
@@ -910,8 +926,8 @@ function ProductEditor({
                 <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add image</button>
               </div>
               <div className="admin-image-upload">
-                <label className="admin-upload-button">Upload gallery image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
-                <span>{galleryImageFileName || "Add another view · max 4MB"}</span>
+                <label className="admin-upload-button">Upload gallery images<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                <span>{galleryImageFileName || "Select one or more · max 4MB each"}</span>
               </div>
               {(draft.galleryImages ?? []).length > 0 ? (
                 <div className="admin-product-gallery-list" aria-label="Gallery image order">
