@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { startExpiredOrderRecovery } from "./routes/stripe";
 import { initializeStripe } from "./stripeBootstrap";
 
 const rawPort = process.env["PORT"];
@@ -25,6 +26,8 @@ try {
     "Stripe is not configured yet. The API will stay available, but payment routes will report configuration status until credentials are added.",
   );
 }
+
+startExpiredOrderRecovery();
 
 app.listen(port, (err) => {
   if (err) {

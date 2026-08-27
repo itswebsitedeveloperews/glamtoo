@@ -313,12 +313,16 @@ async function markCouponRedeemed(client: PoolClient, order: OrderRow, paymentRe
     [paymentReference],
   );
   if (!existing.rows[0]) {
-    const coupon = await client.query<{ id: number }>(
-      "SELECT id FROM coupons WHERE id = $1 FOR UPDATE",
+    const coupon = await client.query<{ id: number; usage_limit: number | null; usage_count: number }>(
+      "SELECT id, usage_limit, usage_count FROM coupons WHERE id = $1 FOR UPDATE",
       [order.coupon_id],
     );
-    if (!coupon.rows[0]) {
+    const couponRow = coupon.rows[0];
+    if (!couponRow) {
       throw new OrderFinalizationError("The coupon for this paid order could not be recorded.");
+    }
+    if (couponRow.usage_limit !== null && couponRow.usage_count >= couponRow.usage_limit) {
+      throw new OrderFinalizationError("This paid order's coupon allocation is no longer available.");
     }
     await client.query(
       `INSERT INTO coupon_redemptions (coupon_id, payment_reference, user_id, discount_amount)
@@ -333,6 +337,24 @@ async function markCouponRedeemed(client: PoolClient, order: OrderRow, paymentRe
   await client.query("DELETE FROM coupon_reservations WHERE payment_reference = $1", [paymentReference]);
 }
 
+async function settleCancelledOrderInventory(client: PoolClient, orderId: string) {
+  const items = await client.query<{ inventory_key: string | null; quantity: number }>(
+    "SELECT inventory_key, quantity FROM store_order_items WHERE order_id = $1 AND inventory_key IS NOT NULL ORDER BY id",
+    [orderId],
+  );
+  for (const item of items.rows) {
+    const updated = await client.query<{ product_id: string }>(
+      `UPDATE product_inventory
+       SET stock = stock - $2, updated_at = NOW()
+       WHERE product_id = $1 AND stock >= $2
+       RETURNING product_id`,
+      [item.inventory_key, item.quantity],
+    );
+    if (!updated.rows[0]) {
+      throw new OrderFinalizationError("This paid order can no longer be settled because an item was reallocated.");
+    }
+  }
+}
 export async function finalizePaidOrder(
   orderId: string,
   paymentReference: string,
@@ -350,9 +372,7 @@ export async function finalizePaidOrder(
     if (order.payment_reference && order.payment_reference !== paymentReference) {
       throw new OrderFinalizationError("This payment belongs to a different saved order.");
     }
-    if (order.payment_status === "cancelled") {
-      throw new OrderFinalizationError("This checkout was already cancelled.");
-    }
+    const wasCancelled = order.payment_status === "cancelled";
     if (order.payment_status !== "paid") {
       await client.query(
         `UPDATE store_orders
@@ -367,6 +387,7 @@ export async function finalizePaidOrder(
              postcode = COALESCE(NULLIF($9, ''), postcode),
              country = COALESCE(NULLIF($10, ''), country),
              paid_at = COALESCE(paid_at, NOW()),
+              cancelled_at = CASE WHEN payment_status = 'cancelled' THEN NULL ELSE cancelled_at END,
              updated_at = NOW()
          WHERE id = $1`,
         [
@@ -382,6 +403,9 @@ export async function finalizePaidOrder(
           details.address?.country ?? "",
         ],
       );
+      if (wasCancelled) {
+        await settleCancelledOrderInventory(client, order.id);
+      }
       await client.query("DELETE FROM inventory_reservations WHERE payment_reference = $1", [paymentReference]);
       await markCouponRedeemed(client, order, paymentReference);
     }
@@ -426,9 +450,9 @@ export async function cancelPendingOrder(orderId: string | undefined, paymentRef
       );
       const reservations = await client.query<{ product_id: string; quantity: number }>(
         `DELETE FROM inventory_reservations
-         WHERE payment_reference = $1
+          WHERE payment_reference = ANY($1::text[])
          RETURNING product_id, quantity`,
-        [paymentReference],
+        [[...new Set([order.payment_reference, paymentReference].filter((reference): reference is string => Boolean(reference)))]],
       );
       for (const reservation of reservations.rows) {
         await client.query(
@@ -436,7 +460,10 @@ export async function cancelPendingOrder(orderId: string | undefined, paymentRef
           [reservation.product_id, reservation.quantity],
         );
       }
-      await client.query("DELETE FROM coupon_reservations WHERE payment_reference = $1", [paymentReference]);
+      await client.query(
+        "DELETE FROM coupon_reservations WHERE payment_reference = ANY($1::text[])",
+        [[...new Set([order.payment_reference, paymentReference].filter((reference): reference is string => Boolean(reference)))]],
+      );
     }
     await client.query("COMMIT");
     return { cancelled: true, paymentSucceeded: false };

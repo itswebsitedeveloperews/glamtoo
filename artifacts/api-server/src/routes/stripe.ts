@@ -199,7 +199,7 @@ async function recoverExpiredPendingOrders(stripe: Stripe) {
   }
 }
 
-function startExpiredOrderRecovery() {
+export function startExpiredOrderRecovery() {
   const recover = async () => {
     try {
       await recoverExpiredPendingOrders(await getUncachableStripeClient());
@@ -210,8 +210,6 @@ function startExpiredOrderRecovery() {
   void recover();
   setInterval(() => { void recover(); }, 5 * 60 * 1000).unref();
 }
-
-startExpiredOrderRecovery();
 
 function checkoutErrorStatus(error: unknown) {
   return error instanceof CouponValidationError || error instanceof InventoryError ? error.statusCode : 500;
@@ -953,7 +951,27 @@ type OrderRow = {
   items: unknown;
 };
 
-function orderQuery(userId?: string, stripeSessionId?: string, limit = 50, offset = 0) {
+type ReconciliationDependencies = {
+  getState: typeof getReconciliationState;
+  saveState: typeof saveReconciliationState;
+  queryCheckoutSessions: (query: ReturnType<typeof orderQuery>) => Promise<{ rows: OrderRow[] }>;
+  getStripe: typeof getUncachableStripeClient;
+  getFulfillmentStatuses: (paymentReferences: string[]) => Promise<{ rows: Array<{ stripe_session_id: string; status: FulfillmentStatus }> }>;
+  importLegacyPaidOrder: typeof importLegacyPaidOrder;
+};
+
+type CheckoutSessionCursor = {
+  created: number | null;
+  id: string;
+};
+
+function orderQuery(
+  userId?: string,
+  stripeSessionId?: string,
+  limit = 50,
+  offset = 0,
+  cursor: CheckoutSessionCursor | null = null,
+) {
   const values: Array<string | number> = [];
   const ownerFilter = userId
     ? `AND sessions.metadata ->> 'clerk_user_id' = $${values.push(userId)}`
@@ -961,8 +979,17 @@ function orderQuery(userId?: string, stripeSessionId?: string, limit = 50, offse
   const sessionFilter = stripeSessionId
     ? `AND sessions.id = $${values.push(stripeSessionId)}`
     : "";
+  const cursorFilter = cursor?.created === null
+    ? `AND sessions.created IS NULL AND sessions.id < $${values.push(cursor.id)}`
+    : cursor
+      ? `AND (
+        sessions.created < $${values.push(cursor.created)}
+        OR (sessions.created = $${values.push(cursor.created)} AND sessions.id < $${values.push(cursor.id)})
+        OR sessions.created IS NULL
+      )`
+      : "";
   const limitParameter = values.push(limit);
-  const offsetParameter = values.push(offset);
+  const offsetParameter = cursor ? null : values.push(offset);
   return {
     text: `
       SELECT
@@ -1000,6 +1027,7 @@ function orderQuery(userId?: string, stripeSessionId?: string, limit = 50, offse
         AND sessions.metadata ->> 'store' = 'Glam Too'
         ${ownerFilter}
         ${sessionFilter}
+        ${cursorFilter}
       GROUP BY
         sessions.id,
         sessions.created,
@@ -1010,10 +1038,29 @@ function orderQuery(userId?: string, stripeSessionId?: string, limit = 50, offse
         sessions.shipping_details,
         sessions.metadata,
         fulfillment.status
-      ORDER BY sessions.created DESC NULLS LAST
-       LIMIT $${limitParameter} OFFSET $${offsetParameter}`,
+      ORDER BY sessions.created DESC NULLS LAST, sessions.id DESC
+       LIMIT $${limitParameter}${offsetParameter ? ` OFFSET $${offsetParameter}` : ""}`,
     values,
   };
+}
+
+function checkoutSessionCursor(value: string | null): CheckoutSessionCursor | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    const id = typeof parsed.id === "string" ? parsed.id : "";
+    if (parsed.created === null && id) return { created: null, id };
+    const created = Number(parsed.created);
+    return Number.isFinite(created) && id ? { created, id } : null;
+  } catch {
+    return null;
+  }
+}
+
+function serializeCheckoutSessionCursor(order: OrderRow | undefined) {
+  return order && (typeof order.created === "number" || order.created === null)
+    ? JSON.stringify({ created: order.created, id: order.id })
+    : null;
 }
 
 function serializeOrder(row: OrderRow) {
@@ -1094,13 +1141,21 @@ function serializePaymentIntentOrder(paymentIntent: Stripe.PaymentIntent, fulfil
 
 async function paymentIntentOrders(userId?: string, paymentIntentId?: string): Promise<SerializedOrder[]> {
   const stripe = await getUncachableStripeClient();
-  const paymentIntents = await stripe.paymentIntents.list({ limit: 100 });
-  const matching = paymentIntents.data.filter((paymentIntent) =>
-    paymentIntent.status === "succeeded"
-    && paymentIntent.metadata.store === "Glam Too"
-    && (!userId || paymentIntent.metadata.clerk_user_id === userId)
-    && (!paymentIntentId || paymentIntent.id === paymentIntentId),
-  );
+  const matching: Stripe.PaymentIntent[] = [];
+  let startingAfter: string | undefined;
+  do {
+    const paymentIntents = await stripe.paymentIntents.list({
+      limit: 100,
+      ...(startingAfter ? { starting_after: startingAfter } : {}),
+    });
+    matching.push(...paymentIntents.data.filter((paymentIntent) =>
+      paymentIntent.status === "succeeded"
+      && paymentIntent.metadata.store === "Glam Too"
+      && (!userId || paymentIntent.metadata.clerk_user_id === userId)
+      && (!paymentIntentId || paymentIntent.id === paymentIntentId),
+    ));
+    startingAfter = paymentIntents.has_more ? paymentIntents.data.at(-1)?.id : undefined;
+  } while (startingAfter);
   if (matching.length === 0) return [];
 
   const statusResult = await pool.query<{ stripe_session_id: string; status: FulfillmentStatus }>(
@@ -1158,18 +1213,28 @@ function legacyOrderInput(
   };
 }
 
-async function reconcileLegacyOrders() {
-  const sessionState = await getReconciliationState("checkout_sessions");
+export async function reconcileLegacyOrders(dependencies: ReconciliationDependencies = {
+  getState: getReconciliationState,
+  saveState: saveReconciliationState,
+  queryCheckoutSessions: (query) => pool.query<OrderRow>(query.text, query.values),
+  getStripe: getUncachableStripeClient,
+  getFulfillmentStatuses: (paymentReferences) => pool.query<{ stripe_session_id: string; status: FulfillmentStatus }>(
+    "SELECT stripe_session_id, status FROM order_fulfillment WHERE stripe_session_id = ANY($1)",
+    [paymentReferences],
+  ),
+  importLegacyPaidOrder,
+}) {
+  const sessionState = await dependencies.getState("checkout_sessions");
   if (!sessionState.completed) {
-    const offset = Number(sessionState.cursor) || 0;
-    const query = orderQuery(undefined, undefined, 50, offset);
-    const legacySessions = await pool.query<OrderRow>(query.text, query.values);
+    const cursor = checkoutSessionCursor(sessionState.cursor);
+    const query = orderQuery(undefined, undefined, 50, cursor ? 0 : Number(sessionState.cursor) || 0, cursor);
+    const legacySessions = await dependencies.queryCheckoutSessions(query);
     for (const session of legacySessions.rows) {
       const metadata = asRecord(session.metadata);
       const ownerId = stringValue(metadata.clerk_user_id, 120);
       if (!ownerId || safeText(metadata.glam_too_order_id, 80)) continue;
       const couponId = Number(metadata.coupon_id);
-      await importLegacyPaidOrder(legacyOrderInput(
+      await dependencies.importLegacyPaidOrder(legacyOrderInput(
         serializeOrder(session),
         ownerId,
         session.id,
@@ -1178,16 +1243,16 @@ async function reconcileLegacyOrders() {
         Number.isInteger(couponId) && couponId > 0 ? couponId : undefined,
       ));
     }
-    await saveReconciliationState(
+    await dependencies.saveState(
       "checkout_sessions",
-      String(offset + legacySessions.rows.length),
+      serializeCheckoutSessionCursor(legacySessions.rows.at(-1)) ?? sessionState.cursor,
       legacySessions.rows.length < 50,
     );
   }
 
-  const paymentIntentState = await getReconciliationState("payment_intents");
+  const paymentIntentState = await dependencies.getState("payment_intents");
   if (paymentIntentState.completed) return;
-  const stripe = await getUncachableStripeClient();
+  const stripe = await dependencies.getStripe();
   const paymentIntents = await stripe.paymentIntents.list({
     limit: 100,
     ...(paymentIntentState.cursor ? { starting_after: paymentIntentState.cursor } : {}),
@@ -1198,16 +1263,13 @@ async function reconcileLegacyOrders() {
     && !paymentIntent.metadata.glam_too_order_id
   );
   if (legacyPaymentIntents.length) {
-    const statuses = await pool.query<{ stripe_session_id: string; status: FulfillmentStatus }>(
-      "SELECT stripe_session_id, status FROM order_fulfillment WHERE stripe_session_id = ANY($1)",
-      [legacyPaymentIntents.map((paymentIntent) => paymentIntent.id)],
-    );
+    const statuses = await dependencies.getFulfillmentStatuses(legacyPaymentIntents.map((paymentIntent) => paymentIntent.id));
     const statusByPayment = new Map(statuses.rows.map((status) => [status.stripe_session_id, status.status]));
     for (const paymentIntent of legacyPaymentIntents) {
       const ownerId = paymentIntent.metadata.clerk_user_id;
       if (!ownerId) continue;
       const couponId = Number(paymentIntent.metadata.coupon_id);
-      await importLegacyPaidOrder(legacyOrderInput(
+      await dependencies.importLegacyPaidOrder(legacyOrderInput(
         serializePaymentIntentOrder(paymentIntent, statusByPayment.get(paymentIntent.id) ?? "Processing"),
         ownerId,
         paymentIntent.id,
@@ -1217,7 +1279,7 @@ async function reconcileLegacyOrders() {
       ));
     }
   }
-  await saveReconciliationState(
+  await dependencies.saveState(
     "payment_intents",
     paymentIntents.data.at(-1)?.id ?? paymentIntentState.cursor,
     !paymentIntents.has_more,
