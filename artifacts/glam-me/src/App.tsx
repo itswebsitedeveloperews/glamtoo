@@ -1235,6 +1235,14 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const selectedProduct = product;
   const isSoldOut = product.type === 'Simple' ? product.stock <= 0 : availableVariations.length === 0;
   const displayedGalleryIndex = Math.min(activeGalleryIndex, Math.max(galleryImages.length - 1, 0));
+  const relatedProducts = getStorefrontProducts()
+    .filter((candidate) => candidate.id !== product.id)
+    .sort((first, second) => {
+      const firstIsSameCategory = slugify(first.category) === slugify(product.category);
+      const secondIsSameCategory = slugify(second.category) === slugify(product.category);
+      return Number(secondIsSameCategory) - Number(firstIsSameCategory);
+    })
+    .slice(0, 4);
 
   function changeGallery(direction: number) {
     if (galleryImages.length < 2) return;
@@ -1358,6 +1366,20 @@ function ProductDetail({ params }: { params: { slug: string } }) {
           </div>
         </div>
       </div>
+      {relatedProducts.length > 0 && (
+        <section className="related-products container" aria-labelledby="related-products-heading" data-testid="section-related-products">
+          <div className="related-products-heading">
+            <div>
+              <div className="eyebrow">Keep exploring</div>
+              <h2 id="related-products-heading">Related products</h2>
+            </div>
+            <a className="text-link" href={`/category/${slugify(product.category)}`}>Shop {product.category.toLowerCase()} <span aria-hidden="true">→</span></a>
+          </div>
+          <div className="product-grid">
+            {relatedProducts.map((relatedProduct) => <ProductCard key={relatedProduct.id} product={relatedProduct} />)}
+          </div>
+        </section>
+      )}
     </Shell>
   );
 }
