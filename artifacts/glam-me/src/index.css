@@ -310,7 +310,7 @@ img { display: block; max-width: 100%; }
 .detail-title-row { display: flex; align-items: start; justify-content: space-between; gap: 18px; }
 .detail-title-row > div { min-width: 0; }
 .wishlist-button-detail { position: absolute; top: 16px; right: 16px; z-index: 3; width: 46px; height: 46px; }
-.detail-copy > p { color: var(--muted); max-width: 370px; font-size: 14px; }
+.detail-copy > p { color: var(--muted); font-size: 14px; }
 .detail-form { margin-top: 34px; border-top: 1px solid var(--line); padding-top: 23px; }
 .swatches { display: flex; gap: 8px; margin: 10px 0 20px; }
 .swatch { width: 23px; height: 23px; border-radius: 50%; border: 1px solid var(--ink); }
