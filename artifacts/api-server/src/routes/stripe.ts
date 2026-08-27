@@ -29,6 +29,7 @@ import {
   createPendingOrder,
   finalizePaidOrder,
   getPaidOrderByPaymentReference,
+  getOrderIdByPaymentReference,
   importLegacyPaidOrder,
   listExpiredPendingPayments,
   listPaidOrders,
@@ -36,10 +37,12 @@ import {
   getReconciliationState,
   setOrderExpiration,
   updateOrderFulfillment,
+  recordPaymentResolutionByPaymentReference,
   type FulfillmentStatus,
   type OrderItemSnapshot,
   type PendingOrderInput,
 } from "../orderService";
+import { attemptPaymentRefund } from "../paymentResolution";
 import { calculateIncludedVat, VAT_RATE_PERCENT } from "../taxService";
 
 type SubmittedCheckoutLine = {
@@ -175,7 +178,8 @@ async function recoverExpiredPendingOrders(stripe: Stripe) {
       if (order.payment_type === "payment_intent") {
         const paymentIntent = await stripe.paymentIntents.retrieve(order.payment_reference);
         if (paymentIntent.status === "succeeded") {
-          await finalizePaidOrder(order.id, paymentIntent.id, paymentDetails(paymentIntent, true));
+          const finalOrder = await finalizePaidOrder(order.id, paymentIntent.id, paymentDetails(paymentIntent, true));
+          if (finalOrder) await attemptPaymentRefund(stripe, order.id, finalOrder, paymentIntent, true);
         } else {
           if (paymentIntent.status !== "canceled") {
             await stripe.paymentIntents.cancel(paymentIntent.id);
@@ -185,7 +189,8 @@ async function recoverExpiredPendingOrders(stripe: Stripe) {
       } else {
         const session = await stripe.checkout.sessions.retrieve(order.payment_reference);
         if (session.payment_status === "paid") {
-          await finalizePaidOrder(order.id, session.id, paymentDetails(session, false));
+          const finalOrder = await finalizePaidOrder(order.id, session.id, paymentDetails(session, false));
+          if (finalOrder) await attemptPaymentRefund(stripe, order.id, finalOrder, session, false);
         } else {
           if (session.status === "open") {
             await stripe.checkout.sessions.expire(session.id);
@@ -877,7 +882,10 @@ router.post("/stripe/finalize-payment", async (request, response) => {
       paymentIntentId || checkoutSessionId,
       paymentDetails(payment, Boolean(paymentIntentId)),
     );
-    return response.json({ finalised: true, order });
+    const resolvedOrder = order
+      ? await attemptPaymentRefund(stripe, orderId, order, payment, Boolean(paymentIntentId))
+      : order;
+    return response.json({ finalised: true, order: resolvedOrder });
   } catch (error) {
     const message = error instanceof Error ? error.message : "The order could not be finalised.";
     request.log?.error({ error }, "Stripe payment finalisation failed");
@@ -1335,6 +1343,39 @@ router.patch("/admin/orders/:stripeSessionId/status", requireAdmin, async (reque
   } catch (error) {
     request.log?.error({ error, stripeSessionId }, "Order status could not be updated");
     return response.status(503).json({ error: "Order status could not be updated right now." });
+  }
+});
+
+router.post("/admin/orders/:stripeSessionId/payment-resolution", requireAdmin, async (request, response) => {
+  const paymentReference = safeText(request.params.stripeSessionId, 120);
+  const action = safeText(request.body?.action, 40);
+  const isPaymentIntent = /^pi_[A-Za-z0-9_]+$/.test(paymentReference);
+  if ((!isPaymentIntent && !/^cs_[A-Za-z0-9_]+$/.test(paymentReference))
+    || !["retry_refund", "mark_manual_resolution"].includes(action)) {
+    return response.status(400).json({ error: "Choose a valid payment-resolution action." });
+  }
+
+  try {
+    if (action === "mark_manual_resolution") {
+      const order = await recordPaymentResolutionByPaymentReference(paymentReference, "manual_resolution");
+      if (!order) return response.status(409).json({ error: "That order does not need a manual payment resolution." });
+      return response.json({ order });
+    }
+
+    const orderId = await getOrderIdByPaymentReference(paymentReference);
+    const order = await getPaidOrderByPaymentReference(paymentReference);
+    if (!orderId || !order || !["refund_pending", "refund_processing"].includes(order.paymentResolution)) {
+      return response.status(409).json({ error: "That order does not have a refund waiting to be processed." });
+    }
+    const stripe = await getUncachableStripeClient();
+    const payment = isPaymentIntent
+      ? await stripe.paymentIntents.retrieve(paymentReference)
+      : await stripe.checkout.sessions.retrieve(paymentReference);
+    const resolvedOrder = await attemptPaymentRefund(stripe, orderId, order, payment, isPaymentIntent);
+    return response.json({ order: resolvedOrder });
+  } catch (error) {
+    request.log?.error({ error, paymentReference }, "Order payment resolution failed");
+    return response.status(503).json({ error: "The payment resolution could not be updated right now." });
   }
 });
 

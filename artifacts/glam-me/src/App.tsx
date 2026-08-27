@@ -84,6 +84,9 @@ type CustomerOrder = {
   placedAt: string | null;
   status: string;
   paymentStatus?: string;
+  paymentResolution?: "none" | "refund_pending" | "refund_processing" | "refunded" | "manual_resolution";
+  paymentResolutionReason?: "inventory_reallocated" | "coupon_reallocated" | "inventory_and_coupon_reallocated" | null;
+  paymentResolvedAt?: string | null;
   total: number;
   currency: string;
   email: string;
@@ -1534,6 +1537,10 @@ function Confirmation() {
   if (state === "missing") {
     return <Shell><div className="container confirmation"><div className="eyebrow">Order confirmation</div><h1>We need your payment reference.</h1><p>Return to your account to view confirmed orders, or contact us if you have been charged.</p><a className="button button-pink" href="/account">View my orders</a></div></Shell>;
   }
+  if (order?.paymentResolution && order.paymentResolution !== "none") {
+    const copy = paymentResolutionCopy(order);
+    return <Shell><div className="container confirmation"><div className="confirmation-mark">!</div><div className="eyebrow">Payment received</div><h1>{copy.title}</h1><p>{copy.detail}</p><p>Your reference is {order.id}. You can check this update any time in your account.</p><a className="button button-pink" href="/account">View my orders</a></div></Shell>;
+  }
   return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order {order?.id} is being wrapped with care.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
 }
 
@@ -1557,6 +1564,9 @@ function formatCustomerOrderCountry(value: string) {
   return value;
 }
 
+function customerOrderStatus(order: CustomerOrder) {
+  return order.paymentStatus === "cancelled" ? "Cancelled" : order.status;
+}
 function CustomerOrderDetailPage({ order, onBack }: { order: CustomerOrder; onBack: () => void }) {
   const itemSubtotal = order.subtotal ?? order.items.reduce((total, item) => total + item.total, 0);
   const discountAmount = order.discountAmount ?? 0;
@@ -1585,9 +1595,16 @@ function CustomerOrderDetailPage({ order, onBack }: { order: CustomerOrder; onBa
         </div>
         <div className="account-order-page-total">
           <strong>{formatPounds(order.total / 100)}</strong>
-          <span className={`account-order-status ${order.status.toLowerCase().replace(/\s+/g, "-")}`}>{order.status}</span>
+          <span className={`account-order-status ${customerOrderStatus(order).toLowerCase().replace(/\s+/g, "-")}`}>{customerOrderStatus(order)}</span>
         </div>
       </div>
+      {order.paymentResolution && order.paymentResolution !== "none" && (
+        <section className="account-payment-resolution" role="status">
+          <div className="eyebrow">Payment update</div>
+          <h3>{paymentResolutionCopy(order).title}</h3>
+          <p>{paymentResolutionCopy(order).detail}</p>
+        </section>
+      )}
 
       <div className="account-order-page-layout">
         <section className="account-order-detail-card">
@@ -1628,7 +1645,7 @@ function CustomerOrderDetailPage({ order, onBack }: { order: CustomerOrder; onBa
           <section className="account-order-detail-card">
             <div className="account-order-detail-heading"><div><div className="eyebrow">Payment</div><h3>Payment details</h3></div></div>
             <dl className="account-order-detail-list">
-              <div><dt>Payment status</dt><dd>Paid</dd></div>
+              <div><dt>Payment status</dt><dd>{order.paymentStatus === "cancelled" ? "Payment received · order cancelled" : "Paid"}</dd></div>
               <div><dt>Payment method</dt><dd>Card via Stripe</dd></div>
               <div><dt>Email receipt</dt><dd>{order.email || "Email unavailable"}</dd></div>
             </dl>
@@ -2062,7 +2079,7 @@ function CustomerAccountPage() {
                             <div className="account-orders-table-row" role="row" key={order.id}>
                               <button className="account-order-number" type="button" onClick={() => setSelectedOrderId(order.id)}>{order.id}</button>
                               <span>{formatCustomerOrderDate(order.placedAt)}</span>
-                              <span className={`account-order-status ${order.status.toLowerCase().replace(/\s+/g, "-")}`}>{order.status}</span>
+                              <span className={`account-order-status ${customerOrderStatus(order).toLowerCase().replace(/\s+/g, "-")}`}>{customerOrderStatus(order)}</span>
                               <span className="account-order-total-cell"><strong>{formatPounds(order.total / 100)}</strong><small>{itemCount} item{itemCount === 1 ? "" : "s"}</small></span>
                               <button className="account-order-view-button" type="button" onClick={() => setSelectedOrderId(order.id)}>View</button>
                             </div>
@@ -2324,3 +2341,28 @@ function App() {
 }
 
 export default App;
+
+function paymentResolutionCopy(order: CustomerOrder) {
+  if (order.paymentResolution === "refunded") {
+    return {
+      title: "Order cancelled and refund processed",
+      detail: "Your payment arrived after this order had been cancelled and the reserved availability changed. We have cancelled the order and processed a full refund. Your bank may take a few working days to show it.",
+    };
+  }
+  if (order.paymentResolution === "manual_resolution") {
+    return {
+      title: "Order cancelled — payment being resolved",
+      detail: "Your payment arrived after this order had been cancelled and the reserved availability changed. This order will not be fulfilled. Our customer-care team is resolving the payment and will contact you if anything else is needed.",
+    };
+  }
+  if (order.paymentResolution === "refund_processing") {
+    return {
+      title: "Order cancelled — refund processing",
+      detail: "Your payment arrived after this order had been cancelled and the reserved availability changed. This order will not be fulfilled. Your full refund is being processed and your bank may take a few working days to show it.",
+    };
+  }
+  return {
+    title: "Order cancelled — refund on its way",
+    detail: "Your payment arrived after this order had been cancelled and the reserved availability changed. This order will not be fulfilled. We are arranging a full refund and will update this order once it has been processed.",
+  };
+}

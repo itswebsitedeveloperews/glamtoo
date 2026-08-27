@@ -5,7 +5,10 @@ import {
   cancelPendingOrder,
   createPendingOrder,
   finalizePaidOrder,
+  recordPaymentResolution,
+  recordStripeRefundWebhook,
 } from "../src/orderService";
+import { attemptPaymentRefund } from "../src/paymentResolution";
 import { reconcileLegacyOrders } from "../src/routes/stripe";
 
 const runId = `task18_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -30,6 +33,7 @@ function pendingOrderInput(productId: string, couponId: number) {
     deliveryAmount: 0,
     discountAmount: 500,
     total: 4500,
+    vatAmount: 750,
     coupon: { id: couponId, code: `${runId}_coupon` },
     expiresAt: new Date(Date.now() + 30 * 60 * 1000),
     items: [{
@@ -166,33 +170,145 @@ test("a paid result wins when cancellation races with finalization", async () =>
   assert.equal(state.rows[0].redemptions, "1");
 });
 
-test("a late paid callback rolls back when released inventory was reallocated", async () => {
+test("a late paid callback records a pending refund when released inventory was reallocated", async () => {
   const fixture = await createPaymentFixture("reallocated-stock");
   await cancelPendingOrder(fixture.orderId, fixture.paymentReference);
   await pool.query("UPDATE product_inventory SET stock = 1 WHERE product_id = $1", [fixture.productId]);
 
-  await assert.rejects(() => finalizePaidOrder(fixture.orderId, fixture.paymentReference));
-  const state = await pool.query<{ payment_status: string; stock: number; redemptions: string }>(
-    `SELECT orders.payment_status, inventory.stock,
+  const order = await finalizePaidOrder(fixture.orderId, fixture.paymentReference);
+  const state = await pool.query<{ payment_status: string; payment_resolution: string; payment_resolution_reason: string; stock: number; redemptions: string }>(
+    `SELECT orders.payment_status, orders.payment_resolution, orders.payment_resolution_reason, inventory.stock,
        (SELECT COUNT(*) FROM coupon_redemptions WHERE payment_reference = $2)::text AS redemptions
      FROM store_orders AS orders
      JOIN product_inventory AS inventory ON inventory.product_id = $3
      WHERE orders.id = $1`,
     [fixture.orderId, fixture.paymentReference, fixture.productId],
   );
+  assert.equal(order?.paymentResolution, "refund_pending");
   assert.equal(state.rows[0].payment_status, "cancelled");
+  assert.equal(state.rows[0].payment_resolution, "refund_pending");
+  assert.equal(state.rows[0].payment_resolution_reason, "inventory_reallocated");
   assert.equal(state.rows[0].stock, 1);
+  assert.equal(state.rows[0].redemptions, "0");
+
+  const repeated = await finalizePaidOrder(fixture.orderId, fixture.paymentReference);
+  assert.equal(repeated?.paymentResolution, "refund_pending");
+  const afterRepeat = await pool.query<{ stock: number; redemptions: string }>(
+    `SELECT inventory.stock,
+       (SELECT COUNT(*) FROM coupon_redemptions WHERE payment_reference = $2)::text AS redemptions
+     FROM product_inventory AS inventory
+     WHERE inventory.product_id = $1`,
+    [fixture.productId, fixture.paymentReference],
+  );
+  assert.equal(afterRepeat.rows[0].stock, 1);
+  assert.equal(afterRepeat.rows[0].redemptions, "0");
+});
+
+test("a late paid callback aggregates duplicate SKU lines before reclaiming reallocated stock", async () => {
+  const fixture = await createPaymentFixture("reallocated-duplicate-sku");
+  await pool.query(
+    `INSERT INTO store_order_items (
+      order_id, product_id, variation_id, inventory_key, name, quantity, unit_amount, total
+    ) VALUES ($1, $2, 'duplicate-line', $2, 'Task 18 duplicate SKU test product', 1, 2500, 2500)`,
+    [fixture.orderId, fixture.productId],
+  );
+  await cancelPendingOrder(fixture.orderId, fixture.paymentReference);
+  await pool.query("UPDATE product_inventory SET stock = 2 WHERE product_id = $1", [fixture.productId]);
+
+  const order = await finalizePaidOrder(fixture.orderId, fixture.paymentReference);
+  const state = await pool.query<{ payment_status: string; payment_resolution: string; stock: number; redemptions: string }>(
+    `SELECT orders.payment_status, orders.payment_resolution, inventory.stock,
+       (SELECT COUNT(*) FROM coupon_redemptions WHERE payment_reference = $2)::text AS redemptions
+     FROM store_orders AS orders
+     JOIN product_inventory AS inventory ON inventory.product_id = $3
+     WHERE orders.id = $1`,
+    [fixture.orderId, fixture.paymentReference, fixture.productId],
+  );
+  assert.equal(order?.paymentResolution, "refund_pending");
+  assert.equal(state.rows[0].payment_status, "cancelled");
+  assert.equal(state.rows[0].payment_resolution, "refund_pending");
+  assert.equal(state.rows[0].stock, 2);
   assert.equal(state.rows[0].redemptions, "0");
 });
 
-test("a late paid callback rolls back when its coupon capacity was reused", async () => {
+test("a refund is only resolved after Stripe confirms it and cannot race manual resolution", async () => {
+  const fixture = await createPaymentFixture("refund-processing");
+  await cancelPendingOrder(fixture.orderId, fixture.paymentReference);
+  await pool.query("UPDATE product_inventory SET stock = 1 WHERE product_id = $1", [fixture.productId]);
+  const unresolved = await finalizePaidOrder(fixture.orderId, fixture.paymentReference);
+  assert.equal(unresolved?.paymentResolution, "refund_pending");
+
+  const fakeStripe = {
+    refunds: {
+      create: async () => ({ id: `re_${runId}_pending`, status: "pending" }),
+    },
+  };
+  const processing = await attemptPaymentRefund(
+    fakeStripe as never,
+    fixture.orderId,
+    unresolved!,
+    { id: fixture.paymentReference } as never,
+    true,
+  );
+  assert.equal(processing?.paymentResolution, "refund_processing");
+  assert.equal(await recordPaymentResolution(fixture.orderId, "manual_resolution"), null);
+
+  // A webhook may win the race with the refund-create response. The refund
+  // metadata supplies the order ID before the refund ID has been persisted.
+  const refunded = await recordStripeRefundWebhook(`re_${runId}_pending`, "succeeded", fixture.orderId);
+  assert.equal(refunded?.paymentResolution, "refunded");
+  const afterConfirmation = await pool.query<{ stock: number; usage_count: number; redemptions: string }>(
+    `SELECT inventory.stock, coupons.usage_count,
+       (SELECT COUNT(*) FROM coupon_redemptions WHERE payment_reference = $2)::text AS redemptions
+     FROM product_inventory AS inventory
+     JOIN coupons ON coupons.id = $3
+     WHERE inventory.product_id = $1`,
+    [fixture.productId, fixture.paymentReference, fixture.couponId],
+  );
+  assert.equal(afterConfirmation.rows[0].stock, 1);
+  assert.equal(afterConfirmation.rows[0].usage_count, 0);
+  assert.equal(afterConfirmation.rows[0].redemptions, "0");
+});
+
+test("an ambiguous Stripe refund request replays its saved idempotency key", async () => {
+  const fixture = await createPaymentFixture("refund-timeout");
+  await cancelPendingOrder(fixture.orderId, fixture.paymentReference);
+  await pool.query("UPDATE product_inventory SET stock = 1 WHERE product_id = $1", [fixture.productId]);
+  const unresolved = await finalizePaidOrder(fixture.orderId, fixture.paymentReference);
+  assert.equal(unresolved?.paymentResolution, "refund_pending");
+
+  const keys: string[] = [];
+  const fakeStripe = {
+    refunds: {
+      list: async () => ({ data: [] }),
+      create: async (_params: unknown, options: { idempotencyKey: string }) => {
+        keys.push(options.idempotencyKey);
+        if (keys.length === 1) throw new Error("Timed out after request submission");
+        return { id: `re_${runId}_retried`, status: "succeeded" };
+      },
+    },
+  };
+  const processing = await attemptPaymentRefund(fakeStripe as never, fixture.orderId, unresolved!, { id: fixture.paymentReference } as never, true);
+  assert.equal(processing?.paymentResolution, "refund_processing");
+  const savedAttempt = await pool.query<{ refund_idempotency_key: string | null }>(
+    "SELECT refund_idempotency_key FROM store_orders WHERE id = $1",
+    [fixture.orderId],
+  );
+  assert.ok(savedAttempt.rows[0].refund_idempotency_key);
+  const refunded = await attemptPaymentRefund(fakeStripe as never, fixture.orderId, processing!, { id: fixture.paymentReference } as never, true);
+  assert.equal(keys.length, 2);
+  assert.equal(keys[0], keys[1]);
+  assert.equal(refunded?.paymentResolution, "refunded");
+});
+
+test("a late paid callback records a pending refund when its coupon capacity was reused", async () => {
   const fixture = await createPaymentFixture("reallocated-coupon");
   await cancelPendingOrder(fixture.orderId, fixture.paymentReference);
   await pool.query("UPDATE coupons SET usage_count = usage_limit WHERE id = $1", [fixture.couponId]);
 
-  await assert.rejects(() => finalizePaidOrder(fixture.orderId, fixture.paymentReference));
-  const state = await pool.query<{ payment_status: string; stock: number; usage_count: number; redemptions: string }>(
-    `SELECT orders.payment_status, inventory.stock, coupons.usage_count,
+  const order = await finalizePaidOrder(fixture.orderId, fixture.paymentReference);
+  const state = await pool.query<{ payment_status: string; payment_resolution: string; payment_resolution_reason: string; stock: number; usage_count: number; redemptions: string }>(
+    `SELECT orders.payment_status, orders.payment_resolution, orders.payment_resolution_reason, inventory.stock, coupons.usage_count,
        (SELECT COUNT(*) FROM coupon_redemptions WHERE payment_reference = $2)::text AS redemptions
      FROM store_orders AS orders
      JOIN product_inventory AS inventory ON inventory.product_id = $3
@@ -200,7 +316,10 @@ test("a late paid callback rolls back when its coupon capacity was reused", asyn
      WHERE orders.id = $1`,
     [fixture.orderId, fixture.paymentReference, fixture.productId, fixture.couponId],
   );
+  assert.equal(order?.paymentResolution, "refund_pending");
   assert.equal(state.rows[0].payment_status, "cancelled");
+  assert.equal(state.rows[0].payment_resolution, "refund_pending");
+  assert.equal(state.rows[0].payment_resolution_reason, "coupon_reallocated");
   assert.equal(state.rows[0].stock, 7);
   assert.equal(state.rows[0].usage_count, 10);
   assert.equal(state.rows[0].redemptions, "0");

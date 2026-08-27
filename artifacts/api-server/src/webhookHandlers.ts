@@ -1,8 +1,9 @@
 import Stripe from "stripe";
 import { recordCouponRedemption, releaseCouponReservation } from "./couponService";
 import { commitInventoryReservation, releaseInventoryReservation } from "./inventoryService";
-import { cancelPendingOrder, finalizePaidOrder } from "./orderService";
-import { getStripeSync } from "./stripeClient";
+import { cancelPendingOrder, finalizePaidOrder, recordStripeRefundWebhook } from "./orderService";
+import { attemptPaymentRefund } from "./paymentResolution";
+import { getStripeSync, getUncachableStripeClient } from "./stripeClient";
 
 export class WebhookHandlers {
   static async processWebhook(payload: Buffer, signature: string): Promise<void> {
@@ -13,7 +14,21 @@ export class WebhookHandlers {
     const stripeSync = await getStripeSync();
     await stripeSync.processWebhook(payload, signature);
     const event = JSON.parse(payload.toString("utf8")) as Stripe.Event;
+    await WebhookHandlers.reconcileRefund(event);
     await WebhookHandlers.recordCouponRedemption(event);
+  }
+
+  private static async reconcileRefund(event: Stripe.Event) {
+    if (event.type !== "refund.updated" && event.type !== "refund.failed") return;
+    const refund = event.data.object as Stripe.Refund;
+    const orderId = refund.metadata?.store === "Glam Too"
+      ? refund.metadata.glam_too_order_id
+      : undefined;
+    if (refund.status === "succeeded") {
+      await recordStripeRefundWebhook(refund.id, "succeeded", orderId);
+    } else if (refund.status === "failed" || refund.status === "canceled") {
+      await recordStripeRefundWebhook(refund.id, "failed", orderId);
+    }
   }
 
   private static async recordCouponRedemption(event: Stripe.Event) {
@@ -43,11 +58,20 @@ export class WebhookHandlers {
     if (metadata.store === "Glam Too") {
       const orderId = metadata.glam_too_order_id;
       if (orderId) {
-        await finalizePaidOrder(
+        const order = await finalizePaidOrder(
           orderId,
           payment.id,
           paymentDetails(payment, isSucceededPaymentIntent),
         );
+        if (order) {
+          await attemptPaymentRefund(
+            await getUncachableStripeClient(),
+            orderId,
+            order,
+            payment,
+            isSucceededPaymentIntent,
+          );
+        }
         return;
       }
       await commitInventoryReservation(payment.id);

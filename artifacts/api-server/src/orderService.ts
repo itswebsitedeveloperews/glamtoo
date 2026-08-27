@@ -3,6 +3,8 @@ import { pool, type PoolClient } from "@workspace/db";
 export type FulfillmentStatus = "Processing" | "Shipped" | "Delivered";
 export type OrderPaymentType = "payment_intent" | "checkout_session";
 export type OrderPaymentStatus = "pending" | "paid" | "cancelled";
+export type PaymentResolution = "none" | "refund_pending" | "refund_processing" | "refunded" | "manual_resolution";
+export type PaymentResolutionReason = "inventory_reallocated" | "coupon_reallocated" | "inventory_and_coupon_reallocated";
 
 export type OrderItemSnapshot = {
   productId: string;
@@ -59,6 +61,12 @@ type OrderRow = {
   payment_reference: string | null;
   payment_type: OrderPaymentType | null;
   payment_status: OrderPaymentStatus;
+  payment_resolution: PaymentResolution;
+  payment_resolution_reason: PaymentResolutionReason | null;
+  payment_resolved_at: Date | null;
+  stripe_refund_id: string | null;
+  refund_attempt: number;
+  refund_idempotency_key: string | null;
   fulfillment_status: FulfillmentStatus;
   email: string;
   customer_name: string;
@@ -100,6 +108,9 @@ export type StoredOrder = {
   placedAt: string | null;
   status: FulfillmentStatus;
   paymentStatus: OrderPaymentStatus;
+  paymentResolution: PaymentResolution;
+  paymentResolutionReason: PaymentResolutionReason | null;
+  paymentResolvedAt: string | null;
   total: number;
   currency: string;
   email: string;
@@ -145,6 +156,9 @@ function serializeOrder(row: OrderRow, items: OrderItemRow[]): StoredOrder {
     placedAt: row.created_at?.toISOString() ?? null,
     status: row.fulfillment_status,
     paymentStatus: row.payment_status,
+    paymentResolution: row.payment_resolution,
+    paymentResolutionReason: row.payment_resolution_reason,
+    paymentResolvedAt: row.payment_resolved_at?.toISOString() ?? null,
     total: row.total,
     vatAmount: row.vat_amount,
     currency: row.currency,
@@ -256,7 +270,7 @@ export async function attachOrderPayment(orderId: string, paymentReference: stri
      WHERE id = $1
        AND payment_status = 'pending'
        AND (payment_reference IS NULL OR payment_reference = $2)
-     RETURNING id`,
+     RETURNING id, refund_attempt, refund_idempotency_key`,
     [orderId, paymentReference, paymentType],
   );
   if (!result.rows[0]) {
@@ -337,22 +351,58 @@ async function markCouponRedeemed(client: PoolClient, order: OrderRow, paymentRe
   await client.query("DELETE FROM coupon_reservations WHERE payment_reference = $1", [paymentReference]);
 }
 
+async function cancelledOrderCapacityIssue(client: PoolClient, order: OrderRow): Promise<PaymentResolutionReason | null> {
+  let inventoryUnavailable = false;
+  const items = await client.query<{ inventory_key: string | null; quantity: number }>(
+    `SELECT inventory_key, SUM(quantity)::int AS quantity
+     FROM store_order_items
+     WHERE order_id = $1 AND inventory_key IS NOT NULL
+     GROUP BY inventory_key
+     ORDER BY inventory_key`,
+    [order.id],
+  );
+  for (const item of items.rows) {
+    const inventory = await client.query<{ stock: number }>(
+      "SELECT stock FROM product_inventory WHERE product_id = $1 FOR UPDATE",
+      [item.inventory_key],
+    );
+    if (inventory.rows[0]?.stock === undefined || inventory.rows[0].stock < item.quantity) inventoryUnavailable = true;
+  }
+
+  let couponUnavailable = false;
+  if (order.coupon_id) {
+    const coupon = await client.query<{ usage_limit: number | null; usage_count: number }>(
+      "SELECT usage_limit, usage_count FROM coupons WHERE id = $1 FOR UPDATE",
+      [order.coupon_id],
+    );
+    const couponRow = coupon.rows[0];
+    if (!couponRow || (couponRow.usage_limit !== null && couponRow.usage_count >= couponRow.usage_limit)) {
+      couponUnavailable = true;
+    }
+  }
+
+  if (inventoryUnavailable && couponUnavailable) return "inventory_and_coupon_reallocated";
+  if (inventoryUnavailable) return "inventory_reallocated";
+  if (couponUnavailable) return "coupon_reallocated";
+  return null;
+}
+
 async function settleCancelledOrderInventory(client: PoolClient, orderId: string) {
   const items = await client.query<{ inventory_key: string | null; quantity: number }>(
-    "SELECT inventory_key, quantity FROM store_order_items WHERE order_id = $1 AND inventory_key IS NOT NULL ORDER BY id",
+    `SELECT inventory_key, SUM(quantity)::int AS quantity
+     FROM store_order_items
+     WHERE order_id = $1 AND inventory_key IS NOT NULL
+     GROUP BY inventory_key
+     ORDER BY inventory_key`,
     [orderId],
   );
   for (const item of items.rows) {
-    const updated = await client.query<{ product_id: string }>(
+    await client.query(
       `UPDATE product_inventory
        SET stock = stock - $2, updated_at = NOW()
-       WHERE product_id = $1 AND stock >= $2
-       RETURNING product_id`,
+       WHERE product_id = $1`,
       [item.inventory_key, item.quantity],
     );
-    if (!updated.rows[0]) {
-      throw new OrderFinalizationError("This paid order can no longer be settled because an item was reallocated.");
-    }
   }
 }
 export async function finalizePaidOrder(
@@ -372,12 +422,38 @@ export async function finalizePaidOrder(
     if (order.payment_reference && order.payment_reference !== paymentReference) {
       throw new OrderFinalizationError("This payment belongs to a different saved order.");
     }
+    if (order.payment_status === "cancelled" && order.payment_resolution !== "none") {
+      const existingOrder = await loadOrder(client, "id", order.id);
+      await client.query("COMMIT");
+      return existingOrder;
+    }
     const wasCancelled = order.payment_status === "cancelled";
     if (order.payment_status !== "paid") {
+      if (wasCancelled) {
+        const capacityIssue = await cancelledOrderCapacityIssue(client, order);
+        if (capacityIssue) {
+          await client.query(
+            `UPDATE store_orders
+             SET payment_reference = COALESCE(payment_reference, $2),
+                 payment_resolution = 'refund_pending',
+                 payment_resolution_reason = $3,
+                 payment_resolved_at = NULL,
+                 updated_at = NOW()
+             WHERE id = $1`,
+            [order.id, paymentReference, capacityIssue],
+          );
+          const unresolvedOrder = await loadOrder(client, "id", order.id);
+          await client.query("COMMIT");
+          return unresolvedOrder;
+        }
+      }
       await client.query(
         `UPDATE store_orders
          SET payment_reference = $2,
              payment_status = 'paid',
+             payment_resolution = 'none',
+             payment_resolution_reason = NULL,
+             payment_resolved_at = NULL,
              email = COALESCE(NULLIF($3, ''), email),
              customer_name = COALESCE(NULLIF($4, ''), customer_name),
              phone = COALESCE(NULLIF($5, ''), phone),
@@ -480,7 +556,10 @@ export async function listPaidOrders(userId?: string) {
   try {
     const orderResult = await client.query<OrderRow>(
       `SELECT * FROM store_orders
-       WHERE payment_status = 'paid'
+       WHERE (
+         payment_status = 'paid'
+         OR (payment_status = 'cancelled' AND payment_resolution <> 'none')
+       )
          ${userId ? "AND user_id = $1" : ""}
        ORDER BY paid_at DESC NULLS LAST, created_at DESC
        LIMIT 50`,
@@ -511,10 +590,146 @@ export async function getPaidOrderByPaymentReference(paymentReference: string) {
   const client = await pool.connect();
   try {
     const order = await loadOrder(client, "payment_reference", paymentReference);
-    return order?.paymentStatus === "paid" ? order : null;
+    return order && (order.paymentStatus === "paid" || order.paymentResolution !== "none") ? order : null;
   } finally {
     client.release();
   }
+}
+
+export async function recordPaymentResolution(
+  orderId: string,
+  resolution: "manual_resolution",
+) {
+  const result = await pool.query(
+    `UPDATE store_orders
+     SET payment_resolution = $2,
+         payment_resolved_at = COALESCE(payment_resolved_at, NOW()),
+         updated_at = NOW()
+     WHERE id = $1
+       AND payment_status = 'cancelled'
+        AND payment_resolution = 'refund_pending'
+     RETURNING id`,
+    [orderId, resolution],
+  );
+  if (!result.rows[0]) return null;
+  return getOrderById(orderId);
+}
+
+export async function recordPaymentResolutionByPaymentReference(
+  paymentReference: string,
+  resolution: "manual_resolution",
+) {
+  const result = await pool.query(
+    `UPDATE store_orders
+     SET payment_resolution = $2,
+         payment_resolved_at = COALESCE(payment_resolved_at, NOW()),
+         updated_at = NOW()
+     WHERE payment_reference = $1
+       AND payment_status = 'cancelled'
+        AND payment_resolution = 'refund_pending'
+     RETURNING id`,
+    [paymentReference, resolution],
+  );
+  if (!result.rows[0]) return null;
+  return getOrderById(result.rows[0].id);
+}
+
+export async function getOrderById(orderId: string) {
+  const client = await pool.connect();
+  try {
+    return loadOrder(client, "id", orderId);
+  } finally {
+    client.release();
+  }
+}
+
+export async function claimPaymentRefund(orderId: string) {
+  const result = await pool.query<{ id: string; refund_attempt: number; refund_idempotency_key: string }>(
+    `UPDATE store_orders
+     SET payment_resolution = 'refund_processing',
+         refund_attempt = refund_attempt + 1,
+         refund_idempotency_key = 'glam-too-order-refund-' || id || '-' || (refund_attempt + 1)::text,
+         updated_at = NOW()
+     WHERE id = $1
+       AND payment_status = 'cancelled'
+       AND payment_resolution = 'refund_pending'
+     RETURNING id, refund_attempt, refund_idempotency_key`,
+    [orderId],
+  );
+  const claimed = result.rows[0];
+  if (!claimed) return null;
+  return { attempt: claimed.refund_attempt, idempotencyKey: claimed.refund_idempotency_key };
+}
+
+export async function getRefundProcessingAttempt(orderId: string) {
+  const result = await pool.query<{ idempotency_key: string }>(
+    `SELECT refund_idempotency_key AS idempotency_key
+     FROM store_orders
+     WHERE id = $1
+       AND payment_status = 'cancelled'
+       AND payment_resolution = 'refund_processing'
+       AND refund_idempotency_key IS NOT NULL
+     LIMIT 1`,
+    [orderId],
+  );
+  return result.rows[0]?.idempotency_key ?? null;
+}
+
+export async function recordStripeRefundStatus(
+  orderId: string,
+  refundId: string | null,
+  status: "succeeded" | "pending" | "failed",
+) {
+  const resolution = status === "succeeded"
+    ? "refunded"
+    : status === "failed"
+      ? "refund_pending"
+      : "refund_processing";
+  const result = await pool.query<{ id: string }>(
+    `UPDATE store_orders
+     SET payment_resolution = $2,
+         stripe_refund_id = COALESCE($3, stripe_refund_id),
+         refund_idempotency_key = CASE WHEN $2 = 'refund_pending' THEN NULL ELSE refund_idempotency_key END,
+         payment_resolved_at = CASE WHEN $2 = 'refunded' THEN COALESCE(payment_resolved_at, NOW()) ELSE NULL END,
+         updated_at = NOW()
+     WHERE id = $1
+       AND payment_status = 'cancelled'
+       AND payment_resolution = 'refund_processing'
+     RETURNING id`,
+    [orderId, resolution, refundId],
+  );
+  if (!result.rows[0]) return null;
+  return getOrderById(orderId);
+}
+
+export async function recordStripeRefundWebhook(
+  refundId: string,
+  status: "succeeded" | "failed",
+  orderId?: string,
+) {
+  const result = await pool.query<{ id: string }>(
+    `UPDATE store_orders
+     SET payment_resolution = $2,
+         stripe_refund_id = $1,
+         refund_idempotency_key = CASE WHEN $2 = 'refund_pending' THEN NULL ELSE refund_idempotency_key END,
+         payment_resolved_at = CASE WHEN $2 = 'refunded' THEN COALESCE(payment_resolved_at, NOW()) ELSE NULL END,
+         updated_at = NOW()
+     WHERE (stripe_refund_id = $1 OR ($3::text IS NOT NULL AND id = $3))
+       AND payment_status = 'cancelled'
+       AND payment_resolution = 'refund_processing'
+     RETURNING id`,
+    [refundId, status === "succeeded" ? "refunded" : "refund_pending", orderId ?? null],
+  );
+  if (!result.rows[0]) return null;
+  return getOrderById(result.rows[0].id);
+}
+
+export async function getOrderIdByPaymentReference(paymentReference: string) {
+  const result = await pool.query<{ id: string }>(
+    "SELECT id FROM store_orders WHERE payment_reference = $1 LIMIT 1",
+    [paymentReference],
+  );
+  return result.rows[0]?.id ?? null;
 }
 
 export async function updateOrderFulfillment(paymentReference: string, status: FulfillmentStatus) {

@@ -52,6 +52,9 @@ type Order = {
   currency: string;
   couponCode?: string | null;
   discountAmount?: number;
+  paymentStatus?: "pending" | "paid" | "cancelled";
+  paymentResolution?: "none" | "refund_pending" | "refund_processing" | "refunded" | "manual_resolution";
+  paymentResolutionReason?: "inventory_reallocated" | "coupon_reallocated" | "inventory_and_coupon_reallocated" | null;
   status: "Processing" | "Shipped" | "Delivered";
   delivery: {
     method: string;
@@ -81,6 +84,9 @@ type OrderPayload = {
   currency: string;
   couponCode?: string | null;
   discountAmount?: number;
+  paymentStatus?: Order["paymentStatus"];
+  paymentResolution?: Order["paymentResolution"];
+  paymentResolutionReason?: Order["paymentResolutionReason"];
   email: string;
   delivery: {
     name: string;
@@ -248,6 +254,9 @@ function toAdminOrder(order: OrderPayload): Order {
     currency: order.currency,
     couponCode: order.couponCode,
     discountAmount: order.discountAmount,
+    paymentStatus: order.paymentStatus,
+    paymentResolution: order.paymentResolution,
+    paymentResolutionReason: order.paymentResolutionReason,
     status: order.status,
     delivery: order.delivery,
     items: order.items,
@@ -258,11 +267,15 @@ function AdminOrderDetailPage({
   order,
   updating,
   onStatusChange,
+  resolvingPayment,
+  onPaymentResolution,
   onBack,
 }: {
   order: Order;
   updating: boolean;
   onStatusChange: (status: Order["status"]) => void;
+  resolvingPayment: boolean;
+  onPaymentResolution: (action: "retry_refund" | "mark_manual_resolution") => void;
   onBack: () => void;
 }) {
   const itemSubtotal = order.items.reduce((total, item) => total + item.total, 0);
@@ -275,6 +288,17 @@ function AdminOrderDetailPage({
     order.delivery.address.postcode,
     order.delivery.address.country,
   ].filter(Boolean);
+  const paymentNeedsResolution = order.paymentResolution && order.paymentResolution !== "none";
+  const paymentResolutionTitle = order.paymentResolution === "refunded"
+    ? "Refund processed"
+    : order.paymentResolution === "manual_resolution"
+      ? "Manual payment resolution recorded"
+      : order.paymentResolution === "refund_processing"
+        ? "Refund processing"
+      : "Refund needs attention";
+  const paymentResolutionDetail = order.paymentResolutionReason?.includes("inventory")
+    ? "Stock was reallocated after this paid order was cancelled."
+    : "Promotion capacity was reallocated after this paid order was cancelled.";
 
   return (
     <div className="admin-order-page">
@@ -287,7 +311,7 @@ function AdminOrderDetailPage({
         <div>
           <p className="admin-eyebrow">Orders / View order</p>
           <h1>{order.id}</h1>
-          <p>Placed on {order.date} · Paid via Stripe</p>
+          <p>Placed on {order.date} · {order.paymentStatus === "cancelled" ? "Payment received after cancellation" : "Paid via Stripe"}</p>
         </div>
         <div className="admin-order-page-heading-actions">
           <button className="admin-secondary" type="button" onClick={onBack}>Back to orders</button>
@@ -296,6 +320,16 @@ function AdminOrderDetailPage({
 
       <div className="admin-order-page-layout">
         <div className="admin-order-page-main">
+          {paymentNeedsResolution && (
+            <section className="admin-order-card admin-payment-resolution-card">
+              <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Payment exception</p><h2>{paymentResolutionTitle}</h2></div></div>
+              <p>{paymentResolutionDetail} This order remains cancelled and must not be fulfilled.</p>
+              {(order.paymentResolution === "refund_pending" || order.paymentResolution === "refund_processing") && <div className="admin-payment-resolution-actions">
+                <button className="admin-primary" type="button" disabled={resolvingPayment} onClick={() => onPaymentResolution("retry_refund")}>{resolvingPayment ? "Checking refund…" : order.paymentResolution === "refund_processing" ? "Check Stripe refund" : "Retry Stripe refund"}</button>
+                {order.paymentResolution === "refund_pending" && <button className="admin-secondary" type="button" disabled={resolvingPayment} onClick={() => onPaymentResolution("mark_manual_resolution")}>Record manual resolution</button>}
+              </div>}
+            </section>
+          )}
           <section className="admin-order-card">
             <div className="admin-order-card-heading">
               <div><p className="admin-eyebrow">Purchased items</p><h2>Order items</h2></div>
@@ -336,13 +370,13 @@ function AdminOrderDetailPage({
           <section className="admin-order-card admin-order-actions-card">
             <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Fulfilment</p><h2>Order actions</h2></div></div>
             <label className="admin-order-status-field">Status
-              <select value={order.status} disabled={updating} onChange={(event) => onStatusChange(event.target.value as Order["status"])}>
+              <select value={order.status} disabled={updating || Boolean(paymentNeedsResolution)} onChange={(event) => onStatusChange(event.target.value as Order["status"])}>
                 <option>Processing</option>
                 <option>Shipped</option>
                 <option>Delivered</option>
               </select>
             </label>
-            <p className="admin-order-status-help">{updating ? "Saving order status…" : "Update the order when it moves to its next delivery stage."}</p>
+            <p className="admin-order-status-help">{paymentNeedsResolution ? "Fulfilment is disabled because this paid order was cancelled." : updating ? "Saving order status…" : "Update the order when it moves to its next delivery stage."}</p>
           </section>
 
           <section className="admin-order-card">
@@ -368,7 +402,7 @@ function AdminOrderDetailPage({
             <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Payment</p><h2>Payment details</h2></div></div>
             <dl className="admin-order-detail-list">
               <div><dt>Gateway</dt><dd>Stripe</dd></div>
-              <div><dt>Payment</dt><dd>Paid</dd></div>
+              <div><dt>Payment</dt><dd>{order.paymentResolution === "refunded" ? "Refunded" : order.paymentResolution === "refund_processing" ? "Refund processing" : order.paymentResolution === "refund_pending" ? "Refund pending" : order.paymentResolution === "manual_resolution" ? "Manual resolution" : "Paid"}</dd></div>
               <div><dt>Currency</dt><dd>{order.currency?.toUpperCase() || "GBP"}</dd></div>
             </dl>
           </section>
@@ -819,6 +853,7 @@ export default function AdminDashboard({
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [resolvingPaymentOrderId, setResolvingPaymentOrderId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [stripeStatus, setStripeStatus] = useState<StripeStatus>({ connected: false, configured: false, mode: "unknown", paymentMethods: [] });
   const [stripeStatusLoading, setStripeStatusLoading] = useState(true);
@@ -1091,6 +1126,32 @@ export default function AdminDashboard({
       setOrdersError(error instanceof Error ? error.message : "Order status could not be updated.");
     } finally {
       setUpdatingOrderId(null);
+    }
+  }
+
+  async function resolveOrderPayment(order: Order, action: "retry_refund" | "mark_manual_resolution") {
+    setResolvingPaymentOrderId(order.id);
+    setOrdersError("");
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.stripeSessionId)}/payment-resolution`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      const payload = await response.json() as { order?: OrderPayload; error?: string };
+      if (!response.ok || !payload.order) throw new Error(payload.error || "The payment resolution could not be updated.");
+      const updatedOrder = toAdminOrder(payload.order);
+      setOrders((current) => current.map((item) => item.id === order.id ? updatedOrder : item));
+      setNotice(action === "retry_refund"
+        ? updatedOrder.paymentResolution === "refunded"
+          ? `${order.id} refund was sent to Stripe.`
+          : `${order.id} still needs a refund. Check Stripe and try again shortly.`
+        : `${order.id} has been recorded for manual payment resolution.`);
+    } catch (error) {
+      setOrdersError(error instanceof Error ? error.message : "The payment resolution could not be updated.");
+    } finally {
+      setResolvingPaymentOrderId(null);
     }
   }
 
@@ -1483,6 +1544,8 @@ export default function AdminDashboard({
             order={selectedOrder}
             updating={updatingOrderId === selectedOrder.id}
             onStatusChange={(status) => void updateOrderStatus(selectedOrder, status)}
+            resolvingPayment={resolvingPaymentOrderId === selectedOrder.id}
+            onPaymentResolution={(action) => void resolveOrderPayment(selectedOrder, action)}
             onBack={() => setSelectedOrderId(null)}
           />
         )}
@@ -1492,7 +1555,7 @@ export default function AdminDashboard({
             <SectionTitle eyebrow="Fulfilment" title="Orders" description="Track customer purchases and move each order through delivery." action={<button className="admin-secondary" type="button" onClick={() => void refreshOrders()} disabled={ordersLoading}>{ordersLoading ? "Refreshing…" : "Refresh orders"}</button>} />
             <section className="admin-panel admin-table-panel">
               {ordersError && <p className="admin-payment-error" role="alert">{ordersError}</p>}
-              {ordersLoading && orders.length === 0 ? <p className="admin-users-state">Loading orders…</p> : orders.length === 0 ? <p className="admin-users-state">No paid orders yet.</p> : (
+              {ordersLoading && orders.length === 0 ? <p className="admin-users-state">Loading orders…</p> : orders.length === 0 ? <p className="admin-users-state">No paid orders or payment exceptions yet.</p> : (
                 <div className="admin-table">
                   <div className="admin-table-head admin-order-table-head"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span><span>Details</span></div>
                   {orders.map((order) => (
@@ -1501,7 +1564,9 @@ export default function AdminDashboard({
                       <span>{order.customer}</span>
                       <span>{order.date}</span>
                       <span>{order.total}</span>
-                      <select value={order.status} disabled={updatingOrderId === order.id} onChange={(event) => void updateOrderStatus(order, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}><option>Processing</option><option>Shipped</option><option>Delivered</option></select>
+                      {order.paymentResolution && order.paymentResolution !== "none"
+                        ? <span className={`order-status payment-${order.paymentResolution.replace("_", "-")}`}>{order.paymentResolution === "refund_pending" ? "Refund pending" : order.paymentResolution === "refund_processing" ? "Refund processing" : order.paymentResolution === "refunded" ? "Refunded" : "Manual resolution"}</span>
+                        : <select value={order.status} disabled={updatingOrderId === order.id} onChange={(event) => void updateOrderStatus(order, event.target.value as Order["status"])} aria-label={`Update ${order.id} status`}><option>Processing</option><option>Shipped</option><option>Delivered</option></select>}
                       <button className="admin-order-details-button" type="button" onClick={() => setSelectedOrderId(order.id)}>View order</button>
                     </div>
                   ))}
