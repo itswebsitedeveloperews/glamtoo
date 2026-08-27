@@ -5,7 +5,7 @@ import { getStripeConnectionInfoWithSource, getUncachableStripeClient } from "..
 import { clearSavedStripeCredentials, saveStripeCredentials } from "../stripeCredentials";
 import { initializeStripe } from "../stripeBootstrap";
 import { getAuth } from "@clerk/express";
-import { db, pool, orderFulfillmentTable } from "@workspace/db";
+import { pool, orderFulfillmentTable } from "@workspace/db";
 import {
   calculateCouponPricing,
   CouponValidationError,
@@ -23,6 +23,23 @@ import {
   syncCatalogProduct,
   type CatalogProductInput,
 } from "../inventoryService";
+import {
+  attachOrderPayment,
+  cancelPendingOrder,
+  createPendingOrder,
+  finalizePaidOrder,
+  getPaidOrderByPaymentReference,
+  importLegacyPaidOrder,
+  listExpiredPendingPayments,
+  listPaidOrders,
+  saveReconciliationState,
+  getReconciliationState,
+  setOrderExpiration,
+  updateOrderFulfillment,
+  type FulfillmentStatus,
+  type OrderItemSnapshot,
+  type PendingOrderInput,
+} from "../orderService";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -36,8 +53,6 @@ type CheckoutLine = SubmittedCheckoutLine & {
   description: string;
   unitAmount: number;
 };
-
-type FulfillmentStatus = "Processing" | "Shipped" | "Delivered";
 
 const fulfillmentStatuses: FulfillmentStatus[] = ["Processing", "Shipped", "Delivered"];
 const router: IRouter = Router();
@@ -82,6 +97,118 @@ function couponMetadata(pricing: Awaited<ReturnType<typeof calculateCouponPricin
     coupon_discount: String(pricing.discountAmount),
   } : {};
 }
+
+function orderItemSnapshots(lines: CheckoutLine[]): OrderItemSnapshot[] {
+  return lines.map((line) => ({
+    productId: line.productId,
+    variationId: line.variationId,
+    inventoryKey: line.inventoryKey,
+    name: line.name,
+    quantity: line.quantity,
+    unitAmount: line.unitAmount,
+    total: line.unitAmount * line.quantity,
+  }));
+}
+
+function orderInput(
+  userId: string,
+  email: string,
+  customerName: string,
+  phone: string,
+  address: PendingOrderInput["address"],
+  delivery: "standard" | "express",
+  subtotal: number,
+  deliveryAmount: number,
+  total: number,
+  pricing: Awaited<ReturnType<typeof calculateCouponPricing>> | null,
+  lines: CheckoutLine[],
+  expiresAt: Date,
+): PendingOrderInput {
+  return {
+    userId,
+    email,
+    customerName,
+    phone,
+    address,
+    delivery,
+    subtotal,
+    deliveryAmount,
+    discountAmount: pricing?.discountAmount ?? 0,
+    total,
+    coupon: pricing ? { id: pricing.coupon.id, code: pricing.coupon.code } : undefined,
+    expiresAt,
+    items: orderItemSnapshots(lines),
+  };
+}
+
+function paymentDetails(payment: Stripe.PaymentIntent | Stripe.Checkout.Session, isPaymentIntent: boolean) {
+  const metadata = payment.metadata ?? {};
+  const paymentRecord = asRecord(payment);
+  const details = isPaymentIntent
+    ? asRecord((payment as Stripe.PaymentIntent).shipping)
+    : asRecord(paymentRecord.shipping_details ?? paymentRecord.customer_details);
+  const address = asRecord(details.address);
+  const customerDetails = isPaymentIntent ? {} : asRecord(paymentRecord.customer_details);
+  return {
+    email: isPaymentIntent
+      ? (payment as Stripe.PaymentIntent).receipt_email || metadata.customer_email
+      : safeText(customerDetails.email, 250) || metadata.customer_email,
+    customerName: safeText(details.name, 120) || metadata.customer_name,
+    phone: safeText(details.phone, 40),
+    address: {
+      line1: safeText(address.line1, 200),
+      line2: safeText(address.line2, 200),
+      city: safeText(address.city, 100),
+      postcode: safeText(address.postal_code, 40),
+      country: safeText(address.country, 2).toUpperCase(),
+    },
+  };
+}
+
+async function recoverExpiredPendingOrders(stripe: Stripe) {
+  const expiredOrders = await listExpiredPendingPayments();
+  for (const order of expiredOrders) {
+    try {
+      if (order.payment_type === "payment_intent") {
+        const paymentIntent = await stripe.paymentIntents.retrieve(order.payment_reference);
+        if (paymentIntent.status === "succeeded") {
+          await finalizePaidOrder(order.id, paymentIntent.id, paymentDetails(paymentIntent, true));
+        } else {
+          if (paymentIntent.status !== "canceled") {
+            await stripe.paymentIntents.cancel(paymentIntent.id);
+          }
+          await cancelPendingOrder(order.id, paymentIntent.id);
+        }
+      } else {
+        const session = await stripe.checkout.sessions.retrieve(order.payment_reference);
+        if (session.payment_status === "paid") {
+          await finalizePaidOrder(order.id, session.id, paymentDetails(session, false));
+        } else {
+          if (session.status === "open") {
+            await stripe.checkout.sessions.expire(session.id);
+          }
+          await cancelPendingOrder(order.id, session.id);
+        }
+      }
+    } catch {
+      // Stripe remains the authority for a payment that cannot be checked right now.
+    }
+  }
+}
+
+function startExpiredOrderRecovery() {
+  const recover = async () => {
+    try {
+      await recoverExpiredPendingOrders(await getUncachableStripeClient());
+    } catch {
+      // A later interval will retry when Stripe is available again.
+    }
+  };
+  void recover();
+  setInterval(() => { void recover(); }, 5 * 60 * 1000).unref();
+}
+
+startExpiredOrderRecovery();
 
 function checkoutErrorStatus(error: unknown) {
   return error instanceof CouponValidationError || error instanceof InventoryError ? error.statusCode : 500;
@@ -442,18 +569,29 @@ router.post("/stripe/payment-intent", async (request, response) => {
     if (amount < 30) {
       return response.status(400).json({ error: "This coupon makes the order too small for card payment. Add another item or use a different coupon." });
     }
-    const orderItems = lines.map((line) => ({
-      name: line.name,
-      productId: line.productId,
-      quantity: line.quantity,
-      total: line.unitAmount * line.quantity,
-    }));
-    const encodedItems = JSON.stringify(orderItems);
-    if (encodedItems.length > 450) {
-      return response.status(400).json({ error: "Your bag has too many items to pay for in one order." });
-    }
+    const order = await createPendingOrder(orderInput(
+      userId,
+      email,
+      customerName,
+      phone,
+      {
+        line1: addressLine1,
+        line2: addressLine2,
+        city,
+        postcode,
+        country,
+      },
+      delivery,
+      subtotal,
+      deliveryAmount,
+      amount,
+      pricing,
+      lines,
+      new Date(Date.now() + 30 * 60 * 1000),
+    ));
 
     const stripe = await getUncachableStripeClient();
+    await recoverExpiredPendingOrders(stripe);
     const customer = await getOrCreateStripeCustomer(stripe, userId, email, customerName);
     if (paymentMethodId) {
       const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
@@ -483,19 +621,21 @@ router.post("/stripe/payment-intent", async (request, response) => {
       },
       metadata: {
         store: "Glam Too",
+        glam_too_order_id: order.id,
         clerk_user_id: userId,
         customer_name: customerName,
         customer_email: email,
         delivery,
          ...couponMetadata(pricing),
-        glam_too_items: encodedItems,
       },
     });
     if (!paymentIntent.client_secret) {
       await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => undefined);
+      await cancelPendingOrder(order.id, paymentIntent.id).catch(() => undefined);
       throw new Error("Stripe did not return a payment secret.");
     }
     try {
+      await attachOrderPayment(order.id, paymentIntent.id, "payment_intent");
       await reserveInventory(lines.filter((line): line is CheckoutLine & { inventoryKey: string } => Boolean(line.inventoryKey)), paymentIntent.id);
       if (pricing) {
         await reserveCouponRedemption(
@@ -506,10 +646,8 @@ router.post("/stripe/payment-intent", async (request, response) => {
         );
       }
     } catch (error) {
-      await releaseInventoryReservation(paymentIntent.id).catch(() => undefined);
-      if (paymentIntent.status === "requires_payment_method") {
-        await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => undefined);
-      }
+      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => undefined);
+      await cancelPendingOrder(order.id, paymentIntent.id).catch(() => undefined);
       throw error;
     }
     return response.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
@@ -533,6 +671,14 @@ router.post("/stripe/checkout", async (request, response) => {
         .filter((line: SubmittedCheckoutLine | null): line is SubmittedCheckoutLine => line !== null)
       : [];
     const email = safeText(request.body?.email, 250);
+    const customerName = safeText(request.body?.customerName, 120);
+    const phone = safeText(request.body?.phone, 40);
+    const address = asRecord(request.body?.address);
+    const addressLine1 = safeText(address.line1, 200);
+    const addressLine2 = safeText(address.line2, 200);
+    const city = safeText(address.city, 100);
+    const postcode = safeText(address.postcode, 40);
+    const country = safeText(address.country, 2).toUpperCase() || "GB";
     const checkoutLines = await Promise.all(submittedLines.map(resolveCheckoutLine));
 
     if (submittedLines.length === 0 || checkoutLines.some((line) => line === null)) {
@@ -553,7 +699,28 @@ router.post("/stripe/checkout", async (request, response) => {
     if (amount < 30) {
       return response.status(400).json({ error: "This coupon makes the order too small for card payment. Add another item or use a different coupon." });
     }
+    const order = await createPendingOrder(orderInput(
+      userId,
+      email,
+      customerName,
+      phone,
+      {
+        line1: addressLine1,
+        line2: addressLine2,
+        city,
+        postcode,
+        country,
+      },
+      delivery,
+      subtotal,
+      deliveryAmount,
+      amount,
+      pricing,
+      inventoryLines,
+      new Date(Date.now() + 24 * 60 * 60 * 1000),
+    ));
     const stripe = await getUncachableStripeClient();
+    await recoverExpiredPendingOrders(stripe);
     if (delivery === "express") {
       lines.push({
         productId: "delivery",
@@ -596,17 +763,23 @@ router.post("/stripe/checkout", async (request, response) => {
       cancel_url: `${origin}/checkout`,
       metadata: {
         store: "Glam Too",
-        customer_name: safeText(request.body?.customerName, 120),
-        delivery: request.body?.delivery === "express" ? "express" : "standard",
+        glam_too_order_id: order.id,
+        customer_name: customerName,
+        delivery,
         clerk_user_id: userId,
          ...couponMetadata(pricing),
       },
     });
 
     if (!session.url) {
+      await attachOrderPayment(order.id, session.id, "checkout_session").catch(() => undefined);
+      await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
+      await cancelPendingOrder(order.id, session.id).catch(() => undefined);
       throw new Error("Stripe did not return a Checkout URL.");
     }
     try {
+      await attachOrderPayment(order.id, session.id, "checkout_session");
+      await setOrderExpiration(order.id, new Date((session.expires_at ?? Math.floor(Date.now() / 1000) + 24 * 60 * 60) * 1000));
       await reserveInventory(inventoryLines.filter((line): line is CheckoutLine & { inventoryKey: string } => Boolean(line.inventoryKey)), session.id);
       if (pricing) {
         await reserveCouponRedemption(
@@ -617,10 +790,10 @@ router.post("/stripe/checkout", async (request, response) => {
         );
       }
     } catch (error) {
-      await releaseInventoryReservation(session.id).catch(() => undefined);
       if (session.status === "open") {
         await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
       }
+      await cancelPendingOrder(order.id, session.id).catch(() => undefined);
       throw error;
     }
 
@@ -685,17 +858,16 @@ router.post("/stripe/finalize-payment", async (request, response) => {
     if (!paid || metadata.store !== "Glam Too" || metadata.clerk_user_id !== userId) {
       return response.status(400).json({ error: "This payment is not ready to finalise." });
     }
-    await commitInventoryReservation(paymentIntentId || checkoutSessionId);
-    const couponId = Number(metadata.coupon_id);
-    if (Number.isInteger(couponId) && couponId > 0) {
-      await recordCouponRedemption(
-        couponId,
-        paymentIntentId || checkoutSessionId,
-        userId,
-        Number(metadata.coupon_discount) || 0,
-      );
+    const orderId = safeText(metadata.glam_too_order_id, 80);
+    if (!orderId) {
+      return response.status(409).json({ error: "This payment was created before reliable order records were enabled. It is being reconciled into your order history." });
     }
-    return response.json({ finalised: true });
+    const order = await finalizePaidOrder(
+      orderId,
+      paymentIntentId || checkoutSessionId,
+      paymentDetails(payment, Boolean(paymentIntentId)),
+    );
+    return response.json({ finalised: true, order });
   } catch (error) {
     const message = error instanceof Error ? error.message : "The order could not be finalised.";
     request.log?.error({ error }, "Stripe payment finalisation failed");
@@ -724,9 +896,11 @@ router.post("/stripe/abandon-payment", async (request, response) => {
       return response.status(409).json({ paymentSucceeded: true });
     }
     await stripe.paymentIntents.cancel(paymentIntentId);
-    await releaseCouponReservation(paymentIntentId);
-    await releaseInventoryReservation(paymentIntentId);
-    return response.json({ abandoned: true });
+    const result = await cancelPendingOrder(
+      safeText(paymentIntent.metadata.glam_too_order_id, 80) || undefined,
+      paymentIntentId,
+    );
+    return response.json({ abandoned: result.cancelled });
   } catch (error) {
     const message = error instanceof Error ? error.message : "This payment could not be cancelled.";
     request.log?.error({ error }, "Stripe payment abandonment failed");
@@ -767,11 +941,16 @@ type OrderRow = {
   items: unknown;
 };
 
-function orderQuery(userId?: string, stripeSessionId?: string) {
-  const ownerFilter = userId ? "AND sessions.metadata ->> 'clerk_user_id' = $1" : "";
-  const sessionFilter = stripeSessionId
-    ? `AND sessions.id = $${userId ? 2 : 1}`
+function orderQuery(userId?: string, stripeSessionId?: string, limit = 50, offset = 0) {
+  const values: Array<string | number> = [];
+  const ownerFilter = userId
+    ? `AND sessions.metadata ->> 'clerk_user_id' = $${values.push(userId)}`
     : "";
+  const sessionFilter = stripeSessionId
+    ? `AND sessions.id = $${values.push(stripeSessionId)}`
+    : "";
+  const limitParameter = values.push(limit);
+  const offsetParameter = values.push(offset);
   return {
     text: `
       SELECT
@@ -806,6 +985,7 @@ function orderQuery(userId?: string, stripeSessionId?: string) {
       LEFT JOIN stripe.products AS products
         ON products.id = prices.product
       WHERE sessions.payment_status = 'paid'
+        AND sessions.metadata ->> 'store' = 'Glam Too'
         ${ownerFilter}
         ${sessionFilter}
       GROUP BY
@@ -819,8 +999,8 @@ function orderQuery(userId?: string, stripeSessionId?: string) {
         sessions.metadata,
         fulfillment.status
       ORDER BY sessions.created DESC NULLS LAST
-      LIMIT 50`,
-    values: [userId, stripeSessionId].filter((value): value is string => Boolean(value)),
+       LIMIT $${limitParameter} OFFSET $${offsetParameter}`,
+    values,
   };
 }
 
@@ -922,22 +1102,122 @@ async function paymentIntentOrders(userId?: string, paymentIntentId?: string): P
   ));
 }
 
+function legacyOrderInput(
+  order: SerializedOrder,
+  userId: string,
+  paymentReference: string,
+  paymentType: "payment_intent" | "checkout_session",
+  placedAt: Date,
+  couponId?: number,
+): PendingOrderInput & {
+  id: string;
+  paymentReference: string;
+  paymentType: "payment_intent" | "checkout_session";
+  placedAt: Date;
+  fulfillmentStatus: FulfillmentStatus;
+} {
+  const deliveryAmount = order.delivery.method === "Express delivery" ? 695 : 0;
+  return {
+    id: `legacy_${paymentReference}`,
+    paymentReference,
+    paymentType,
+    placedAt,
+    fulfillmentStatus: order.status,
+    userId,
+    email: order.email,
+    customerName: order.delivery.name,
+    phone: "",
+    address: order.delivery.address,
+    delivery: deliveryAmount ? "express" : "standard",
+    subtotal: Math.max(0, order.total + (order.discountAmount ?? 0) - deliveryAmount),
+    deliveryAmount,
+    discountAmount: order.discountAmount ?? 0,
+    total: order.total,
+    coupon: couponId && order.couponCode ? { id: couponId, code: order.couponCode } : undefined,
+    expiresAt: placedAt,
+    items: order.items.map((item) => ({
+      productId: item.productId ?? "legacy-item",
+      name: item.name,
+      quantity: item.quantity,
+      unitAmount: Math.round(item.total / item.quantity),
+      total: item.total,
+    })),
+  };
+}
+
+async function reconcileLegacyOrders() {
+  const sessionState = await getReconciliationState("checkout_sessions");
+  if (!sessionState.completed) {
+    const offset = Number(sessionState.cursor) || 0;
+    const query = orderQuery(undefined, undefined, 50, offset);
+    const legacySessions = await pool.query<OrderRow>(query.text, query.values);
+    for (const session of legacySessions.rows) {
+      const metadata = asRecord(session.metadata);
+      const ownerId = stringValue(metadata.clerk_user_id, 120);
+      if (!ownerId || safeText(metadata.glam_too_order_id, 80)) continue;
+      const couponId = Number(metadata.coupon_id);
+      await importLegacyPaidOrder(legacyOrderInput(
+        serializeOrder(session),
+        ownerId,
+        session.id,
+        "checkout_session",
+        new Date((session.created ?? Math.floor(Date.now() / 1000)) * 1000),
+        Number.isInteger(couponId) && couponId > 0 ? couponId : undefined,
+      ));
+    }
+    await saveReconciliationState(
+      "checkout_sessions",
+      String(offset + legacySessions.rows.length),
+      legacySessions.rows.length < 50,
+    );
+  }
+
+  const paymentIntentState = await getReconciliationState("payment_intents");
+  if (paymentIntentState.completed) return;
+  const stripe = await getUncachableStripeClient();
+  const paymentIntents = await stripe.paymentIntents.list({
+    limit: 100,
+    ...(paymentIntentState.cursor ? { starting_after: paymentIntentState.cursor } : {}),
+  });
+  const legacyPaymentIntents = paymentIntents.data.filter((paymentIntent) =>
+    paymentIntent.status === "succeeded"
+    && paymentIntent.metadata.store === "Glam Too"
+    && !paymentIntent.metadata.glam_too_order_id
+  );
+  if (legacyPaymentIntents.length) {
+    const statuses = await pool.query<{ stripe_session_id: string; status: FulfillmentStatus }>(
+      "SELECT stripe_session_id, status FROM order_fulfillment WHERE stripe_session_id = ANY($1)",
+      [legacyPaymentIntents.map((paymentIntent) => paymentIntent.id)],
+    );
+    const statusByPayment = new Map(statuses.rows.map((status) => [status.stripe_session_id, status.status]));
+    for (const paymentIntent of legacyPaymentIntents) {
+      const ownerId = paymentIntent.metadata.clerk_user_id;
+      if (!ownerId) continue;
+      const couponId = Number(paymentIntent.metadata.coupon_id);
+      await importLegacyPaidOrder(legacyOrderInput(
+        serializePaymentIntentOrder(paymentIntent, statusByPayment.get(paymentIntent.id) ?? "Processing"),
+        ownerId,
+        paymentIntent.id,
+        "payment_intent",
+        new Date(paymentIntent.created * 1000),
+        Number.isInteger(couponId) && couponId > 0 ? couponId : undefined,
+      ));
+    }
+  }
+  await saveReconciliationState(
+    "payment_intents",
+    paymentIntents.data.at(-1)?.id ?? paymentIntentState.cursor,
+    !paymentIntents.has_more,
+  );
+}
+
 async function allOrders(userId?: string) {
-  const query = orderQuery(userId);
-  const [sessionOrders, directOrders] = await Promise.all([
-    pool.query<OrderRow>(query.text, query.values),
-    paymentIntentOrders(userId),
-  ]);
-  return [
-    ...sessionOrders.rows.map(serializeOrder),
-    ...directOrders,
-  ].sort((left, right) => Date.parse(right.placedAt ?? "") - Date.parse(left.placedAt ?? "")).slice(0, 50);
+  await reconcileLegacyOrders().catch(() => undefined);
+  return listPaidOrders(userId);
 }
 
 async function getOrderBySessionId(stripeSessionId: string) {
-  const query = orderQuery(undefined, stripeSessionId);
-  const result = await pool.query<OrderRow>(query.text, query.values);
-  return result.rows[0];
+  return getPaidOrderByPaymentReference(stripeSessionId);
 }
 
 router.get("/stripe/orders", async (request, response) => {
@@ -971,26 +1251,12 @@ router.patch("/admin/orders/:stripeSessionId/status", requireAdmin, async (reque
   const status = requestedStatus as FulfillmentStatus;
 
   try {
-    const existingOrder = isEmbeddedCardOrder
-      ? (await paymentIntentOrders(undefined, stripeSessionId))[0]
-      : await getOrderBySessionId(stripeSessionId);
+    const existingOrder = await getOrderBySessionId(stripeSessionId);
     if (!existingOrder) return response.status(404).json({ error: "That paid order could not be found." });
 
-    await db.insert(orderFulfillmentTable).values({
-      stripeSessionId,
-      status,
-      updatedAt: new Date(),
-    }).onConflictDoUpdate({
-      target: orderFulfillmentTable.stripeSessionId,
-      set: { status, updatedAt: new Date() },
-    });
-
-    const updatedOrder = isEmbeddedCardOrder
-      ? (await paymentIntentOrders(undefined, stripeSessionId))[0]
-      : await getOrderBySessionId(stripeSessionId);
+    const updatedOrder = await updateOrderFulfillment(stripeSessionId, status);
     if (!updatedOrder) return response.status(404).json({ error: "That order could not be reloaded." });
-    if (isEmbeddedCardOrder) return response.json({ order: updatedOrder });
-    return response.json({ order: serializeOrder(updatedOrder as OrderRow) });
+    return response.json({ order: updatedOrder });
   } catch (error) {
     request.log?.error({ error, stripeSessionId }, "Order status could not be updated");
     return response.status(503).json({ error: "Order status could not be updated right now." });

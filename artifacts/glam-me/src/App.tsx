@@ -83,6 +83,7 @@ type CustomerOrder = {
   id: string;
   placedAt: string | null;
   status: string;
+  paymentStatus?: string;
   total: number;
   currency: string;
   email: string;
@@ -102,6 +103,7 @@ type CustomerOrder = {
   items: Array<{
     name: string;
     productId: string | null;
+    variationId?: string | null;
     quantity: number;
     total: number;
   }>;
@@ -1289,9 +1291,11 @@ function Checkout() {
         });
         if (!abandonmentResponse.ok) {
           const abandonmentResult = await abandonmentResponse.json() as { paymentSucceeded?: boolean };
-          if (!abandonmentResult.paymentSucceeded) {
-            throw new Error("We still need to cancel your earlier coupon payment attempt. Please try again in a moment.");
+          if (abandonmentResult.paymentSucceeded) {
+            window.location.assign(`${basePath}/order-confirmation?payment_intent=${encodeURIComponent(pendingPaymentIntentId)}`);
+            return;
           }
+          throw new Error("We still need to cancel your earlier payment attempt. Please try again in a moment.");
         }
         localStorage.removeItem(pendingCouponPaymentStorageKey);
       }
@@ -1319,7 +1323,7 @@ function Checkout() {
       });
       const result = await response.json() as { clientSecret?: string; paymentIntentId?: string; error?: string };
       if (!response.ok || !result.clientSecret) throw new Error(result.error || "Stripe checkout is not available right now.");
-      if (appliedCoupon && result.paymentIntentId) {
+      if (result.paymentIntentId) {
         localStorage.setItem(pendingCouponPaymentStorageKey, result.paymentIntentId);
       }
 
@@ -1360,17 +1364,15 @@ function Checkout() {
         throw new Error(confirmation.error.message || "Your card could not be confirmed.");
       }
       if (confirmation.paymentIntent?.status !== "succeeded") throw new Error("Your payment needs additional confirmation. Please try again.");
-      if (appliedCoupon) {
-        const finaliseResponse = await fetch("/api/stripe/finalize-payment", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paymentIntentId: confirmation.paymentIntent.id }),
-        });
-        if (!finaliseResponse.ok) {
-          const finaliseResult = await finaliseResponse.json() as { error?: string };
-          throw new Error(finaliseResult.error || "Your payment succeeded, but the order could not be finalised yet.");
-        }
+      const finaliseResponse = await fetch("/api/stripe/finalize-payment", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paymentIntentId: confirmation.paymentIntent.id }),
+      });
+      if (!finaliseResponse.ok) {
+        window.location.assign(`${basePath}/order-confirmation?payment_intent=${encodeURIComponent(confirmation.paymentIntent.id)}`);
+        return;
       }
       localStorage.removeItem(pendingCouponPaymentStorageKey);
       clearCart();
@@ -1462,24 +1464,53 @@ function Checkout() {
 }
 
 function Confirmation() {
+  const [state, setState] = useState<"confirming" | "confirmed" | "error" | "missing">("confirming");
+  const [order, setOrder] = useState<CustomerOrder | null>(null);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const paymentIntentId = params.get("payment_intent");
     const checkoutSessionId = params.get("stripe_session_id");
-    if (paymentIntentId || checkoutSessionId) {
-      if (paymentIntentId === localStorage.getItem(pendingCouponPaymentStorageKey)) {
-        localStorage.removeItem(pendingCouponPaymentStorageKey);
-      }
-      void fetch("/api/stripe/finalize-payment", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(paymentIntentId ? { paymentIntentId } : { checkoutSessionId }),
-      }).finally(clearCart);
+    if (!paymentIntentId && !checkoutSessionId) {
+      setState("missing");
+      return;
     }
+    let active = true;
+    async function confirmOrder() {
+      try {
+        const response = await fetch("/api/stripe/finalize-payment", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(paymentIntentId ? { paymentIntentId } : { checkoutSessionId }),
+        });
+        const result = await response.json() as { order?: CustomerOrder; error?: string };
+        if (!response.ok || !result.order) throw new Error(result.error || "Your payment is still being confirmed.");
+        if (!active) return;
+        if (paymentIntentId === localStorage.getItem(pendingCouponPaymentStorageKey)) {
+          localStorage.removeItem(pendingCouponPaymentStorageKey);
+        }
+        clearCart();
+        setOrder(result.order);
+        setState("confirmed");
+      } catch {
+        if (active) setState("error");
+      }
+    }
+    void confirmOrder();
+    return () => { active = false; };
   }, []);
 
-  return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order GM-260214 is being wrapped with care. We&apos;ve sent all the details to your inbox.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
+  if (state === "confirming") {
+    return <Shell><div className="container confirmation"><div className="confirmation-mark">…</div><div className="eyebrow">Confirming payment</div><h1>One moment.</h1><p>We&apos;re saving your paid order securely. Please keep this page open.</p></div></Shell>;
+  }
+  if (state === "error") {
+    return <Shell><div className="container confirmation"><div className="confirmation-mark">!</div><div className="eyebrow">Payment received</div><h1>We&apos;re confirming your order.</h1><p>Your card payment may have succeeded, but we have not yet received a saved order confirmation. Your bag has been kept safe. Refresh this page in a moment to check again.</p><button className="button button-pink" type="button" onClick={() => window.location.reload()}>Check my order</button></div></Shell>;
+  }
+  if (state === "missing") {
+    return <Shell><div className="container confirmation"><div className="eyebrow">Order confirmation</div><h1>We need your payment reference.</h1><p>Return to your account to view confirmed orders, or contact us if you have been charged.</p><a className="button button-pink" href="/account">View my orders</a></div></Shell>;
+  }
+  return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order {order?.id} is being wrapped with care.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
 }
 
 function CustomerSignInPage() {

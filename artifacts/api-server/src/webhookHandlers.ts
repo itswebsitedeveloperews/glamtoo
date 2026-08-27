@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { recordCouponRedemption, releaseCouponReservation } from "./couponService";
 import { commitInventoryReservation, releaseInventoryReservation } from "./inventoryService";
+import { cancelPendingOrder, finalizePaidOrder } from "./orderService";
 import { getStripeSync } from "./stripeClient";
 
 export class WebhookHandlers {
@@ -21,6 +22,12 @@ export class WebhookHandlers {
       event.type === "payment_intent.canceled"
       || event.type === "checkout.session.expired"
     ) {
+      const metadata = payment.metadata ?? {};
+      const orderId = metadata.glam_too_order_id;
+      if (metadata.store === "Glam Too" && orderId) {
+        await cancelPendingOrder(orderId, payment.id);
+        return;
+      }
       await releaseCouponReservation(payment.id);
       await releaseInventoryReservation(payment.id);
       return;
@@ -34,6 +41,15 @@ export class WebhookHandlers {
 
     const metadata = payment.metadata ?? {};
     if (metadata.store === "Glam Too") {
+      const orderId = metadata.glam_too_order_id;
+      if (orderId) {
+        await finalizePaidOrder(
+          orderId,
+          payment.id,
+          paymentDetails(payment, isSucceededPaymentIntent),
+        );
+        return;
+      }
       await commitInventoryReservation(payment.id);
     }
     const couponId = Number(metadata.coupon_id);
@@ -56,4 +72,33 @@ export class WebhookHandlers {
       Number(metadata.coupon_discount) || 0,
     );
   }
+}
+
+function paymentDetails(payment: Stripe.PaymentIntent | Stripe.Checkout.Session, isPaymentIntent: boolean) {
+  const metadata = payment.metadata ?? {};
+  const paymentRecord = payment as unknown as Record<string, unknown>;
+  const details = isPaymentIntent
+    ? (payment as Stripe.PaymentIntent).shipping as unknown as Record<string, unknown>
+    : (paymentRecord.shipping_details ?? paymentRecord.customer_details) as Record<string, unknown>;
+  const address = details?.address && typeof details.address === "object"
+    ? details.address as Record<string, unknown>
+    : {};
+  const customerDetails = !isPaymentIntent && paymentRecord.customer_details && typeof paymentRecord.customer_details === "object"
+    ? paymentRecord.customer_details as Record<string, unknown>
+    : {};
+  const text = (value: unknown, length: number) => typeof value === "string" ? value.trim().slice(0, length) : "";
+  return {
+    email: isPaymentIntent
+      ? (payment as Stripe.PaymentIntent).receipt_email || metadata.customer_email
+      : text(customerDetails.email, 250) || metadata.customer_email,
+    customerName: text(details?.name, 120) || metadata.customer_name,
+    phone: text(details?.phone, 40),
+    address: {
+      line1: text(address.line1, 200),
+      line2: text(address.line2, 200),
+      city: text(address.city, 100),
+      postcode: text(address.postal_code, 40),
+      country: text(address.country, 2).toUpperCase(),
+    },
+  };
 }
