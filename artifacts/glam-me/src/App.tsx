@@ -984,10 +984,13 @@ function Home() {
             {momentPlans.map((moment, index) => {
               const product = products[index + 3] ?? products[index] ?? products[0];
               if (!product) return null;
-              return <a className="moment-card" href={`/product/${product.slug}`} key={moment.name} data-testid={`link-moment-${index}`}>
-                <img src={product.image} alt={`${product.name}, ${moment.name} fashion edit`} style={{ objectPosition: product.position }} />
-                <div className="moment-copy"><h3>{moment.name}</h3><p>{moment.copy}</p><span className="moment-shop-link">Shop now <span aria-hidden="true">→</span></span></div>
-              </a>;
+              return <article className="moment-card" key={moment.name} data-testid={`card-moment-${index}`}>
+                <a className="moment-card-link" href={`/product/${product.slug}`} data-testid={`link-moment-${index}`}>
+                  <img src={product.image} alt={`${product.name}, ${moment.name} fashion edit`} style={{ objectPosition: product.position }} />
+                  <div className="moment-copy"><h3>{moment.name}</h3><p>{moment.copy}</p><span className="moment-shop-link">Shop now <span aria-hidden="true">→</span></span></div>
+                </a>
+                <WishlistButton product={product} />
+              </article>;
             })}
           </div>
         </div>
