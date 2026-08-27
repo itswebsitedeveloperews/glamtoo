@@ -40,6 +40,7 @@ import {
   type OrderItemSnapshot,
   type PendingOrderInput,
 } from "../orderService";
+import { calculateIncludedVat, VAT_RATE_PERCENT } from "../taxService";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -120,6 +121,7 @@ function orderInput(
   subtotal: number,
   deliveryAmount: number,
   total: number,
+  vatAmount: number,
   pricing: Awaited<ReturnType<typeof calculateCouponPricing>> | null,
   lines: CheckoutLine[],
   expiresAt: Date,
@@ -135,6 +137,7 @@ function orderInput(
     deliveryAmount,
     discountAmount: pricing?.discountAmount ?? 0,
     total,
+    vatAmount,
     coupon: pricing ? { id: pricing.coupon.id, code: pricing.coupon.code } : undefined,
     expiresAt,
     items: orderItemSnapshots(lines),
@@ -566,6 +569,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
     const couponCode = safeText(request.body?.couponCode, 80);
     const pricing = couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
     const amount = pricing?.total ?? subtotal + deliveryAmount;
+    const vatAmount = pricing?.vatAmount ?? calculateIncludedVat(amount);
     if (amount < 30) {
       return response.status(400).json({ error: "This coupon makes the order too small for card payment. Add another item or use a different coupon." });
     }
@@ -585,6 +589,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
       subtotal,
       deliveryAmount,
       amount,
+      vatAmount,
       pricing,
       lines,
       new Date(Date.now() + 30 * 60 * 1000),
@@ -626,6 +631,8 @@ router.post("/stripe/payment-intent", async (request, response) => {
         customer_name: customerName,
         customer_email: email,
         delivery,
+        vat_rate_percent: String(VAT_RATE_PERCENT),
+        vat_amount: String(vatAmount),
          ...couponMetadata(pricing),
       },
     });
@@ -696,6 +703,7 @@ router.post("/stripe/checkout", async (request, response) => {
     const couponCode = safeText(request.body?.couponCode, 80);
     const pricing = couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
     const amount = pricing?.total ?? subtotal + deliveryAmount;
+    const vatAmount = pricing?.vatAmount ?? calculateIncludedVat(amount);
     if (amount < 30) {
       return response.status(400).json({ error: "This coupon makes the order too small for card payment. Add another item or use a different coupon." });
     }
@@ -715,6 +723,7 @@ router.post("/stripe/checkout", async (request, response) => {
       subtotal,
       deliveryAmount,
       amount,
+      vatAmount,
       pricing,
       inventoryLines,
       new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -767,6 +776,8 @@ router.post("/stripe/checkout", async (request, response) => {
         customer_name: customerName,
         delivery,
         clerk_user_id: userId,
+        vat_rate_percent: String(VAT_RATE_PERCENT),
+        vat_amount: String(vatAmount),
          ...couponMetadata(pricing),
       },
     });
@@ -828,6 +839,7 @@ router.post("/stripe/coupon/validate", async (request, response) => {
       deliveryAmount: pricing.deliveryAmount,
       discountAmount: pricing.discountAmount,
       total: pricing.total,
+      vatAmount: pricing.vatAmount,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "That coupon could not be applied.";
@@ -1133,6 +1145,7 @@ function legacyOrderInput(
     deliveryAmount,
     discountAmount: order.discountAmount ?? 0,
     total: order.total,
+    vatAmount: calculateIncludedVat(order.total),
     coupon: couponId && order.couponCode ? { id: couponId, code: order.couponCode } : undefined,
     expiresAt: placedAt,
     items: order.items.map((item) => ({

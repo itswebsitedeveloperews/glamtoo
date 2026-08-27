@@ -31,6 +31,7 @@ export type PendingOrderInput = {
   deliveryAmount: number;
   discountAmount: number;
   total: number;
+  vatAmount: number;
   coupon?: {
     id: number;
     code: string;
@@ -72,6 +73,7 @@ type OrderRow = {
   delivery_amount: number;
   discount_amount: number;
   total: number;
+  vat_amount: number;
   currency: string;
   coupon_id: number | null;
   coupon_code: string | null;
@@ -103,6 +105,7 @@ export type StoredOrder = {
   email: string;
   couponCode: string | null;
   discountAmount: number;
+  vatAmount: number;
   delivery: {
     method: string;
     name: string;
@@ -143,6 +146,7 @@ function serializeOrder(row: OrderRow, items: OrderItemRow[]): StoredOrder {
     status: row.fulfillment_status,
     paymentStatus: row.payment_status,
     total: row.total,
+    vatAmount: row.vat_amount,
     currency: row.currency,
     email: row.email,
     couponCode: row.coupon_code,
@@ -192,8 +196,9 @@ export async function createPendingOrder(input: PendingOrderInput) {
         id, user_id, email, customer_name, phone, address_line_1, address_line_2,
         city, postcode, country, delivery_method, subtotal, delivery_amount,
         discount_amount, total, coupon_id, coupon_code, expires_at
+        , vat_amount
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
       )`,
       [
         id,
@@ -214,6 +219,7 @@ export async function createPendingOrder(input: PendingOrderInput) {
         input.coupon?.id ?? null,
         input.coupon?.code ?? null,
         input.expiresAt,
+        input.vatAmount,
       ],
     );
     for (const item of input.items) {
@@ -511,10 +517,10 @@ export async function importLegacyPaidOrder(input: PendingOrderInput & {
         id, user_id, payment_reference, payment_type, payment_status, fulfillment_status,
         email, customer_name, phone, address_line_1, address_line_2, city, postcode, country,
         delivery_method, subtotal, delivery_amount, discount_amount, total, coupon_id, coupon_code,
-        expires_at, paid_at, created_at, updated_at
+        expires_at, vat_amount, paid_at, created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, 'paid', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
-         $17, $18, $19, $20, $21, $22, $23, $23, $23
+        $17, $18, $19, $20, $21, $22, $23, $24, $24, $24
       ) ON CONFLICT (payment_reference) DO NOTHING RETURNING id`,
       [
         input.id, input.userId, input.paymentReference, input.paymentType,
@@ -522,7 +528,7 @@ export async function importLegacyPaidOrder(input: PendingOrderInput & {
         input.address.line1, input.address.line2 ?? "", input.address.city, input.address.postcode,
         input.address.country, input.delivery, input.subtotal, input.deliveryAmount,
         input.discountAmount, input.total, input.coupon?.id ?? null, input.coupon?.code ?? null,
-        input.expiresAt, input.placedAt,
+        input.expiresAt, input.vatAmount, input.placedAt,
       ],
     );
     if (inserted.rows[0]) {

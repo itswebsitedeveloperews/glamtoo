@@ -27,6 +27,7 @@ export const storeOrdersTable = pgTable("store_orders", {
   deliveryAmount: integer("delivery_amount").notNull(),
   discountAmount: integer("discount_amount").notNull().default(0),
   total: integer("total").notNull(),
+  vatAmount: integer("vat_amount").notNull().default(0),
   currency: text("currency").notNull().default("gbp"),
   couponId: integer("coupon_id"),
   couponCode: text("coupon_code"),

@@ -89,6 +89,9 @@ type CustomerOrder = {
   email: string;
   couponCode?: string | null;
   discountAmount?: number;
+  subtotal?: number;
+  deliveryAmount?: number;
+  vatAmount?: number;
   delivery: {
     method: string;
     name: string;
@@ -139,6 +142,7 @@ type AppliedCoupon = {
   };
   discountAmount: number;
   total: number;
+  vatAmount: number;
 };
 
 type CheckoutPreferences = {
@@ -1142,12 +1146,12 @@ function Checkout() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code, lines: checkoutLinePayload(), delivery }),
       });
-      const result = await response.json() as { coupon?: AppliedCoupon["coupon"]; discountAmount?: number; total?: number; error?: string };
-      if (!response.ok || !result.coupon || typeof result.discountAmount !== "number" || typeof result.total !== "number") {
+      const result = await response.json() as { coupon?: AppliedCoupon["coupon"]; discountAmount?: number; total?: number; vatAmount?: number; error?: string };
+      if (!response.ok || !result.coupon || typeof result.discountAmount !== "number" || typeof result.total !== "number" || typeof result.vatAmount !== "number") {
         throw new Error(result.error || "That coupon could not be applied.");
       }
       setCouponCode(result.coupon.code);
-      setAppliedCoupon({ coupon: result.coupon, discountAmount: result.discountAmount, total: result.total });
+      setAppliedCoupon({ coupon: result.coupon, discountAmount: result.discountAmount, total: result.total, vatAmount: result.vatAmount });
       saveCheckoutPreferences({ delivery, couponCode: result.coupon.code });
       if (!silent) setCouponMessage(`${result.coupon.code} has been applied.`);
     } catch (error) {
@@ -1386,6 +1390,7 @@ function Checkout() {
   const deliveryAmount = delivery === "express" ? 6.95 : 0;
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount / 100 : 0;
   const total = Math.max(0, subtotal + deliveryAmount - discountAmount);
+  const vatAmount = appliedCoupon ? appliedCoupon.vatAmount / 100 : Math.round(total * 100 / 6) / 100;
   const updateCheckoutProfile = (field: keyof CustomerProfile, value: string) => {
     setCheckoutProfile((current) => ({ ...current, [field]: value }));
   };
@@ -1453,7 +1458,7 @@ function Checkout() {
               {couponError && <p className="checkout-coupon-error" role="alert">{couponError}</p>}
               {couponMessage && <p className="checkout-coupon-success" role="status">{couponMessage}</p>}
             </div>
-            <div className="checkout-totals"><div><span>Subtotal</span><strong>{formatPounds(subtotal)}</strong></div><div><span>Delivery</span><strong>{deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</strong></div>{appliedCoupon && <div className="checkout-discount-row"><span>Discount · {appliedCoupon.coupon.code}</span><strong>−{formatPounds(discountAmount)}</strong></div>}<div className="checkout-total"><span>Total</span><strong>{formatPounds(total)}</strong></div></div>
+            <div className="checkout-totals"><div><span>Subtotal</span><strong>{formatPounds(subtotal)}</strong></div><div><span>Delivery</span><strong>{deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</strong></div>{appliedCoupon && <div className="checkout-discount-row"><span>Discount · {appliedCoupon.coupon.code}</span><strong>−{formatPounds(discountAmount)}</strong></div>}<div><span>VAT included (20%)</span><strong>{formatPounds(vatAmount)}</strong></div><div className="checkout-total"><span>Total</span><strong>{formatPounds(total)}</strong></div></div>
             <button className="button checkout-pay-button" type="submit" disabled={!isLoaded || !isSignedIn || isPaying || !publishableKey || Boolean(paymentSetupError) || cartLines.length === 0} data-testid="button-place-order">{isPaying ? "Processing secure payment…" : !isLoaded ? "Checking account…" : !isSignedIn ? "Sign in to checkout" : !publishableKey ? "Loading secure payment…" : `Pay securely · ${formatPounds(total)}`}</button>
             <p className="checkout-security-copy">Your card details never touch Glam Too&apos;s servers. Stripe processes your payment securely.</p>
           </aside>
@@ -1534,9 +1539,10 @@ function formatCustomerOrderCountry(value: string) {
 }
 
 function CustomerOrderDetailPage({ order, onBack }: { order: CustomerOrder; onBack: () => void }) {
-  const itemSubtotal = order.items.reduce((total, item) => total + item.total, 0);
+  const itemSubtotal = order.subtotal ?? order.items.reduce((total, item) => total + item.total, 0);
   const discountAmount = order.discountAmount ?? 0;
-  const deliveryAmount = Math.max(order.total - itemSubtotal + discountAmount, 0);
+  const deliveryAmount = order.deliveryAmount ?? Math.max(order.total - itemSubtotal + discountAmount, 0);
+  const vatAmount = order.vatAmount ?? Math.round(order.total / 6);
   const itemCount = order.items.reduce((total, item) => total + item.quantity, 0);
   const addressParts = [
     order.delivery.address.line1,
@@ -1584,6 +1590,7 @@ function CustomerOrderDetailPage({ order, onBack }: { order: CustomerOrder; onBa
             <div><span>Items subtotal</span><strong>{formatPounds(itemSubtotal / 100)}</strong></div>
             {deliveryAmount > 0 && <div><span>{order.delivery.method}</span><strong>{formatPounds(deliveryAmount / 100)}</strong></div>}
             {discountAmount > 0 && <div><span>Coupon {order.couponCode || ""}</span><strong>−{formatPounds(discountAmount / 100)}</strong></div>}
+            <div><span>VAT included (20%)</span><strong>{formatPounds(vatAmount / 100)}</strong></div>
             <div className="account-order-detail-total"><span>Order total</span><strong>{formatPounds(order.total / 100)}</strong></div>
           </div>
         </section>

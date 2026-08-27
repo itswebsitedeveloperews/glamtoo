@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { couponsTable, db, pool, type Coupon } from "@workspace/db";
+import { calculateIncludedVat } from "./taxService";
 
 export type CouponDiscountType = "percentage" | "fixed";
 
@@ -9,6 +10,7 @@ export type CouponPricing = {
   subtotal: number;
   deliveryAmount: number;
   total: number;
+  vatAmount: number;
 };
 
 export class CouponValidationError extends Error {
@@ -133,6 +135,7 @@ export async function calculateCouponPricing(
     subtotal,
     deliveryAmount,
     total: Math.max(0, eligibleAmount - discountAmount),
+    vatAmount: calculateIncludedVat(Math.max(0, eligibleAmount - discountAmount)),
   };
 }
 
