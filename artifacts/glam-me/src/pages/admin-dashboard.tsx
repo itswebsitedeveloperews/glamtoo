@@ -50,6 +50,7 @@ type Order = {
   amount: number;
   total: string;
   currency: string;
+  vatAmount?: number;
   couponCode?: string | null;
   discountAmount?: number;
   paymentStatus?: "pending" | "paid" | "cancelled";
@@ -82,6 +83,7 @@ type OrderPayload = {
   status: Order["status"];
   total: number;
   currency: string;
+  vatAmount?: number;
   couponCode?: string | null;
   discountAmount?: number;
   paymentStatus?: Order["paymentStatus"];
@@ -252,6 +254,7 @@ function toAdminOrder(order: OrderPayload): Order {
     amount: order.total,
     total: formatPounds(order.total / 100),
     currency: order.currency,
+    vatAmount: order.vatAmount,
     couponCode: order.couponCode,
     discountAmount: order.discountAmount,
     paymentStatus: order.paymentStatus,
@@ -281,6 +284,7 @@ function AdminOrderDetailPage({
   const itemSubtotal = order.items.reduce((total, item) => total + item.total, 0);
   const discountAmount = order.discountAmount ?? 0;
   const deliveryAmount = Math.max(order.amount - itemSubtotal + discountAmount, 0);
+  const vatAmount = order.vatAmount ?? Math.round(order.amount / 6);
   const addressParts = [
     order.delivery.address.line1,
     order.delivery.address.line2,
@@ -304,16 +308,24 @@ function AdminOrderDetailPage({
     <div className="admin-order-page">
       <div className="admin-order-page-topbar">
         <button className="admin-back-button" type="button" onClick={onBack}>← Back to orders</button>
-        <span>Order {order.id}</span>
+        <span className="admin-order-page-context">Orders <b>/</b> {order.id}</span>
       </div>
 
       <div className="admin-order-page-heading">
         <div>
-          <p className="admin-eyebrow">Orders / View order</p>
+          <div className="admin-order-heading-kicker">
+            <p className="admin-eyebrow">Order overview</p>
+            <span className={`admin-order-status-badge ${order.status.toLowerCase()}`}>{order.status}</span>
+          </div>
           <h1>{order.id}</h1>
-          <p>Placed on {order.date} · {order.paymentStatus === "cancelled" ? "Payment received after cancellation" : "Paid via Stripe"}</p>
+          <div className="admin-order-heading-meta">
+            <span>Placed on {order.date}</span>
+            <span className="admin-order-meta-divider">·</span>
+            <span>{order.paymentStatus === "cancelled" ? "Payment received after cancellation" : "Paid via Stripe"}</span>
+          </div>
         </div>
         <div className="admin-order-page-heading-actions">
+          <div className="admin-order-heading-total"><span>Total paid</span><strong>{order.total}</strong></div>
           <button className="admin-secondary" type="button" onClick={onBack}>Back to orders</button>
         </div>
       </div>
@@ -339,10 +351,11 @@ function AdminOrderDetailPage({
               <p className="admin-order-empty">Item details are unavailable for this order.</p>
             ) : (
               <div className="admin-order-item-table">
-                <div className="admin-order-item-head"><span>Product</span><span>Quantity</span><span>Total</span></div>
+                <div className="admin-order-item-head"><span>Product</span><span>Unit price</span><span>Quantity</span><span>Total</span></div>
                 {order.items.map((item, index) => (
                   <div className="admin-order-item-row" key={`${item.productId ?? item.name}-${index}`}>
                     <div><strong>{item.name}</strong>{item.productId && <small>Product ID: {item.productId}</small>}</div>
+                    <span>{formatPounds((item.quantity > 0 ? item.total / item.quantity : item.total) / 100)}</span>
                     <span>{item.quantity}</span>
                     <strong>{formatPounds(item.total / 100)}</strong>
                   </div>
@@ -351,8 +364,9 @@ function AdminOrderDetailPage({
             )}
             <div className="admin-order-totals">
               <div><span>Items subtotal</span><strong>{formatPounds(itemSubtotal / 100)}</strong></div>
-              {deliveryAmount > 0 && <div><span>{order.delivery.method}</span><strong>{formatPounds(deliveryAmount / 100)}</strong></div>}
-               {discountAmount > 0 && <div><span>Coupon {order.couponCode || ""}</span><strong>−{formatPounds(discountAmount / 100)}</strong></div>}
+              <div><span>{order.delivery.method}</span><strong>{deliveryAmount > 0 ? formatPounds(deliveryAmount / 100) : "Free"}</strong></div>
+              {discountAmount > 0 && <div><span>Coupon {order.couponCode || ""}</span><strong>−{formatPounds(discountAmount / 100)}</strong></div>}
+              <div><span>VAT included (20%)</span><strong>{formatPounds(vatAmount / 100)}</strong></div>
               <div className="admin-order-total-row"><span>Order total</span><strong>{order.total}</strong></div>
             </div>
           </section>
@@ -368,7 +382,7 @@ function AdminOrderDetailPage({
 
         <aside className="admin-order-page-sidebar">
           <section className="admin-order-card admin-order-actions-card">
-            <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Fulfilment</p><h2>Order actions</h2></div></div>
+            <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Fulfilment</p><h2>Order actions</h2></div><span className={`admin-order-status-badge ${order.status.toLowerCase()}`}>{order.status}</span></div>
             <label className="admin-order-status-field">Status
               <select value={order.status} disabled={updating || Boolean(paymentNeedsResolution)} onChange={(event) => onStatusChange(event.target.value as Order["status"])}>
                 <option>Processing</option>
