@@ -4,6 +4,7 @@ import { after, test } from "node:test";
 import express from "express";
 import { pool } from "@workspace/db";
 import {
+  attachOrderPayment,
   cancelPendingOrder,
   createPendingOrder,
   finalizePaidOrder,
@@ -12,7 +13,7 @@ import {
 } from "../src/orderService";
 import { attemptPaymentRefund } from "../src/paymentResolution";
 import { buildRefundNotificationMessage } from "../src/refundNotifications";
-import stripeRouter, { reconcileLegacyOrders } from "../src/routes/stripe";
+import stripeRouter, { reconcileLegacyOrders, recoverExpiredPendingOrders } from "../src/routes/stripe";
 import { createAccountRouter } from "../src/routes/account";
 import adminRouter from "../src/routes/admin";
 import catalogRouter from "../src/routes/catalog";
@@ -433,6 +434,78 @@ test("repeated paid callbacks settle an order, inventory, and coupon once", asyn
   assert.equal(reservations.rows[0].count, "0");
   assert.equal(redemptions.rows[0].count, "1");
   assert.equal(coupon.rows[0].usage_count, 1);
+});
+
+test("expired interrupted payments cancel at Stripe and release their saved allocations", async () => {
+  const fixture = await createPaymentFixture("expired-interrupted");
+  await attachOrderPayment(fixture.orderId, fixture.paymentReference, "payment_intent");
+  await pool.query("UPDATE store_orders SET expires_at = NOW() - INTERVAL '1 minute' WHERE id = $1", [fixture.orderId]);
+  const cancelledPaymentIntents: string[] = [];
+  const stripe = {
+    paymentIntents: {
+      retrieve: async (paymentReference: string) => ({
+        id: paymentReference,
+        status: "requires_payment_method",
+        metadata: {},
+      }),
+      cancel: async (paymentReference: string) => {
+        cancelledPaymentIntents.push(paymentReference);
+        return { id: paymentReference, status: "canceled" };
+      },
+    },
+  };
+
+  await recoverExpiredPendingOrders(stripe as never, [{
+    id: fixture.orderId,
+    payment_reference: fixture.paymentReference,
+    payment_type: "payment_intent",
+  }]);
+
+  const state = await pool.query<{
+    payment_status: string;
+    stock: number;
+    inventory_reservations: string;
+    coupon_reservations: string;
+  }>(
+    `SELECT orders.payment_status, inventory.stock,
+       (SELECT COUNT(*) FROM inventory_reservations WHERE payment_reference = $2)::text AS inventory_reservations,
+       (SELECT COUNT(*) FROM coupon_reservations WHERE payment_reference = $2)::text AS coupon_reservations
+     FROM store_orders AS orders
+     JOIN product_inventory AS inventory ON inventory.product_id = $3
+     WHERE orders.id = $1`,
+    [fixture.orderId, fixture.paymentReference, fixture.productId],
+  );
+  assert.deepEqual(cancelledPaymentIntents, [fixture.paymentReference]);
+  assert.equal(state.rows[0].payment_status, "cancelled");
+  assert.equal(state.rows[0].stock, 7);
+  assert.equal(state.rows[0].inventory_reservations, "0");
+  assert.equal(state.rows[0].coupon_reservations, "0");
+});
+
+test("expired orders without a Stripe reference are cancelled without inventing one", async () => {
+  const fixture = await createPaymentFixture("expired-unattached");
+  const { releaseInventoryReservation } = await import("../src/inventoryService");
+  const { releaseCouponReservation } = await import("../src/couponService");
+  await releaseInventoryReservation(fixture.paymentReference);
+  await releaseCouponReservation(fixture.paymentReference);
+  await pool.query("UPDATE store_orders SET expires_at = NOW() - INTERVAL '1 minute' WHERE id = $1", [fixture.orderId]);
+
+  await recoverExpiredPendingOrders({} as never, [{
+    id: fixture.orderId,
+    payment_reference: null,
+    payment_type: null,
+  }]);
+
+  const state = await pool.query<{ payment_status: string; payment_reference: string | null; stock: number }>(
+    `SELECT orders.payment_status, orders.payment_reference, inventory.stock
+     FROM store_orders AS orders
+     JOIN product_inventory AS inventory ON inventory.product_id = $2
+     WHERE orders.id = $1`,
+    [fixture.orderId, fixture.productId],
+  );
+  assert.equal(state.rows[0].payment_status, "cancelled");
+  assert.equal(state.rows[0].payment_reference, null);
+  assert.equal(state.rows[0].stock, 7);
 });
 
 test("a paid result wins when cancellation races with finalization", async () => {

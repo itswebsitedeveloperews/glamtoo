@@ -173,10 +173,17 @@ function paymentDetails(payment: Stripe.PaymentIntent | Stripe.Checkout.Session,
   };
 }
 
-async function recoverExpiredPendingOrders(stripe: Stripe) {
-  const expiredOrders = await listExpiredPendingPayments();
+export async function recoverExpiredPendingOrders(
+  stripe: Stripe,
+  orders?: Awaited<ReturnType<typeof listExpiredPendingPayments>>,
+) {
+  const expiredOrders = orders ?? await listExpiredPendingPayments();
   for (const order of expiredOrders) {
     try {
+      if (!order.payment_reference || !order.payment_type) {
+        await cancelPendingOrder(order.id, order.payment_reference ?? undefined);
+        continue;
+      }
       if (order.payment_type === "payment_intent") {
         const paymentIntent = await stripe.paymentIntents.retrieve(order.payment_reference);
         if (paymentIntent.status === "succeeded") {
@@ -542,6 +549,8 @@ router.delete("/stripe/credentials", requireAdmin, async (_request, response) =>
 });
 
 router.post("/stripe/payment-intent", async (request, response) => {
+  let pendingOrderId: string | undefined;
+  let pendingPaymentReference: string | undefined;
   try {
     const { userId } = getAuth(request);
     if (!userId) {
@@ -610,6 +619,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
       lines,
       new Date(Date.now() + 30 * 60 * 1000),
     ));
+    pendingOrderId = order.id;
 
     const stripe = await getUncachableStripeClient();
     await recoverExpiredPendingOrders(stripe);
@@ -652,6 +662,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
          ...couponMetadata(pricing),
       },
     });
+    pendingPaymentReference = paymentIntent.id;
     if (!paymentIntent.client_secret) {
       await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => undefined);
       await cancelPendingOrder(order.id, paymentIntent.id).catch(() => undefined);
@@ -675,6 +686,9 @@ router.post("/stripe/payment-intent", async (request, response) => {
     }
     return response.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
   } catch (error) {
+    if (pendingOrderId) {
+      await cancelPendingOrder(pendingOrderId, pendingPaymentReference).catch(() => undefined);
+    }
     const message = error instanceof Error ? error.message : "Unable to prepare secure card payment.";
     request.log?.error({ error }, "Stripe payment intent could not be created");
     return response.status(checkoutErrorStatus(error)).json({ error: message });
@@ -682,6 +696,8 @@ router.post("/stripe/payment-intent", async (request, response) => {
 });
 
 router.post("/stripe/checkout", async (request, response) => {
+  let pendingOrderId: string | undefined;
+  let pendingPaymentReference: string | undefined;
   try {
     const { userId } = getAuth(request);
     if (!userId) {
@@ -744,6 +760,7 @@ router.post("/stripe/checkout", async (request, response) => {
       inventoryLines,
       new Date(Date.now() + 24 * 60 * 60 * 1000),
     ));
+    pendingOrderId = order.id;
     const stripe = await getUncachableStripeClient();
     await recoverExpiredPendingOrders(stripe);
     if (deliveryAmount > 0) {
@@ -797,6 +814,7 @@ router.post("/stripe/checkout", async (request, response) => {
          ...couponMetadata(pricing),
       },
     });
+    pendingPaymentReference = session.id;
 
     if (!session.url) {
       await attachOrderPayment(order.id, session.id, "checkout_session").catch(() => undefined);
@@ -826,6 +844,9 @@ router.post("/stripe/checkout", async (request, response) => {
 
     return response.json({ url: session.url });
   } catch (error) {
+    if (pendingOrderId) {
+      await cancelPendingOrder(pendingOrderId, pendingPaymentReference).catch(() => undefined);
+    }
     const message = error instanceof Error ? error.message : "Unable to start Stripe checkout.";
     return response.status(checkoutErrorStatus(error)).json({ error: message });
   }

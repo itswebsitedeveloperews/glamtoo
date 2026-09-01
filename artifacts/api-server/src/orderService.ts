@@ -288,12 +288,10 @@ export async function setOrderExpiration(orderId: string, expiresAt: Date) {
 }
 
 export async function listExpiredPendingPayments() {
-  const result = await pool.query<{ id: string; payment_reference: string; payment_type: OrderPaymentType }>(
+  const result = await pool.query<{ id: string; payment_reference: string | null; payment_type: OrderPaymentType | null }>(
     `SELECT id, payment_reference, payment_type
      FROM store_orders
      WHERE payment_status = 'pending'
-       AND payment_reference IS NOT NULL
-       AND payment_type IS NOT NULL
        AND expires_at <= NOW()
      ORDER BY expires_at
      LIMIT 25`,
@@ -496,7 +494,7 @@ export async function finalizePaidOrder(
   }
 }
 
-export async function cancelPendingOrder(orderId: string | undefined, paymentReference: string) {
+export async function cancelPendingOrder(orderId: string | undefined, paymentReference?: string) {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -505,7 +503,7 @@ export async function cancelPendingOrder(orderId: string | undefined, paymentRef
        WHERE payment_reference = $1 OR ($2::text IS NOT NULL AND id = $2)
        LIMIT 1
        FOR UPDATE`,
-      [paymentReference, orderId ?? null],
+      [paymentReference ?? null, orderId ?? null],
     );
     const order = locked.rows[0];
     if (!order) {
@@ -522,7 +520,7 @@ export async function cancelPendingOrder(orderId: string | undefined, paymentRef
          SET payment_reference = COALESCE(payment_reference, $2), payment_status = 'cancelled',
              cancelled_at = COALESCE(cancelled_at, NOW()), updated_at = NOW()
          WHERE id = $1`,
-        [order.id, paymentReference],
+         [order.id, paymentReference ?? null],
       );
       const reservations = await client.query<{ product_id: string; quantity: number }>(
         `DELETE FROM inventory_reservations
