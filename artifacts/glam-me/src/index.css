@@ -338,6 +338,11 @@ img { display: block; max-width: 100%; }
 .cart-item img { width: 130px; aspect-ratio: .78; object-fit: cover; object-position: 40% 40%; }
 .cart-item h3 { margin: 0 0 5px; font: 400 28px var(--display); }
 .cart-item p { margin: 0; color: var(--muted); font-size: 14px; }
+.cart-quantity { display: inline-flex; align-items: center; width: fit-content; margin: 12px 0 13px; border: 1px solid var(--line); background: var(--white); }
+.cart-quantity-button { display: grid; place-items: center; width: 36px; height: 34px; border: 0; background: transparent; color: var(--ink); cursor: pointer; font-size: 21px; line-height: 1; }
+.cart-quantity-button:hover:not(:disabled) { background: var(--paper-deep); }
+.cart-quantity-button:disabled { color: var(--line); cursor: not-allowed; }
+.cart-quantity-value { min-width: 64px; padding: 0 8px; color: var(--ink); font-size: 14px; text-align: center; }
 .cart-remove { position: absolute; top: 13px; right: 0; border: 0; background: transparent; padding: 0 3px; color: var(--muted); cursor: pointer; font-size: 24px; line-height: 1; }
 .cart-remove:hover { color: var(--ink); }
 .cart-summary { background: var(--paper-deep); padding: 30px; align-self: start; }

@@ -1574,6 +1574,25 @@ function Cart() {
     window.dispatchEvent(new Event('glam-cart-updated'));
   }
 
+  function updateCartItemQuantity(itemToUpdate: CartItem, quantity: number) {
+    const nextQuantity = Math.max(1, Math.floor(quantity));
+    const nextItems = items.map((item) =>
+      item.productId === itemToUpdate.productId
+      && item.size === itemToUpdate.size
+      && item.colour === itemToUpdate.colour
+      && item.variationId === itemToUpdate.variationId
+        ? { ...item, quantity: nextQuantity }
+        : item,
+    );
+    setItems(nextItems);
+    try {
+      window.localStorage.setItem(cartStorageKey, JSON.stringify(nextItems));
+    } catch {
+      // The visible cart still updates if browser storage is unavailable.
+    }
+    window.dispatchEvent(new Event('glam-cart-updated'));
+  }
+
   return (
     <Shell>
       <div className="container cart-page">
@@ -1589,7 +1608,30 @@ function Cart() {
                   <img src={product.image} alt={product.name} style={{ objectPosition: product.position }} />
                   <div>
                     <h3>{product.name}</h3>
-                    <p>{[item.size !== 'One size' ? item.size : '', item.colour ?? ''].filter(Boolean).join(' · ')}{item.size !== 'One size' || item.colour ? ' · ' : ''}Qty {item.quantity}</p>
+                    <p>{[item.size !== 'One size' ? item.size : '', item.colour ?? ''].filter(Boolean).join(' · ')}</p>
+                    <div className="cart-quantity" aria-label={`Quantity for ${product.name}`}>
+                      <button
+                        className="cart-quantity-button"
+                        type="button"
+                        aria-label={`Decrease quantity of ${product.name}`}
+                        data-testid={`button-decrease-cart-${item.productId}-${item.variationId ?? item.size.replace(/\s+/g, '-').toLowerCase()}`}
+                        disabled={item.quantity <= 1}
+                        onClick={() => updateCartItemQuantity(item, item.quantity - 1)}
+                      >
+                        −
+                      </button>
+                      <span className="cart-quantity-value" aria-live="polite">Qty {item.quantity}</span>
+                      <button
+                        className="cart-quantity-button"
+                        type="button"
+                        aria-label={`Increase quantity of ${product.name}`}
+                        data-testid={`button-increase-cart-${item.productId}-${item.variationId ?? item.size.replace(/\s+/g, '-').toLowerCase()}`}
+                        disabled={item.quantity >= (variation?.stock ?? product.stock)}
+                        onClick={() => updateCartItemQuantity(item, item.quantity + 1)}
+                      >
+                        +
+                      </button>
+                    </div>
                     <a className="text-link" href={`/product/${product.slug}`}>Edit item</a>
                   </div>
                   <strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong>
