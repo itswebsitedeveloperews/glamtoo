@@ -12,8 +12,18 @@ import {
 } from "../src/orderService";
 import { attemptPaymentRefund } from "../src/paymentResolution";
 import { buildRefundNotificationMessage } from "../src/refundNotifications";
-import { reconcileLegacyOrders } from "../src/routes/stripe";
+import stripeRouter, { reconcileLegacyOrders } from "../src/routes/stripe";
 import { createAccountRouter } from "../src/routes/account";
+import adminRouter from "../src/routes/admin";
+import catalogRouter from "../src/routes/catalog";
+import storageRouter from "../src/routes/storage";
+import {
+  createRequireAdmin,
+  isAdminUser,
+  isBootstrapAdminUser,
+  requireAdmin,
+  type AdminAccess,
+} from "../src/adminAuth";
 
 const runId = `task18_${crypto.randomUUID().replace(/-/g, "")}`;
 const wishlistRunId = `task24_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -165,6 +175,126 @@ async function wishlistApiRequest(baseUrl: string, path: string, init?: RequestI
 function nextWishlistProductId() {
   return 100_000_000 + Number.parseInt(crypto.randomUUID().replace(/-/g, "").slice(0, 8), 16) % 800_000_000;
 }
+
+function adminTestUser(email: string, role?: string) {
+  return {
+    emailAddresses: [{ emailAddress: email }],
+    privateMetadata: role === undefined ? {} : { role },
+  };
+}
+
+async function runAdminGuard(access: AdminAccess | Error) {
+  let statusCode = 200;
+  let responseBody: unknown;
+  let nextCalled = false;
+  const response = {
+    status(code: number) {
+      statusCode = code;
+      return response;
+    },
+    json(body: unknown) {
+      responseBody = body;
+      return response;
+    },
+  };
+  const request = { log: { error() {} } };
+  const resolveAccess = async () => {
+    if (access instanceof Error) throw access;
+    return access;
+  };
+  await createRequireAdmin(resolveAccess)(
+    request as never,
+    response as never,
+    () => {
+      nextCalled = true;
+    },
+  );
+  return { statusCode, responseBody, nextCalled };
+}
+
+test("admin authorization accepts only the bootstrap allowlist or exact admin metadata", () => {
+  const bootstrapEmails = new Set(["owner@example.com", "second@example.com"]);
+
+  assert.equal(isBootstrapAdminUser(adminTestUser("OWNER@example.com"), bootstrapEmails), true);
+  assert.equal(isAdminUser(adminTestUser("customer@example.com", "admin"), bootstrapEmails), true);
+  assert.equal(isAdminUser(adminTestUser("customer@example.com", "Admin"), bootstrapEmails), false);
+  assert.equal(isAdminUser(adminTestUser("owner@example.com.evil"), bootstrapEmails), false);
+  assert.equal(isAdminUser(adminTestUser("customer@example.com", "customer"), bootstrapEmails), false);
+});
+
+test("admin guard preserves the authentication and authorization boundary", async () => {
+  const anonymous = await runAdminGuard({ authenticated: false, authorized: false });
+  assert.equal(anonymous.statusCode, 401);
+  assert.deepEqual(anonymous.responseBody, { error: "Sign in to continue." });
+  assert.equal(anonymous.nextCalled, false);
+
+  const customer = await runAdminGuard({
+    authenticated: true,
+    authorized: false,
+    userId: "user_customer",
+    isBootstrapAdmin: false,
+  });
+  assert.equal(customer.statusCode, 403);
+  assert.deepEqual(customer.responseBody, { error: "This account is not authorized for admin access." });
+  assert.equal(customer.nextCalled, false);
+
+  const admin = await runAdminGuard({
+    authenticated: true,
+    authorized: true,
+    userId: "user_admin",
+    isBootstrapAdmin: false,
+  });
+  assert.equal(admin.statusCode, 200);
+  assert.equal(admin.responseBody, undefined);
+  assert.equal(admin.nextCalled, true);
+
+  const unavailable = await runAdminGuard(new Error("Clerk unavailable"));
+  assert.equal(unavailable.statusCode, 503);
+  assert.deepEqual(unavailable.responseBody, { error: "Admin access could not be verified right now." });
+  assert.equal(unavailable.nextCalled, false);
+});
+
+test("every sensitive admin endpoint keeps the shared permission guard", () => {
+  type RouterLayer = {
+    route?: {
+      path: string;
+      methods: Record<string, boolean>;
+      stack: Array<{ handle?: unknown }>;
+    };
+  };
+  const protectedRoutes = [
+    [adminRouter, "get", "/admin/users"],
+    [adminRouter, "post", "/admin/users"],
+    [adminRouter, "patch", "/admin/users/:userId/access"],
+    [adminRouter, "delete", "/admin/users/:userId"],
+    [adminRouter, "get", "/admin/coupons"],
+    [adminRouter, "post", "/admin/coupons"],
+    [adminRouter, "patch", "/admin/coupons/:couponId"],
+    [adminRouter, "delete", "/admin/coupons/:couponId"],
+    [catalogRouter, "get", "/admin/catalog"],
+    [catalogRouter, "put", "/admin/catalog"],
+    [catalogRouter, "post", "/admin/catalog/migrate"],
+    [storageRouter, "post", "/storage/uploads/request-url"],
+    [stripeRouter, "get", "/stripe/status"],
+    [stripeRouter, "put", "/admin/catalog/products/:productId"],
+    [stripeRouter, "put", "/stripe/credentials"],
+    [stripeRouter, "delete", "/stripe/credentials"],
+    [stripeRouter, "get", "/admin/orders"],
+    [stripeRouter, "patch", "/admin/orders/:stripeSessionId/status"],
+    [stripeRouter, "post", "/admin/orders/:stripeSessionId/payment-resolution"],
+  ] as const;
+
+  for (const [router, method, path] of protectedRoutes) {
+    const route = (router as unknown as { stack: RouterLayer[] }).stack
+      .find((layer) => layer.route?.path === path && layer.route.methods[method])
+      ?.route;
+    assert.ok(route, `${method.toUpperCase()} ${path} must remain registered`);
+    assert.ok(
+      route.stack.some((layer) => layer.handle === requireAdmin),
+      `${method.toUpperCase()} ${path} must keep requireAdmin`,
+    );
+  }
+});
 
 test("wishlist API persists saved state, prevents duplicates, and honors the saved response contract", async () => {
   const productId = nextWishlistProductId();

@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
 import { desc, eq } from "drizzle-orm";
 import { couponsTable, customerProfilesTable, db } from "@workspace/db";
-import { getAdminAccess, requireAdmin } from "../adminAuth";
+import { getAdminAccess, isAdminUser, isBootstrapAdminUser, requireAdmin } from "../adminAuth";
 import {
   CouponValidationError,
   getCouponById,
@@ -28,17 +28,6 @@ router.get("/admin/access", async (request, response) => {
   }
 });
 
-function isAdminUser(user: { emailAddresses: Array<{ emailAddress: string }>; privateMetadata?: Record<string, unknown> }) {
-  const bootstrapEmails = new Set(
-    (process.env.ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean),
-  );
-  return user.privateMetadata?.role === "admin"
-    || user.emailAddresses.some((email) => bootstrapEmails.has(email.emailAddress.toLowerCase()));
-}
-
 function serializeUser(user: {
   id: string;
   firstName: string | null;
@@ -59,10 +48,7 @@ function serializeUser(user: {
     createdAt: user.createdAt,
     lastSignInAt: user.lastSignInAt,
     isAdmin: isAdminUser(user),
-    isBootstrapAdmin: user.emailAddresses.some((email) => {
-      const bootstrapEmails = (process.env.ADMIN_EMAILS ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
-      return bootstrapEmails.includes(email.emailAddress.toLowerCase());
-    }),
+    isBootstrapAdmin: isBootstrapAdminUser(user),
   };
 }
 
@@ -177,10 +163,7 @@ router.delete("/admin/users/:userId", requireAdmin, async (request, response) =>
   try {
     const access = await getAdminAccess(request);
     const target = await clerkClient.users.getUser(userId);
-    if (isAdminUser(target) && target.emailAddresses.some((email) => {
-      const bootstrapEmails = (process.env.ADMIN_EMAILS ?? "").split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
-      return bootstrapEmails.includes(email.emailAddress.toLowerCase());
-    })) {
+    if (isAdminUser(target) && isBootstrapAdminUser(target)) {
       return response.status(400).json({ error: "The primary owner account cannot be deleted." });
     }
     if (userId === access.userId) {
