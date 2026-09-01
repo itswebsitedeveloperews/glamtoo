@@ -96,6 +96,10 @@ export function isCatalogMediaReference(value: string) {
   return value.startsWith(catalogMediaReferencePrefix);
 }
 
+export function isCatalogStorageObject(value: string) {
+  return value.startsWith("/objects/");
+}
+
 export async function persistCatalogProductMedia(product: CatalogProduct): Promise<CatalogProduct> {
   const image = product.image.trim();
   const galleryImages = (product.galleryImages ?? []).map((galleryImage) => galleryImage.trim()).filter(Boolean);
@@ -165,6 +169,7 @@ export async function hydrateCatalogProductMedia(products: Array<Pick<CatalogPro
 }
 
 export function getCatalogMediaSource(value: string) {
+  if (isCatalogStorageObject(value)) return `/api/storage${value}`;
   return catalogMediaCache.get(value) ?? (isCatalogMediaReference(value) ? "" : value);
 }
 

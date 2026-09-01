@@ -6,3 +6,4 @@ export * from "./inventory";
 export * from "./orders";
 export * from "./order-email-notifications";
 export * from "./wishlists";
+export * from "./catalog";

@@ -74,6 +74,7 @@ const wishlistStorageKey = 'glam-me-wishlist-v1';
 const standardDeliveryAmount = 3.95;
 const expressDeliveryAmount = 6.95;
 const freeStandardDeliveryThreshold = 75;
+let sharedCatalog: { products: CatalogProduct[]; categories: CatalogCategory[] } | null = null;
 
 type CartItem = {
   productId: number;
@@ -437,47 +438,53 @@ function useLiveInventory() {
 }
 
 function getStorefrontProducts(): CatalogProduct[] {
+  if (sharedCatalog) {
+    return applyLiveInventory(normalizeStorefrontProducts(sharedCatalog.products));
+  }
   try {
     const stored = window.localStorage.getItem(adminProductsStorageKey);
     if (!stored) return applyLiveInventory(catalogProducts);
     const products = JSON.parse(stored) as Array<Partial<CatalogProduct>>;
     if (!Array.isArray(products)) return applyLiveInventory(catalogProducts);
-    return applyLiveInventory(products
-      .filter((product) => String(product.status ?? '').toLowerCase() === 'published')
-      .map((product, index) => {
-        const matchingCatalogProduct = catalogProducts.find((candidate) =>
-          candidate.id === Number(product.id) || candidate.name.toLowerCase() === String(product.name ?? '').toLowerCase(),
-        );
-        const matchingCategory = catalogCategories.find((category) =>
-          slugify(category.name) === slugify(String(product.category ?? '')),
-        );
-        const productId = Number(product.id);
-        const primaryImage = getCatalogMediaSource(product.image || matchingCatalogProduct?.image || matchingCategory?.image || fashionImage)
-          || matchingCatalogProduct?.image
-          || matchingCategory?.image
-          || fashionImage;
-        return {
-          ...matchingCatalogProduct,
-          ...product,
-          id: Number.isInteger(productId) && productId > 0 ? productId : matchingCatalogProduct?.id ?? index + 1,
-          slug: createProductSlug(String(product.slug || product.name || matchingCatalogProduct?.slug || matchingCatalogProduct?.name || `product-${index + 1}`)),
-          name: product.name || matchingCatalogProduct?.name || 'Glam Too piece',
-          category: product.category || matchingCatalogProduct?.category || '',
-          price: formatCatalogPrice(product.price || matchingCatalogProduct?.price || ''),
-          image: primaryImage,
-          position: product.position || matchingCatalogProduct?.position || '50% 50%',
-          galleryImages: getCatalogProductImages({ image: primaryImage, galleryImages: product.galleryImages }),
-          variations: (product.variations ?? matchingCatalogProduct?.variations ?? []).map((variation) => ({
-            ...variation,
-            price: formatCatalogPrice(variation.price),
-          })),
-        } as CatalogProduct;
-      }));
+    return applyLiveInventory(normalizeStorefrontProducts(products));
   } catch {
     return applyLiveInventory(catalogProducts);
   }
 }
 
+function normalizeStorefrontProducts(products: Array<Partial<CatalogProduct>>): CatalogProduct[] {
+  return products
+    .filter((product) => String(product.status ?? "").toLowerCase() === "published")
+    .map((product, index) => {
+      const matchingCatalogProduct = catalogProducts.find((candidate) =>
+        candidate.id === Number(product.id) || candidate.name.toLowerCase() === String(product.name ?? "").toLowerCase(),
+      );
+      const matchingCategory = (sharedCatalog?.categories ?? catalogCategories).find((category) =>
+        slugify(category.name) === slugify(String(product.category ?? "")),
+      );
+      const productId = Number(product.id);
+      const primaryImage = getCatalogMediaSource(product.image || matchingCatalogProduct?.image || matchingCategory?.image || fashionImage)
+        || matchingCatalogProduct?.image
+        || matchingCategory?.image
+        || fashionImage;
+      return {
+        ...matchingCatalogProduct,
+        ...product,
+        id: Number.isInteger(productId) && productId > 0 ? productId : matchingCatalogProduct?.id ?? index + 1,
+        slug: createProductSlug(String(product.slug || product.name || matchingCatalogProduct?.slug || matchingCatalogProduct?.name || `product-${index + 1}`)),
+        name: product.name || matchingCatalogProduct?.name || "Glam Too piece",
+        category: product.category || matchingCatalogProduct?.category || "",
+        price: formatCatalogPrice(product.price || matchingCatalogProduct?.price || ""),
+        image: primaryImage,
+        position: product.position || matchingCatalogProduct?.position || "50% 50%",
+        galleryImages: getCatalogProductImages({ image: primaryImage, galleryImages: product.galleryImages }),
+        variations: (product.variations ?? matchingCatalogProduct?.variations ?? []).map((variation) => ({
+          ...variation,
+          price: formatCatalogPrice(variation.price),
+        })),
+      } as CatalogProduct;
+    });
+}
 function getStoredCatalogMediaRecords(): Array<Pick<CatalogProduct, "image" | "galleryImages">> {
   try {
     const stored = window.localStorage.getItem(adminProductsStorageKey);
@@ -499,6 +506,10 @@ function slugify(value: string): string {
 }
 
 function getStorefrontCategories(): CatalogCategory[] {
+  if (sharedCatalog) return sharedCatalog.categories.map((category) => ({
+    ...category,
+    image: getCatalogMediaSource(category.image),
+  }));
   try {
     const stored = window.localStorage.getItem(adminCategoriesStorageKey);
     if (!stored) return catalogCategories;
@@ -2856,11 +2867,24 @@ function CatalogMediaHydrator({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    void hydrateCatalogProductMedia(getStoredCatalogMediaRecords()).then(() => {
+    async function refreshCatalog() {
+      await Promise.all([
+        hydrateCatalogProductMedia(getStoredCatalogMediaRecords()),
+        fetch("/api/catalog")
+          .then(async (response) => {
+            const payload = await response.json() as { products?: CatalogProduct[]; categories?: CatalogCategory[]; initialized?: boolean };
+            if (!response.ok || !Array.isArray(payload.products) || !Array.isArray(payload.categories)) throw new Error("Catalog unavailable");
+            sharedCatalog = payload.initialized ? { products: payload.products, categories: payload.categories } : null;
+          })
+          .catch(() => undefined),
+      ]);
       if (active) setMediaVersion((version) => version + 1);
-    });
+    }
+    void refreshCatalog();
+    window.addEventListener("glam-catalog-updated", refreshCatalog);
     return () => {
       active = false;
+      window.removeEventListener("glam-catalog-updated", refreshCatalog);
     };
   }, []);
 

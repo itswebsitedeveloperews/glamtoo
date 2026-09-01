@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
 import { CreditCard, LayoutDashboard, Package, ShoppingBag, Tags, TicketPercent, Truck, Users, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
@@ -9,7 +9,6 @@ import {
   getCatalogPriceInput,
   hydrateCatalogProductMedia,
   isCatalogMediaReference,
-  persistCatalogProductMedia,
   type CatalogProduct,
   type CatalogVariation,
 } from "@/data/catalog";
@@ -172,6 +171,8 @@ const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
 ];
 
 const productsStorageKey = "glam-me-admin-products-v4";
+const categoriesStorageKey = "glam-me-admin-categories-v2";
+const catalogMigrationStorageKey = "glam-me-shared-catalog-migration-v1";
 const legacyProductsStorageKey = "glam-me-admin-products-v3";
 const initialProducts: Product[] = catalogProducts;
 
@@ -202,8 +203,15 @@ function getInitialProducts() {
     const parsed = JSON.parse(legacyProducts) as Product[];
     if (!Array.isArray(parsed)) return initialProducts;
     const seededIds = new Set(initialProducts.map((product) => product.id));
+    const legacyById = new Map(parsed.map((product) => [product.id, product]));
+    const seededProducts = initialProducts.map((product) => {
+      const legacyProduct = legacyById.get(product.id);
+      return withoutProductDetail(legacyProduct
+        ? { ...product, ...legacyProduct, variations: legacyProduct.variations ?? product.variations }
+        : product);
+    });
     const customProducts = parsed.filter((product) => !seededIds.has(product.id));
-    return [...initialProducts, ...customProducts].map(withoutProductDetail);
+    return [...seededProducts, ...customProducts].map(withoutProductDetail);
   } catch {
     return initialProducts;
   }
@@ -221,6 +229,16 @@ function getStoredProducts() {
 }
 
 const initialCategories: Category[] = catalogCategories.map((category) => ({ ...category }));
+
+function getStoredCategories() {
+  try {
+    const storedCategories = window.localStorage.getItem(categoriesStorageKey);
+    const categories = storedCategories ? JSON.parse(storedCategories) : initialCategories;
+    return Array.isArray(categories) ? categories as Category[] : initialCategories;
+  } catch {
+    return initialCategories;
+  }
+}
 
 function parseOrderTotal(total: string) {
   const amount = Number.parseFloat(total.replace(/[^0-9.-]/g, ""));
@@ -1394,9 +1412,20 @@ export default function AdminDashboard({
 }: {
   onSignOut: () => void;
 }) {
+  const hadLegacyCatalogRef = useRef<boolean>((() => {
+    try {
+      return Boolean(
+        window.localStorage.getItem(productsStorageKey)
+        || window.localStorage.getItem(legacyProductsStorageKey)
+        || window.localStorage.getItem(categoriesStorageKey),
+      );
+    } catch {
+      return false;
+    }
+  })());
   const [section, setSection] = useState<AdminSection>("overview");
   const [products, setProducts, commitProducts] = useStoredState<Product[]>(productsStorageKey, getStoredProducts());
-  const [categories, setCategories] = useStoredState<Category[]>("glam-me-admin-categories-v2", initialCategories);
+  const [categories, setCategories, commitCategories] = useStoredState<Category[]>(categoriesStorageKey, getStoredCategories());
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
@@ -1456,6 +1485,47 @@ export default function AdminDashboard({
       active = false;
     };
   }, [products]);
+
+  useEffect(() => {
+    let active = true;
+    const locallySavedProducts = window.localStorage.getItem(productsStorageKey);
+    const locallySavedLegacyProducts = window.localStorage.getItem(legacyProductsStorageKey);
+    const locallySavedCategories = window.localStorage.getItem(categoriesStorageKey);
+    const hasLocalCatalog = hadLegacyCatalogRef.current;
+
+    async function loadSharedCatalog() {
+      try {
+        await hydrateCatalogProductMedia(getStoredProducts());
+        const response = await fetch("/api/admin/catalog", { credentials: "include" });
+        const catalog = await response.json() as { products?: Product[]; categories?: Category[]; initialized?: boolean; error?: string };
+        if (!response.ok || !Array.isArray(catalog.products) || !Array.isArray(catalog.categories)) {
+          throw new Error(catalog.error || "The shared catalog could not be loaded.");
+        }
+        let nextCatalog = catalog;
+        if (!window.localStorage.getItem(catalogMigrationStorageKey) && hasLocalCatalog) {
+          nextCatalog = await publishCatalog(
+            locallySavedProducts || locallySavedLegacyProducts ? getStoredProducts() : [],
+            locallySavedCategories ? getStoredCategories() : [],
+            "migrate",
+          );
+          window.localStorage.setItem(catalogMigrationStorageKey, "complete");
+        } else if (!catalog.initialized) {
+          nextCatalog = await publishCatalog(catalogProducts, initialCategories);
+        }
+        if (!active) return;
+        commitProducts(nextCatalog.products ?? []);
+        commitCategories(nextCatalog.categories ?? []);
+      } catch (error) {
+        if (active) setNotice(error instanceof Error ? error.message : "The shared catalog could not be loaded.");
+      }
+    }
+    void loadSharedCatalog();
+    return () => {
+      active = false;
+    };
+  // The first successful request establishes the shared catalog and migrates legacy browser records once.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -1526,6 +1596,62 @@ export default function AdminDashboard({
     return candidate;
   }
 
+  async function uploadCatalogImage(value: string, name: string) {
+    const source = value.trim();
+    if (!source || (!source.startsWith("data:image/") && !isCatalogMediaReference(source))) return source;
+    const mediaSource = getCatalogMediaSource(source);
+    if (!mediaSource) throw new Error("A previously uploaded image could not be recovered from this browser.");
+    const imageResponse = await fetch(mediaSource);
+    if (!imageResponse.ok) throw new Error("An image could not be read before publishing.");
+    const blob = await imageResponse.blob();
+    const response = await fetch("/api/storage/uploads/request-url", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, size: blob.size, contentType: blob.type || "image/jpeg" }),
+    });
+    const upload = await response.json() as { uploadURL?: string; objectPath?: string; error?: string };
+    if (!response.ok || !upload.uploadURL || !upload.objectPath) throw new Error(upload.error || "An image upload URL could not be created.");
+    const result = await fetch(upload.uploadURL, {
+      method: "PUT",
+      headers: { "Content-Type": blob.type || "image/jpeg" },
+      body: blob,
+    });
+    if (!result.ok) throw new Error("An image could not be uploaded. Your product details are still open.");
+    return upload.objectPath;
+  }
+
+  async function uploadCatalogMedia(nextProducts: Product[], nextCategories: Category[]) {
+    const productsWithUploadedMedia = await Promise.all(nextProducts.map(async (product) => ({
+      ...product,
+      image: await uploadCatalogImage(product.image, `${product.slug || product.id}-primary`),
+      galleryImages: await Promise.all((product.galleryImages ?? []).map((image, index) =>
+        uploadCatalogImage(image, `${product.slug || product.id}-gallery-${index + 1}`),
+      )),
+    })));
+    const categoriesWithUploadedMedia = await Promise.all(nextCategories.map(async (category) => ({
+      ...category,
+      image: await uploadCatalogImage(category.image, `${category.name || category.id}-category`),
+    })));
+    return { products: productsWithUploadedMedia, categories: categoriesWithUploadedMedia };
+  }
+
+  async function publishCatalog(nextProducts: Product[], nextCategories: Category[], mode: "save" | "migrate" = "save") {
+    const catalogWithUploadedMedia = await uploadCatalogMedia(nextProducts, nextCategories);
+    const response = await fetch(`/api/admin/catalog${mode === "migrate" ? "/migrate" : ""}`, {
+      method: mode === "migrate" ? "POST" : "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(catalogWithUploadedMedia),
+    });
+    const catalog = await response.json() as { products?: Product[]; categories?: Category[]; error?: string };
+    if (!response.ok || !Array.isArray(catalog.products) || !Array.isArray(catalog.categories)) {
+      throw new Error(catalog.error || "The shared catalog could not be saved.");
+    }
+    window.dispatchEvent(new Event("glam-catalog-updated"));
+    return catalog;
+  }
+
   async function saveProduct(draft: ProductDraft) {
     const productId = typeof editorProductId === "number" ? editorProductId : undefined;
     const slug = getUniqueProductSlug(draft.slug || draft.name, productId);
@@ -1538,31 +1664,25 @@ export default function AdminDashboard({
     if (!product) return false;
 
     try {
-      const productsWithStoredMedia = await Promise.all(products.map((currentProduct) =>
-        currentProduct.id === product.id ? persistCatalogProductMedia(product) : persistCatalogProductMedia(currentProduct),
-      ));
-      const productWithStoredMedia = editorProductId === "new"
-        ? await persistCatalogProductMedia(product)
-        : productsWithStoredMedia.find((currentProduct) => currentProduct.id === product.id) ?? product;
       const nextProducts = editorProductId === "new"
-        ? [productWithStoredMedia, ...productsWithStoredMedia]
-        : productsWithStoredMedia;
-      if (!commitProducts(nextProducts)) {
-        setNotice("This product was not saved because browser storage is full. Your product details are still open. Free some browser storage or use smaller images, then try again.");
-        return false;
-      }
+        ? [product, ...products]
+        : products.map((currentProduct) => currentProduct.id === product.id ? product : currentProduct);
+      const catalog = await publishCatalog(nextProducts, categories);
+      const savedProduct = catalog.products!.find((currentProduct) => currentProduct.id === product.id) ?? product;
+      commitProducts(catalog.products!);
+      commitCategories(catalog.categories!);
 
       setNotice(`${product.name} was ${product.status === "Published"
         ? editorProductId === "new" ? "published" : "updated and published"
         : editorProductId === "new" ? "saved as a draft" : "moved to draft"}.`);
-      syncProductInventory(productWithStoredMedia);
+      syncProductInventory(savedProduct);
       setEditorProductId(null);
       setSection("products");
       return true;
     } catch (error) {
       setNotice(error instanceof Error
         ? error.message
-        : "This product could not be saved. Your product details are still open; free browser storage or use smaller images, then try again.");
+        : "This product could not be saved. Your product details are still open; please try again.");
       return false;
     }
   }
@@ -1595,16 +1715,22 @@ export default function AdminDashboard({
         }));
       })
       .catch((error: unknown) => {
-        setNotice(`${product.name} was saved locally, but checkout could not use its server catalog: ${error instanceof Error ? error.message : "try again."}`);
+        setNotice(`${product.name} is published, but checkout could not update its inventory: ${error instanceof Error ? error.message : "try again."}`);
       });
   }
 
-  function removeProduct(product: Product) {
-    setProducts((current) => current.filter((item) => item.id !== product.id));
-    setNotice(`${product.name} was removed from the catalog.`);
+  async function removeProduct(product: Product) {
+    try {
+      const catalog = await publishCatalog(products.filter((item) => item.id !== product.id), categories);
+      commitProducts(catalog.products!);
+      commitCategories(catalog.categories!);
+      setNotice(`${product.name} was removed from the catalog.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "This product could not be removed.");
+    }
   }
 
-  function submitCategory(event: FormEvent<HTMLFormElement>) {
+  async function submitCategory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const name = categoryDraft.name.trim();
     const description = categoryDraft.description.trim();
@@ -1613,15 +1739,19 @@ export default function AdminDashboard({
       setNotice(`${name} already exists.`);
       return;
     }
-    if (editingCategoryId !== null) {
-      setCategories((current) => current.map((category) => category.id === editingCategoryId ? { ...category, name, image: categoryDraft.image.trim(), description } : category));
-      setNotice(`${name} category updated.`);
-    } else {
-      setCategories((current) => [...current, { id: Date.now(), name, image: categoryDraft.image.trim(), description }]);
-      setNotice(`${name} category created.`);
+    try {
+      const nextCategories = editingCategoryId !== null
+        ? categories.map((category) => category.id === editingCategoryId ? { ...category, name, image: categoryDraft.image.trim(), description } : category)
+        : [...categories, { id: Date.now(), name, image: categoryDraft.image.trim(), description }];
+      const catalog = await publishCatalog(products, nextCategories);
+      commitProducts(catalog.products!);
+      commitCategories(catalog.categories!);
+      setNotice(`${name} category ${editingCategoryId !== null ? "updated" : "created"}.`);
+      setCategoryDraft(blankCategory());
+      setEditingCategoryId(null);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "This category could not be saved.");
     }
-    setCategoryDraft(blankCategory());
-    setEditingCategoryId(null);
   }
 
   function editCategory(category: Category) {
@@ -1632,14 +1762,20 @@ export default function AdminDashboard({
     setSection("categories");
   }
 
-  function deleteCategory(category: Category) {
-    setCategories((current) => current.filter((item) => item.id !== category.id));
-    if (editingCategoryId === category.id) {
-      setEditingCategoryId(null);
-      setCategoryDraft(blankCategory());
-      setCategoryImageFileName("");
+  async function deleteCategory(category: Category) {
+    try {
+      const catalog = await publishCatalog(products, categories.filter((item) => item.id !== category.id));
+      commitProducts(catalog.products!);
+      commitCategories(catalog.categories!);
+      if (editingCategoryId === category.id) {
+        setEditingCategoryId(null);
+        setCategoryDraft(blankCategory());
+        setCategoryImageFileName("");
+      }
+      setNotice(`${category.name} category deleted.`);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "This category could not be deleted.");
     }
-    setNotice(`${category.name} category deleted.`);
   }
 
   function cancelCategoryEdit() {
@@ -2093,7 +2229,7 @@ export default function AdminDashboard({
                 <div className="admin-category-grid">
                   {categories.map((category) => (
                     <article className="admin-category-card" key={category.id}>
-                      {category.image ? <img src={category.image} alt="" /> : <div className="admin-category-image-empty">No image</div>}
+                      {getCatalogMediaSource(category.image) ? <img src={getCatalogMediaSource(category.image)} alt="" /> : <div className="admin-category-image-empty">No image</div>}
                       <div className="admin-category-card-content">
                         <h3>{category.name}</h3>
                         <p>{category.description || "No description yet."}</p>
@@ -2107,12 +2243,12 @@ export default function AdminDashboard({
                 <p className="admin-eyebrow">{editingCategoryId !== null ? "Edit category" : "New category"}</p>
                 <h2>{editingCategoryId !== null ? "Update collection" : "Add a collection"}</h2>
                 <label>Category title<input value={categoryDraft.name} onChange={(event) => setCategoryDraft((current) => ({ ...current, name: event.target.value }))} required placeholder="e.g. Weekend plans" /></label>
-                <label>Image URL<input type="url" value={categoryDraft.image.startsWith("data:") ? "" : categoryDraft.image} onChange={(event) => { setCategoryImageFileName(""); setCategoryDraft((current) => ({ ...current, image: event.target.value })); }} placeholder="https://..." /></label>
+                <label>Image URL<input type="url" value={categoryDraft.image.startsWith("data:") || categoryDraft.image.startsWith("/objects/") ? "" : categoryDraft.image} onChange={(event) => { setCategoryImageFileName(""); setCategoryDraft((current) => ({ ...current, image: event.target.value })); }} placeholder="https://..." /></label>
                 <div className="admin-image-upload">
                   <label className="admin-upload-button">Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleCategoryImageUpload} /></label>
                   <span>{categoryImageFileName || "PNG, JPG, WEBP or GIF · max 4MB"}</span>
                 </div>
-                {categoryDraft.image && <img className="admin-category-form-preview" src={categoryDraft.image} alt="Category preview" />}
+                {getCatalogMediaSource(categoryDraft.image) && <img className="admin-category-form-preview" src={getCatalogMediaSource(categoryDraft.image)} alt="Category preview" />}
                 <label>Description<textarea value={categoryDraft.description} onChange={(event) => setCategoryDraft((current) => ({ ...current, description: event.target.value }))} placeholder="A short description for this collection." rows={4} /></label>
                 <div className="admin-category-form-actions"><button className="admin-primary" type="submit">{editingCategoryId !== null ? "Update category" : "Create category"}</button>{editingCategoryId !== null && <button className="admin-secondary" type="button" onClick={cancelCategoryEdit}>Cancel</button>}</div>
               </form>
