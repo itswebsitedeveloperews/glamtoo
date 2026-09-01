@@ -1620,7 +1620,7 @@ function Cart() {
                       >
                         −
                       </button>
-                      <span className="cart-quantity-value" aria-live="polite">Qty {item.quantity}</span>
+                      <span className="cart-quantity-value" aria-live="polite">{item.quantity}</span>
                       <button
                         className="cart-quantity-button"
                         type="button"
