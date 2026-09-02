@@ -1325,7 +1325,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .not-found-logo img { width: 100%; height: auto; }
 .not-found-copy { min-width: 0; }
 .not-found-kicker { margin: 0 0 18px; color: var(--pink-deep); font-size: 14px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
-.not-found-number { margin: 0 0 17px; color: var(--pink-deep); font: 400 clamp(118px, 17vw, 205px)/.7 var(--hero-display); letter-spacing: -.1em; }
+.not-found-number { margin: 0 0 27px; color: var(--pink-deep); font: 400 clamp(118px, 17vw, 205px)/.92 var(--hero-display); letter-spacing: -.1em; }
 .not-found-copy h1 { max-width: 440px; margin: 0 0 16px; font: 400 clamp(36px, 4.4vw, 58px)/.94 var(--display); letter-spacing: -.055em; }
 .not-found-message { max-width: 395px; margin: 0; color: var(--muted); font-size: 16px; line-height: 1.6; }
 .not-found-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 25px; margin-top: 30px; }
