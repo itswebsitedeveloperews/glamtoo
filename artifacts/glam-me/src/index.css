@@ -333,7 +333,7 @@ img { display: block; max-width: 100%; }
 .faq-item-symbol:after { transform: translate(-50%, -50%) rotate(90deg); }
 .faq-item[open] .faq-item-symbol:after { display: none; }
 .faq-answer { background: #fcf8f5; padding: 17px 22px 20px; }
-.faq-answer p { max-width: 660px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.faq-answer p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
 .faq-empty { border: 1px solid var(--line); background: var(--white); padding: 38px 24px; text-align: center; }
 .faq-empty h2 { margin: 0 0 9px; font: 400 30px/.95 var(--display); }
 .faq-empty p { max-width: 460px; margin: 0 auto 22px; color: var(--muted); font-size: 16px; line-height: 1.5; }
