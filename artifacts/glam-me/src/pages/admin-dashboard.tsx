@@ -2362,7 +2362,7 @@ export default function AdminDashboard({
                 {ordersError && <p className="admin-overview-error" role="alert">{ordersError}</p>}
                 {ordersLoading && orders.length === 0 ? <p className="admin-overview-empty">Loading orders…</p> : orders.length === 0 ? <p className="admin-overview-empty">No paid orders or payment exceptions yet.</p> : (
                   <div className="admin-overview-order-table" role="table">
-                    <div className="admin-overview-order-head" role="row"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span><span /></div>
+                    <div className="admin-overview-order-head" role="row"><span>Order</span><span>Date</span><span>Total</span><span>Status</span><span /></div>
                     {orders.slice(0, 4).map((order) => {
                       const paymentStatus = order.paymentResolution && order.paymentResolution !== "none";
                       const statusLabel = paymentStatus
@@ -2370,8 +2370,7 @@ export default function AdminDashboard({
                         : order.status;
                       return (
                         <button className="admin-overview-order-row" type="button" role="row" key={order.id} onClick={() => { setSection("orders"); setSelectedOrderId(order.id); }}>
-                          <strong>{order.id}</strong>
-                          <span>{order.customer}</span>
+                          <span className="admin-overview-order-primary"><strong>{order.id}</strong><span>{order.customer}</span></span>
                           <span>{order.date}</span>
                           <strong>{order.total}</strong>
                           <span className={`admin-overview-status-pill ${paymentStatus ? "is-payment" : order.status.toLowerCase()}`}>{statusLabel}</span>
@@ -2388,12 +2387,6 @@ export default function AdminDashboard({
                   <h2>{stripeStatus.configured ? `Stripe ${stripeStatus.mode === "live" ? "live payments are ready" : "test mode is ready"}` : stripeStatus.connected ? "Stripe keys need setup" : "Stripe needs attention"}</h2>
                   <p>{stripeStatus.configured ? "Card payments can now use Stripe-hosted checkout." : stripeStatus.connected ? "Your Stripe connection is attached. Add its secure key configuration to activate card payments." : "Check your secure Stripe workspace connection to activate payments."}</p>
                   <button className="admin-overview-payment-button" type="button" onClick={() => setSection("payments")}>Open payment settings <ArrowUpRight aria-hidden="true" /></button>
-                </div>
-                <div className="admin-overview-payment-art" aria-hidden="true">
-                  <span className="admin-overview-payment-circle" />
-                  {products[0] && getCatalogMediaSource(products[0].image) && <img src={getCatalogMediaSource(products[0].image)} alt="" />}
-                  <span className="admin-overview-payment-bag">Glam Too</span>
-                  <span className="admin-overview-payment-terminal"><i /><i /><i /></span>
                 </div>
               </section>
             </div>
