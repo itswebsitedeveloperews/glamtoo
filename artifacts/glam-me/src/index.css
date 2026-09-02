@@ -799,15 +799,6 @@ img { display: block; max-width: 100%; }
 .admin-quiet-button { align-self: start; border: 1px solid var(--ink); background: transparent; padding: 10px 13px; color: var(--ink); cursor: pointer; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; }
 .admin-quiet-button:hover { background: var(--ink); color: #fffdfb; }
 .admin-overview { width: 100%; }
-.admin-overview-utility { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 54px; }
-.admin-breadcrumb { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 14px; }
-.admin-breadcrumb b { color: #c3b8b1; font-weight: 400; }
-.admin-breadcrumb strong { color: var(--ink); font-weight: 600; }
-.admin-overview-tools { display: flex; align-items: center; gap: 10px; }
-.admin-overview-icon-button { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid var(--line); background: #fffdfb; color: var(--ink); cursor: pointer; }
-.admin-overview-icon-button:hover { border-color: var(--ink); background: #f1eae5; }
-.admin-overview-icon-button svg { width: 17px; height: 17px; stroke-width: 1.7; }
-.admin-overview-avatar { display: grid; width: 38px; height: 38px; place-items: center; margin-left: 4px; border-radius: 50%; background: var(--ink); color: #fffdfb; font-size: 12px; font-weight: 700; letter-spacing: .06em; }
 .admin-overview-heading { display: flex; align-items: end; justify-content: space-between; gap: 28px; margin-bottom: 42px; }
 .admin-overview-heading h1 { margin: 0; font: 400 clamp(48px, 5vw, 68px)/.86 var(--display); letter-spacing: -.06em; }
 .admin-overview-heading p:last-child { max-width: 530px; margin: 17px 0 0; color: var(--muted); font-size: 16px; line-height: 1.55; }
@@ -1231,7 +1222,6 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .admin-section-title, .admin-payment-card { display: grid; align-items: start; }
   .admin-section-title h1 { font-size: 48px; letter-spacing: -.045em; }
   .admin-stat-grid, .admin-two-column, .admin-shipping-grid { grid-template-columns: 1fr; }
-  .admin-overview-utility { margin-bottom: 36px; }
   .admin-overview-heading { display: grid; align-items: start; gap: 24px; margin-bottom: 32px; }
   .admin-overview-heading-actions { width: 100%; }
   .admin-overview-heading-actions > * { flex: 1; justify-content: center; }

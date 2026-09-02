@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { ArrowUpRight, Bell, Check, CircleDollarSign, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Package, Save, Search, Send, ShoppingBag, Tags, TicketPercent, Truck, Users, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Check, CircleDollarSign, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Package, Save, Send, ShoppingBag, Tags, TicketPercent, Truck, Users, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -2316,14 +2316,6 @@ export default function AdminDashboard({
 
         {section === "overview" && (
           <div className="admin-overview">
-            <div className="admin-overview-utility">
-              <div className="admin-breadcrumb"><span>Administration</span><b>/</b><strong>Overview</strong></div>
-              <div className="admin-overview-tools">
-                <button type="button" aria-label="Search admin" className="admin-overview-icon-button"><Search aria-hidden="true" /></button>
-                <button type="button" aria-label="Notifications" className="admin-overview-icon-button"><Bell aria-hidden="true" /></button>
-                <span className="admin-overview-avatar" aria-label="Glam Too admin">GT</span>
-              </div>
-            </div>
             <div className="admin-overview-heading">
               <div>
                 <p className="admin-eyebrow">Glam Too administration</p>
