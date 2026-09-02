@@ -1650,6 +1650,12 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-payment-how li:not(:last-child) { margin-bottom: 0; border-bottom: 0; }
 .admin-payment-how li:not(:last-child)::after { display: none; }
 
+@media (min-width: 721px) {
+  .admin-payment-how li { display: flex; flex-direction: column; gap: 10px; }
+  .admin-payment-how li strong { display: block; min-height: 36px; line-height: 1.3; }
+  .admin-payment-how li p { line-height: 1.5; }
+}
+
 @media (max-width: 1120px) {
   .admin-payment-card { display: grid; }
   .admin-payment-status { width: auto; }
@@ -1668,4 +1674,5 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .admin-payment-mode-grid { gap: 10px; }
   .admin-payment-how li { padding-bottom: 18px; }
   .admin-payment-how li:not(:last-child) { margin-bottom: 18px; border-bottom: 1px solid #eee8e3; }
+  .admin-payment-how li { display: grid; grid-template-columns: 35px minmax(0, 1fr); column-gap: 13px; }
 }
