@@ -294,7 +294,7 @@ img { display: block; max-width: 100%; }
 .about-story-copy h2 { font-size: 60px; }
 .about-cta { padding: 87px 0 92px; background: var(--pink); color: var(--white); text-align: center; }
 .about-cta .eyebrow { color: rgba(255,255,255,.78); }
-.about-cta h2 { margin: 16px 0 15px; font: 400 clamp(54px, 6vw, 86px)/.9 var(--display); letter-spacing: -.055em; }
+.about-cta h2 { margin: 16px 0 15px; font: 400 60px/.9 var(--display); letter-spacing: -.055em; }
 .about-cta p { max-width: 430px; margin: 0 auto 28px; color: rgba(255,255,255,.9); font-size: 16px; line-height: 1.55; }
 .about-cta .button { margin-top: 3px; }
 
