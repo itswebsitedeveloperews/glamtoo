@@ -1358,13 +1358,6 @@ function ProductEditor({
 
       {validationMessage && <div className="admin-validation" role="alert">{validationMessage}</div>}
 
-      <ol className="admin-editor-progress" aria-label="Product editor progress">
-        <li className="is-active"><span>1</span><strong>Details</strong></li>
-        <li><span>2</span><strong>Pricing &amp; inventory</strong></li>
-        <li><span>3</span><strong>Media</strong></li>
-        <li><span>4</span><strong>Review</strong></li>
-      </ol>
-
       <div className="admin-editor-layout">
         <div className="admin-editor-column">
           <section className="admin-editor-card">
