@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { ArrowUpRight, Bell, Check, CircleDollarSign, Copy, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Mail, MapPin, Package, PenLine, Printer, Save, Search, Send, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Bell, Check, CircleDollarSign, Copy, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Mail, MapPin, Package, PenLine, Save, Search, Send, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -378,7 +378,6 @@ function AdminOrderDetailPage({
         </div>
         <div className="admin-order-page-heading-actions">
           <div className="admin-order-heading-total"><span>Total paid</span><strong>{order.total}</strong></div>
-          <button className="admin-secondary admin-order-print-button" type="button" onClick={() => window.print()}><Printer aria-hidden="true" /> Print invoice</button>
           <button className="admin-primary admin-order-update-button" type="button" onClick={() => document.getElementById("admin-order-status")?.focus()}><PenLine aria-hidden="true" /> Update order</button>
         </div>
         <ol className="admin-order-progress" aria-label="Order progress">
