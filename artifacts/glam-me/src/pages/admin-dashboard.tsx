@@ -2355,7 +2355,7 @@ export default function AdminDashboard({
                 {ordersLoading && orders.length === 0 ? <p className="admin-overview-empty">Loading orders…</p> : orders.length === 0 ? <p className="admin-overview-empty">No paid orders or payment exceptions yet.</p> : (
                   <div className="admin-overview-order-table" role="table">
                     <div className="admin-overview-order-head" role="row"><span>Order</span><span>Date</span><span>Total</span><span>Status</span><span /></div>
-                    {orders.slice(0, 4).map((order) => {
+                    {orders.slice(0, 3).map((order) => {
                       const paymentStatus = order.paymentResolution && order.paymentResolution !== "none";
                       const statusLabel = paymentStatus
                         ? order.paymentResolution === "refund_pending" ? "Refund pending" : order.paymentResolution === "refund_processing" ? "Refund processing" : order.paymentResolution === "refunded" ? "Refunded" : "Manual resolution"
