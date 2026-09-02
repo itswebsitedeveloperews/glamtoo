@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { Check, CircleDollarSign, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Package, Save, Send, ShoppingBag, Tags, TicketPercent, Truck, Users, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Bell, Check, CircleDollarSign, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Package, Save, Search, Send, ShoppingBag, Tags, TicketPercent, Truck, Users, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -2315,19 +2315,89 @@ export default function AdminDashboard({
         {notice && <div className="admin-notice" role="status"><span>{notice}</span><button type="button" aria-label="Dismiss notification" onClick={() => setNotice("")}>×</button></div>}
 
         {section === "overview" && (
-          <>
-            <SectionTitle eyebrow="Glam Too administration" title="Overview" description="Your storefront is looking beautiful. Here’s what needs your attention today." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add a product</button>} />
-            <div className="admin-stat-grid">
-              <article><p>Sales today</p><strong>{formatPounds(salesToday)}</strong><span>{salesChangeLabel}</span></article>
-              <article><p>Open orders</p><strong>{orders.filter((order) => order.status !== "Delivered").length}</strong><span>Ready for fulfilment</span></article>
-              <article><p>Products in stock</p><strong>{inventoryTotal}</strong><span>Across {products.length} styles</span></article>
-              <article><p>Average order</p><strong>{formatPounds(averageOrderValue)}</strong><span>{averageOrderLabel}</span></article>
+          <div className="admin-overview">
+            <div className="admin-overview-utility">
+              <div className="admin-breadcrumb"><span>Administration</span><b>/</b><strong>Overview</strong></div>
+              <div className="admin-overview-tools">
+                <button type="button" aria-label="Search admin" className="admin-overview-icon-button"><Search aria-hidden="true" /></button>
+                <button type="button" aria-label="Notifications" className="admin-overview-icon-button"><Bell aria-hidden="true" /></button>
+                <span className="admin-overview-avatar" aria-label="Glam Too admin">GT</span>
+              </div>
             </div>
-            <div className="admin-two-column">
-              <section className="admin-panel"><div className="admin-panel-header"><div><p className="admin-eyebrow">Fulfilment</p><h2>Recent orders</h2></div><button type="button" onClick={() => setSection("orders")}>View all</button></div><div className="admin-list">{orders.map((order) => <div className="admin-order-row" key={order.id}><div><strong>{order.id}</strong><span>{order.customer} · {order.date}</span></div><div><strong>{order.total}</strong><span className={`order-status ${order.status.toLowerCase()}`}>{order.status}</span></div></div>)}</div></section>
-              <section className="admin-panel admin-pink-panel"><p className="admin-eyebrow">Payments</p><h2>{stripeStatus.configured ? `Stripe ${stripeStatus.mode === "live" ? "live payments are ready" : "test mode is ready"}` : stripeStatus.connected ? "Stripe keys need setup" : "Stripe needs attention"}</h2><p>{stripeStatus.configured ? "Card payments can now use Stripe-hosted checkout." : stripeStatus.connected ? "Your Stripe connection is attached. Add its secure key configuration to activate card payments." : "Check your secure Stripe workspace connection to activate payments."}</p><button className="admin-quiet-button" type="button" onClick={() => setSection("payments")}>Open payment settings</button></section>
+            <div className="admin-overview-heading">
+              <div>
+                <p className="admin-eyebrow">Glam Too administration</p>
+                <h1>Overview</h1>
+                <p>Your storefront is looking beautiful. Here&apos;s what needs your attention today.</p>
+              </div>
+              <div className="admin-overview-heading-actions">
+                <a className="admin-overview-outline-action" href="/">View storefront <ArrowUpRight aria-hidden="true" /></a>
+                <button className="admin-primary" type="button" onClick={openNewProduct}>Add a product</button>
+              </div>
             </div>
-          </>
+            <div className="admin-overview-stat-grid">
+              <article className="admin-overview-stat-card">
+                <span className="admin-overview-stat-icon"><CircleDollarSign aria-hidden="true" /></span>
+                <div><p>Sales today</p><strong>{formatPounds(salesToday)}</strong><span>{salesChangeLabel}</span></div>
+              </article>
+              <article className="admin-overview-stat-card">
+                <span className="admin-overview-stat-icon"><ListChecks aria-hidden="true" /></span>
+                <div><p>Open orders</p><strong>{orders.filter((order) => order.status !== "Delivered").length}</strong><span>Ready for fulfilment</span></div>
+              </article>
+              <article className="admin-overview-stat-card">
+                <span className="admin-overview-stat-icon"><Package aria-hidden="true" /></span>
+                <div><p>Products in stock</p><strong>{inventoryTotal}</strong><span>Across {products.length} styles</span></div>
+              </article>
+              <article className="admin-overview-stat-card">
+                <span className="admin-overview-stat-icon"><ShoppingBag aria-hidden="true" /></span>
+                <div><p>Average order</p><strong>{formatPounds(averageOrderValue)}</strong><span>{averageOrderLabel}</span></div>
+              </article>
+            </div>
+            <div className="admin-overview-content-grid">
+              <section className="admin-overview-orders">
+                <div className="admin-overview-panel-heading">
+                  <div><p className="admin-eyebrow">Fulfilment</p><h2>Recent orders</h2></div>
+                  <button type="button" onClick={() => setSection("orders")}>View all orders <ArrowUpRight aria-hidden="true" /></button>
+                </div>
+                {ordersError && <p className="admin-overview-error" role="alert">{ordersError}</p>}
+                {ordersLoading && orders.length === 0 ? <p className="admin-overview-empty">Loading orders…</p> : orders.length === 0 ? <p className="admin-overview-empty">No paid orders or payment exceptions yet.</p> : (
+                  <div className="admin-overview-order-table" role="table">
+                    <div className="admin-overview-order-head" role="row"><span>Order</span><span>Customer</span><span>Date</span><span>Total</span><span>Status</span><span /></div>
+                    {orders.slice(0, 4).map((order) => {
+                      const paymentStatus = order.paymentResolution && order.paymentResolution !== "none";
+                      const statusLabel = paymentStatus
+                        ? order.paymentResolution === "refund_pending" ? "Refund pending" : order.paymentResolution === "refund_processing" ? "Refund processing" : order.paymentResolution === "refunded" ? "Refunded" : "Manual resolution"
+                        : order.status;
+                      return (
+                        <button className="admin-overview-order-row" type="button" role="row" key={order.id} onClick={() => { setSection("orders"); setSelectedOrderId(order.id); }}>
+                          <strong>{order.id}</strong>
+                          <span>{order.customer}</span>
+                          <span>{order.date}</span>
+                          <strong>{order.total}</strong>
+                          <span className={`admin-overview-status-pill ${paymentStatus ? "is-payment" : order.status.toLowerCase()}`}>{statusLabel}</span>
+                          <ArrowUpRight aria-hidden="true" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+              <section className="admin-overview-payment">
+                <div className="admin-overview-payment-copy">
+                  <div className="admin-overview-payment-topline"><p className="admin-eyebrow">Payments</p><span>{stripeStatus.configured ? stripeStatus.mode === "live" ? "Live mode" : "Test mode" : "Setup"}</span></div>
+                  <h2>{stripeStatus.configured ? `Stripe ${stripeStatus.mode === "live" ? "live payments are ready" : "test mode is ready"}` : stripeStatus.connected ? "Stripe keys need setup" : "Stripe needs attention"}</h2>
+                  <p>{stripeStatus.configured ? "Card payments can now use Stripe-hosted checkout." : stripeStatus.connected ? "Your Stripe connection is attached. Add its secure key configuration to activate card payments." : "Check your secure Stripe workspace connection to activate payments."}</p>
+                  <button className="admin-overview-payment-button" type="button" onClick={() => setSection("payments")}>Open payment settings <ArrowUpRight aria-hidden="true" /></button>
+                </div>
+                <div className="admin-overview-payment-art" aria-hidden="true">
+                  <span className="admin-overview-payment-circle" />
+                  {products[0] && getCatalogMediaSource(products[0].image) && <img src={getCatalogMediaSource(products[0].image)} alt="" />}
+                  <span className="admin-overview-payment-bag">Glam Too</span>
+                  <span className="admin-overview-payment-terminal"><i /><i /><i /></span>
+                </div>
+              </section>
+            </div>
+          </div>
         )}
 
         {section === "products" && editorProductId !== null && <ProductEditor product={editorProduct} categories={categoryNames} onCancel={() => setEditorProductId(null)} onSave={saveProduct} />}
