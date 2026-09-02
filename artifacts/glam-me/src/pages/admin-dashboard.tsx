@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { ArrowUpRight, Bell, Check, CircleDollarSign, Copy, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Mail, MapPin, Package, PenLine, Save, Search, Send, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Mail, MapPin, Package, Save, Send, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -353,11 +353,6 @@ function AdminOrderDetailPage({
     <div className="admin-order-page">
       <div className="admin-order-page-topbar">
         <span className="admin-order-page-context">Orders <b>/</b> {order.id}</span>
-        <div className="admin-order-page-tools" aria-hidden="true">
-          <span className="admin-order-search-display"><Search /> <span>Search orders…</span></span>
-          <span className="admin-order-icon-display"><Bell /></span>
-          <span className="admin-order-avatar">GT</span>
-        </div>
       </div>
 
       <div className="admin-order-page-heading">
@@ -378,7 +373,6 @@ function AdminOrderDetailPage({
         </div>
         <div className="admin-order-page-heading-actions">
           <div className="admin-order-heading-total"><span>Total paid</span><strong>{order.total}</strong></div>
-          <button className="admin-primary admin-order-update-button" type="button" onClick={() => document.getElementById("admin-order-status")?.focus()}><PenLine aria-hidden="true" /> Update order</button>
         </div>
         <ol className="admin-order-progress" aria-label="Order progress">
           {progressSteps.map((step, index) => (
