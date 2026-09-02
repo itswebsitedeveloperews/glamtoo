@@ -1477,8 +1477,6 @@ input:focus, select:focus, textarea:focus { outline: none; }
 
 /* Admin payments: secure Stripe setup workspace. */
 .admin-payments-page { width: 100%; }
-.admin-payments-breadcrumb { display: flex; align-items: center; gap: 9px; margin-bottom: 24px; color: var(--muted); font-size: 12px; }
-.admin-payments-breadcrumb b { color: #b7aaa3; font-weight: 400; }
 .admin-payments-page .admin-section-title { align-items: center; margin-bottom: 22px; }
 .admin-payments-page .admin-section-title h1 { font-size: 38px; line-height: .92; letter-spacing: -.045em; }
 .admin-payments-page .admin-section-title > div > p:last-child { margin-top: 8px; font-size: 13px; }
@@ -1590,7 +1588,6 @@ input:focus, select:focus, textarea:focus { outline: none; }
 
 /* Payments cleanup: simplify the workspace while keeping the editorial admin language. */
 .admin-payments-page { max-width: 1180px; }
-.admin-payments-breadcrumb { margin-bottom: 16px; color: #8d7f78; font-size: 14px; }
 .admin-payments-page .admin-section-title { margin-bottom: 26px; padding-bottom: 24px; border-bottom: 1px solid #e3dbd6; }
 .admin-payments-page .admin-section-title h1 { font-size: 44px; line-height: .95; }
 .admin-payments-page .admin-section-title > div > p:last-child { max-width: 540px; margin-top: 10px; line-height: 1.5; }

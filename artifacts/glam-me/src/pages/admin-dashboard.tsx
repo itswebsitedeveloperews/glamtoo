@@ -2615,7 +2615,6 @@ export default function AdminDashboard({
 
         {section === "payments" && (
           <div className="admin-payments-page">
-            <div className="admin-payments-breadcrumb"><span>Settings</span><b>/</b><span>Payments</span></div>
             <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Too." action={<button className="admin-payment-view-transactions" type="button" onClick={() => setSection("orders")}>View transactions</button>} />
             <section className="admin-payment-card">
               <div className="admin-payment-banner-copy">
