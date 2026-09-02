@@ -1630,6 +1630,7 @@ export default function AdminDashboard({
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft>(blankCategory);
   const [categoryImageFileName, setCategoryImageFileName] = useState("");
+  const [categorySaving, setCategorySaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [, setCatalogMediaVersion] = useState(0);
   const categoryNames = categories.map((category) => category.name);
@@ -1908,6 +1909,7 @@ export default function AdminDashboard({
       setNotice(`${name} already exists.`);
       return;
     }
+    setCategorySaving(true);
     try {
       const nextCategories = editingCategoryId !== null
         ? categories.map((category) => category.id === editingCategoryId ? { ...category, name, image: categoryDraft.image.trim(), description } : category)
@@ -1920,6 +1922,8 @@ export default function AdminDashboard({
       setEditingCategoryId(null);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "This category could not be saved.");
+    } finally {
+      setCategorySaving(false);
     }
   }
 
@@ -2474,7 +2478,7 @@ export default function AdminDashboard({
                 </div>
                 {getCatalogMediaSource(categoryDraft.image) && <img className="admin-category-form-preview" src={getCatalogMediaSource(categoryDraft.image)} alt="Category preview" />}
                 <label>Description<textarea value={categoryDraft.description} onChange={(event) => setCategoryDraft((current) => ({ ...current, description: event.target.value }))} placeholder="A short description for this collection." rows={4} /></label>
-                <div className="admin-category-form-actions"><button className="admin-primary" type="submit">{editingCategoryId !== null ? "Update category" : "Create category"}</button>{editingCategoryId !== null && <button className="admin-secondary" type="button" onClick={cancelCategoryEdit}>Cancel</button>}</div>
+                 <div className="admin-category-form-actions"><button className="admin-primary" type="submit" disabled={categorySaving} aria-busy={categorySaving}>{categorySaving ? editingCategoryId !== null ? "Updating…" : "Creating…" : editingCategoryId !== null ? "Update category" : "Create category"}</button>{editingCategoryId !== null && <button className="admin-secondary" type="button" onClick={cancelCategoryEdit} disabled={categorySaving}>Cancel</button>}</div>
               </form>
             </div>
           </>
