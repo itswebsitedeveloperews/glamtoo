@@ -864,8 +864,8 @@ img { display: block; max-width: 100%; }
 .admin-category-list-panel { min-width: 0; }
 .admin-muted-count { color: var(--muted); font-size: 14px; }
 .admin-category-grid { display: grid; grid-template-columns: 1fr; gap: 15px; margin-top: 23px; }
-.admin-category-card { display: grid; grid-template-columns: 180px minmax(0, 1fr); min-width: 0; border: 1px solid #eee8e3; background: #fffdfb; }
-.admin-category-card > img, .admin-category-image-empty { width: 180px; height: 180px; object-fit: cover; background: var(--paper-deep); }
+.admin-category-card { display: grid; grid-template-columns: 125px minmax(0, 1fr); min-width: 0; border: 1px solid #eee8e3; background: #fffdfb; }
+.admin-category-card > img, .admin-category-image-empty { width: 125px; height: 125px; object-fit: cover; background: var(--paper-deep); }
 .admin-category-image-empty { display: grid; place-items: center; color: var(--muted); font-size: 14px; }
 .admin-category-card-content { display: flex; min-width: 0; flex-direction: column; padding: 15px 13px 13px; }
 .admin-category-card h3 { margin: 0 0 7px; font: 500 21px/.95 var(--display); letter-spacing: -.03em; }
