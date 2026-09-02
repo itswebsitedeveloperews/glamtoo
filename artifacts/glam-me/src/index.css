@@ -1504,7 +1504,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-payment-settings, .admin-stripe-guide, .admin-payment-how { max-width: none; margin: 0; padding: 18px; }
 .admin-payment-settings h2, .admin-payment-control-heading h2 { margin: 4px 0 0; font: 400 22px/.95 var(--display); letter-spacing: -.035em; }
 .admin-payment-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 15px 0; border: 0; background: transparent; }
-.admin-payment-detail-grid > div { position: relative; display: grid; grid-template-columns: 31px minmax(0, 1fr); grid-template-areas: "icon label" "icon value"; align-items: center; column-gap: 9px; min-height: 60px; padding: 10px; border: 1px solid #e3dbd6; background: #fffdfb; }
+.admin-payment-detail-grid > div { position: relative; display: grid; grid-template-columns: 31px minmax(0, 1fr); grid-template-areas: "icon label" "icon value"; align-items: center; min-height: 60px; padding: 10px; border: 1px solid #e3dbd6; background: #fffdfb; }
 .admin-payment-detail-grid > div > span:not(.admin-payment-detail-icon) { grid-area: label; color: var(--muted); font-size: 11px; }
 .admin-payment-detail-grid > div > strong { grid-area: value; overflow-wrap: anywhere; font-size: 12px; }
 .admin-payment-detail-icon { display: grid; width: 30px; height: 30px; grid-area: icon; place-items: center; border: 1px solid #efd1da; background: #fff1f5; color: #a6516e; }
