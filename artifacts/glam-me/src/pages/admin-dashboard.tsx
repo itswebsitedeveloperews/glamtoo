@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { ArrowUpRight, Check, CircleDollarSign, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Package, Save, Send, ShoppingBag, Tags, TicketPercent, Truck, Users, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Bell, Check, CircleDollarSign, Copy, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Mail, MapPin, Package, PenLine, Printer, Save, Search, Send, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -304,6 +304,7 @@ function toAdminOrder(order: OrderPayload): Order {
 
 function AdminOrderDetailPage({
   order,
+  products,
   updating,
   onStatusChange,
   resolvingPayment,
@@ -311,6 +312,7 @@ function AdminOrderDetailPage({
   onBack,
 }: {
   order: Order;
+  products: Product[];
   updating: boolean;
   onStatusChange: (status: Order["status"]) => void;
   resolvingPayment: boolean;
@@ -339,16 +341,30 @@ function AdminOrderDetailPage({
   const paymentResolutionDetail = order.paymentResolutionReason?.includes("inventory")
     ? "Stock was reallocated after this paid order was cancelled."
     : "Promotion capacity was reallocated after this paid order was cancelled.";
+  const productsById = new Map(products.map((product) => [String(product.id), product]));
+  const progressSteps = [
+    { label: "Order placed", complete: true, current: false },
+    { label: "Paid", complete: order.paymentStatus !== "pending", current: false },
+    { label: "Processing", complete: order.status === "Shipped" || order.status === "Delivered", current: order.status === "Processing" },
+    { label: "Shipped", complete: order.status === "Shipped" || order.status === "Delivered", current: false },
+  ];
 
   return (
     <div className="admin-order-page">
       <div className="admin-order-page-topbar">
-        <button className="admin-back-button" type="button" onClick={onBack}>← Back to orders</button>
         <span className="admin-order-page-context">Orders <b>/</b> {order.id}</span>
+        <div className="admin-order-page-tools" aria-hidden="true">
+          <span className="admin-order-search-display"><Search /> <span>Search orders…</span></span>
+          <span className="admin-order-icon-display"><Bell /></span>
+          <span className="admin-order-avatar">GT</span>
+        </div>
       </div>
 
       <div className="admin-order-page-heading">
-        <div>
+        <div className="admin-order-heading-back">
+          <button className="admin-back-button" type="button" onClick={onBack}>← Back to orders</button>
+        </div>
+        <div className="admin-order-heading-main">
           <div className="admin-order-heading-kicker">
             <p className="admin-eyebrow">Order overview</p>
             <span className={`admin-order-status-badge ${order.status.toLowerCase()}`}>{order.status}</span>
@@ -362,8 +378,18 @@ function AdminOrderDetailPage({
         </div>
         <div className="admin-order-page-heading-actions">
           <div className="admin-order-heading-total"><span>Total paid</span><strong>{order.total}</strong></div>
-          <button className="admin-secondary" type="button" onClick={onBack}>Back to orders</button>
+          <button className="admin-secondary admin-order-print-button" type="button" onClick={() => window.print()}><Printer aria-hidden="true" /> Print invoice</button>
+          <button className="admin-primary admin-order-update-button" type="button" onClick={() => document.getElementById("admin-order-status")?.focus()}><PenLine aria-hidden="true" /> Update order</button>
         </div>
+        <ol className="admin-order-progress" aria-label="Order progress">
+          {progressSteps.map((step, index) => (
+            <li className={step.complete ? "is-complete" : step.current ? "is-current" : ""} key={step.label}>
+              <span className="admin-order-progress-marker">{step.complete ? <Check aria-hidden="true" /> : index + 1}</span>
+              <span>{step.label}</span>
+              {index < progressSteps.length - 1 && <i aria-hidden="true" />}
+            </li>
+          ))}
+        </ol>
       </div>
 
       <div className="admin-order-page-layout">
@@ -388,14 +414,21 @@ function AdminOrderDetailPage({
             ) : (
               <div className="admin-order-item-table">
                 <div className="admin-order-item-head"><span>Product</span><span>Unit price</span><span>Quantity</span><span>Total</span></div>
-                {order.items.map((item, index) => (
+                {order.items.map((item, index) => {
+                  const product = item.productId ? productsById.get(item.productId) : undefined;
+                  const imageSource = product ? getCatalogMediaSource(product.image) : "";
+                  return (
                   <div className="admin-order-item-row" key={`${item.productId ?? item.name}-${index}`}>
-                    <div><strong>{item.name}</strong>{item.productId && <small>Product ID: {item.productId}</small>}</div>
+                    <div className="admin-order-item-product">
+                      <div className="admin-order-item-image">{imageSource ? <img src={imageSource} alt="" /> : <span aria-hidden="true">No image</span>}</div>
+                      <div><strong>{item.name}</strong>{item.productId && <small>Product ID: {item.productId}</small>}</div>
+                    </div>
                     <span>{formatPounds((item.quantity > 0 ? item.total / item.quantity : item.total) / 100)}</span>
                     <span>{item.quantity}</span>
                     <strong>{formatPounds(item.total / 100)}</strong>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             <div className="admin-order-totals">
@@ -420,32 +453,27 @@ function AdminOrderDetailPage({
           <section className="admin-order-card admin-order-actions-card">
             <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Fulfilment</p><h2>Order actions</h2></div><span className={`admin-order-status-badge ${order.status.toLowerCase()}`}>{order.status}</span></div>
             <label className="admin-order-status-field">Status
-              <select value={order.status} disabled={updating || Boolean(paymentNeedsResolution)} onChange={(event) => onStatusChange(event.target.value as Order["status"])}>
+              <select id="admin-order-status" value={order.status} disabled={updating || Boolean(paymentNeedsResolution)} onChange={(event) => onStatusChange(event.target.value as Order["status"])}>
                 <option>Processing</option>
                 <option>Shipped</option>
                 <option>Delivered</option>
               </select>
             </label>
             <p className="admin-order-status-help">{paymentNeedsResolution ? "Fulfilment is disabled because this paid order was cancelled." : updating ? "Saving order status…" : "Update the order when it moves to its next delivery stage."}</p>
+            <button className="admin-primary admin-order-save-status" type="button" disabled={updating || Boolean(paymentNeedsResolution)} onClick={() => onStatusChange(order.status)}>{updating ? "Saving status…" : "Save status"}</button>
+            <button className="admin-order-mark-shipped" type="button" disabled={updating || Boolean(paymentNeedsResolution) || order.status === "Shipped" || order.status === "Delivered"} onClick={() => onStatusChange("Shipped")}><Truck aria-hidden="true" /> Mark as shipped</button>
           </section>
 
           <section className="admin-order-card">
-            <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Customer</p><h2>Customer details</h2></div></div>
-            <dl className="admin-order-detail-list">
-              <div><dt>Name</dt><dd>{order.customer || "Customer unavailable"}</dd></div>
-              <div><dt>Email</dt><dd>{order.email || "Email unavailable"}</dd></div>
-            </dl>
-          </section>
-
-          <section className="admin-order-card">
-            <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Delivery</p><h2>Shipping details</h2></div></div>
-            <dl className="admin-order-detail-list">
-              <div><dt>Method</dt><dd>{order.delivery.method}</dd></div>
-              <div><dt>Recipient</dt><dd>{order.delivery.name || order.customer || "Recipient unavailable"}</dd></div>
-            </dl>
-            <address className="admin-order-page-address">
-              {addressParts.length > 0 ? addressParts.map((part, index) => <span key={`${part}-${index}`}>{part}</span>) : <span>Address unavailable</span>}
-            </address>
+            <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Customer</p><h2>Customer &amp; delivery</h2></div></div>
+            <div className="admin-order-customer-grid">
+              <div><UserRound aria-hidden="true" /><span>Name</span><strong>{order.customer || "Customer unavailable"}</strong></div>
+              <div><Mail aria-hidden="true" /><span>Email</span><strong>{order.email || "Email unavailable"}</strong></div>
+              <div><Truck aria-hidden="true" /><span>Delivery method</span><strong>{order.delivery.method}</strong></div>
+              <div><UserRound aria-hidden="true" /><span>Recipient</span><strong>{order.delivery.name || order.customer || "Recipient unavailable"}</strong></div>
+              <div className="admin-order-customer-address"><MapPin aria-hidden="true" /><span>Address</span><address>{addressParts.length > 0 ? addressParts.map((part, index) => <span key={`${part}-${index}`}>{part}</span>) : <span>Address unavailable</span>}</address></div>
+            </div>
+            <div className="admin-order-customer-actions"><a href={`mailto:${order.email}`}><Mail aria-hidden="true" /> Email customer</a><button type="button" onClick={() => void navigator.clipboard?.writeText(addressParts.join(", "))}><Copy aria-hidden="true" /> Copy address</button></div>
           </section>
 
           <section className="admin-order-card">
@@ -2463,6 +2491,7 @@ export default function AdminDashboard({
         {section === "orders" && selectedOrder && (
           <AdminOrderDetailPage
             order={selectedOrder}
+            products={products}
             updating={updatingOrderId === selectedOrder.id}
             onStatusChange={(status) => void updateOrderStatus(selectedOrder, status)}
             resolvingPayment={resolvingPaymentOrderId === selectedOrder.id}
