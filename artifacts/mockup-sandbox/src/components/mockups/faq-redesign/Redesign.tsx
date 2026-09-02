@@ -18,7 +18,11 @@ const faqItems = [
   { category: 'Payments', question: 'Which payment methods do you accept?', answer: 'You can pay securely by card through Stripe. Your available card options are shown at checkout.' },
   { category: 'Payments', question: 'Is checkout secure?', answer: 'Yes. Card details are handled securely by Stripe and never stored by Glam Too. We only receive the payment confirmation needed to complete your order.' },
 ];
-const categories = ['All questions', 'Orders', 'Delivery', 'Returns', 'Products', 'Payments'];
+const faqGroups = [
+  { label: 'Orders & delivery', categories: ['Orders', 'Delivery'] },
+  { label: 'Returns & refunds', categories: ['Returns'] },
+  { label: 'Products & payments', categories: ['Products', 'Payments'] },
+];
 
 function stopNavigation(event: MouseEvent<HTMLAnchorElement>) { event.preventDefault(); }
 
@@ -47,16 +51,21 @@ function Footer() {
 
 export function Redesign() {
   const [query, setQuery] = useState('');
-  const [category, setCategory] = useState('All questions');
   const [openQuestion, setOpenQuestion] = useState(faqItems[0].question);
-  const visibleQuestions = useMemo(() => faqItems.filter((item) => {
-    const matchesCategory = category === 'All questions' || item.category === category;
+  const groupedQuestions = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    return matchesCategory && (!normalized || `${item.question} ${item.answer}`.toLowerCase().includes(normalized));
-  }), [category, query]);
+    return faqGroups.map((group) => ({
+      ...group,
+      questions: faqItems.filter((item) =>
+        group.categories.includes(item.category)
+        && (!normalized || `${item.question} ${item.answer}`.toLowerCase().includes(normalized)),
+      ),
+    })).filter((group) => group.questions.length > 0);
+  }, [query]);
+  const visibleQuestionCount = groupedQuestions.reduce((count, group) => count + group.questions.length, 0);
   return <div className="glam-faq-redesign"><Header /><main>
-    <section className="redesign-hero"><div className="hero-stamp">Customer care<br /><strong>GT / 01</strong></div><div className="redesign-hero-copy"><p className="eyebrow">The Glam Too guide</p><h1>Let’s make<br /><em>it easy.</em></h1><p className="hero-intro">Answers to the little things, from finding your fit to following your parcel home.</p><div className="redesign-search"><Search size={19} /><label className="sr-only" htmlFor="faq-redesign-search">Search for an answer</label><input id="faq-redesign-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="What can we help with?" /></div></div><div className="hero-aside"><span>12 questions</span><span>Updated / 2026</span><div className="hero-rule" /><p>Good style should feel effortless. So should getting help.</p></div></section>
-    <section className="redesign-faq-layout"><aside className="category-rail" aria-label="FAQ categories">{categories.map((item, index) => <button key={item} className={category === item ? 'active' : ''} type="button" onClick={() => { setCategory(item); setOpenQuestion(''); }}><span>0{index + 1}</span>{item}</button>)}</aside><div className="faq-column"><div className="faq-column-head"><p className="eyebrow">Browse by topic</p><p aria-live="polite">{visibleQuestions.length} {visibleQuestions.length === 1 ? 'answer' : 'answers'}</p></div>{visibleQuestions.length ? visibleQuestions.map((item, index) => <details className="redesign-faq-item" key={item.question} open={openQuestion === item.question}><summary onClick={(event) => { event.preventDefault(); setOpenQuestion((current) => current === item.question ? '' : item.question); }}><span className="faq-number">{String(index + 1).padStart(2, '0')}</span><span className="faq-question">{item.question}</span><span className="faq-plus" aria-hidden="true" /></summary><div className="redesign-answer"><p>{item.answer}</p></div></details>) : <div className="redesign-empty"><h2>No answers found yet.</h2><p>Try another search, or send our team a note and we'll help you find the right answer.</p><a href="#contact" onClick={stopNavigation}>Contact us <ArrowUpRight size={15} /></a></div>}</div></section>
-    <section className="redesign-support"><div className="support-orbit"><Headphones size={31} /></div><div><p className="eyebrow">A human is here</p><h2>Still need help?</h2><p>Our friendly support team is here for you. Get in touch and we'll be happy to assist.</p><a href="#contact" onClick={stopNavigation}>Contact us <ArrowUpRight size={15} /></a></div><span className="support-side-note">hello@glamtoo.co.uk</span></section>
+    <section className="redesign-hero"><div className="redesign-hero-copy"><p className="eyebrow">Help centre</p><h1>Frequently asked questions</h1><p className="hero-intro">Find quick answers to our most common questions.<br />Can&apos;t find what you&apos;re looking for? We&apos;re here to help.</p><div className="redesign-search"><Search size={18} /><label className="sr-only" htmlFor="faq-redesign-search">Search for an answer</label><input id="faq-redesign-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search for an answer" /></div></div></section>
+    <section className="redesign-faq-layout"><div className="faq-column"><div className="faq-column-head"><p className="eyebrow">Frequently asked</p><p aria-live="polite">{visibleQuestionCount} {visibleQuestionCount === 1 ? 'question' : 'questions'}</p></div>{groupedQuestions.length ? groupedQuestions.map((group) => <section className="faq-group" key={group.label}><h2>{group.label}</h2>{group.questions.map((item, index) => <details className="redesign-faq-item" key={item.question} open={openQuestion === item.question}><summary onClick={(event) => { event.preventDefault(); setOpenQuestion((current) => current === item.question ? '' : item.question); }}><span className="faq-number">{String(index + 1).padStart(2, '0')}</span><span className="faq-question">{item.question}</span><span className="faq-plus" aria-hidden="true" /></summary><div className="redesign-answer"><p>{item.answer}</p></div></details>)}</section>) : <div className="redesign-empty"><h2>No answers found yet.</h2><p>Try another search, or send our team a note and we&apos;ll help you find the right answer.</p><a href="#contact" onClick={stopNavigation}>Contact us <ArrowUpRight size={15} /></a></div>}</div></section>
+    <section className="redesign-support"><div className="support-copy"><div className="support-orbit"><Headphones size={29} /></div><div><p className="eyebrow">Customer care</p><h2>Still need help?</h2><p>Our friendly support team is here for you. Get in touch and we&apos;ll be happy to assist.</p><a href="#contact" onClick={stopNavigation}>Contact us <ArrowUpRight size={15} /></a></div></div><div className="support-image"><img src="/__mockup/images/faq-support.png" alt="Glam Too fashion editorial" /></div></section>
   </main><Footer /></div>;
 }
