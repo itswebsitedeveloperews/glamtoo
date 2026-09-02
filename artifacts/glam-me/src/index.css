@@ -287,7 +287,7 @@ img { display: block; max-width: 100%; }
 .about-value-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
 .about-value h3 { margin: 0 0 12px; font: 400 28px/1 var(--display); letter-spacing: -.03em; }
 .about-value p { max-width: 270px; margin: 0 auto; color: var(--muted); font-size: 14px; line-height: 1.55; }
-.about-story { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(260px, .92fr); gap: clamp(48px, 9vw, 150px); align-items: center; padding-top: 120px; padding-bottom: 126px; }
+.about-story { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; padding-top: 120px; padding-bottom: 126px; }
 .about-story-media { aspect-ratio: 1.03 / 1; overflow: hidden; background: #dc7890; }
 .about-story-media img { object-position: 67% center; }
 .about-story-copy { max-width: 440px; }
