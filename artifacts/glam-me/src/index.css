@@ -266,11 +266,11 @@ img { display: block; max-width: 100%; }
 .about-hero-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20, 13, 14, .56) 0%, rgba(20, 13, 14, .15) 53%, rgba(20, 13, 14, .04) 100%); }
 .about-hero-copy { position: relative; z-index: 1; padding: 105px 0 82px; }
 .about-hero-copy .eyebrow { color: #f9d3dc; }
-.about-hero-copy h1 { margin: 17px 0 20px; font: 400 clamp(68px, 8.5vw, 128px)/.86 var(--display); letter-spacing: -.06em; }
+.about-hero-copy h1 { margin: 17px 0 20px; font: 400 82px/.86 var(--display); letter-spacing: -.06em; }
 .about-hero-copy p { max-width: 365px; margin: 0; color: rgba(255,255,255,.88); font-size: 16px; line-height: 1.55; }
 .about-intro { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(0, 1.2fr); gap: clamp(48px, 9vw, 150px); align-items: center; padding-top: 112px; padding-bottom: 120px; }
 .about-intro-copy { max-width: 440px; }
-.about-intro-copy h2, .about-story-copy h2 { margin: 16px 0 25px; font: 400 clamp(54px, 6.3vw, 88px)/.87 var(--display); letter-spacing: -.055em; }
+.about-intro-copy h2, .about-story-copy h2 { margin: 16px 0 25px; font: 400 60px/.87 var(--display); letter-spacing: -.055em; }
 .about-intro-copy > p, .about-story-copy > p { max-width: 430px; color: var(--muted); font-size: 16px; line-height: 1.65; }
 .about-intro-copy strong, .about-story-copy strong { display: block; margin-top: 25px; font: 400 23px/1.2 var(--display); }
 .about-text-link { display: inline-flex; align-items: center; gap: 9px; margin-top: 30px; padding-bottom: 5px; border-bottom: 1px solid currentColor; color: var(--ink); font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
@@ -291,7 +291,7 @@ img { display: block; max-width: 100%; }
 .about-story-media { aspect-ratio: 1.03 / 1; overflow: hidden; background: #dc7890; }
 .about-story-media img { object-position: 67% center; }
 .about-story-copy { max-width: 440px; }
-.about-story-copy h2 { font-size: clamp(52px, 6vw, 80px); }
+.about-story-copy h2 { font-size: 60px; }
 .about-cta { padding: 87px 0 92px; background: var(--pink); color: var(--white); text-align: center; }
 .about-cta .eyebrow { color: rgba(255,255,255,.78); }
 .about-cta h2 { margin: 16px 0 15px; font: 400 clamp(54px, 6vw, 86px)/.9 var(--display); letter-spacing: -.055em; }
