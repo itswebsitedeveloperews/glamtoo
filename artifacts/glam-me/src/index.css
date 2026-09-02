@@ -1423,7 +1423,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-order-progress-marker svg { width: 12px; height: 12px; }
 .admin-order-progress li.is-complete .admin-order-progress-marker { border-color: #e23d6f; background: #e23d6f; color: #fff; }
 .admin-order-progress li.is-current .admin-order-progress-marker { border: 2px solid #e23d6f; background: #fffdfb; color: #e23d6f; }
-.admin-order-progress li i { position: absolute; top: 9px; left: 27px; right: 14px; height: 1px; background: #d8d0ca; }
+.admin-order-progress li i { position: absolute; z-index: 0; top: 9px; left: 27px; right: 0; height: 1px; background: #d8d0ca; }
 .admin-order-progress li.is-complete i { background: #e23d6f; }
 .admin-order-page-layout { grid-template-columns: minmax(0, 1.43fr) minmax(300px, .85fr); gap: 12px; }
 .admin-order-page-main, .admin-order-page-sidebar { gap: 12px; }
@@ -1453,8 +1453,9 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-order-mark-shipped:hover:not(:disabled) { color: #a6516e; }
 .admin-order-mark-shipped:disabled { cursor: not-allowed; opacity: .45; }
 .admin-order-mark-shipped svg { width: 15px; height: 15px; }
-.admin-order-customer-grid { display: grid; grid-template-columns: 1fr 1.25fr; gap: 12px 14px; margin-top: 15px; }
+.admin-order-customer-grid { display: grid; grid-template-columns: 1fr; gap: 0; margin-top: 15px; }
 .admin-order-customer-grid > div { display: grid; grid-template-columns: 15px 101px minmax(0, 1fr); align-items: start; gap: 6px; min-width: 0; color: var(--muted); font-size: 12px; }
+.admin-order-customer-grid > div:not(:first-child) { border-top: 1px solid #eee8e3; padding-top: 9px; margin-top: 9px; }
 .admin-order-customer-grid svg { width: 14px; height: 14px; margin-top: 1px; }
 .admin-order-customer-grid strong { color: var(--ink); font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
 .admin-order-customer-grid address { display: grid; gap: 2px; color: var(--ink); font-size: 12px; font-style: normal; line-height: 1.35; }
@@ -1463,6 +1464,10 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-order-customer-actions > :last-child { border-right: 0; }
 .admin-order-customer-actions a:hover, .admin-order-customer-actions button:hover { background: #faf4f1; color: #a6516e; }
 .admin-order-customer-actions svg { width: 14px; height: 14px; }
+.admin-order-payment-card .admin-order-detail-list { gap: 0; margin-top: 14px; }
+.admin-order-payment-card .admin-order-detail-list > div { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid #eee8e3; }
+.admin-order-payment-card .admin-order-detail-list dt { font-size: 12px; }
+.admin-order-payment-card .admin-order-detail-list dd { font-size: 12px; text-align: right; }
 
 @media (max-width: 720px) {
   .admin-order-page-topbar { align-items: start; }

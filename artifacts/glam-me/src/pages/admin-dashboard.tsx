@@ -476,7 +476,7 @@ function AdminOrderDetailPage({
             <div className="admin-order-customer-actions"><a href={`mailto:${order.email}`}><Mail aria-hidden="true" /> Email customer</a><button type="button" onClick={() => void navigator.clipboard?.writeText(addressParts.join(", "))}><Copy aria-hidden="true" /> Copy address</button></div>
           </section>
 
-          <section className="admin-order-card">
+          <section className="admin-order-card admin-order-payment-card">
             <div className="admin-order-card-heading"><div><p className="admin-eyebrow">Payment</p><h2>Payment details</h2></div></div>
             <dl className="admin-order-detail-list">
               <div><dt>Gateway</dt><dd>Stripe</dd></div>
