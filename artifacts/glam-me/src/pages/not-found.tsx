@@ -1,23 +1,34 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import logoImage from '@assets/glam_me_logo_1787652435373.svg';
+import { Link } from 'wouter';
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md mx-4">
-        <CardContent className="pt-6">
-          <div className="flex mb-4 gap-2">
-            <AlertCircle className="h-8 w-8 text-red-500" />
-            <h1 className="text-2xl font-bold text-gray-900">
-              404 Page Not Found
-            </h1>
-          </div>
+    <main className="not-found-page">
+      <section className="not-found-shell" aria-labelledby="not-found-title">
+        <Link className="not-found-logo" href="/" aria-label="Glam Too home">
+          <img src={logoImage} alt="Glam Too" />
+        </Link>
 
-          <p className="mt-4 text-sm text-gray-600">
-            Did you forget to add the page to the router?
+        <div className="not-found-copy">
+          <p className="not-found-kicker">A little detour</p>
+          <div className="not-found-number" aria-hidden="true">404</div>
+          <h1 id="not-found-title">We couldn&apos;t find that page.</h1>
+          <p className="not-found-message">
+            The page may have moved, or the link may be wearing yesterday&apos;s look.
+            Let&apos;s get you back to something lovely.
           </p>
-        </CardContent>
-      </Card>
-    </div>
+          <div className="not-found-actions">
+            <Link className="button button-pink" href="/">Back to home</Link>
+            <Link className="not-found-shop-link" href="/shop">Shop the collection <span aria-hidden="true">→</span></Link>
+          </div>
+        </div>
+
+        <div className="not-found-art" aria-hidden="true">
+          <span className="not-found-art-number">04</span>
+          <span className="not-found-art-label">Glam Too / Since 2026</span>
+          <span className="not-found-art-line" />
+        </div>
+      </section>
+    </main>
   );
 }
