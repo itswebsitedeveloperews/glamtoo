@@ -1,3 +1,4 @@
+import notFoundDisplayImage from '@assets/glam-too-404-display-no-bg.png';
 import { Link } from 'wouter';
 
 export default function NotFound() {
@@ -5,10 +6,8 @@ export default function NotFound() {
     <section className="not-found-page" aria-labelledby="not-found-title">
       <div className="not-found-stage">
         <div className="not-found-backdrop-number" aria-hidden="true">404</div>
-        <div className="not-found-art" aria-hidden="true">
-          <span className="not-found-art-number">04</span>
-          <span className="not-found-art-label">Glam Too / Since 2026</span>
-          <span className="not-found-art-line" />
+        <div className="not-found-art">
+          <img src={notFoundDisplayImage} alt="Glam Too 404 fashion display with a satin dress, shopping bags, and a pedestal" />
         </div>
         <div className="not-found-copy">
           <p className="not-found-kicker">A little detour</p>

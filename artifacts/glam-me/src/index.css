@@ -1322,12 +1322,8 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .not-found-page { display: grid; min-height: 670px; place-items: center; overflow: hidden; background: var(--paper); padding: 88px 24px 104px; }
 .not-found-stage { position: relative; display: flex; width: min(920px, 100%); flex-direction: column; align-items: center; text-align: center; }
 .not-found-backdrop-number { position: absolute; z-index: 0; top: -42px; color: rgba(226, 61, 111, .13); font: 400 clamp(180px, 27vw, 330px)/.8 var(--hero-display); letter-spacing: -.12em; pointer-events: none; }
-.not-found-art { position: relative; z-index: 1; display: grid; width: min(500px, 88vw); min-height: 300px; place-items: center; overflow: hidden; background: #f5d9e1; box-shadow: 12px 12px 0 rgba(23, 22, 21, .07); }
-.not-found-art:before { content: ''; position: absolute; width: 245px; height: 245px; border: 1px solid rgba(185, 73, 111, .32); border-radius: 50%; transform: translate(27px, -12px); }
-.not-found-art:after { content: ''; position: absolute; top: 0; right: 17%; width: 1px; height: 100%; background: rgba(185, 73, 111, .23); transform: rotate(24deg); transform-origin: top; }
-.not-found-art-number { position: relative; z-index: 1; color: #fffaf8; font: 400 clamp(130px, 18vw, 190px)/.8 var(--hero-display); letter-spacing: -.12em; transform: translateX(-10px); }
-.not-found-art-label { position: absolute; right: 18px; bottom: 17px; color: #a94d6a; font-size: 11px; letter-spacing: .15em; text-transform: uppercase; }
-.not-found-art-line { position: absolute; bottom: 47px; left: 18px; width: 75px; height: 1px; background: #a94d6a; }
+.not-found-art { position: relative; z-index: 1; width: min(900px, 100%); }
+.not-found-art img { width: 100%; height: auto; }
 .not-found-copy { position: relative; z-index: 2; display: flex; max-width: 640px; flex-direction: column; align-items: center; margin-top: 47px; }
 .not-found-kicker { margin: 0 0 12px; color: var(--pink-deep); font-size: 14px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
 .not-found-copy h1 { max-width: 640px; margin: 0 0 15px; font: 400 clamp(38px, 5vw, 68px)/.92 var(--display); letter-spacing: -.06em; }
@@ -1342,8 +1338,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 @media (max-width: 720px) {
   .not-found-page { min-height: 560px; padding: 64px 18px 78px; }
   .not-found-backdrop-number { top: -18px; font-size: clamp(165px, 44vw, 245px); }
-  .not-found-art { min-height: 230px; }
-  .not-found-art-number { font-size: 120px; }
+  .not-found-art { width: min(650px, 100%); }
   .not-found-copy { margin-top: 38px; }
   .not-found-copy h1 { font-size: clamp(36px, 10vw, 52px); }
   .not-found-actions { gap: 18px; }
