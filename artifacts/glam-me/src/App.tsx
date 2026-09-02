@@ -1602,7 +1602,6 @@ function About() {
 }
 
 function FAQ() {
-  const categories = ["Orders", "Delivery", "Returns", "Products", "Payments"];
   const faqItems = [
     { category: "Orders", question: "Where is my order?", answer: "Once your order has been dispatched, you will receive a confirmation email with a tracking link. You can use this link to follow your parcel’s journey in real time." },
     { category: "Orders", question: "Can I change or cancel my order?", answer: "We start preparing orders quickly, but email hello@glamtoo.co.uk as soon as possible and our team will do their best to help before dispatch." },
@@ -1617,12 +1616,11 @@ function FAQ() {
     { category: "Payments", question: "Which payment methods do you accept?", answer: "You can pay securely by card through Stripe. Your available card options are shown at checkout." },
     { category: "Payments", question: "Is checkout secure?", answer: "Yes. Card details are handled securely by Stripe and never stored by Glam Too. We only receive the payment confirmation needed to complete your order." },
   ];
-  const [activeCategory, setActiveCategory] = useState("Orders");
+  const [openQuestion, setOpenQuestion] = useState(faqItems[0]?.question ?? "");
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const visibleQuestions = faqItems.filter((item) =>
-    item.category === activeCategory
-    && (!normalizedQuery || `${item.question} ${item.answer}`.toLowerCase().includes(normalizedQuery)),
+    !normalizedQuery || `${item.question} ${item.answer}`.toLowerCase().includes(normalizedQuery),
   );
 
   return (
@@ -1647,25 +1645,16 @@ function FAQ() {
         </section>
 
         <div className="container faq-content">
-          <nav className="faq-tabs" aria-label="FAQ categories">
-            {categories.map((category) => (
-              <button
-                type="button"
-                className={activeCategory === category ? "is-active" : ""}
-                aria-current={activeCategory === category ? "page" : undefined}
-                onClick={() => setActiveCategory(category)}
-                key={category}
-                data-testid={`button-faq-category-${category.toLowerCase()}`}
-              >
-                {category}
-              </button>
-            ))}
-          </nav>
-
           <div className="faq-results" aria-live="polite">
             {visibleQuestions.length > 0 ? visibleQuestions.map((item, index) => (
-              <details className="faq-item" key={item.question} open={index === 0}>
-                <summary data-testid={`text-faq-question-${index}`}>
+              <details className="faq-item" key={item.question} open={openQuestion === item.question}>
+                <summary
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setOpenQuestion((current) => current === item.question ? "" : item.question);
+                  }}
+                  data-testid={`text-faq-question-${index}`}
+                >
                   <span>{item.question}</span>
                   <span className="faq-item-symbol" aria-hidden="true" />
                 </summary>

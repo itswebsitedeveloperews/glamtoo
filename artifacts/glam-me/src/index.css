@@ -318,11 +318,6 @@ img { display: block; max-width: 100%; }
 .faq-search-wrap:focus-within { border-color: var(--pink-deep); box-shadow: 0 0 0 2px rgba(226, 61, 111, .1); }
 .faq-search-wrap input::-webkit-search-cancel-button { cursor: pointer; }
 .faq-content { padding-bottom: 0; }
-.faq-tabs { display: flex; justify-content: center; gap: clamp(24px, 5vw, 65px); border-bottom: 1px solid var(--line); }
-.faq-tabs button { position: relative; min-height: 61px; border: 0; background: transparent; padding: 0 3px; color: var(--ink); cursor: pointer; font: 400 14px/1 var(--body); }
-.faq-tabs button:after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: transparent; }
-.faq-tabs button:hover, .faq-tabs button.is-active { color: var(--pink-deep); }
-.faq-tabs button.is-active:after { background: var(--pink-deep); }
 .faq-results { display: grid; gap: 8px; max-width: 860px; margin: 25px auto 0; }
 .faq-item { border: 1px solid var(--line); background: var(--white); }
 .faq-item summary { display: flex; align-items: center; justify-content: space-between; gap: 20px; min-height: 55px; padding: 0 22px; cursor: pointer; list-style: none; font: 400 20px/1.2 var(--display); }
@@ -1785,8 +1780,6 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .faq-hero h1 { max-width: 520px; margin-right: auto; margin-left: auto; font-size: clamp(45px, 11vw, 62px); }
   .faq-hero p br { display: none; }
   .faq-search-wrap { margin-top: 24px; }
-  .faq-tabs { justify-content: flex-start; gap: 0; overflow-x: auto; margin: 0 -17px; padding: 0 17px; }
-  .faq-tabs button { flex: 0 0 auto; min-width: 100px; }
   .faq-results { margin-top: 18px; }
   .faq-item summary { min-height: 58px; padding: 0 16px; font-size: 18px; }
   .faq-answer { padding: 16px; }
@@ -1796,7 +1789,6 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 
 @media (max-width: 460px) {
-  .faq-tabs button { min-width: 92px; }
   .faq-item summary { font-size: 17px; }
   .faq-support-icon { margin-bottom: 2px; }
 }
