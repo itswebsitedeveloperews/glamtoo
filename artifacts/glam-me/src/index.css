@@ -1646,6 +1646,9 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-payment-mode-body h3 { font-size: 21px; }
 .admin-payment-mode-body p { margin: 8px 0 12px; font-size: 14px; line-height: 1.5; }
 .admin-payment-mode-body .admin-secondary { min-height: 36px; padding: 0 10px; font-size: 14px; }
+.admin-payment-how li { padding-bottom: 0; }
+.admin-payment-how li:not(:last-child) { margin-bottom: 0; border-bottom: 0; }
+.admin-payment-how li:not(:last-child)::after { display: none; }
 
 @media (max-width: 1120px) {
   .admin-payment-card { display: grid; }
@@ -1663,4 +1666,6 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .admin-payment-settings, .admin-stripe-guide, .admin-payment-how { padding: 20px; }
   .admin-payment-detail-grid { grid-template-columns: 1fr; }
   .admin-payment-mode-grid { gap: 10px; }
+  .admin-payment-how li { padding-bottom: 18px; }
+  .admin-payment-how li:not(:last-child) { margin-bottom: 18px; border-bottom: 1px solid #eee8e3; }
 }
