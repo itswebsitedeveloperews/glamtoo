@@ -930,6 +930,10 @@ function Shell({ children }: { children: ReactNode }) {
   return <><Header /><main className="page">{children}</main><Footer /></>;
 }
 
+function NotFoundRoute() {
+  return <Shell><NotFound /></Shell>;
+}
+
 function ProductCard({ product, featured = false, showShopNow = false }: { product: CatalogProduct; featured?: boolean; showShopNow?: boolean }) {
   return (
     <article className="product-card" data-testid={`card-product-${product.id}`}>
@@ -1191,7 +1195,7 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
   useLiveInventory();
   const categories = getStorefrontCategories();
   const category = categories.find((item) => slugify(item.name) === params.slug);
-  if (!category) return <NotFound />;
+  if (!category) return <NotFoundRoute />;
   const products = getStorefrontProducts().filter((product) => slugify(product.category) === params.slug);
 
   return (
@@ -1265,7 +1269,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     : undefined;
   const displayedPrice = selectedVariation?.price ?? product?.price ?? '';
 
-  if (!product) return <NotFound />;
+  if (!product) return <NotFoundRoute />;
   const selectedProduct = product;
   const isSoldOut = product.type === 'Simple' ? product.stock <= 0 : availableVariations.length === 0;
   const displayedGalleryIndex = Math.min(activeGalleryIndex, Math.max(galleryImages.length - 1, 0));
@@ -2883,7 +2887,7 @@ function AppRoutes() {
     <Route path="/register/*?" component={CustomerSignUpPage} />
     <Route path="/sign-in/*?" component={CustomerSignInPage} />
     <Route path="/sign-up/*?" component={CustomerSignUpPage} />
-    <Route component={NotFound} />
+    <Route component={NotFoundRoute} />
   </Switch>;
 }
 
