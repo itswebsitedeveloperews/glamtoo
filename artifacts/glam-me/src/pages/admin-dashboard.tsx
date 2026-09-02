@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { CreditCard, LayoutDashboard, Package, ShoppingBag, Tags, TicketPercent, Truck, Users, type LucideIcon } from "lucide-react";
+import { Check, CircleDollarSign, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Package, Save, Send, ShoppingBag, Tags, TicketPercent, Truck, Users, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -658,9 +658,23 @@ function ProductEditorWithMultipleUploads({
   const [productImageFileName, setProductImageFileName] = useState("");
   const [galleryImageUrl, setGalleryImageUrl] = useState("");
   const [galleryImageFileNames, setGalleryImageFileNames] = useState<string[]>([]);
+  const productImagePreview = getCatalogMediaSource(draft.image);
 
   const publishLabel = product && draft.status === "Published" ? "Update product" : "Publish product";
   const totalVariationStock = draft.variations.reduce((total, variation) => total + variation.stock, 0);
+  const checklistItems = [
+    { label: "Product name", complete: Boolean(draft.name.trim()) },
+    {
+      label: draft.type === "Variable" ? "Variation prices" : "Price",
+      complete: draft.type === "Variable"
+        ? draft.variations.length > 0 && draft.variations.every((variation) => Boolean(formatCatalogPrice(variation.price)))
+        : Boolean(formatCatalogPrice(draft.price)),
+    },
+    { label: "Inventory", complete: draft.type === "Simple" || draft.variations.length > 0 },
+    { label: "Media", complete: Boolean(draft.image.trim()) },
+    { label: "Category", complete: Boolean(draft.category.trim()) },
+  ];
+  const completedChecklistItems = checklistItems.filter((item) => item.complete).length;
 
   function updateDraft(patch: Partial<ProductDraft>) {
     setDraft((current) => ({ ...current, ...patch }));
@@ -868,21 +882,28 @@ function ProductEditorWithMultipleUploads({
       <div className="admin-editor-layout">
         <div className="admin-editor-column">
           <section className="admin-editor-card">
-            <div className="admin-card-heading"><div><p className="admin-eyebrow">Product details</p><h2>Tell the story</h2></div><span className="admin-required-note">* Required</span></div>
-            <label className="admin-editor-label">Product name *
-               <input className="admin-editor-input admin-editor-title-input" value={draft.name} onChange={(event) => updateProductName(event.target.value)} placeholder="e.g. Sienna Slip Dress" required />
-            </label>
-            <label className="admin-editor-label">Product slug
-              <input className="admin-editor-input" value={draft.slug} onChange={(event) => updateDraft({ slug: event.target.value })} placeholder="sienna-slip-dress" />
-              <small>Auto-generated from the product name. Edit it to change this product&apos;s storefront URL.</small>
-            </label>
-            <label className="admin-editor-label">Description
-              <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="Describe the fit, feeling, and details customers should know." rows={5} />
-            </label>
+            <div className="admin-card-heading">
+              <div className="admin-card-title"><span className="admin-card-icon"><Package aria-hidden="true" /></span><h2>Product details</h2></div>
+              <span className="admin-required-note">* Required</span>
+            </div>
+            <div className="admin-detail-fields">
+              <label className="admin-editor-label">Product name *
+                <input className="admin-editor-input admin-editor-title-input" value={draft.name} onChange={(event) => updateProductName(event.target.value)} placeholder="e.g. Sienna Slip Dress" required />
+              </label>
+              <label className="admin-editor-label">Product slug
+                <span className="admin-slug-input">
+                  <input className="admin-editor-input" value={draft.slug} onChange={(event) => updateDraft({ slug: event.target.value })} placeholder="sienna-slip-dress" />
+                  <small><Check aria-hidden="true" />Auto-generated</small>
+                </span>
+              </label>
+              <label className="admin-editor-label">Description
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="Describe the fit, feeling, and details customers should know." rows={5} />
+              </label>
+            </div>
           </section>
 
           <section className="admin-editor-card">
-            <div className="admin-card-heading"><div><p className="admin-eyebrow">Product data</p><h2>What are you selling?</h2></div></div>
+            <div className="admin-card-heading"><div className="admin-card-title"><span className="admin-card-icon"><CircleDollarSign aria-hidden="true" /></span><h2>Pricing &amp; inventory</h2></div></div>
             <div className="admin-field-grid">
               <label className="admin-editor-label">Product type
                 <select className="admin-editor-input" value={draft.type} onChange={(event) => updateDraft({ type: event.target.value as ProductType })}>
@@ -930,26 +951,71 @@ function ProductEditorWithMultipleUploads({
               {draft.variations.length > 0 && <p className="admin-variation-summary">{draft.variations.length} variation{draft.variations.length === 1 ? "" : "s"} · {totalVariationStock} units in stock</p>}
             </section>
           )}
+
+          <section className="admin-editor-card admin-media-card">
+            <div className="admin-card-heading"><div className="admin-card-title"><span className="admin-card-icon"><ImageIcon aria-hidden="true" /></span><h2>Product media</h2></div></div>
+            <div className="admin-media-workspace">
+              <div className="admin-media-primary">
+                {productImagePreview ? <img className="admin-product-image-preview" src={productImagePreview} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /><strong>Add a primary product image</strong><span>PNG, JPG, WEBP or GIF · max 4MB</span></div>}
+                <label className="admin-editor-label">Primary image URL
+                  <input className="admin-editor-input" value={draft.image.startsWith("data:") || isCatalogMediaReference(draft.image) ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="https://..." />
+                </label>
+                <div className="admin-image-upload">
+                  <label className="admin-upload-button">Add primary image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
+                  <span>{productImageFileName || "Choose a storefront hero image"}</span>
+                </div>
+              </div>
+              <div className="admin-media-gallery">
+                <div className="admin-gallery-heading">
+                  <strong>Gallery images</strong>
+                  <small>Add supporting views for the product page. The primary image stays first.</small>
+                </div>
+                <div className="admin-gallery-add">
+                  <input className="admin-editor-input" value={galleryImageUrl} onChange={(event) => setGalleryImageUrl(event.target.value)} placeholder="Gallery image URL" aria-label="Gallery image URL" />
+                  <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add</button>
+                </div>
+                <div className="admin-image-upload">
+                  <label className="admin-upload-button">Upload gallery images<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                  <span>{galleryImageFileNames.filter(Boolean).join(", ") || "Select one or more images"}</span>
+                </div>
+                {(draft.galleryImages ?? []).length > 0 ? (
+                  <div className="admin-product-gallery-list" aria-label="Gallery image order">
+                    {(draft.galleryImages ?? []).map((image, index) => (
+                      <div className="admin-product-gallery-item" key={`${image}-${index}`}>
+                        {getCatalogMediaSource(image) ? <img src={getCatalogMediaSource(image)} alt={`${draft.name || "Product"} gallery view ${index + 1}`} /> : <div className="admin-image-placeholder">Loading image…</div>}
+                        <div className="admin-product-gallery-item-actions">
+                          <span>View {index + 2}</span>
+                          <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label={`Move gallery image ${index + 1} earlier`}>↑</button>
+                          <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === (draft.galleryImages ?? []).length - 1} aria-label={`Move gallery image ${index + 1} later`}>↓</button>
+                          <button className="admin-remove-button" type="button" onClick={() => removeGalleryImage(index)} aria-label={`Remove gallery image ${index + 1}`}>×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="admin-gallery-empty">No additional gallery images yet.</p>}
+              </div>
+            </div>
+          </section>
         </div>
 
         <aside className="admin-editor-sidebar">
           <section className="admin-publish-card">
-            <div className="admin-card-heading"><div><p className="admin-eyebrow">Publishing</p><h2>Product status</h2></div><span className={`admin-publish-dot ${draft.status.toLowerCase()}`} /></div>
+            <div className="admin-card-heading"><div className="admin-card-title"><span className="admin-card-icon"><Package aria-hidden="true" /></span><h2>Product status</h2></div></div>
             <label className="admin-editor-label">Status
               <select className="admin-editor-input" value={draft.status} onChange={(event) => updateDraft({ status: event.target.value as ProductStatus })}>
                 <option value="Draft">Draft</option>
                 <option value="Published">Published</option>
               </select>
             </label>
-            <p className="admin-publish-help">{draft.status === "Published" ? "This product is visible on your storefront." : "This product is hidden until you publish it."}</p>
-            <div className="admin-publish-actions">
-              <button className="admin-secondary" type="button" onClick={() => save("Draft")}>Move to draft</button>
-              <button className="admin-primary" type="button" onClick={() => save("Published")}>{publishLabel}</button>
+            <div className="admin-status-summary">
+              <div><span>Visibility</span><strong>{draft.status === "Published" ? "Visible" : "Hidden"}</strong></div>
+              <div><span>Publish</span><strong>{draft.status === "Published" ? "Published" : "Publish manually"}</strong></div>
             </div>
+            <p className="admin-publish-help">{draft.status === "Published" ? "This product is visible on your storefront." : "This product stays hidden until you publish it."}</p>
           </section>
 
           <section className="admin-editor-card admin-sidebar-card">
-            <p className="admin-eyebrow">Organization</p>
+            <div className="admin-card-heading"><div className="admin-card-title"><span className="admin-card-icon"><FolderOpen aria-hidden="true" /></span><h2>Organization</h2></div></div>
             <label className="admin-editor-label">Category
               <select className="admin-editor-input" value={draft.category} onChange={(event) => updateDraft({ category: event.target.value })}>{categories.map((category) => <option key={category}>{category}</option>)}</select>
             </label>
@@ -996,12 +1062,14 @@ function ProductEditorWithMultipleUploads({
            </section>
 
           <section className="admin-editor-card admin-sidebar-card">
-            <p className="admin-eyebrow">Editor checklist</p>
+            <div className="admin-card-heading admin-checklist-heading">
+              <div className="admin-card-title"><span className="admin-card-icon"><ListChecks aria-hidden="true" /></span><h2>Product checklist</h2></div>
+              <span>{completedChecklistItems} of {checklistItems.length} complete</span>
+            </div>
             <ul className="admin-checklist">
-              <li className={draft.name ? "is-complete" : ""}>Product name</li>
-              <li className={(draft.type === "Variable" ? draft.variations.length > 0 && draft.variations.every((variation) => Boolean(formatCatalogPrice(variation.price))) : Boolean(formatCatalogPrice(draft.price))) ? "is-complete" : ""}>{draft.type === "Variable" ? "Variation prices" : "Price"}</li>
-              <li className={draft.type === "Simple" || draft.variations.length > 0 ? "is-complete" : ""}>{draft.type === "Variable" ? "At least one variation" : "Stock quantity"}</li>
+              {checklistItems.map((item) => <li className={item.complete ? "is-complete" : ""} key={item.label}>{item.label}</li>)}
             </ul>
+            <div className="admin-checklist-progress" aria-hidden="true"><span style={{ width: `${(completedChecklistItems / checklistItems.length) * 100}%` }} /></div>
           </section>
         </aside>
       </div>
@@ -1049,6 +1117,19 @@ function ProductEditor({
 
   const publishLabel = product && draft.status === "Published" ? "Update product" : "Publish product";
   const totalVariationStock = draft.variations.reduce((total, variation) => total + variation.stock, 0);
+  const checklistItems = [
+    { label: "Product name", complete: Boolean(draft.name.trim()) },
+    {
+      label: draft.type === "Variable" ? "Variation prices" : "Price",
+      complete: draft.type === "Variable"
+        ? draft.variations.length > 0 && draft.variations.every((variation) => Boolean(formatCatalogPrice(variation.price)))
+        : Boolean(formatCatalogPrice(draft.price)),
+    },
+    { label: "Inventory", complete: draft.type === "Simple" || draft.variations.length > 0 },
+    { label: "Media", complete: Boolean(draft.image.trim()) },
+    { label: "Category", complete: Boolean(draft.category.trim()) },
+  ];
+  const completedChecklistItems = checklistItems.filter((item) => item.complete).length;
 
   function updateDraft(patch: Partial<ProductDraft>) {
     setDraft((current) => ({ ...current, ...patch }));
@@ -1246,41 +1327,69 @@ function ProductEditor({
   return (
     <form className="admin-product-editor" onSubmit={handleSubmit}>
       <div className="admin-editor-topbar">
-        <button className="admin-back-button" type="button" onClick={onCancel}>← Back to products</button>
-        <span>{product ? "Edit product" : "Add new product"}</span>
+        <button className="admin-back-button" type="button" onClick={onCancel}>Products</button>
+        <span aria-hidden="true">/</span>
+        <span>{product ? "Edit product" : "Add product"}</span>
       </div>
       <div className="admin-editor-heading">
         <div>
-          <p className="admin-eyebrow">Catalog / {product ? "Edit" : "New"}</p>
           <h1>{product ? product.name : "Add new product"}</h1>
-          <p>{product ? "Update the product details, variations, or publishing status." : "Create a product customers will love to add to their next plan."}</p>
+          <p>{product ? "Update the product details, variations, or publishing status." : "Create a product your customers will love."}</p>
         </div>
         <div className="admin-editor-heading-actions">
-          <button className="admin-secondary" type="button" onClick={() => void save("Draft")} disabled={isSaving || pendingGalleryUploads > 0}>{isSaving ? "Saving…" : pendingGalleryUploads > 0 ? "Preparing images…" : "Save draft"}</button>
-          <button className="admin-primary" type="button" onClick={() => void save("Published")} disabled={isSaving || pendingGalleryUploads > 0}>{isSaving ? "Saving…" : pendingGalleryUploads > 0 ? "Preparing images…" : publishLabel}</button>
+          <span className="admin-editor-save-state"><span aria-hidden="true" />{isSaving ? "Saving changes" : pendingGalleryUploads > 0 ? "Preparing images" : "Unsaved changes"}</span>
+          <button className="admin-secondary admin-editor-action" type="button" onClick={() => void save("Draft")} disabled={isSaving || pendingGalleryUploads > 0}><Save aria-hidden="true" />{isSaving ? "Saving…" : "Save draft"}</button>
+          <button
+            className="admin-secondary admin-editor-action"
+            type="button"
+            onClick={() => {
+              if (!product) {
+                setValidationMessage("Save this product as a draft before previewing it.");
+                return;
+              }
+              window.open(`/product/${product.slug}`, "_blank", "noopener,noreferrer");
+            }}
+          >
+            <Eye aria-hidden="true" />Preview
+          </button>
+          <button className="admin-primary admin-editor-action" type="button" onClick={() => void save("Published")} disabled={isSaving || pendingGalleryUploads > 0}><Send aria-hidden="true" />{isSaving ? "Saving…" : publishLabel}</button>
         </div>
       </div>
 
       {validationMessage && <div className="admin-validation" role="alert">{validationMessage}</div>}
 
+      <ol className="admin-editor-progress" aria-label="Product editor progress">
+        <li className="is-active"><span>1</span><strong>Details</strong></li>
+        <li><span>2</span><strong>Pricing &amp; inventory</strong></li>
+        <li><span>3</span><strong>Media</strong></li>
+        <li><span>4</span><strong>Review</strong></li>
+      </ol>
+
       <div className="admin-editor-layout">
         <div className="admin-editor-column">
           <section className="admin-editor-card">
-            <div className="admin-card-heading"><div><p className="admin-eyebrow">Product details</p><h2>Tell the story</h2></div><span className="admin-required-note">* Required</span></div>
-            <label className="admin-editor-label">Product name *
-               <input className="admin-editor-input admin-editor-title-input" value={draft.name} onChange={(event) => updateProductName(event.target.value)} placeholder="e.g. Sienna Slip Dress" required />
-            </label>
-            <label className="admin-editor-label">Product slug
-              <input className="admin-editor-input" value={draft.slug} onChange={(event) => updateDraft({ slug: event.target.value })} placeholder="sienna-slip-dress" />
-              <small>Auto-generated from the product name. Edit it to change this product&apos;s storefront URL.</small>
-            </label>
-            <label className="admin-editor-label">Description
-              <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="Describe the fit, feeling, and details customers should know." rows={5} />
-            </label>
+            <div className="admin-card-heading">
+              <div className="admin-card-title"><span className="admin-card-icon"><Package aria-hidden="true" /></span><h2>Product details</h2></div>
+              <span className="admin-required-note">* Required</span>
+            </div>
+            <div className="admin-detail-fields">
+              <label className="admin-editor-label">Product name *
+                <input className="admin-editor-input admin-editor-title-input" value={draft.name} onChange={(event) => updateProductName(event.target.value)} placeholder="e.g. Sienna Slip Dress" required />
+              </label>
+              <label className="admin-editor-label">Product slug
+                <span className="admin-slug-input">
+                  <input className="admin-editor-input" value={draft.slug} onChange={(event) => updateDraft({ slug: event.target.value })} placeholder="sienna-slip-dress" />
+                  <small><Check aria-hidden="true" />Auto-generated</small>
+                </span>
+              </label>
+              <label className="admin-editor-label">Description
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="Describe the fit, feeling, and details customers should know." rows={5} />
+              </label>
+            </div>
           </section>
 
           <section className="admin-editor-card">
-            <div className="admin-card-heading"><div><p className="admin-eyebrow">Product data</p><h2>What are you selling?</h2></div></div>
+            <div className="admin-card-heading"><div className="admin-card-title"><span className="admin-card-icon"><CircleDollarSign aria-hidden="true" /></span><h2>Pricing &amp; inventory</h2></div></div>
             <div className="admin-field-grid">
               <label className="admin-editor-label">Product type
                 <select className="admin-editor-input" value={draft.type} onChange={(event) => updateDraft({ type: event.target.value as ProductType })}>
@@ -1328,32 +1437,77 @@ function ProductEditor({
               {draft.variations.length > 0 && <p className="admin-variation-summary">{draft.variations.length} variation{draft.variations.length === 1 ? "" : "s"} · {totalVariationStock} units in stock</p>}
             </section>
           )}
+
+          <section className="admin-editor-card admin-media-card">
+            <div className="admin-card-heading"><div className="admin-card-title"><span className="admin-card-icon"><ImageIcon aria-hidden="true" /></span><h2>Product media</h2></div></div>
+            <div className="admin-media-workspace">
+              <div className="admin-media-primary">
+                {productImagePreview ? <img className="admin-product-image-preview" src={productImagePreview} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /><strong>Add a primary product image</strong><span>PNG, JPG, WEBP or GIF · max 4MB</span></div>}
+                <label className="admin-editor-label">Primary image URL
+                  <input className="admin-editor-input" value={draft.image.startsWith("data:") || isCatalogMediaReference(draft.image) ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="https://..." />
+                </label>
+                <div className="admin-image-upload">
+                  <label className="admin-upload-button">Add primary image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
+                  <span>{productImageFileName || "Choose a storefront hero image"}</span>
+                </div>
+              </div>
+              <div className="admin-media-gallery">
+                <div className="admin-gallery-heading">
+                  <strong>Gallery images</strong>
+                  <small>Add supporting views for the product page. The primary image stays first.</small>
+                </div>
+                <div className="admin-gallery-add">
+                  <input className="admin-editor-input" value={galleryImageUrl} onChange={(event) => setGalleryImageUrl(event.target.value)} placeholder="Gallery image URL" aria-label="Gallery image URL" />
+                  <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add</button>
+                </div>
+                <div className="admin-image-upload">
+                  <label className="admin-upload-button">Upload gallery images<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                  <span>{galleryImageFileNames.filter(Boolean).join(", ") || "Select one or more images"}</span>
+                </div>
+                {(draft.galleryImages ?? []).length > 0 ? (
+                  <div className="admin-product-gallery-list" aria-label="Gallery image order">
+                    {(draft.galleryImages ?? []).map((image, index) => (
+                      <div className="admin-product-gallery-item" key={`${image}-${index}`}>
+                        {getCatalogMediaSource(image) ? <img src={getCatalogMediaSource(image)} alt={`${draft.name || "Product"} gallery view ${index + 1}`} /> : <div className="admin-image-placeholder">Loading image…</div>}
+                        <div className="admin-product-gallery-item-actions">
+                          <span>View {index + 2}</span>
+                          <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label={`Move gallery image ${index + 1} earlier`}>↑</button>
+                          <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === (draft.galleryImages ?? []).length - 1} aria-label={`Move gallery image ${index + 1} later`}>↓</button>
+                          <button className="admin-remove-button" type="button" onClick={() => removeGalleryImage(index)} aria-label={`Remove gallery image ${index + 1}`}>×</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <p className="admin-gallery-empty">No additional gallery images yet.</p>}
+              </div>
+            </div>
+          </section>
         </div>
 
         <aside className="admin-editor-sidebar">
           <section className="admin-publish-card">
-            <div className="admin-card-heading"><div><p className="admin-eyebrow">Publishing</p><h2>Product status</h2></div><span className={`admin-publish-dot ${draft.status.toLowerCase()}`} /></div>
+            <div className="admin-card-heading"><div className="admin-card-title"><span className="admin-card-icon"><Package aria-hidden="true" /></span><h2>Product status</h2></div></div>
             <label className="admin-editor-label">Status
               <select className="admin-editor-input" value={draft.status} onChange={(event) => updateDraft({ status: event.target.value as ProductStatus })}>
                 <option value="Draft">Draft</option>
                 <option value="Published">Published</option>
               </select>
             </label>
-            <p className="admin-publish-help">{draft.status === "Published" ? "This product is visible on your storefront." : "This product is hidden until you publish it."}</p>
-            <div className="admin-publish-actions">
-              <button className="admin-secondary" type="button" onClick={() => save("Draft")}>Move to draft</button>
-              <button className="admin-primary" type="button" onClick={() => save("Published")}>{publishLabel}</button>
+            <div className="admin-status-summary">
+              <div><span>Visibility</span><strong>{draft.status === "Published" ? "Visible" : "Hidden"}</strong></div>
+              <div><span>Publish</span><strong>{draft.status === "Published" ? "Published" : "Publish manually"}</strong></div>
             </div>
+            <p className="admin-publish-help">{draft.status === "Published" ? "This product is visible on your storefront." : "This product stays hidden until you publish it."}</p>
           </section>
 
           <section className="admin-editor-card admin-sidebar-card">
-            <p className="admin-eyebrow">Organization</p>
+            <div className="admin-card-heading"><div className="admin-card-title"><span className="admin-card-icon"><FolderOpen aria-hidden="true" /></span><h2>Organization</h2></div></div>
             <label className="admin-editor-label">Category
               <select className="admin-editor-input" value={draft.category} onChange={(event) => updateDraft({ category: event.target.value })}>{categories.map((category) => <option key={category}>{category}</option>)}</select>
             </label>
           </section>
 
-           <section className="admin-editor-card admin-sidebar-card">
+           <section className="admin-editor-card admin-sidebar-card admin-legacy-media-card">
              <p className="admin-eyebrow">Product media</p>
              {productImagePreview ? <img className="admin-product-image-preview" src={productImagePreview} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder">Add an image URL or upload an image to preview your product.</div>}
              <label className="admin-editor-label">Image URL
@@ -1394,12 +1548,14 @@ function ProductEditor({
            </section>
 
           <section className="admin-editor-card admin-sidebar-card">
-            <p className="admin-eyebrow">Editor checklist</p>
+            <div className="admin-card-heading admin-checklist-heading">
+              <div className="admin-card-title"><span className="admin-card-icon"><ListChecks aria-hidden="true" /></span><h2>Product checklist</h2></div>
+              <span>{completedChecklistItems} of {checklistItems.length} complete</span>
+            </div>
             <ul className="admin-checklist">
-              <li className={draft.name ? "is-complete" : ""}>Product name</li>
-              <li className={(draft.type === "Variable" ? draft.variations.length > 0 && draft.variations.every((variation) => Boolean(formatCatalogPrice(variation.price))) : Boolean(formatCatalogPrice(draft.price))) ? "is-complete" : ""}>{draft.type === "Variable" ? "Variation prices" : "Price"}</li>
-              <li className={draft.type === "Simple" || draft.variations.length > 0 ? "is-complete" : ""}>{draft.type === "Variable" ? "At least one variation" : "Stock quantity"}</li>
+              {checklistItems.map((item) => <li className={item.complete ? "is-complete" : ""} key={item.label}>{item.label}</li>)}
             </ul>
+            <div className="admin-checklist-progress" aria-hidden="true"><span style={{ width: `${(completedChecklistItems / checklistItems.length) * 100}%` }} /></div>
           </section>
         </aside>
       </div>
