@@ -17,3 +17,4 @@
 - [UK shipping rules](uk-shipping-rules.md) — Standard delivery is £3.95 below £75 and free from £75; express delivery is £6.95.
 - [Legacy payment reconciliation](legacy-payment-reconciliation.md) — Use stable cursors when importing historical Stripe payments; synced records can arrive while paging.
 - [Bestseller ranking](bestseller-ranking.md) — Rank products by paid units sold; never use current stock as a bestseller proxy.
+- [Catalog refresh routing](catalog-refresh-routing.md) — Catalog refreshes must not remount the admin route, or active admin workspace state resets to Overview.

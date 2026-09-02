@@ -2865,7 +2865,9 @@ function AdminRoute() {
 
 function AppRoutes() {
   const mediaVersion = useContext(CatalogMediaContext);
-  return <Switch key={mediaVersion}>
+  const [location] = useLocation();
+  const routeKey = location === "/admin" ? "admin" : mediaVersion;
+  return <Switch key={routeKey}>
     <Route path="/" component={Home} />
     <Route path="/about" component={About} />
     <Route path="/shop" component={Shop} />
