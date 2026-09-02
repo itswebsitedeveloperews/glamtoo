@@ -8,7 +8,7 @@ import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPri
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
-import { CreditCard, LayoutDashboard, LogOut, MapPin, ShoppingBag, UserRound, X, type LucideIcon } from 'lucide-react';
+import { CreditCard, Headphones, LayoutDashboard, LogOut, MapPin, Search, ShoppingBag, UserRound, X, type LucideIcon } from 'lucide-react';
 import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin-dashboard';
@@ -1602,8 +1602,97 @@ function About() {
 }
 
 function FAQ() {
-  const questions = [['How do Glam Too pieces fit?', 'Most pieces fit true to size. Every product page includes fit notes and garment measurements to help you choose. If you are between sizes, we recommend sizing up in fitted styles.'], ['When will my order arrive?', 'Standard delivery takes 2–4 working days and express delivery takes 1–2 working days. You will receive tracking as soon as your parcel leaves us.'], ['Can I return something?', 'Of course. Send unworn, unwashed items back within 28 days of delivery with tags attached. Visit Delivery & Returns for the full guide.'], ['Do you deliver internationally?', 'We currently deliver within the UK. Delivery options and costs are shown at checkout.'], ['How can I contact you?', 'Our team is here Monday to Friday, 9am–5pm. Email hello@glamtoo.co.uk or use our contact form.']];
-  return <Shell><PageHero eyebrow="Need to know" title="Questions, answered." copy="The useful details, without the fine-print maze." /><div className="container faq-list">{questions.map(([question, answer], index) => <details key={question} open={index === 0}><summary data-testid={`text-faq-question-${index}`}>{question}</summary><p>{answer}</p></details>)}</div></Shell>;
+  const categories = ["Orders", "Delivery", "Returns", "Products", "Payments"];
+  const faqItems = [
+    { category: "Orders", question: "Where is my order?", answer: "Once your order has been dispatched, you will receive a confirmation email with a tracking link. You can use this link to follow your parcel’s journey in real time." },
+    { category: "Orders", question: "Can I change or cancel my order?", answer: "We start preparing orders quickly, but email hello@glamtoo.co.uk as soon as possible and our team will do their best to help before dispatch." },
+    { category: "Orders", question: "Can I update my delivery address?", answer: "If your order has not been dispatched, contact us straight away with your order number and the corrected address. We cannot guarantee changes after dispatch." },
+    { category: "Delivery", question: "How long does delivery take?", answer: "Standard delivery takes 2–4 working days and express delivery takes 1–2 working days. You will receive tracking as soon as your parcel leaves us." },
+    { category: "Delivery", question: "Do you deliver internationally?", answer: "We currently deliver within the UK. Delivery options and costs are shown at checkout before you place your order." },
+    { category: "Delivery", question: "How much does delivery cost?", answer: "Standard delivery is £3.95, or free on orders of £75 or more. Express delivery is £6.95." },
+    { category: "Returns", question: "How do I return an item?", answer: "Send unworn, unwashed items back within 28 days of delivery with tags attached. Email hello@glamtoo.co.uk with your order number to start your return." },
+    { category: "Returns", question: "When will I receive my refund?", answer: "We will process your refund once your return has been checked. Please allow up to 5 working days for the refund to appear in your original payment account." },
+    { category: "Products", question: "How do I choose the right size?", answer: "Every product page includes fit notes and garment measurements to help you choose. If you are between sizes, we recommend sizing up in fitted styles." },
+    { category: "Products", question: "How should I care for my Glam Too pieces?", answer: "Follow the care label on each garment. We recommend a cool wash where possible and keeping occasionwear away from perfume, makeup and deodorant." },
+    { category: "Payments", question: "Which payment methods do you accept?", answer: "You can pay securely by card through Stripe. Your available card options are shown at checkout." },
+    { category: "Payments", question: "Is checkout secure?", answer: "Yes. Card details are handled securely by Stripe and never stored by Glam Too. We only receive the payment confirmation needed to complete your order." },
+  ];
+  const [activeCategory, setActiveCategory] = useState("Orders");
+  const [searchQuery, setSearchQuery] = useState("");
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const visibleQuestions = faqItems.filter((item) =>
+    item.category === activeCategory
+    && (!normalizedQuery || `${item.question} ${item.answer}`.toLowerCase().includes(normalizedQuery)),
+  );
+
+  return (
+    <Shell>
+      <div className="faq-page">
+        <section className="faq-hero" aria-labelledby="faq-heading">
+          <div className="eyebrow">Help centre</div>
+          <h1 id="faq-heading">Frequently asked questions</h1>
+          <p>Find quick answers to our most common questions.<br />{" "}Can&apos;t find what you&apos;re looking for? We&apos;re here to help.</p>
+          <div className="faq-search-wrap">
+            <Search aria-hidden="true" />
+            <label className="sr-only" htmlFor="faq-search">Search for an answer</label>
+            <input
+              id="faq-search"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search for an answer"
+              data-testid="input-faq-search"
+            />
+          </div>
+        </section>
+
+        <div className="container faq-content">
+          <nav className="faq-tabs" aria-label="FAQ categories">
+            {categories.map((category) => (
+              <button
+                type="button"
+                className={activeCategory === category ? "is-active" : ""}
+                aria-current={activeCategory === category ? "page" : undefined}
+                onClick={() => setActiveCategory(category)}
+                key={category}
+                data-testid={`button-faq-category-${category.toLowerCase()}`}
+              >
+                {category}
+              </button>
+            ))}
+          </nav>
+
+          <div className="faq-results" aria-live="polite">
+            {visibleQuestions.length > 0 ? visibleQuestions.map((item, index) => (
+              <details className="faq-item" key={item.question} open={index === 0}>
+                <summary data-testid={`text-faq-question-${index}`}>
+                  <span>{item.question}</span>
+                  <span className="faq-item-symbol" aria-hidden="true" />
+                </summary>
+                <div className="faq-answer"><p>{item.answer}</p></div>
+              </details>
+            )) : (
+              <div className="faq-empty">
+                <h2>No answers found yet.</h2>
+                <p>Try another search, or send our team a note and we&apos;ll help you find the right answer.</p>
+                <a className="button button-pink" href="/contact">Contact us</a>
+              </div>
+            )}
+          </div>
+
+          <section className="faq-support" aria-labelledby="faq-support-heading">
+            <div className="faq-support-icon" aria-hidden="true"><Headphones /></div>
+            <div>
+              <div className="eyebrow">Customer care</div>
+              <h2 id="faq-support-heading">Still need help?</h2>
+              <p>Our friendly support team is here for you. Get in touch and we&apos;ll be happy to assist.</p>
+              <a className="button button-pink" href="/contact" data-testid="link-faq-contact">Contact us</a>
+            </div>
+          </section>
+        </div>
+      </div>
+    </Shell>
+  );
 }
 
 function Contact() {
