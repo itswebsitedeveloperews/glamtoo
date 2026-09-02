@@ -269,7 +269,7 @@ img { display: block; max-width: 100%; }
 .about-hero-copy h1 { margin: 17px 0 20px; font: 400 82px/.86 var(--display); letter-spacing: -.06em; }
 .about-hero-copy p { max-width: 365px; margin: 0; color: rgba(255,255,255,.88); font-size: 16px; line-height: 1.55; }
 .about-intro { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; padding-top: 112px; padding-bottom: 120px; }
-.about-intro-copy { max-width: 440px; }
+.about-intro-copy { width: 100%; }
 .about-intro-copy h2, .about-story-copy h2 { margin: 16px 0 25px; font: 400 60px/.87 var(--display); letter-spacing: -.055em; }
 .about-intro-copy > p, .about-story-copy > p { max-width: 430px; color: var(--muted); font-size: 16px; line-height: 1.65; }
 .about-intro-copy strong, .about-story-copy strong { display: block; margin-top: 25px; font: 400 23px/1.2 var(--display); }
