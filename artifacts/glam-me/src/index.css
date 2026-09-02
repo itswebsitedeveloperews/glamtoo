@@ -290,7 +290,7 @@ img { display: block; max-width: 100%; }
 .about-story { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; padding-top: 120px; padding-bottom: 126px; }
 .about-story-media { aspect-ratio: 1.03 / 1; overflow: hidden; background: #dc7890; }
 .about-story-media img { object-position: 67% center; }
-.about-story-copy { max-width: 440px; }
+.about-story-copy { width: 100%; }
 .about-story-copy h2 { font-size: 60px; }
 .about-cta { padding: 87px 0 92px; background: var(--pink); color: var(--white); text-align: center; }
 .about-cta .eyebrow { color: rgba(255,255,255,.78); }
