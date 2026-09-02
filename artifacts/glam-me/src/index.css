@@ -1416,14 +1416,14 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-order-heading-total span { font-size: 11px; }
 .admin-order-heading-total strong { font-size: 20px; }
 .admin-order-progress { grid-area: progress; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin: 3px 0 0; padding: 13px 0 0; border-top: 1px solid #eee8e3; list-style: none; }
-.admin-order-progress li { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--muted); font-size: 12px; }
+.admin-order-progress li { position: relative; display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 8px; min-width: 0; color: var(--muted); font-size: 12px; }
 .admin-order-progress li > span:last-of-type { position: relative; z-index: 1; white-space: nowrap; }
 .admin-order-progress li.is-complete, .admin-order-progress li.is-current { color: var(--ink); }
 .admin-order-progress-marker { position: relative; z-index: 1; display: grid; width: 19px; height: 19px; flex: 0 0 auto; place-items: center; border: 1px solid #cfc5be; border-radius: 50%; background: #fffdfb; color: var(--muted); font-size: 10px; }
 .admin-order-progress-marker svg { width: 12px; height: 12px; }
 .admin-order-progress li.is-complete .admin-order-progress-marker { border-color: #e23d6f; background: #e23d6f; color: #fff; }
 .admin-order-progress li.is-current .admin-order-progress-marker { border: 2px solid #e23d6f; background: #fffdfb; color: #e23d6f; }
-.admin-order-progress li i { position: absolute; z-index: 0; top: 9px; left: 27px; right: 0; height: 1px; background: #d8d0ca; }
+.admin-order-progress li i { display: block; width: 100%; height: 1px; margin-left: 3px; background: #d8d0ca; }
 .admin-order-progress li.is-complete i { background: #e23d6f; }
 .admin-order-page-layout { grid-template-columns: minmax(0, 1.43fr) minmax(300px, .85fr); gap: 12px; }
 .admin-order-page-main, .admin-order-page-sidebar { gap: 12px; }
