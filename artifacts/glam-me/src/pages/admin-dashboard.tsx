@@ -2467,7 +2467,7 @@ export default function AdminDashboard({
                 <p className="admin-eyebrow">{editingCategoryId !== null ? "Edit category" : "New category"}</p>
                 <h2>{editingCategoryId !== null ? "Update collection" : "Add a collection"}</h2>
                 <label>Category title<input value={categoryDraft.name} onChange={(event) => setCategoryDraft((current) => ({ ...current, name: event.target.value }))} required placeholder="e.g. Weekend plans" /></label>
-                <label>Image URL<input type="url" value={categoryDraft.image.startsWith("data:") || categoryDraft.image.startsWith("/objects/") ? "" : categoryDraft.image} onChange={(event) => { setCategoryImageFileName(""); setCategoryDraft((current) => ({ ...current, image: event.target.value })); }} placeholder="https://..." /></label>
+                <label>Image URL<input type="text" value={categoryDraft.image.startsWith("data:") ? "" : categoryDraft.image} onChange={(event) => { setCategoryImageFileName(""); setCategoryDraft((current) => ({ ...current, image: event.target.value })); }} placeholder="https://... or an existing image path" /></label>
                 <div className="admin-image-upload">
                   <label className="admin-upload-button">Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleCategoryImageUpload} /></label>
                   <span>{categoryImageFileName || "PNG, JPG, WEBP or GIF · max 4MB"}</span>
