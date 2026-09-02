@@ -1555,3 +1555,34 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .admin-payment-how li:not(:last-child)::after { top: 35px; right: auto; bottom: -10px; left: 17px; width: 1px; height: 10px; }
   .admin-payment-view-transactions { width: 100%; justify-content: center; }
 }
+
+/* Payments readability: keep all page copy and controls at 14px or larger. */
+.admin-payments-page .admin-eyebrow,
+.admin-payments-breadcrumb,
+.admin-payment-view-transactions,
+.admin-payment-card p,
+.admin-payment-tags span,
+.admin-payment-status strong,
+.admin-payment-status span:last-child,
+.admin-payment-detail-grid > div > span:not(.admin-payment-detail-icon),
+.admin-payment-detail-grid > div > strong,
+.admin-payment-settings > p:last-child,
+.admin-payment-how li strong,
+.admin-payment-how li p,
+.admin-payment-security-note,
+.admin-stripe-credentials-form label,
+.admin-stripe-credentials-form label > span,
+.admin-stripe-credentials-form input,
+.admin-stripe-form-note,
+.admin-stripe-credentials-form .admin-payment-actions .admin-primary,
+.admin-stripe-credentials-form .admin-payment-actions .admin-danger-button,
+.admin-payment-mode-heading,
+.admin-payment-mode-heading b,
+.admin-payment-mode-body p,
+.admin-payment-mode-body .admin-secondary {
+  font-size: 14px;
+}
+.admin-payment-settings .admin-primary { font-size: 14px; }
+.admin-payment-detail-grid > div { min-height: 72px; }
+.admin-payment-mode-heading b { letter-spacing: .03em; }
+.admin-payment-mode-body h3 { font-size: 20px; }
