@@ -2,6 +2,8 @@ import { createContext, useContext, useEffect, useRef, useState, type FormEvent,
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
+import aboutStudioImage from '@assets/glam-me-5_1787653559643.png';
+import aboutStoryImage from '@assets/glam-me-12_1787653559644.png';
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogMediaSource, getCatalogProductImages, hydrateCatalogProductMedia, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
@@ -1510,7 +1512,93 @@ function WishlistPage() {
 }
 
 function About() {
-  return <Shell><div className="split-page"><div className="split-image"><img src={fashionImage} alt="Glam Too woman wearing pink in the sunshine" /></div><div className="split-copy"><div className="eyebrow">Our story</div><h1>More you, more often.</h1><p>Glam Too began with a simple belief: getting dressed should be one of the best parts of your day. We make expressive, feminine clothes for the many versions of you — the early riser, the plus-one, the main character and the one who stays out for one more.</p><p>Our collections are small, considered and designed to be worn on repeat. Expect confident colour, thoughtful details and pieces that make an ordinary Tuesday feel like a very good idea.</p><div className="quote">“Wear the thing that makes you stand a little taller.”</div></div></div></Shell>;
+  const values = [
+    {
+      title: "Considered edits",
+      copy: "We hand-pick every style for quality, fit and feel, so your wardrobe works harder for you.",
+      icon: <path d="M12 3.5 14.4 9l5.9.6-4.4 3.9 1.3 5.8L12 16.4l-5.2 2.9 1.3-5.8-4.4-3.9L9.6 9 12 3.5Z" />,
+    },
+    {
+      title: "Confidence first",
+      copy: "From the perfect fit to the little details, our pieces are designed to help you feel unstoppable.",
+      icon: <path d="M12 20.2S4.3 15.7 4.3 9.8A4.1 4.1 0 0 1 12 7.4a4.1 4.1 0 0 1 7.7 2.4c0 5.9-7.7 10.4-7.7 10.4Z" />,
+    },
+    {
+      title: "For every plan",
+      copy: "Day out or date night, weekend plans or weddings — we have a look for every moment.",
+      icon: <path d="M5.5 8.5h13l-1 11h-11zM9 9V6.8a3 3 0 0 1 6 0V9" />,
+    },
+  ];
+
+  return (
+    <Shell>
+      <div className="about-page">
+        <section className="about-hero" aria-labelledby="about-hero-heading">
+          <img className="about-hero-image" src={heroImage} alt="Woman in pink beside a vintage car on a sunny street" />
+          <div className="about-hero-overlay" aria-hidden="true" />
+          <div className="container about-hero-copy">
+            <div className="eyebrow">The Glam Too story</div>
+            <h1 id="about-hero-heading">Made for<br />your moment.</h1>
+            <p>Glam Too is modern fashion for women who love to express themselves, wherever the day takes them.</p>
+          </div>
+        </section>
+
+        <section className="container about-intro" aria-labelledby="about-intro-heading">
+          <div className="about-intro-copy">
+            <div className="eyebrow">Style that moves with you</div>
+            <h2 id="about-intro-heading">More you,<br />more often.</h2>
+            <p>At Glam Too, we believe getting dressed should feel exciting, effortless and unmistakably you.</p>
+            <p>We create pieces that move between moments with everyday wearability — from stand-out dresses and feminine co-ords to premium staples and accessories.</p>
+            <p>Thoughtful fabrics, flattering fits and on-trend details come together in collections designed to take you from day plans to big moments and everywhere in between.</p>
+            <strong>This is fashion, made for real life.</strong>
+            <a className="about-text-link" href="/shop">Explore the edit <span aria-hidden="true">↗</span></a>
+          </div>
+          <div className="about-intro-media">
+            <img src={aboutStudioImage} alt="Woman in a white co-ord set holding a handbag" />
+          </div>
+        </section>
+
+        <section className="about-values" aria-labelledby="about-values-heading">
+          <div className="container">
+            <h2 id="about-values-heading" className="sr-only">What matters to us</h2>
+            <div className="about-values-grid">
+              {values.map((value) => (
+                <article className="about-value" key={value.title}>
+                  <span className="about-value-icon" aria-hidden="true"><svg viewBox="0 0 24 24">{value.icon}</svg></span>
+                  <h3>{value.title}</h3>
+                  <p>{value.copy}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="container about-story" aria-labelledby="about-story-heading">
+          <div className="about-story-media">
+            <img src={aboutStoryImage} alt="Woman wearing a pink printed dress from Glam Too" />
+          </div>
+          <div className="about-story-copy">
+            <div className="eyebrow">Our story</div>
+            <h2 id="about-story-heading">The Glam Too story</h2>
+            <p>Glam Too was founded with a simple idea: premium style should feel accessible and inclusive.</p>
+            <p>We&apos;re a team of fashion lovers, buyers and creatives who live and breathe trends, quality and our community. Every collection is inspired by you — your plans, your confidence and everything that comes next.</p>
+            <p>Every collection is designed to make getting dressed feel like the best part of the day.</p>
+            <strong>Thanks for being part of the Glam Too story.</strong>
+            <a className="about-text-link" href="/shop">Find your next look <span aria-hidden="true">↗</span></a>
+          </div>
+        </section>
+
+        <section className="about-cta" aria-labelledby="about-cta-heading">
+          <div className="container">
+            <div className="eyebrow">Your next chapter</div>
+            <h2 id="about-cta-heading">Find your next look.</h2>
+            <p>New styles, endless plans and a little inspiration — delivered straight to your wardrobe.</p>
+            <a className="button button-light" href="/shop">Shop new in</a>
+          </div>
+        </section>
+      </div>
+    </Shell>
+  );
 }
 
 function FAQ() {
