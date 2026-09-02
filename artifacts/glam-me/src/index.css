@@ -778,7 +778,7 @@ img { display: block; max-width: 100%; }
 .admin-stat-grid span { color: #a6516e; font-size: 14px; }
 .admin-two-column { display: grid; grid-template-columns: 1.35fr .85fr; gap: 14px; }
 .admin-panel { background: #fffdfb; border: 1px solid var(--line); padding: 28px; }
-.admin-panel h2 { margin: 0; font: 400 34px/.92 var(--display); letter-spacing: -.035em; }
+.admin-panel h2 { margin: 0; font: 400 27px/.92 var(--display); letter-spacing: -.035em; }
 .admin-panel-header { display: flex; justify-content: space-between; align-items: start; gap: 15px; padding-bottom: 19px; border-bottom: 1px solid var(--line); }
 .admin-panel-header button { border: 0; background: transparent; color: #a6516e; font-size: 14px; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
 .admin-list { display: grid; }
