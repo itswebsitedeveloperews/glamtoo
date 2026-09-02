@@ -1616,12 +1616,20 @@ function FAQ() {
     { category: "Payments", question: "Which payment methods do you accept?", answer: "You can pay securely by card through Stripe. Your available card options are shown at checkout." },
     { category: "Payments", question: "Is checkout secure?", answer: "Yes. Card details are handled securely by Stripe and never stored by Glam Too. We only receive the payment confirmation needed to complete your order." },
   ];
+  const faqGroups = [
+    { label: "Orders & delivery", categories: ["Orders", "Delivery"] },
+    { label: "Returns & refunds", categories: ["Returns"] },
+    { label: "Products & payments", categories: ["Products", "Payments"] },
+  ];
   const [openQuestion, setOpenQuestion] = useState(faqItems[0]?.question ?? "");
   const [searchQuery, setSearchQuery] = useState("");
-  const normalizedQuery = searchQuery.trim().toLowerCase();
-  const visibleQuestions = faqItems.filter((item) =>
-    !normalizedQuery || `${item.question} ${item.answer}`.toLowerCase().includes(normalizedQuery),
-  );
+  const groupedQuestions = faqGroups.map((group) => ({
+    ...group,
+    questions: faqItems.filter((item) =>
+      group.categories.includes(item.category)
+      && (!searchQuery.trim() || `${item.question} ${item.answer}`.toLowerCase().includes(searchQuery.trim().toLowerCase())),
+    ),
+  })).filter((group) => group.questions.length > 0);
 
   return (
     <Shell>
@@ -1629,7 +1637,7 @@ function FAQ() {
         <section className="faq-hero" aria-labelledby="faq-heading">
           <div className="eyebrow">Help centre</div>
           <h1 id="faq-heading">Frequently asked questions</h1>
-          <p>Find quick answers to our most common questions.<br />{" "}Can&apos;t find what you&apos;re looking for? We&apos;re here to help.</p>
+          <p>Find quick answers to our most common questions.<span>Can&apos;t find what you&apos;re looking for? We&apos;re here to help.</span></p>
           <div className="faq-search-wrap">
             <Search aria-hidden="true" />
             <label className="sr-only" htmlFor="faq-search">Search for an answer</label>
@@ -1646,20 +1654,26 @@ function FAQ() {
 
         <div className="container faq-content">
           <div className="faq-results" aria-live="polite">
-            {visibleQuestions.length > 0 ? visibleQuestions.map((item, index) => (
-              <details className="faq-item" key={item.question} open={openQuestion === item.question}>
-                <summary
-                  onClick={(event) => {
-                    event.preventDefault();
-                    setOpenQuestion((current) => current === item.question ? "" : item.question);
-                  }}
-                  data-testid={`text-faq-question-${index}`}
-                >
-                  <span>{item.question}</span>
-                  <span className="faq-item-symbol" aria-hidden="true" />
-                </summary>
-                <div className="faq-answer"><p>{item.answer}</p></div>
-              </details>
+            {groupedQuestions.length > 0 ? groupedQuestions.map((group) => (
+              <section className="faq-group" key={group.label}>
+                <h2>{group.label}</h2>
+                {group.questions.map((item, index) => (
+                  <details className="faq-item" key={item.question} open={openQuestion === item.question}>
+                    <summary
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setOpenQuestion((current) => current === item.question ? "" : item.question);
+                      }}
+                      data-testid={`text-faq-question-${item.question}`}
+                    >
+                      <span className="faq-number">{String(index + 1).padStart(2, "0")}</span>
+                      <span className="faq-question">{item.question}</span>
+                      <span className="faq-item-symbol" aria-hidden="true" />
+                    </summary>
+                    <div className="faq-answer"><p>{item.answer}</p></div>
+                  </details>
+                ))}
+              </section>
             )) : (
               <div className="faq-empty">
                 <h2>No answers found yet.</h2>
@@ -1670,13 +1684,16 @@ function FAQ() {
           </div>
 
           <section className="faq-support" aria-labelledby="faq-support-heading">
-            <div className="faq-support-icon" aria-hidden="true"><Headphones /></div>
-            <div>
-              <div className="eyebrow">Customer care</div>
-              <h2 id="faq-support-heading">Still need help?</h2>
-              <p>Our friendly support team is here for you. Get in touch and we&apos;ll be happy to assist.</p>
-              <a className="button button-pink" href="/contact" data-testid="link-faq-contact">Contact us</a>
+            <div className="faq-support-copy">
+              <div className="faq-support-icon" aria-hidden="true"><Headphones /></div>
+              <div>
+                <div className="eyebrow">Customer care</div>
+                <h2 id="faq-support-heading">Still need help?</h2>
+                <p>Our friendly support team is here for you. Get in touch and we&apos;ll be happy to assist.</p>
+                <a className="button button-pink" href="/contact" data-testid="link-faq-contact">Contact us</a>
+              </div>
             </div>
+            <div className="faq-support-image"><img src={aboutStoryImage} alt="Woman wearing a pink printed Glam Too dress" /></div>
           </section>
         </div>
       </div>
