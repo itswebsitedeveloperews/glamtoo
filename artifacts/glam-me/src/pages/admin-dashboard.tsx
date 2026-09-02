@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FolderOpen, Image as ImageIcon, LayoutDashboard, ListChecks, Mail, MapPin, Package, Save, Send, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FlaskConical, FolderOpen, Globe2, Image as ImageIcon, KeyRound, LayoutDashboard, ListChecks, LockKeyhole, Mail, MapPin, Package, Save, Send, Server, ShieldCheck, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -1604,7 +1604,6 @@ export default function AdminDashboard({
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [stripeStatus, setStripeStatus] = useState<StripeStatus>({ connected: false, configured: false, mode: "unknown", paymentMethods: [] });
   const [stripeStatusLoading, setStripeStatusLoading] = useState(true);
-  const [stripeGuideOpen, setStripeGuideOpen] = useState(false);
   const [stripeCredentials, setStripeCredentials] = useState({ publishableKey: "", secretKey: "", webhookSecret: "" });
   const [stripeCredentialsSaving, setStripeCredentialsSaving] = useState(false);
   const [stripeCredentialsError, setStripeCredentialsError] = useState("");
@@ -2611,13 +2610,67 @@ export default function AdminDashboard({
         )}
 
         {section === "payments" && (
-          <>
-            <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Too." />
-            <section className="admin-payment-card"><div><span className="stripe-mark">stripe</span><h2>{stripeStatus.configured ? "Stripe checkout is connected" : stripeStatus.connected ? "Add Stripe key configuration" : "Connect Stripe to accept payments"}</h2><p>{stripeStatus.configured ? "Your keys are held by the secure workspace connection. Customers are sent to Stripe’s hosted checkout to pay by card." : stripeStatus.connected ? "Your Stripe connection is attached, but its secure secret key is not configured yet." : "Stripe is not ready yet. Check the secure workspace integration for your publishable and secret key setup."}</p></div><div className="admin-payment-status"><strong>Connection status</strong><span>{stripeStatusLoading ? "Checking…" : stripeStatus.configured ? `${stripeStatus.mode === "live" ? "Live" : "Test"} mode connected` : stripeStatus.connected ? "Key setup needed" : "Not connected"}</span></div></section>
-            <section className="admin-panel admin-payment-next admin-payment-settings"><p className="admin-eyebrow">Stripe details</p><h2>Payment setup</h2><div className="admin-payment-detail-grid"><div><span>Environment</span><strong>{stripeStatus.configured ? `${stripeStatus.mode === "live" ? "Live" : "Test"} mode` : stripeStatus.connected ? "Awaiting secure keys" : "Not configured"}</strong></div><div><span>Publishable key</span><strong>{stripeStatus.publishableKeyConfigured ? "Connected securely" : "Managed by Stripe connection"}</strong></div><div><span>Secret key</span><strong>{stripeStatus.configured ? "Stored server-side" : stripeStatus.connected ? "Add in workspace connection" : "Not configured"}</strong></div><div><span>Payment methods</span><strong>{stripeStatus.paymentMethods.length ? stripeStatus.paymentMethods.join(", ") : "Card payments pending"}</strong></div></div>{stripeStatus.error && <p className="admin-payment-error" role="alert">{stripeStatus.error}</p>}<div className="admin-payment-actions"><button className="admin-primary" type="button" onClick={() => void refreshStripeStatus()} disabled={stripeStatusLoading}>{stripeStatusLoading ? "Checking Stripe…" : "Refresh Stripe details"}</button><button className="admin-secondary" type="button" onClick={() => setStripeGuideOpen((open) => !open)} aria-expanded={stripeGuideOpen}>{stripeGuideOpen ? "Hide key options" : "Manage Stripe keys"}</button></div><p>For safety, keys are never copied into this browser or saved in local storage. Update test or live keys in the secure Stripe workspace connection; this page will show the updated status after refresh.</p></section>
-            {stripeGuideOpen && <section className="admin-panel admin-stripe-guide" aria-label="Manage Stripe keys"><div><p className="admin-eyebrow">Admin payment controls</p><h2>Add or replace Stripe keys</h2><p>Save keys directly from this protected admin page. The secret is encrypted on the server, never shown after saving, and never stored in your browser.</p></div><form className="admin-stripe-credentials-form" onSubmit={saveStripeCredentials}><label>Publishable key<input type="text" autoComplete="off" value={stripeCredentials.publishableKey} onChange={(event) => setStripeCredentials((current) => ({ ...current, publishableKey: event.target.value }))} placeholder={stripeStatus.publishableKeyConfigured ? "Leave blank to keep the saved publishable key" : "pk_test_… or pk_live_…"} /></label><label>Secret key<input type="password" autoComplete="new-password" value={stripeCredentials.secretKey} onChange={(event) => setStripeCredentials((current) => ({ ...current, secretKey: event.target.value }))} placeholder={stripeStatus.configured && stripeStatus.source === "admin" ? "Leave blank to keep the saved secret key" : "sk_test_… or sk_live_…"} /></label><label>Webhook signing secret <span>Optional</span><input type="password" autoComplete="new-password" value={stripeCredentials.webhookSecret} onChange={(event) => setStripeCredentials((current) => ({ ...current, webhookSecret: event.target.value }))} placeholder={stripeStatus.webhookSecretConfigured ? "Leave blank to keep the saved webhook secret" : "whsec_…"} /></label><p className="admin-stripe-form-note">Use matching test or live publishable and secret keys. A newly entered secret key is verified with Stripe before it is saved.</p>{stripeCredentialsError && <p className="admin-payment-error" role="alert">{stripeCredentialsError}</p>}{stripeCredentialsNotice && <p className="admin-stripe-success" role="status">{stripeCredentialsNotice}</p>}<div className="admin-payment-actions"><button className="admin-primary" type="submit" disabled={stripeCredentialsSaving}>{stripeCredentialsSaving ? "Saving securely…" : "Update Stripe keys"}</button>{stripeStatus.source === "admin" && <button className="admin-danger-button" type="button" onClick={() => void clearStripeCredentials()} disabled={stripeCredentialsSaving}>Disconnect saved keys</button>}</div></form><div className="admin-stripe-key-options"><article><span className="admin-stripe-option-label">Test mode</span><h3>Test API keys</h3><p>Use sandbox payments while you confirm checkout, webhooks, and order handling.</p><a className="admin-secondary" href="https://dashboard.stripe.com/test/apikeys" target="_blank" rel="noreferrer">Open test keys <span aria-hidden="true">↗</span></a></article><article><span className="admin-stripe-option-label">Live mode</span><h3>Live API keys</h3><p>Connect live keys only when your store is ready to accept real customer payments.</p><a className="admin-secondary" href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer">Open live keys <span aria-hidden="true">↗</span></a></article></div></section>}
-            <section className="admin-panel admin-payment-how"><p className="admin-eyebrow">How payments work</p><h2>From checkout to confirmation</h2><ol><li>Customers complete checkout and are sent to Stripe-hosted payment.</li><li>Stripe confirms the payment securely and sends the order result back to Glam Too.</li><li>Keep the webhook signing secret updated when you configure webhooks for live payments.</li></ol></section>
-          </>
+          <div className="admin-payments-page">
+            <div className="admin-payments-breadcrumb"><span>Settings</span><b>/</b><span>Payments</span></div>
+            <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Too." action={<button className="admin-payment-view-transactions" type="button" onClick={() => setSection("orders")}>View transactions</button>} />
+            <section className="admin-payment-card">
+              <div className="admin-payment-banner-copy">
+                <span className="stripe-mark">stripe</span>
+                <h2>{stripeStatus.configured ? "Stripe checkout is connected" : stripeStatus.connected ? "Add Stripe key configuration" : "Connect Stripe to accept payments"}</h2>
+                <p>{stripeStatus.configured ? "Your keys are held by the secure workspace connection. Customers are sent to Stripe’s hosted checkout to pay by card." : stripeStatus.connected ? "Your Stripe connection is attached, but its secure secret key is not configured yet." : "Stripe is not ready yet. Check the secure workspace integration for your publishable and secret key setup."}</p>
+                <div className="admin-payment-tags"><span><CreditCard aria-hidden="true" /> Card payments</span><span><LockKeyhole aria-hidden="true" /> Secure connection</span></div>
+              </div>
+              <div className="admin-payment-status">
+                <div><span className={`admin-payment-status-dot ${stripeStatus.configured ? "is-connected" : ""}`} /><strong>Connection status</strong><ShieldCheck aria-hidden="true" /></div>
+                <span>{stripeStatusLoading ? "Checking…" : stripeStatus.configured ? `${stripeStatus.mode === "live" ? "Live" : "Test"} mode connected` : stripeStatus.connected ? "Key setup needed" : "Not connected"}</span>
+              </div>
+            </section>
+            <div className="admin-payment-layout">
+              <div className="admin-payment-column">
+                <section className="admin-panel admin-payment-settings">
+                  <p className="admin-eyebrow">Stripe details</p>
+                  <h2>Payment setup</h2>
+                  <div className="admin-payment-detail-grid">
+                    <div><span className="admin-payment-detail-icon"><Server aria-hidden="true" /></span><span>Environment</span><strong>{stripeStatus.configured ? `${stripeStatus.mode === "live" ? "Live" : "Test"} mode` : stripeStatus.connected ? "Awaiting secure keys" : "Not configured"}</strong></div>
+                    <div><span className="admin-payment-detail-icon"><ShieldCheck aria-hidden="true" /></span><span>Publishable key</span><strong>{stripeStatus.publishableKeyConfigured ? "Connected securely" : "Managed by Stripe connection"}</strong></div>
+                    <div><span className="admin-payment-detail-icon"><KeyRound aria-hidden="true" /></span><span>Secret key</span><strong>{stripeStatus.configured ? "Stored server-side" : stripeStatus.connected ? "Add in workspace connection" : "Not configured"}</strong></div>
+                    <div><span className="admin-payment-detail-icon"><CreditCard aria-hidden="true" /></span><span>Payment methods</span><strong>{stripeStatus.paymentMethods.length ? stripeStatus.paymentMethods.join(", ") : "Card payments pending"}</strong></div>
+                  </div>
+                  {stripeStatus.error && <p className="admin-payment-error" role="alert">{stripeStatus.error}</p>}
+                  <div className="admin-payment-actions"><button className="admin-primary" type="button" onClick={() => void refreshStripeStatus()} disabled={stripeStatusLoading}>{stripeStatusLoading ? "Checking Stripe…" : "Refresh Stripe details"}</button></div>
+                  <p>For safety, keys are never copied into this browser or saved in local storage. Update test or live keys in the secure Stripe workspace connection; this page will show the updated status after refresh.</p>
+                </section>
+                <section className="admin-panel admin-payment-how">
+                  <p className="admin-eyebrow">How payments work</p>
+                  <h2>From checkout to confirmation</h2>
+                  <ol>
+                    <li><span className="admin-payment-step-icon"><ShoppingBag aria-hidden="true" /><b>1</b></span><div><strong>Customer checkout</strong><p>Customers complete checkout and are sent to Stripe-hosted payment.</p></div></li>
+                    <li><span className="admin-payment-step-icon"><ShieldCheck aria-hidden="true" /><b>2</b></span><div><strong>Secure payment</strong><p>Stripe confirms the payment securely and sends the order result back to Glam Too.</p></div></li>
+                    <li><span className="admin-payment-step-icon"><Check aria-hidden="true" /><b>3</b></span><div><strong>Order confirmation</strong><p>Keep the webhook signing secret updated when you configure webhooks for live payments.</p></div></li>
+                  </ol>
+                </section>
+              </div>
+              <div className="admin-payment-column">
+                <section className="admin-panel admin-stripe-guide" aria-label="Manage Stripe keys">
+                  <div className="admin-payment-control-heading"><p className="admin-eyebrow">Admin payment controls</p><h2>Add or replace Stripe keys</h2></div>
+                  <p className="admin-payment-security-note"><LockKeyhole aria-hidden="true" /> Protected settings · Secrets are encrypted and never shown after saving.</p>
+                  <form className="admin-stripe-credentials-form" onSubmit={saveStripeCredentials}>
+                    <label>Publishable key<input type="text" autoComplete="off" value={stripeCredentials.publishableKey} onChange={(event) => setStripeCredentials((current) => ({ ...current, publishableKey: event.target.value }))} placeholder={stripeStatus.publishableKeyConfigured ? "Leave blank to keep the saved publishable key" : "pk_test_… or pk_live_…"} /></label>
+                    <label>Secret key<input type="password" autoComplete="new-password" value={stripeCredentials.secretKey} onChange={(event) => setStripeCredentials((current) => ({ ...current, secretKey: event.target.value }))} placeholder={stripeStatus.configured && stripeStatus.source === "admin" ? "Leave blank to keep the saved secret key" : "sk_test_… or sk_live_…"} /></label>
+                    <label>Webhook signing secret <span>Optional</span><input type="password" autoComplete="new-password" value={stripeCredentials.webhookSecret} onChange={(event) => setStripeCredentials((current) => ({ ...current, webhookSecret: event.target.value }))} placeholder={stripeStatus.webhookSecretConfigured ? "Leave blank to keep the saved webhook secret" : "whsec_…"} /></label>
+                    <p className="admin-stripe-form-note">Use matching test or live publishable and secret keys. A newly entered secret key is verified with Stripe before it is saved.</p>
+                    {stripeCredentialsError && <p className="admin-payment-error" role="alert">{stripeCredentialsError}</p>}
+                    {stripeCredentialsNotice && <p className="admin-stripe-success" role="status">{stripeCredentialsNotice}</p>}
+                    <div className="admin-payment-actions"><button className="admin-primary" type="submit" disabled={stripeCredentialsSaving}>{stripeCredentialsSaving ? "Saving securely…" : "Update Stripe keys"}</button>{stripeStatus.source === "admin" && <button className="admin-danger-button" type="button" onClick={() => void clearStripeCredentials()} disabled={stripeCredentialsSaving}>Disconnect saved keys</button>}</div>
+                  </form>
+                </section>
+                <div className="admin-payment-mode-grid">
+                  <article className="is-selected"><div className="admin-payment-mode-heading"><span>Test mode</span><b>Recommended now</b></div><div className="admin-payment-mode-body"><FlaskConical aria-hidden="true" /><div><h3>Test API keys</h3><p>Use sandbox payments while you confirm checkout, webhooks, and order handling.</p><a className="admin-secondary" href="https://dashboard.stripe.com/test/apikeys" target="_blank" rel="noreferrer">Open test keys <span aria-hidden="true">↗</span></a></div></div></article>
+                  <article><div className="admin-payment-mode-heading"><span>Live mode</span></div><div className="admin-payment-mode-body"><Globe2 aria-hidden="true" /><div><h3>Live API keys</h3><p>Connect live keys only when your store is ready to accept real customer payments.</p><a className="admin-secondary" href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer">Open live keys <span aria-hidden="true">↗</span></a></div></div></article>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>
