@@ -1585,5 +1585,5 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 .admin-payment-settings .admin-primary { font-size: 14px; }
 .admin-payment-detail-grid > div { min-height: 72px; }
-.admin-payment-mode-heading b { letter-spacing: .03em; }
+.admin-payment-mode-heading b { letter-spacing: .03em; font-size: 12px; }
 .admin-payment-mode-body h3 { font-size: 20px; }
