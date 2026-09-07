@@ -9,8 +9,8 @@ import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPri
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
-import { CreditCard, Headphones, LayoutDashboard, LogOut, MapPin, Search, ShoppingBag, UserRound, X, type LucideIcon } from 'lucide-react';
-import { Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
+import { Clock, CreditCard, Headphones, HelpCircle, LayoutDashboard, LogOut, Mail, MapPin, MessageSquare, Phone, Ruler, Search, ShoppingBag, Truck, UserRound, X, type LucideIcon } from 'lucide-react';
+import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin-dashboard';
 
@@ -1711,7 +1711,148 @@ function FAQ() {
 }
 
 function Contact() {
-  return <Shell><div className="container form-page"><div className="form-layout"><div className="form-copy"><div className="eyebrow">Say hello</div><h1>Let&apos;s talk.</h1><p>Questions about a fit, an order or your next big moment? Our small, lovely customer care team is ready.</p><p>hello@glamtoo.co.uk<br />Monday–Friday, 9am–5pm</p></div><form className="form-stack" action="/contact" method="get"><div className="field"><label htmlFor="contact-name">Your name</label><input id="contact-name" name="name" type="text" required data-testid="input-contact-name" /></div><div className="field"><label htmlFor="contact-email">Email address</label><input id="contact-email" name="email" type="email" required data-testid="input-contact-email" /></div><div className="field"><label htmlFor="contact-topic">What can we help with?</label><select id="contact-topic" name="topic" defaultValue="" data-testid="select-contact-topic"><option value="" disabled>Choose a topic</option><option>Order help</option><option>Fit &amp; styling</option><option>Returns</option><option>Something else</option></select></div><div className="field"><label htmlFor="contact-message">Your message</label><textarea id="contact-message" name="message" required data-testid="textarea-contact-message"></textarea></div><button className="button" type="submit" data-testid="button-contact-submit">Send message</button></form></div></div></Shell>;
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const name = String(formData.get("name") ?? "").trim();
+    const email = String(formData.get("email") ?? "").trim();
+    const order = String(formData.get("order") ?? "").trim();
+    const topic = String(formData.get("topic") ?? "Customer care").trim();
+    const message = String(formData.get("message") ?? "").trim();
+    const subject = `Glam Too enquiry: ${topic}${order ? ` (${order})` : ""}`;
+    const body = [
+      `Name: ${name}`,
+      `Email: ${email}`,
+      order ? `Order number: ${order}` : "",
+      `Topic: ${topic}`,
+      "",
+      message,
+    ].filter(Boolean).join("\n");
+    window.location.href = `mailto:hello@glamtoo.co.uk?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  return (
+    <Shell>
+      <div className="contact-care">
+        <div className="contact-care-head">
+          <div className="eyebrow">Customer Care</div>
+          <h1>How can we help?</h1>
+          <p>We&apos;re here to make every experience effortless.<br />Tell us what you need and we&apos;ll take care of the rest.</p>
+        </div>
+
+        <div className="contact-cards">
+          <div className="contact-card">
+            <div className="contact-card-icon">
+              <ShoppingBag />
+            </div>
+            <h3>Order support</h3>
+            <p>Help with an existing order, returns or exchanges.</p>
+            <a href="#contact-form" className="text-link">GET SUPPORT <span>&#8594;</span></a>
+          </div>
+          <div className="contact-card">
+            <div className="contact-card-icon">
+              <Truck />
+            </div>
+            <h3>Delivery &amp; returns</h3>
+            <p>Track your order or start a return.</p>
+            <Link href="/delivery-returns" className="text-link">LEARN MORE <span>&#8594;</span></Link>
+          </div>
+          <div className="contact-card">
+            <div className="contact-card-icon">
+              <Ruler />
+            </div>
+            <h3>Product &amp; sizing</h3>
+            <p>Find sizing advice and product information.</p>
+            <Link href="/faq" className="text-link">SIZE GUIDE <span>&#8594;</span></Link>
+          </div>
+        </div>
+
+        <div className="contact-form-wrap" id="contact-form">
+          <div className="contact-form-head">
+            <h2>Send us a message</h2>
+            <p>Complete the form below and our team will get back to you as soon as possible.</p>
+          </div>
+          <form className="contact-form" onSubmit={handleSubmit}>
+              <div className="contact-form-grid">
+                <div className="field">
+                  <label htmlFor="contact-name">Name</label>
+                  <input id="contact-name" name="name" type="text" placeholder="Enter your name" required data-testid="input-contact-name" />
+                </div>
+                <div className="field">
+                  <label htmlFor="contact-email">Email address</label>
+                  <input id="contact-email" name="email" type="email" placeholder="Enter your email address" required data-testid="input-contact-email" />
+                </div>
+                <div className="field">
+                  <label htmlFor="contact-order">Order number (optional)</label>
+                  <input id="contact-order" name="order" type="text" placeholder="e.g. #123456" />
+                </div>
+                <div className="field">
+                  <label htmlFor="contact-topic">Choose a topic</label>
+                  <select id="contact-topic" name="topic" defaultValue="" required data-testid="select-contact-topic">
+                    <option value="" disabled>Select a topic</option>
+                    <option>Order help</option>
+                    <option>Delivery</option>
+                    <option>Returns</option>
+                    <option>Product &amp; sizing</option>
+                    <option>Something else</option>
+                  </select>
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="contact-message">Message</label>
+                <textarea id="contact-message" name="message" placeholder="Tell us more..." required data-testid="textarea-contact-message"></textarea>
+              </div>
+            <button className="button" type="submit" data-testid="button-contact-submit">SEND MESSAGE</button>
+            <p className="contact-form-note">Submitting opens your email app with your enquiry ready to send.</p>
+          </form>
+        </div>
+
+        <div className="contact-details">
+          <div className="contact-detail">
+            <div className="contact-detail-icon"><Mail /></div>
+            <h4>Email us</h4>
+            <p>hello@glamtoo.co.uk</p>
+            <a href="mailto:hello@glamtoo.co.uk" className="text-link">SEND EMAIL <span>&#8594;</span></a>
+          </div>
+          <div className="contact-detail">
+            <div className="contact-detail-icon"><Phone /></div>
+            <h4>Call us</h4>
+            <p>+44 20 7123 4567</p>
+            <a href="tel:+442071234567" className="text-link">CALL NOW <span>&#8594;</span></a>
+          </div>
+          <div className="contact-detail">
+            <div className="contact-detail-icon"><Clock /></div>
+            <h4>Opening hours</h4>
+            <div className="hours">
+              <span>Mon - Fri</span><span>9am - 6pm</span>
+              <span>Sat</span><span>10am - 4pm</span>
+              <span>Sun</span><span>Closed</span>
+            </div>
+          </div>
+          <div className="contact-detail">
+            <div className="contact-detail-icon"><MessageSquare /></div>
+            <h4>Response time</h4>
+            <p>We aim to respond to all enquiries within 24 hours.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="contact-quick">
+        <div className="contact-quick-inner">
+          <div className="contact-quick-content">
+            <div className="contact-quick-icon">
+              <HelpCircle />
+            </div>
+            <div className="contact-quick-text">
+              <h3>Looking for a quick answer?</h3>
+              <p>Browse our FAQ for instant answers to the most common questions.</p>
+            </div>
+          </div>
+          <Link href="/faq" className="text-link" style={{ color: 'var(--pink-deep)', borderColor: 'var(--pink-deep)' }}>VISIT OUR FAQ <span>&#8594;</span></Link>
+        </div>
+      </div>
+    </Shell>
+  );
 }
 
 function LegalPage({ type }: { type: 'privacy' | 'terms' | 'delivery' }) {
