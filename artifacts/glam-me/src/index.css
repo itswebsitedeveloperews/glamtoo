@@ -1795,12 +1795,12 @@ input:focus, select:focus, textarea:focus { outline: none; }
 
 /* Graduated FAQ editorial layout */
 .faq-page { padding-bottom: 32px; background: #fcf9f7; }
-.faq-hero { padding: 69px 20px 52px; background: #fcf9f7; border-bottom: 1px solid #e1d9d5; }
-.faq-hero .eyebrow { color: #c95f7d; font-size: 12px; letter-spacing: .2em; }
+.faq-hero { padding: 69px 20px 52px; background-color: #6f3847; background-position: center 28%; background-size: cover; border-bottom: 1px solid #e1d9d5; color: #fff; }
+.faq-hero .eyebrow { color: #fff; font-size: 12px; letter-spacing: .2em; text-shadow: 0 1px 12px rgba(0, 0, 0, .28); }
 .faq-hero h1 { max-width: 760px; margin: 15px auto 13px; font: 400 clamp(48px, 5.6vw, 74px)/.98 var(--hero-display); letter-spacing: -.055em; }
-.faq-hero p { margin: 0; color: #776f6b; font-size: 14px; line-height: 1.5; }
+.faq-hero p { margin: 0; color: rgba(255, 255, 255, .92); font-size: 14px; line-height: 1.5; text-shadow: 0 1px 12px rgba(0, 0, 0, .28); }
 .faq-hero p span { display: block; }
-.faq-search-wrap { width: min(100%, 405px); min-height: 43px; margin-top: 24px; border: 1px solid #e1d9d5; background: #fffdfb; padding: 0 12px; }
+.faq-search-wrap { width: min(100%, 405px); min-height: 43px; margin-top: 24px; border: 1px solid rgba(255, 255, 255, .72); background: rgba(255, 253, 251, .96); padding: 0 12px; }
 .faq-search-wrap svg { color: #776f6b; }
 .faq-search-wrap input { font-size: 14px; }
 .faq-content { padding-bottom: 0; }
@@ -1830,7 +1830,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 
 @media (max-width: 800px) {
   .faq-page { padding-bottom: 18px; }
-  .faq-hero { padding: 49px 18px 40px; }
+  .faq-hero { padding: 49px 18px 40px; background-position: 67% center; }
   .faq-hero h1 { max-width: 560px; font-size: clamp(44px, 12vw, 61px); }
   .faq-hero p { font-size: 14px; }
   .faq-search-wrap { margin-top: 21px; }

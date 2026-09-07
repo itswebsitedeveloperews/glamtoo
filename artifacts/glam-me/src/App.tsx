@@ -1634,7 +1634,11 @@ function FAQ() {
   return (
     <Shell>
       <div className="faq-page">
-        <section className="faq-hero" aria-labelledby="faq-heading">
+        <section
+          className="faq-hero"
+          aria-labelledby="faq-heading"
+          style={{ backgroundImage: `linear-gradient(rgba(34, 15, 20, .52), rgba(34, 15, 20, .52)), url(${aboutStoryImage})` }}
+        >
           <div className="eyebrow">Help centre</div>
           <h1 id="faq-heading">Frequently asked questions</h1>
           <p>Find quick answers to our most common questions.<span>Can&apos;t find what you&apos;re looking for? We&apos;re here to help.</span></p>
