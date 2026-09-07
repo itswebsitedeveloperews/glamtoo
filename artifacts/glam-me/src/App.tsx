@@ -1588,7 +1588,11 @@ function About() {
           </div>
         </section>
 
-        <section className="about-cta" aria-labelledby="about-cta-heading">
+        <section
+          className="about-cta"
+          aria-labelledby="about-cta-heading"
+          style={{ backgroundImage: `linear-gradient(rgba(43, 19, 26, .5), rgba(43, 19, 26, .5)), url(${aboutStoryImage})` }}
+        >
           <div className="container">
             <div className="eyebrow">Your next chapter</div>
             <h2 id="about-cta-heading">Find your next look.</h2>
