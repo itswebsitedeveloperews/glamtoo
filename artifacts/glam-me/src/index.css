@@ -262,7 +262,7 @@ img { display: block; max-width: 100%; }
 
 .about-page { overflow: hidden; }
 .about-hero { position: relative; min-height: 590px; display: flex; align-items: flex-end; overflow: hidden; background: #b98389; color: var(--white); }
-.about-hero-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 48%; }
+.about-hero-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; }
 .about-hero-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20, 13, 14, .56) 0%, rgba(20, 13, 14, .15) 53%, rgba(20, 13, 14, .04) 100%); }
 .about-hero-copy { position: relative; z-index: 1; padding: 105px 0 82px; }
 .about-hero-copy .eyebrow { color: #f9d3dc; }
@@ -1709,7 +1709,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 
 @media (max-width: 800px) {
   .about-hero { min-height: 555px; }
-  .about-hero-image { object-position: 59% center; }
+  .about-hero-image { object-position: top center; }
   .about-hero-overlay { background: linear-gradient(90deg, rgba(20, 13, 14, .62) 0%, rgba(20, 13, 14, .2) 100%); }
   .about-hero-copy { padding: 80px 0 59px; }
   .about-hero-copy h1 { font-size: clamp(61px, 15vw, 92px); }
