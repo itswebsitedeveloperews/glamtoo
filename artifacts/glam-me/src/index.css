@@ -2305,4 +2305,104 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .customer-auth-page {
     width: min(calc(100% - 32px), 620px);
   }
+
+  .account-page {
+    padding: 58px 0 90px;
+  }
+
+  .account-heading {
+    align-items: start;
+  }
+
+  .account-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 25px;
+    margin-top: 28px;
+  }
+
+  .account-nav {
+    min-height: 0;
+  }
+
+  .account-nav-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-nav button {
+    min-height: 52px;
+  }
+
+  .account-nav .account-nav-logout {
+    margin-top: 0;
+    border-top: 1px solid #eee8e3;
+  }
+
+  .account-order-body,
+  .account-order-page-layout,
+  .account-shortcuts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-delivery {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+    padding: 25px 0 0;
+  }
+
+  .account-order-page-heading {
+    align-items: start;
+  }
+
+  .account-order-page-heading h2 {
+    font-size: 36px;
+  }
+
+  .account-shortcuts {
+    margin-top: 28px;
+  }
+}
+
+@media (max-width: 460px) {
+  .account-heading {
+    display: block;
+  }
+
+  .account-heading h1 {
+    font-size: 58px;
+  }
+
+  .account-panel {
+    padding: 27px 21px;
+  }
+
+  .account-details-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-field-wide {
+    grid-column: auto;
+  }
+
+  .account-order-header {
+    display: grid;
+    padding: 22px 20px 19px;
+  }
+
+  .account-order-body {
+    padding: 22px 20px 25px;
+  }
+
+  .account-order-total,
+  .account-order-page-total {
+    justify-items: start;
+    text-align: left;
+  }
+
+  .account-order-page-heading {
+    display: grid;
+  }
+
+  .account-order-detail-card {
+    padding: 19px;
+  }
 }
