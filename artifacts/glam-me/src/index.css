@@ -2321,20 +2321,27 @@ input:focus, select:focus, textarea:focus { outline: none; }
   }
 
   .account-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     min-height: 0;
   }
 
   .account-nav-links {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: contents;
   }
 
   .account-nav button {
     min-height: 52px;
   }
 
+  .account-nav-links button:nth-child(odd) {
+    border-right: 1px solid #eee8e3;
+  }
+
   .account-nav .account-nav-logout {
-    margin-top: 0;
-    border-top: 1px solid #eee8e3;
+    justify-content: flex-end;
+    margin: 0;
+    border-top: 0;
   }
 
   .account-order-body,
