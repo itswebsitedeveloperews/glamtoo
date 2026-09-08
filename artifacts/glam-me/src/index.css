@@ -1375,7 +1375,7 @@ img { display: block; max-width: 100%; }
 input, select, textarea,
 input:focus, select:focus, textarea:focus { outline: none; }
 
-@media (max-width: 980px) {
+@media (max-width: 1120px) {
   .admin-app { grid-template-columns: 1fr; min-width: 0; }
   .admin-sidebar { position: static; min-width: 0; min-height: auto; height: auto; padding: 20px; }
   .admin-brand { padding: 0 0 18px; }
