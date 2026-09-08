@@ -1640,6 +1640,7 @@ export default function AdminDashboard({
     }
   })());
   const [section, setSection] = useState<AdminSection>("overview");
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [products, setProducts, commitProducts] = useStoredState<Product[]>(productsStorageKey, getStoredProducts());
   const [categories, setCategories, commitCategories] = useStoredState<Category[]>(categoriesStorageKey, getStoredCategories());
   const [orders, setOrders] = useState<Order[]>([]);
@@ -2363,14 +2364,24 @@ export default function AdminDashboard({
 
   return (
     <div className="admin-app">
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar${adminMenuOpen ? " is-menu-open" : ""}`}>
         <a className="admin-brand" href="/" aria-label="Return to Glam Too storefront">
           <img src="/logo.svg" alt="Glam Too" />
           <small>Commerce Studio</small>
         </a>
-        <nav className="admin-nav" aria-label="Admin navigation">
+        <button
+          className="admin-menu-toggle"
+          type="button"
+          aria-label={adminMenuOpen ? "Close admin menu" : "Open admin menu"}
+          aria-expanded={adminMenuOpen}
+          aria-controls="admin-navigation"
+          onClick={() => setAdminMenuOpen((open) => !open)}
+        >
+          <span aria-hidden="true"><span /><span /><span /></span>
+        </button>
+        <nav id="admin-navigation" className="admin-nav" aria-label="Admin navigation">
             {navItems.map((item) => (
-            <button type="button" key={item.id} className={section === item.id && editorProductId === null ? "is-active" : ""} onClick={() => { setSection(item.id); setEditorProductId(null); setSelectedOrderId(null); }}>
+            <button type="button" key={item.id} className={section === item.id && editorProductId === null ? "is-active" : ""} onClick={() => { setSection(item.id); setEditorProductId(null); setSelectedOrderId(null); setAdminMenuOpen(false); }}>
               <span className="admin-nav-label"><item.icon className="admin-nav-icon" aria-hidden="true" /><span>{item.label}</span></span>
             </button>
           ))}
