@@ -282,12 +282,12 @@ img { display: block; max-width: 100%; }
 .about-intro-media img { object-position: 63% center; }
 .about-values { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #f5eeea; }
 .about-values-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
-.about-value { min-height: 255px; padding: 47px clamp(25px, 4vw, 68px) 43px; text-align: center; }
+.about-value { min-height: 255px; padding: 47px 30px 43px 30px; text-align: center; }
 .about-value + .about-value { border-left: 1px solid var(--line); }
 .about-value-icon { display: grid; place-items: center; width: 50px; height: 50px; margin: 0 auto 21px; border: 1px solid #cdbdb5; border-radius: 50%; color: var(--pink-deep); }
 .about-value-icon svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.25; stroke-linecap: round; stroke-linejoin: round; }
 .about-value h3 { margin: 0 0 12px; font: 400 28px/1 var(--display); letter-spacing: -.03em; }
-.about-value p { max-width: 270px; margin: 0 auto; color: var(--muted); font-size: 16px; line-height: 1.55; }
+.about-value p { margin: 0 auto; color: var(--muted); font-size: 16px; line-height: 1.55; }
 .about-story { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; padding-top: 120px; padding-bottom: 126px; }
 .about-story-media { aspect-ratio: 1.03 / 1; overflow: hidden; background: #dc7890; }
 .about-story-media img { object-position: 67% center; }
