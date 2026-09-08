@@ -117,12 +117,20 @@ type OrderPayload = {
 
 type ManagedUser = {
   id: string;
+  firstName: string;
+  lastName: string;
   name: string;
   email: string;
   createdAt: number;
   lastSignInAt: number | null;
   isAdmin: boolean;
   isBootstrapAdmin: boolean;
+};
+
+type EditUserDraft = {
+  firstName: string;
+  lastName: string;
+  email: string;
 };
 
 type NewUserDraft = {
@@ -1668,6 +1676,8 @@ export default function AdminDashboard({
   const [usersError, setUsersError] = useState("");
   const [userSearch, setUserSearch] = useState("");
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editUserDraft, setEditUserDraft] = useState<EditUserDraft>({ firstName: "", lastName: "", email: "" });
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [createUserOpen, setCreateUserOpen] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
@@ -2301,6 +2311,35 @@ export default function AdminDashboard({
     }
   }
 
+  function editUser(user: ManagedUser) {
+    setEditingUserId(user.id);
+    setEditUserDraft({ firstName: user.firstName, lastName: user.lastName, email: user.email });
+    setUsersError("");
+  }
+
+  async function saveUser(event: FormEvent<HTMLFormElement>, user: ManagedUser) {
+    event.preventDefault();
+    setUpdatingUserId(user.id);
+    setUsersError("");
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editUserDraft),
+      });
+      const payload = await response.json() as { user?: ManagedUser; error?: string };
+      if (!response.ok || !payload.user) throw new Error(payload.error || "User details could not be updated.");
+      setManagedUsers((current) => current.map((item) => item.id === user.id ? payload.user as ManagedUser : item));
+      setEditingUserId(null);
+      setNotice(`${payload.user.name} was updated.`);
+    } catch (error) {
+      setUsersError(error instanceof Error ? error.message : "User details could not be updated.");
+    } finally {
+      setUpdatingUserId(null);
+    }
+  }
+
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreatingUser(true);
@@ -2668,7 +2707,8 @@ export default function AdminDashboard({
                       <article className="admin-user-card" key={user.id}>
                         <div className="admin-user-avatar" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</div>
                         <div className="admin-user-details"><strong>{user.name}</strong><span>{user.email}</span><small>Joined {formatUserDate(user.createdAt)} · Last sign-in {formatUserDate(user.lastSignInAt)}</small></div>
-                        <div className="admin-user-actions"><span className="admin-role-badge">{user.isBootstrapAdmin ? "Primary owner" : "Admin"}</span>{user.isBootstrapAdmin ? <small>Protected</small> : <><button type="button" className="admin-secondary" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void updateUserAccess(user, false)}>{updatingUserId === user.id ? "Updating…" : "Remove admin"}</button><button type="button" className="admin-danger-button" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void deleteUser(user)}>{deletingUserId === user.id ? "Deleting…" : "Delete"}</button></>}</div>
+                        <div className="admin-user-actions"><span className="admin-role-badge">{user.isBootstrapAdmin ? "Primary owner" : "Admin"}</span><button type="button" className="admin-secondary" disabled={updatingUserId === user.id} onClick={() => editUser(user)}>Edit</button>{user.isBootstrapAdmin ? <small>Protected</small> : <><button type="button" className="admin-secondary" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void updateUserAccess(user, false)}>{updatingUserId === user.id ? "Updating…" : "Remove admin"}</button><button type="button" className="admin-danger-button" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void deleteUser(user)}>{deletingUserId === user.id ? "Deleting…" : "Delete"}</button></>}</div>
+                        {editingUserId === user.id && <form className="admin-user-edit-form" onSubmit={(event) => void saveUser(event, user)}><label>First name<input value={editUserDraft.firstName} onChange={(event) => setEditUserDraft((current) => ({ ...current, firstName: event.target.value }))} /></label><label>Last name<input value={editUserDraft.lastName} onChange={(event) => setEditUserDraft((current) => ({ ...current, lastName: event.target.value }))} /></label><label>Email address<input type="email" required disabled={user.isBootstrapAdmin} value={editUserDraft.email} onChange={(event) => setEditUserDraft((current) => ({ ...current, email: event.target.value }))} />{user.isBootstrapAdmin && <small>Primary owner email is protected.</small>}</label><div className="admin-user-edit-actions"><button className="admin-primary" type="submit" disabled={updatingUserId === user.id}>{updatingUserId === user.id ? "Saving…" : "Save changes"}</button><button className="admin-secondary" type="button" onClick={() => setEditingUserId(null)}>Cancel</button></div></form>}
                       </article>
                     ))}
                   </section>
@@ -2678,7 +2718,8 @@ export default function AdminDashboard({
                       <article className="admin-user-card" key={user.id}>
                         <div className="admin-user-avatar customer" aria-hidden="true">{user.name.charAt(0).toUpperCase()}</div>
                         <div className="admin-user-details"><strong>{user.name}</strong><span>{user.email}</span><small>Joined {formatUserDate(user.createdAt)} · Last sign-in {formatUserDate(user.lastSignInAt)}</small></div>
-                        <div className="admin-user-actions"><span className="admin-role-badge customer">Customer</span><button type="button" className="admin-primary" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void updateUserAccess(user, true)}>{updatingUserId === user.id ? "Updating…" : "Make admin"}</button><button type="button" className="admin-danger-button" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void deleteUser(user)}>{deletingUserId === user.id ? "Deleting…" : "Delete"}</button></div>
+                        <div className="admin-user-actions"><span className="admin-role-badge customer">Customer</span><button type="button" className="admin-secondary" disabled={updatingUserId === user.id} onClick={() => editUser(user)}>Edit</button><button type="button" className="admin-primary" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void updateUserAccess(user, true)}>{updatingUserId === user.id ? "Updating…" : "Make admin"}</button><button type="button" className="admin-danger-button" disabled={updatingUserId === user.id || deletingUserId === user.id} onClick={() => void deleteUser(user)}>{deletingUserId === user.id ? "Deleting…" : "Delete"}</button></div>
+                        {editingUserId === user.id && <form className="admin-user-edit-form" onSubmit={(event) => void saveUser(event, user)}><label>First name<input value={editUserDraft.firstName} onChange={(event) => setEditUserDraft((current) => ({ ...current, firstName: event.target.value }))} /></label><label>Last name<input value={editUserDraft.lastName} onChange={(event) => setEditUserDraft((current) => ({ ...current, lastName: event.target.value }))} /></label><label>Email address<input type="email" required value={editUserDraft.email} onChange={(event) => setEditUserDraft((current) => ({ ...current, email: event.target.value }))} /></label><div className="admin-user-edit-actions"><button className="admin-primary" type="submit" disabled={updatingUserId === user.id}>{updatingUserId === user.id ? "Saving…" : "Save changes"}</button><button className="admin-secondary" type="button" onClick={() => setEditingUserId(null)}>Cancel</button></div></form>}
                       </article>
                     ))}
                   </section>

@@ -43,6 +43,8 @@ function serializeUser(user: {
     ?? "";
   return {
     id: user.id,
+    firstName: profile?.firstName || user.firstName || "",
+    lastName: profile?.lastName || user.lastName || "",
     name: [profile?.firstName || user.firstName, profile?.lastName || user.lastName].filter(Boolean).join(" ") || "Unnamed customer",
     email: primaryEmail,
     createdAt: user.createdAt,
@@ -117,6 +119,61 @@ router.post("/admin/users", requireAdmin, async (request, response) => {
   } catch (error) {
     request.log?.error({ error }, "Admin user creation failed");
     return response.status(400).json({ error: "This user could not be created. The email may already be in use or the password may not meet Clerk's requirements." });
+  }
+});
+
+router.patch("/admin/users/:userId", requireAdmin, async (request, response) => {
+  const routeUserId = request.params.userId;
+  const userId = Array.isArray(routeUserId) ? routeUserId[0] : routeUserId;
+  const firstName = textValue(request.body?.firstName, 80);
+  const lastName = textValue(request.body?.lastName, 80);
+  const email = textValue(request.body?.email, 250).toLowerCase();
+  if (!/^user_[a-zA-Z0-9]+$/.test(userId)) {
+    return response.status(400).json({ error: "Choose a valid user account." });
+  }
+  if (!firstName && !lastName) {
+    return response.status(400).json({ error: "Enter a first or last name." });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return response.status(400).json({ error: "Enter a valid email address." });
+  }
+
+  try {
+    const target = await clerkClient.users.getUser(userId);
+    const currentPrimary = target.emailAddresses.find((item) => item.id === target.primaryEmailAddressId)
+      ?? target.emailAddresses[0];
+    const emailChanged = currentPrimary?.emailAddress.toLowerCase() !== email;
+    if (emailChanged && isBootstrapAdminUser(target)) {
+      return response.status(400).json({ error: "The primary owner email is protected. You can still update their name." });
+    }
+
+    if (emailChanged) {
+      const createdEmail = await clerkClient.emailAddresses.createEmailAddress({
+        userId,
+        emailAddress: email,
+        verified: true,
+        primary: true,
+      });
+      await clerkClient.users.updateUser(userId, {
+        primaryEmailAddressID: createdEmail.id,
+        notifyPrimaryEmailAddressChanged: true,
+      });
+      if (currentPrimary && currentPrimary.id !== createdEmail.id) {
+        await clerkClient.emailAddresses.deleteEmailAddress(currentPrimary.id);
+      }
+    }
+
+    await clerkClient.users.updateUser(userId, { firstName, lastName });
+    const updatedAt = new Date();
+    await db.insert(customerProfilesTable).values({ userId, firstName, lastName, updatedAt }).onConflictDoUpdate({
+      target: customerProfilesTable.userId,
+      set: { firstName, lastName, updatedAt },
+    });
+    const updated = await clerkClient.users.getUser(userId);
+    return response.json({ user: serializeUser(updated, { firstName, lastName }) });
+  } catch (error) {
+    request.log?.error({ error, userId }, "Admin user profile update failed");
+    return response.status(400).json({ error: "This user could not be updated. The email may already be in use." });
   }
 });
 
