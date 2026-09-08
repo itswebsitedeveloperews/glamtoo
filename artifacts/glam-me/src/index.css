@@ -1826,7 +1826,6 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .about-hero-copy { padding: 80px 0 59px; }
   .about-hero-copy h1 { font-size: clamp(61px, 15vw, 92px); }
   .about-intro { grid-template-columns: 1fr; gap: 46px; padding-top: 75px; padding-bottom: 80px; }
-  .about-intro-copy { max-width: 620px; }
   .about-intro-copy h2, .about-story-copy h2 { font-size: clamp(56px, 12vw, 78px); }
   .about-intro-media { aspect-ratio: 1.15 / 1; }
   .about-values-grid { grid-template-columns: 1fr; }
