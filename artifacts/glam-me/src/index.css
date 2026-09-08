@@ -1222,11 +1222,12 @@ img { display: block; max-width: 100%; }
 .admin-role-badge.customer { background: var(--paper-deep); color: var(--muted); }
 .admin-user-actions .admin-primary, .admin-user-actions .admin-secondary { min-height: 37px; padding: 0 11px; font-size: 14px; }
 .admin-user-actions .admin-danger-button { min-height: 37px; padding: 0 11px; font-size: 14px; }
-.admin-user-edit-form { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: end; gap: 14px; margin-top: 4px; padding: 18px; border: 1px solid var(--line); background: #faf7f4; }
+.admin-user-edit-form { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 14px; margin-top: 4px; padding: 18px; border: 1px solid var(--line); background: #faf7f4; }
 .admin-user-edit-form label { display: grid; min-width: 0; gap: 7px; color: var(--ink); font-size: 14px; font-weight: 600; }
 .admin-user-edit-form input { width: 100%; min-width: 0; min-height: 42px; box-sizing: border-box; border: 1px solid var(--line); background: #fffdfb; padding: 0 12px; color: var(--ink); font-size: 16px; }
+.admin-user-edit-form input:disabled { background: #f1ece8; color: var(--muted); cursor: not-allowed; }
 .admin-user-edit-form label small { color: var(--muted); font-size: 14px; font-weight: 400; }
-.admin-user-edit-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.admin-user-edit-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px; padding-top: 2px; }
 .admin-users-state { margin: 18px 0 0; color: var(--muted); font-size: 16px; }
 
 .admin-product-editor { width: 100%; }
