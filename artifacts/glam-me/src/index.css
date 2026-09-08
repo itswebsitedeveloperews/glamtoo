@@ -2505,6 +2505,39 @@ input:focus, select:focus, textarea:focus { outline: none; }
     justify-content: flex-start;
   }
 
+  .admin-user-group-heading {
+    align-items: center;
+    min-width: 0;
+  }
+
+  .admin-user-group-heading > div {
+    min-width: 0;
+  }
+
+  .admin-user-group-heading h2 {
+    font-size: 28px;
+    letter-spacing: -.03em;
+  }
+
+  .admin-user-group-heading > span {
+    flex: 0 0 32px;
+  }
+
+  .admin-user-details span,
+  .admin-user-details small {
+    overflow: visible;
+    text-overflow: clip;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .admin-role-badge {
+    max-width: 100%;
+    box-sizing: border-box;
+    letter-spacing: .05em;
+    white-space: nowrap;
+  }
+
   .admin-user-edit-form {
     grid-template-columns: minmax(0, 1fr);
   }
