@@ -1854,7 +1854,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 /* Contact Page Redesign */
 .contact-care {
-  padding: 85px 20px 115px;
+  padding: 85px 20px 55px;
   background: var(--paper);
 }
 .contact-care-head {
@@ -1986,8 +1986,8 @@ input:focus, select:focus, textarea:focus { outline: none; }
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
-  max-width: 1120px;
-  margin: 0 auto 80px;
+  max-width: 1040px;
+  margin: 0 auto 20px;
   text-align: center;
   align-items: stretch;
 }
