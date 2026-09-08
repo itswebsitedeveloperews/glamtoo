@@ -318,13 +318,14 @@ function getCartQueryItem(): CartItem | null {
   const size = params.get('size');
   const variationId = Number(params.get('variation'));
   const colour = params.get('colour');
+  const quantity = Number(params.get('quantity'));
   return Number.isInteger(productId) && productId > 0 && size
     ? {
         productId,
         size,
         colour: colour || undefined,
         variationId: Number.isInteger(variationId) && variationId > 0 ? variationId : undefined,
-        quantity: 1,
+        quantity: Number.isInteger(quantity) && quantity > 0 ? quantity : 1,
       }
     : null;
 }
@@ -355,8 +356,12 @@ function calculateCheckoutDeliveryAmount(delivery: "standard" | "express", subto
   return Math.round(subtotal * 100) >= freeStandardDeliveryThreshold * 100 ? 0 : standardDeliveryAmount;
 }
 
-function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'productId' | 'quantity'> = { size: 'One size' }) {
+function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'productId' | 'quantity'> = { size: 'One size' }, quantity = 1) {
   const size = selection.size || 'One size';
+  const requestedQuantity = Math.max(1, Math.floor(quantity));
+  const availableStock = selection.variationId
+    ? product.variations.find((variation) => variation.id === selection.variationId)?.stock ?? 0
+    : product.stock;
   const items = getCartItems();
   const existingIndex = items.findIndex((item) =>
     item.productId === product.id
@@ -366,14 +371,17 @@ function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'pr
   );
   const nextItems = [...items];
   if (existingIndex >= 0) {
-    nextItems[existingIndex] = { ...nextItems[existingIndex], quantity: nextItems[existingIndex].quantity + 1 };
+    nextItems[existingIndex] = {
+      ...nextItems[existingIndex],
+      quantity: Math.min(availableStock, nextItems[existingIndex].quantity + requestedQuantity),
+    };
   } else {
     nextItems.push({
       productId: product.id,
       size,
       colour: selection.colour,
       variationId: selection.variationId,
-      quantity: 1,
+      quantity: Math.min(availableStock, requestedQuantity),
     });
   }
   try {
@@ -1244,10 +1252,12 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const galleryTouchStartX = useRef<number | null>(null);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColour, setSelectedColour] = useState('');
+  const [quantity, setQuantity] = useState(1);
   const [variationMessage, setVariationMessage] = useState('');
   useEffect(() => {
     setActiveGalleryIndex(0);
     setGalleryTransitionDirection(1);
+    setQuantity(1);
   }, [product?.id, params.slug]);
   const productVariations = product?.type === 'Variable'
     ? product.variations
@@ -1271,6 +1281,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     )
     : undefined;
   const displayedPrice = selectedVariation?.price ?? product?.price ?? '';
+  const availableQuantity = product?.type === 'Variable' ? selectedVariation?.stock ?? 0 : product?.stock ?? 0;
 
   if (!product) return <NotFoundRoute />;
   const selectedProduct = product;
@@ -1305,13 +1316,14 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     const selection = selectedVariation
       ? { size: selectedVariation.size || 'One size', colour: selectedVariation.colour || undefined, variationId: selectedVariation.id }
       : { size: 'One size' };
-    const wasSaved = addProductToCart(selectedProduct, selection);
+    const wasSaved = addProductToCart(selectedProduct, selection, quantity);
     const fallbackParams = new URLSearchParams({
       product: String(selectedProduct.id),
       size: selection.size,
     });
     if (selection.colour) fallbackParams.set('colour', selection.colour);
     if (selection.variationId) fallbackParams.set('variation', String(selection.variationId));
+    fallbackParams.set('quantity', String(quantity));
     window.location.href = wasSaved ? '/cart' : `/cart?${fallbackParams.toString()}`;
   }
 
@@ -1401,6 +1413,14 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                  </>
                )}
                 {isSoldOut && <p className="variation-message">This product is currently out of stock.</p>}
+                 <div className="detail-quantity">
+                   <span className="detail-quantity-label">Quantity</span>
+                   <div className="detail-quantity-control">
+                     <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} disabled={quantity <= 1} aria-label="Decrease quantity">−</button>
+                     <output aria-live="polite" aria-label={`Quantity ${quantity}`}>{quantity}</output>
+                     <button type="button" onClick={() => setQuantity((current) => Math.min(availableQuantity, current + 1))} disabled={isSoldOut || !availableQuantity || quantity >= availableQuantity} aria-label="Increase quantity">+</button>
+                   </div>
+                 </div>
                 <button className="button" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation)} data-testid={`button-add-to-bag-${product.id}`}>{isSoldOut ? 'Out of stock' : `Add to bag · ${displayedPrice}`}</button>
             </form>
             <div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with an easy, considered fit.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery on orders of £75 or more. Return unworn pieces within 28 days.</p></details></div>
