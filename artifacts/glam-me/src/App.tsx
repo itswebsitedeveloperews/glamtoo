@@ -1259,6 +1259,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const [selectedColour, setSelectedColour] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [variationMessage, setVariationMessage] = useState('');
+  const [openProductInformation, setOpenProductInformation] = useState<string | null>(null);
   useEffect(() => {
     setActiveGalleryIndex(0);
     setGalleryTransitionDirection(1);
@@ -1293,6 +1294,9 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     { title: 'Delivery & Returns', content: product?.deliveryAndReturns },
     { title: 'Care Details', content: product?.careDetails },
   ].filter((section): section is { title: string; content: string } => Boolean(section.content?.trim()));
+  useEffect(() => {
+    setOpenProductInformation(productInformation[0]?.title ?? null);
+  }, [product?.id]);
 
   if (!product) return <NotFoundRoute />;
   const selectedProduct = product;
@@ -1439,8 +1443,11 @@ function ProductDetail({ params }: { params: { slug: string } }) {
          {productInformation.length > 0 && (
            <section className="product-information" aria-label="Product information">
              {productInformation.map((section) => (
-               <details key={section.title}>
-                 <summary>{section.title}<span aria-hidden="true">+</span></summary>
+               <details key={section.title} open={openProductInformation === section.title}>
+                 <summary onClick={(event) => {
+                   event.preventDefault();
+                   setOpenProductInformation((current) => current === section.title ? null : section.title);
+                 }}>{section.title}<span aria-hidden="true">+</span></summary>
                  <div className="product-information-content"><p>{section.content}</p></div>
                </details>
              ))}
