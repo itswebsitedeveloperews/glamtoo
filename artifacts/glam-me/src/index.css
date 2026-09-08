@@ -1867,7 +1867,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   margin-bottom: 15px;
 }
 .contact-care-head h1 {
-  font: 400 clamp(56px, 7vw, 86px)/1.1 var(--hero-display);
+  font: 400 72px/1.1 var(--hero-display);
   margin: 0 0 20px;
 }
 .contact-care-head p {
