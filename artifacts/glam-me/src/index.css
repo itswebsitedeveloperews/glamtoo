@@ -2339,7 +2339,6 @@ input:focus, select:focus, textarea:focus { outline: none; }
   }
 
   .account-nav .account-nav-logout {
-    justify-content: flex-end;
     margin: 0;
     border-top: 0;
   }
