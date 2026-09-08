@@ -2416,3 +2416,80 @@ input:focus, select:focus, textarea:focus { outline: none; }
     padding: 19px;
   }
 }
+
+/* Responsive admin workspace */
+@media (max-width: 720px) {
+  .admin-product-catalog-card {
+    overflow: hidden;
+  }
+
+  .admin-product-catalog-image {
+    width: 100%;
+    min-width: 0;
+    height: 160px;
+  }
+
+  .admin-product-catalog-info,
+  .admin-product-catalog-name {
+    min-width: 0;
+  }
+
+  .admin-product-catalog-name {
+    overflow-wrap: anywhere;
+  }
+
+  .admin-media-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-table-panel,
+  .admin-order-progress,
+  .admin-order-item-table {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-payment-card,
+  .admin-payment-banner-copy,
+  .admin-payment-status {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-product-catalog-heading,
+  .admin-card-heading,
+  .admin-order-card-heading {
+    display: grid;
+    justify-content: stretch;
+    align-items: start;
+  }
+
+  .admin-category-card {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .admin-category-card > img,
+  .admin-category-image-empty {
+    width: 96px;
+    height: 120px;
+  }
+
+  .admin-user-card {
+    grid-template-columns: 43px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .admin-user-actions {
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .admin-coupon-fields,
+  .admin-payment-mode-grid,
+  .admin-gallery-add {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
