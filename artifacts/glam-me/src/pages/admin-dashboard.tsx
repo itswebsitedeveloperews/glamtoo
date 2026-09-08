@@ -2577,7 +2577,17 @@ export default function AdminDashboard({
 
         {section === "users" && (
           <>
-            <SectionTitle eyebrow="Private studio" title="Users & access" description="Create customer or administrator accounts, review access, and remove accounts when needed. Passwords and private account data are never shown here." action={<div className="admin-section-actions"><button className="admin-secondary" type="button" onClick={() => void refreshUsers()} disabled={usersLoading}>{usersLoading ? "Refreshing…" : "Refresh users"}</button><button className="admin-primary" type="button" onClick={() => { setCreateUserOpen((open) => !open); setNewUserError(""); }}>{createUserOpen ? "Close new user" : "New user"}</button></div>} />
+            <header className="admin-users-header">
+              <div className="admin-users-header-copy">
+                <p className="admin-eyebrow">Private studio</p>
+                <h1>Users &amp; access</h1>
+                <p>Create customer or administrator accounts, review access, and remove accounts when needed. Passwords and private account data are never shown here.</p>
+              </div>
+              <div className="admin-users-header-actions">
+                <button className="admin-secondary" type="button" onClick={() => void refreshUsers()} disabled={usersLoading}>{usersLoading ? "Refreshing…" : "Refresh users"}</button>
+                <button className="admin-primary" type="button" onClick={() => { setCreateUserOpen((open) => !open); setNewUserError(""); }}>{createUserOpen ? "Close new user" : "New user"}</button>
+              </div>
+            </header>
             <section className="admin-panel admin-users-panel">
               {createUserOpen && <form className="admin-new-user-form" onSubmit={createUser}><div><p className="admin-eyebrow">Account creation</p><h2>Create a new user</h2><p>Set an initial password and choose whether this account is a Customer or Admin.</p></div><div className="admin-new-user-fields"><label>First name<input value={newUserDraft.firstName} onChange={(event) => setNewUserDraft((current) => ({ ...current, firstName: event.target.value }))} placeholder="First name" /></label><label>Last name<input value={newUserDraft.lastName} onChange={(event) => setNewUserDraft((current) => ({ ...current, lastName: event.target.value }))} placeholder="Last name" /></label><label className="admin-new-user-email">Email address<input type="email" required value={newUserDraft.email} onChange={(event) => setNewUserDraft((current) => ({ ...current, email: event.target.value }))} placeholder="name@example.com" /></label><label>Initial password<input type="password" required minLength={8} autoComplete="new-password" value={newUserDraft.password} onChange={(event) => setNewUserDraft((current) => ({ ...current, password: event.target.value }))} placeholder="At least 8 characters" /></label><label>Assign role<select value={newUserDraft.role} onChange={(event) => setNewUserDraft((current) => ({ ...current, role: event.target.value as NewUserDraft["role"] }))}><option value="customer">Customer</option><option value="admin">Admin</option></select></label></div>{newUserError && <p className="admin-payment-error" role="alert">{newUserError}</p>}<div className="admin-new-user-actions"><button className="admin-primary" type="submit" disabled={creatingUser}>{creatingUser ? "Creating…" : "Create user"}</button><button className="admin-secondary" type="button" onClick={() => setCreateUserOpen(false)}>Cancel</button></div></form>}
               <div className="admin-users-toolbar">
