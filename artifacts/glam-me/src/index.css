@@ -1016,7 +1016,7 @@ img { display: block; max-width: 100%; }
 .admin-product-form label, .admin-simple-form label { display: grid; gap: 6px; color: var(--muted); font-size: 14px; }
 .admin-product-form input, .admin-product-form select, .admin-simple-form input, .admin-shipping-grid input, .admin-variation-layout select, .admin-table-row select { min-width: 0; height: 38px; border: 1px solid #d8d0ca; border-radius: 0; background: #fffdfb; padding: 0 10px; color: var(--ink); outline-color: #e23d6f; font-size: 14px; }
 .admin-table-panel { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; padding: 0; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
-.admin-table { width: max-content; min-width: 720px; }
+.admin-table { width: 100%; min-width: 720px; }
 .admin-table-head, .admin-table-row { display: grid; grid-template-columns: 2.1fr 1.1fr .7fr .55fr .75fr .55fr; align-items: center; gap: 14px; padding: 15px 22px; }
 .admin-table-head { background: #eee7e2; color: var(--muted); font-size: 14px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .admin-table-row { border-top: 1px solid #eee8e3; font-size: 14px; }
