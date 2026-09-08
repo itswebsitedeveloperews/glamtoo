@@ -58,7 +58,7 @@ img { display: block; max-width: 100%; }
 .nav-overlay { display: none; }
 .mobile-nav-head { display: none; }
 .mobile-nav-close { border: 0; padding: 8px; background: transparent; color: var(--ink); font-size: 32px; font-weight: 300; line-height: 1; cursor: pointer; }
-.search-link { border: 0; background: transparent; padding: 0; color: inherit; cursor: pointer; font-size: 14px; }
+.search-link { border: 0; outline: none; background: transparent; padding: 0; color: inherit; cursor: pointer; font-size: 14px; }
 .header-search-panel { display: grid; grid-template-columns: auto minmax(280px, 520px); align-items: center; gap: 22px; width: min(100% - 48px, 1240px); margin: 0 auto; padding: 15px 0 17px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--paper); }
 .header-search-panel label { color: var(--muted); font-size: 14px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
 .header-search-form-row { display: flex; gap: 8px; }
