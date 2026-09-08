@@ -932,7 +932,7 @@ img { display: block; max-width: 100%; }
 .admin-store-link:hover { color: var(--pink); }
 .admin-signout { justify-self: start; color: #a89e97; border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; }
 .admin-signout:hover { color: #fffdfb; }
-.admin-main { position: relative; width: min(1230px, 100%); margin: 0 auto; padding: 72px clamp(24px, 5vw, 76px) 100px; }
+.admin-main { position: relative; width: min(1230px, 100%); min-width: 0; max-width: 100%; box-sizing: border-box; margin: 0 auto; padding: 72px clamp(24px, 5vw, 76px) 100px; }
 .admin-section-title { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 38px; }
 .admin-eyebrow { margin: 0 0 9px; color: #a6516e; font-size: 14px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
 .admin-section-title h1 { margin: 0; font: 400 60px/.88 var(--display); letter-spacing: -.055em; }
@@ -1015,8 +1015,8 @@ img { display: block; max-width: 100%; }
 .admin-product-form { display: grid; grid-template-columns: 1.4fr 1fr .72fr .58fr auto; gap: 10px; align-items: end; margin: -12px 0 20px; padding: 18px; background: #eee7e2; border: 1px solid var(--line); }
 .admin-product-form label, .admin-simple-form label { display: grid; gap: 6px; color: var(--muted); font-size: 14px; }
 .admin-product-form input, .admin-product-form select, .admin-simple-form input, .admin-shipping-grid input, .admin-variation-layout select, .admin-table-row select { min-width: 0; height: 38px; border: 1px solid #d8d0ca; border-radius: 0; background: #fffdfb; padding: 0 10px; color: var(--ink); outline-color: #e23d6f; font-size: 14px; }
-.admin-table-panel { padding: 0; overflow-x: auto; }
-.admin-table { min-width: 720px; }
+.admin-table-panel { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; padding: 0; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
+.admin-table { width: max-content; min-width: 720px; }
 .admin-table-head, .admin-table-row { display: grid; grid-template-columns: 2.1fr 1.1fr .7fr .55fr .75fr .55fr; align-items: center; gap: 14px; padding: 15px 22px; }
 .admin-table-head { background: #eee7e2; color: var(--muted); font-size: 14px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .admin-table-row { border-top: 1px solid #eee8e3; font-size: 14px; }
