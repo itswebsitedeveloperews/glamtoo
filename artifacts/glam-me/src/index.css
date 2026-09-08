@@ -2267,3 +2267,42 @@ input:focus, select:focus, textarea:focus { outline: none; }
     box-shadow: 8px 8px 0 rgba(23, 22, 21, .08);
   }
 }
+
+/* Consistent responsive page gutters */
+@media (max-width: 800px) {
+  .container,
+  .hero-copy,
+  .account-page {
+    width: min(calc(100% - 32px), 720px);
+  }
+
+  .header-inner {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .header-search-panel {
+    width: min(calc(100% - 32px), 720px);
+  }
+
+  .faq-hero,
+  .contact-care,
+  .not-found-page {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .faq-results {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .faq-support {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .customer-auth-page {
+    width: min(calc(100% - 32px), 620px);
+  }
+}
