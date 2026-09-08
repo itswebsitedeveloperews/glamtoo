@@ -2364,6 +2364,14 @@ export default function AdminDashboard({
 
   return (
     <div className="admin-app">
+      {adminMenuOpen && (
+        <button
+          className="admin-nav-overlay"
+          type="button"
+          aria-label="Close admin menu"
+          onClick={() => setAdminMenuOpen(false)}
+        />
+      )}
       <aside className={`admin-sidebar${adminMenuOpen ? " is-menu-open" : ""}`}>
         <a className="admin-brand" href="/" aria-label="Return to Glam Too storefront">
           <img src="/logo.svg" alt="Glam Too" />
