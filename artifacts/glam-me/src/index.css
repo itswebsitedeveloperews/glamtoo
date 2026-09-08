@@ -879,7 +879,7 @@ img { display: block; max-width: 100%; }
 .account-shortcuts strong { margin: auto 0 4px; font: 400 32px/.9 var(--display); }
 .account-shortcuts small { color: var(--muted); font-size: 14px; }
 .account-empty, .account-orders { margin-top: 0; }
-.account-details-form { display: grid; gap: 20px; max-width: 620px; }
+.account-details-form { display: grid; gap: 20px; }
 .account-details-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 17px; }
 .account-field-wide { grid-column: 1 / -1; }
 .account-details-form input { background: #fffdfb; }
