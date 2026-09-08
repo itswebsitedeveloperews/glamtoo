@@ -1440,20 +1440,6 @@ function ProductDetail({ params }: { params: { slug: string } }) {
 
               <div className="product-policies">
                 <div className="product-policy">
-                  <Truck className="product-policy-icon" aria-hidden="true" />
-                  <div>
-                    <h3 className="product-policy-title">Standard Delivery £3.95</h3>
-                    <p className="product-policy-text">Delivered in 2–4 working days. Free on orders of £75 or more.</p>
-                  </div>
-                </div>
-                <div className="product-policy">
-                  <Clock className="product-policy-icon" aria-hidden="true" />
-                  <div>
-                    <h3 className="product-policy-title">Express Delivery £6.95</h3>
-                    <p className="product-policy-text">Delivered in 1–2 working days across the UK.</p>
-                  </div>
-                </div>
-                <div className="product-policy">
                   <RefreshCcw className="product-policy-icon" aria-hidden="true" />
                   <div>
                     <h3 className="product-policy-title">28-Day Returns</h3>
