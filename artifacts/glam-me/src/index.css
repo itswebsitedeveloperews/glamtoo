@@ -427,6 +427,19 @@ img { display: block; max-width: 100%; }
 .wishlist-button-detail { position: absolute; top: 16px; right: 16px; z-index: 3; width: 46px; height: 46px; }
 .detail-copy > p { color: var(--muted); font-size: 14px; }
 .detail-form { margin-top: 34px; border-top: 1px solid var(--line); padding-top: 23px; }
+.detail-form .field + .field { margin-top: 18px; }
+.detail-form .field select {
+  width: 100%;
+  min-height: 48px;
+  background-color: var(--white);
+  font-size: 16px;
+}
+.detail-form .field select:focus,
+.detail-form .field select:focus-visible {
+  border-color: var(--ink);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--ink);
+}
 .swatches { display: flex; gap: 8px; margin: 10px 0 20px; }
 .swatch { width: 23px; height: 23px; border-radius: 50%; border: 1px solid var(--ink); }
 .swatch-pink { background: #ce788b; }
