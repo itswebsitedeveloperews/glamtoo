@@ -568,6 +568,10 @@ function blankProduct(category: string): ProductDraft {
     status: "Draft",
     type: "Simple",
     description: "",
+    longDescription: "",
+    fitAndSize: "",
+    deliveryAndReturns: "",
+    careDetails: "",
     sku: "",
     image: "",
     position: "50% 50%",
@@ -667,6 +671,10 @@ function ProductEditorWithMultipleUploads({
           status: product.status,
           type: product.type,
           description: product.description,
+          longDescription: product.longDescription ?? "",
+          fitAndSize: product.fitAndSize ?? "",
+          deliveryAndReturns: product.deliveryAndReturns ?? "",
+          careDetails: product.careDetails ?? "",
           sku: product.sku,
            image: product.image,
            position: product.position,
@@ -732,6 +740,11 @@ function ProductEditorWithMultipleUploads({
       ...draft,
       slug: createProductSlug(draft.slug || draft.name),
       name: draft.name.trim(),
+      description: draft.description.trim(),
+      longDescription: draft.longDescription?.trim(),
+      fitAndSize: draft.fitAndSize?.trim(),
+      deliveryAndReturns: draft.deliveryAndReturns?.trim(),
+      careDetails: draft.careDetails?.trim(),
       price: formattedPrice,
       status,
       image: draft.image.trim(),
@@ -918,7 +931,19 @@ function ProductEditorWithMultipleUploads({
                 </span>
               </label>
               <label className="admin-editor-label">Description
-                <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="Describe the fit, feeling, and details customers should know." rows={5} />
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="A short description shown beside the product title." rows={3} />
+              </label>
+              <label className="admin-editor-label">Long description
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.longDescription ?? ""} onChange={(event) => updateDraft({ longDescription: event.target.value })} placeholder="Add the full product story, materials, and design details." rows={5} />
+              </label>
+              <label className="admin-editor-label">Fit &amp; size
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.fitAndSize ?? ""} onChange={(event) => updateDraft({ fitAndSize: event.target.value })} placeholder="Add fit guidance, measurements, and sizing advice." rows={4} />
+              </label>
+              <label className="admin-editor-label">Delivery &amp; returns
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.deliveryAndReturns ?? ""} onChange={(event) => updateDraft({ deliveryAndReturns: event.target.value })} placeholder="Add product-specific delivery or returns information." rows={4} />
+              </label>
+              <label className="admin-editor-label">Care details
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.careDetails ?? ""} onChange={(event) => updateDraft({ careDetails: event.target.value })} placeholder="Add washing, ironing, storage, and fabric-care instructions." rows={4} />
               </label>
             </div>
           </section>
@@ -1120,6 +1145,10 @@ function ProductEditor({
           status: product.status,
           type: product.type,
           description: product.description,
+          longDescription: product.longDescription ?? "",
+          fitAndSize: product.fitAndSize ?? "",
+          deliveryAndReturns: product.deliveryAndReturns ?? "",
+          careDetails: product.careDetails ?? "",
           sku: product.sku,
            image: product.image,
            position: product.position,
@@ -1192,6 +1221,11 @@ function ProductEditor({
       ...draft,
       slug: createProductSlug(draft.slug || draft.name),
       name: draft.name.trim(),
+      description: draft.description.trim(),
+      longDescription: draft.longDescription?.trim(),
+      fitAndSize: draft.fitAndSize?.trim(),
+      deliveryAndReturns: draft.deliveryAndReturns?.trim(),
+      careDetails: draft.careDetails?.trim(),
       price: formattedPrice,
       status,
       image: draft.image.trim(),
@@ -1397,7 +1431,19 @@ function ProductEditor({
                 </span>
               </label>
               <label className="admin-editor-label">Description
-                <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="Describe the fit, feeling, and details customers should know." rows={5} />
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="A short description shown beside the product title." rows={3} />
+              </label>
+              <label className="admin-editor-label">Long description
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.longDescription ?? ""} onChange={(event) => updateDraft({ longDescription: event.target.value })} placeholder="Add the full product story, materials, and design details." rows={5} />
+              </label>
+              <label className="admin-editor-label">Fit &amp; size
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.fitAndSize ?? ""} onChange={(event) => updateDraft({ fitAndSize: event.target.value })} placeholder="Add fit guidance, measurements, and sizing advice." rows={4} />
+              </label>
+              <label className="admin-editor-label">Delivery &amp; returns
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.deliveryAndReturns ?? ""} onChange={(event) => updateDraft({ deliveryAndReturns: event.target.value })} placeholder="Add product-specific delivery or returns information." rows={4} />
+              </label>
+              <label className="admin-editor-label">Care details
+                <textarea className="admin-editor-input admin-editor-textarea" value={draft.careDetails ?? ""} onChange={(event) => updateDraft({ careDetails: event.target.value })} placeholder="Add washing, ironing, storage, and fabric-care instructions." rows={4} />
               </label>
             </div>
           </section>

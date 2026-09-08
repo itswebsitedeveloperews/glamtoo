@@ -486,6 +486,11 @@ function normalizeStorefrontProducts(products: Array<Partial<CatalogProduct>>): 
         name: product.name || matchingCatalogProduct?.name || "Glam Too piece",
         category: product.category || matchingCatalogProduct?.category || "",
         price: formatCatalogPrice(product.price || matchingCatalogProduct?.price || ""),
+        description: typeof product.description === "string" ? product.description : matchingCatalogProduct?.description ?? "",
+        longDescription: typeof product.longDescription === "string" ? product.longDescription : matchingCatalogProduct?.longDescription,
+        fitAndSize: typeof product.fitAndSize === "string" ? product.fitAndSize : matchingCatalogProduct?.fitAndSize,
+        deliveryAndReturns: typeof product.deliveryAndReturns === "string" ? product.deliveryAndReturns : matchingCatalogProduct?.deliveryAndReturns,
+        careDetails: typeof product.careDetails === "string" ? product.careDetails : matchingCatalogProduct?.careDetails,
         image: primaryImage,
         position: product.position || matchingCatalogProduct?.position || "50% 50%",
         galleryImages: getCatalogProductImages({ image: primaryImage, galleryImages: product.galleryImages }),
@@ -1282,6 +1287,12 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     : undefined;
   const displayedPrice = selectedVariation?.price ?? product?.price ?? '';
   const availableQuantity = product?.type === 'Variable' ? selectedVariation?.stock ?? 0 : product?.stock ?? 0;
+  const productInformation = [
+    { title: 'Description', content: product?.longDescription },
+    { title: 'Fit & Size', content: product?.fitAndSize },
+    { title: 'Delivery & Returns', content: product?.deliveryAndReturns },
+    { title: 'Care Details', content: product?.careDetails },
+  ].filter((section): section is { title: string; content: string } => Boolean(section.content?.trim()));
 
   if (!product) return <NotFoundRoute />;
   const selectedProduct = product;
@@ -1423,9 +1434,18 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                  </div>
                 <button className="button" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation)} data-testid={`button-add-to-bag-${product.id}`}>{isSoldOut ? 'Out of stock' : `Add to bag · ${displayedPrice}`}</button>
             </form>
-            <div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with an easy, considered fit.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery on orders of £75 or more. Return unworn pieces within 28 days.</p></details></div>
           </div>
         </div>
+         {productInformation.length > 0 && (
+           <section className="product-information" aria-label="Product information">
+             {productInformation.map((section) => (
+               <details key={section.title}>
+                 <summary>{section.title}<span aria-hidden="true">+</span></summary>
+                 <div className="product-information-content"><p>{section.content}</p></div>
+               </details>
+             ))}
+           </section>
+         )}
       </div>
       {relatedProducts.length > 0 && (
         <section className="related-products container" aria-labelledby="related-products-heading" data-testid="section-related-products">

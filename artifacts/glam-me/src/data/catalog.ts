@@ -31,6 +31,10 @@ export type CatalogProduct = {
   status: "Published" | "Draft";
   type: "Simple" | "Variable";
   description: string;
+  longDescription?: string;
+  fitAndSize?: string;
+  deliveryAndReturns?: string;
+  careDetails?: string;
   sku: string;
   image: string;
   position: string;
