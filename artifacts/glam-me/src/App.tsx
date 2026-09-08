@@ -1436,7 +1436,38 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                      <button type="button" onClick={() => setQuantity((current) => Math.min(availableQuantity, current + 1))} disabled={isSoldOut || !availableQuantity || quantity >= availableQuantity} aria-label="Increase quantity">+</button>
                    </div>
                  </div>
-                <button className="button" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation)} data-testid={`button-add-to-bag-${product.id}`}>{isSoldOut ? 'Out of stock' : `Add to bag · ${displayedPrice}`}</button>
+                  <button className="button" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation)} data-testid={`button-add-to-bag-${product.id}`}>{isSoldOut ? 'Out of stock' : `Add to bag · ${displayedPrice}`}</button>
+
+              <div className="product-policies">
+                <div className="product-policy">
+                  <Truck className="product-policy-icon" aria-hidden="true" />
+                  <div>
+                    <h3 className="product-policy-title">Standard Delivery £3.95</h3>
+                    <p className="product-policy-text">Delivered in 2–4 working days. Free on orders of £75 or more.</p>
+                  </div>
+                </div>
+                <div className="product-policy">
+                  <Clock className="product-policy-icon" aria-hidden="true" />
+                  <div>
+                    <h3 className="product-policy-title">Express Delivery £6.95</h3>
+                    <p className="product-policy-text">Delivered in 1–2 working days across the UK.</p>
+                  </div>
+                </div>
+                <div className="product-policy">
+                  <RefreshCcw className="product-policy-icon" aria-hidden="true" />
+                  <div>
+                    <h3 className="product-policy-title">28-Day Returns</h3>
+                    <p className="product-policy-text">Return unworn items with tags attached for a full refund.</p>
+                  </div>
+                </div>
+                <div className="product-policy">
+                  <CreditCard className="product-policy-icon" aria-hidden="true" />
+                  <div>
+                    <h3 className="product-policy-title">Secure Checkout</h3>
+                    <p className="product-policy-text">Your card details are handled securely by Stripe.</p>
+                  </div>
+                </div>
+              </div>
             </form>
           </div>
         </div>
