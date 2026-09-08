@@ -2487,6 +2487,36 @@ input:focus, select:focus, textarea:focus { outline: none; }
     justify-content: flex-start;
   }
 
+  .admin-users-panel,
+  .admin-user-groups,
+  .admin-user-group {
+    min-width: 0;
+  }
+
+  .admin-users-toolbar {
+    display: grid;
+    align-items: stretch;
+    justify-content: stretch;
+    gap: 10px;
+  }
+
+  .admin-user-search {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .admin-users-toolbar > span {
+    justify-self: start;
+  }
+
+  .admin-new-user-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-new-user-fields .admin-new-user-email {
+    grid-column: auto;
+  }
+
   .admin-coupon-fields,
   .admin-payment-mode-grid,
   .admin-gallery-add {
