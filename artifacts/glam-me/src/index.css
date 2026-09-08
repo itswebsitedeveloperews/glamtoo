@@ -2366,6 +2366,10 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .account-shortcuts {
     margin-top: 28px;
   }
+
+  .account-panel h2 {
+    font-size: 36px;
+  }
 }
 
 @media (max-width: 460px) {
