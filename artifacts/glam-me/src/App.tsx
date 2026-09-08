@@ -9,7 +9,7 @@ import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPri
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
-import { Clock, CreditCard, Headphones, HelpCircle, LayoutDashboard, LogOut, Mail, MapPin, MessageSquare, Phone, Ruler, Search, ShoppingBag, Truck, UserRound, X, type LucideIcon } from 'lucide-react';
+import { Clock, CreditCard, Headphones, HelpCircle, LayoutDashboard, LogOut, Mail, MapPin, MessageSquare, Phone, RefreshCcw, Ruler, Search, ShoppingBag, Sparkles, Truck, UserRound, X, type LucideIcon } from 'lucide-react';
 import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin-dashboard';
@@ -1855,8 +1855,114 @@ function Contact() {
   );
 }
 
-function LegalPage({ type }: { type: 'privacy' | 'terms' | 'delivery' }) {
-  const copy = type === 'privacy' ? { eyebrow: 'The small print', title: 'Privacy policy', heads: ['The short version', 'What we collect', 'How we use your information'], paras: ['We respect your information and only collect what we need to make your Glam Too experience work well. This policy explains what happens to your details when you browse or shop with us.', 'When you place an order, sign up to our notes or contact us, we may collect your name, contact details, delivery address and order information. We never sell your personal information.', 'We use information to process orders, answer your questions, improve our website and send emails you have chosen to receive. You can unsubscribe at any time.'] } : type === 'terms' ? { eyebrow: 'The small print', title: 'Terms & conditions', heads: ['Using this site', 'Products and pricing', 'Orders'], paras: ['By using glamtoo.co.uk, you agree to use the site lawfully and with respect for our content, team and community. These terms apply to every visit and purchase.', 'We take care to keep product descriptions, colours and prices accurate. Occasionally a detail may change; if it affects your order, we will contact you before dispatch.', 'An order is confirmed when you receive our email confirmation. If we cannot fulfil an item, we will let you know and refund the unavailable part of your order.'] } : { eyebrow: 'The useful details', title: 'Delivery & returns', heads: ['Delivery', 'Returns', 'The good-to-know bit'], paras: ['Standard delivery is £3.95 and takes 2–4 working days. Express delivery is £6.95 and takes 1–2 working days. Standard delivery is free on orders of £75 or more.', 'Changed your mind? Return unworn items with tags attached within 28 days of delivery. Start your return by emailing hello@glamtoo.co.uk with your order number.', 'Please try on occasionwear over underwear and keep makeup, perfume and deodorant away from garments. Items showing signs of wear may not be accepted.'] };
+function DeliveryReturnsPage() {
+  return (
+    <Shell>
+      <div className="dr-page">
+        <header className="dr-hero">
+          <div className="container">
+            <div className="eyebrow">The useful details</div>
+            <h1>Delivery & returns</h1>
+            <p>Everything you need to know about getting your order and sending it back if it’s not quite right.</p>
+          </div>
+        </header>
+
+        <section className="dr-section dr-delivery-section">
+          <div className="container dr-grid">
+            <div className="dr-sidebar">
+              <div className="dr-icon-box"><Truck /></div>
+              <h2>Delivery</h2>
+              <p>We aim to dispatch all orders quickly, so your new pieces arrive when you need them.</p>
+            </div>
+            <div className="dr-content">
+              <div className="dr-cards">
+                <div className="dr-card">
+                  <div className="dr-card-head">
+                    <h3>Standard UK</h3>
+                    <span className="dr-price">£3.95</span>
+                  </div>
+                  <div className="dr-card-body">
+                    <p className="dr-time">2–4 working days</p>
+                    <p className="dr-desc">Perfect for when you’re not in a rush. Delivered via our trusted courier partners.</p>
+                    <div className="dr-promo">
+                      <Sparkles />
+                      <span>Free on orders of £75 or more</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="dr-card">
+                  <div className="dr-card-head">
+                    <h3>Express UK</h3>
+                    <span className="dr-price">£6.95</span>
+                  </div>
+                  <div className="dr-card-body">
+                    <p className="dr-time">1–2 working days</p>
+                    <p className="dr-desc">Need it sooner? Choose express delivery at checkout for priority dispatch.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="dr-section dr-returns-section">
+          <div className="container dr-grid">
+            <div className="dr-sidebar">
+              <div className="dr-icon-box"><RefreshCcw /></div>
+              <h2>Returns</h2>
+              <p>Changed your mind? We gladly accept returns within 28 days of delivery.</p>
+            </div>
+            <div className="dr-content">
+              <div className="dr-steps">
+                <div className="dr-step">
+                  <div className="dr-step-number">01</div>
+                  <div className="dr-step-text">
+                    <h4>Check your items</h4>
+                    <p>Ensure items are unworn and have all original tags attached. Worn items may be declined.</p>
+                  </div>
+                </div>
+                <div className="dr-step">
+                  <div className="dr-step-number">02</div>
+                  <div className="dr-step-text">
+                    <h4>Email us to start</h4>
+                    <p>Contact our team at <a href="mailto:hello@glamtoo.co.uk" className="text-link">hello@glamtoo.co.uk</a> with your order number to begin the process.</p>
+                  </div>
+                </div>
+                <div className="dr-step">
+                  <div className="dr-step-number">03</div>
+                  <div className="dr-step-text">
+                    <h4>Send it back</h4>
+                    <p>We’ll provide you with a return address and instructions for sending your package safely back to us.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="dr-note">
+                <h4>A note on occasionwear</h4>
+                <p>Please try on occasionwear over underwear and ensure you keep makeup, perfume, and deodorant away from garments. Items showing signs of wear may not be accepted for a refund.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="dr-cta-section">
+          <div className="container">
+            <div className="dr-cta-box">
+              <Mail />
+              <h2>Still have questions?</h2>
+              <p>If you need help with a delivery or return, our team is always here for you.</p>
+              <Link href="/contact" className="button button-pink">Get in touch</Link>
+            </div>
+          </div>
+        </section>
+      </div>
+    </Shell>
+  );
+}
+
+function LegalPage({ type }: { type: 'privacy' | 'terms' }) {
+  const copy = type === 'privacy' ? { eyebrow: 'The small print', title: 'Privacy policy', heads: ['The short version', 'What we collect', 'How we use your information'], paras: ['We respect your information and only collect what we need to make your Glam Too experience work well. This policy explains what happens to your details when you browse or shop with us.', 'When you place an order, sign up to our notes or contact us, we may collect your name, contact details, delivery address and order information. We never sell your personal information.', 'We use information to process orders, answer your questions, improve our website and send emails you have chosen to receive. You can unsubscribe at any time.'] } : { eyebrow: 'The small print', title: 'Terms & conditions', heads: ['Using this site', 'Products and pricing', 'Orders'], paras: ['By using glamtoo.co.uk, you agree to use the site lawfully and with respect for our content, team and community. These terms apply to every visit and purchase.', 'We take care to keep product descriptions, colours and prices accurate. Occasionally a detail may change; if it affects your order, we will contact you before dispatch.', 'An order is confirmed when you receive our email confirmation. If we cannot fulfil an item, we will let you know and refund the unavailable part of your order.'] };
   return <Shell><div className="container legal"><div className="eyebrow">{copy.eyebrow}</div><h1>{copy.title}</h1>{copy.heads.map((head, index) => <section key={head}><h2>{head}</h2><p>{copy.paras[index]}</p></section>)}<p>Last updated: February 2026. For any questions, please <a className="text-link" href="/contact">contact our team</a>.</p></div></Shell>;
 }
 
@@ -3211,7 +3317,7 @@ function AppRoutes() {
     <Route path="/contact" component={Contact} />
     <Route path="/privacy" component={() => <LegalPage type="privacy" />} />
     <Route path="/terms" component={() => <LegalPage type="terms" />} />
-    <Route path="/delivery-returns" component={() => <LegalPage type="delivery" />} />
+    <Route path="/delivery-returns" component={DeliveryReturnsPage} />
     <Route path="/cart" component={Cart} />
     <Route path="/wishlist" component={WishlistPage} />
     <Route path="/checkout" component={Checkout} />
