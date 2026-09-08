@@ -980,7 +980,7 @@ img { display: block; max-width: 100%; }
 .admin-overview-stat-icon svg { width: 20px; height: 20px; stroke-width: 1.7; }
 .admin-overview-stat-card > div { display: grid; min-width: 0; gap: 7px; }
 .admin-overview-stat-card p { margin: 1px 0 0; color: var(--muted); font-size: 14px; }
-.admin-overview-stat-card strong { margin-top: 13px; font: 400 38px/.9 var(--display); letter-spacing: -.05em; }
+.admin-overview-stat-card strong { margin-top: 13px; font: 400 30px/.9 var(--display); letter-spacing: -.05em; }
 .admin-overview-stat-card span:last-child { color: #a6516e; font-size: 14px; line-height: 1.35; }
 .admin-overview-content-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(315px, .85fr); gap: 14px; align-items: stretch; }
 .admin-overview-orders { min-width: 0; border: 1px solid var(--line); background: #fffdfb; }
