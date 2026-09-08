@@ -932,7 +932,7 @@ img { display: block; max-width: 100%; }
 .admin-store-link:hover { color: var(--pink); }
 .admin-signout { justify-self: start; color: #a89e97; border: 0; background: transparent; padding: 0; cursor: pointer; font: inherit; }
 .admin-signout:hover { color: #fffdfb; }
-.admin-main { position: relative; width: min(1230px, 100%); min-width: 0; max-width: 100%; box-sizing: border-box; margin: 0 auto; padding: 72px clamp(24px, 5vw, 76px) 100px; }
+.admin-main { position: relative; width: min(1230px, 100%); min-width: 0; max-width: 100%; box-sizing: border-box; margin: 0 auto; padding: 72px 40px; }
 .admin-section-title { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 38px; }
 .admin-eyebrow { margin: 0 0 9px; color: #a6516e; font-size: 14px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
 .admin-section-title h1 { margin: 0; font: 400 60px/.88 var(--display); letter-spacing: -.055em; }
