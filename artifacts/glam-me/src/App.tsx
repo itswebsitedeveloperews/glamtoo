@@ -783,6 +783,10 @@ function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
   const { count: wishlistCount } = useWishlist();
+  const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+  const navLinkProps = (path: string) => currentPath === path
+    ? { className: "is-active", "aria-current": "page" as const }
+    : {};
 
   useEffect(() => {
     const updateCartCount = () => setCartCount(getCartCount());
@@ -844,13 +848,13 @@ function Header() {
           <img src={logoImage} alt="Glam Too" />
           <button className="mobile-nav-close" type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>×</button>
         </div>
-        <a href="/shop" data-testid="link-nav-new-in" onClick={() => setMenuOpen(false)}>New In</a>
-        <a href="/category/dresses" data-testid="link-nav-dresses" onClick={() => setMenuOpen(false)}>Dresses</a>
+        <a href="/shop" {...navLinkProps("/shop")} data-testid="link-nav-new-in" onClick={() => setMenuOpen(false)}>New In</a>
+        <a href="/category/dresses" {...navLinkProps("/category/dresses")} data-testid="link-nav-dresses" onClick={() => setMenuOpen(false)}>Dresses</a>
         <a href="/shop" data-testid="link-nav-clothing" onClick={() => setMenuOpen(false)}>Clothing</a>
-        <a href="/category/occasion" data-testid="link-nav-occasion" onClick={() => setMenuOpen(false)}>Occasion</a>
-        <a href="/category/co-ords" data-testid="link-nav-co-ords" onClick={() => setMenuOpen(false)}>Co-Ords</a>
-        <a href="/category/denim" data-testid="link-nav-denim" onClick={() => setMenuOpen(false)}>Denim</a>
-        <a href="/category/accessories" data-testid="link-nav-accessories" onClick={() => setMenuOpen(false)}>Accessories</a>
+        <a href="/category/occasion" {...navLinkProps("/category/occasion")} data-testid="link-nav-occasion" onClick={() => setMenuOpen(false)}>Occasion</a>
+        <a href="/category/co-ords" {...navLinkProps("/category/co-ords")} data-testid="link-nav-co-ords" onClick={() => setMenuOpen(false)}>Co-Ords</a>
+        <a href="/category/denim" {...navLinkProps("/category/denim")} data-testid="link-nav-denim" onClick={() => setMenuOpen(false)}>Denim</a>
+        <a href="/category/accessories" {...navLinkProps("/category/accessories")} data-testid="link-nav-accessories" onClick={() => setMenuOpen(false)}>Accessories</a>
         <a href="/shop" data-testid="link-nav-sale" onClick={() => setMenuOpen(false)}>Sale</a>
       </nav>
       {searchOpen && (
