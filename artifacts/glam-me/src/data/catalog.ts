@@ -1,15 +1,15 @@
-import dressesImage from "@assets/glam-me-12_1787653559644.png";
-import coOrdsImage from "@assets/glam-me-5_1787653559643.png";
-import occasionImage from "@assets/glam-me-6_1787653559644.png";
-import accessoriesImage from "@assets/glam-me-4_1787653559643.png";
-import denimImage from "@assets/glam-me-2_1787653559644.png";
-import lunaProductImage from "@assets/glam-me-3_1787655646452.png";
-import milaProductImage from "@assets/glam-me-7_1787655646453.png";
-import ellaProductImage from "@assets/glam-me-1_1787655646453.png";
-import weddingProductImage from "@assets/glam-me-10_1787655658624.png";
-import weekendProductImage from "@assets/glam-me-11_1787655658625.png";
-import dayOutProductImage from "@assets/glam-me-8_1787655658625.png";
-import dateNightProductImage from "@assets/glam-me-9_1787655658625.png";
+import dressesImage from "@assets/glam-me-12_1787653559644.webp";
+import coOrdsImage from "@assets/glam-me-5_1787653559643.webp";
+import occasionImage from "@assets/glam-me-6_1787653559644.webp";
+import accessoriesImage from "@assets/glam-me-4_1787653559643.webp";
+import denimImage from "@assets/glam-me-2_1787653559644.webp";
+import lunaProductImage from "@assets/glam-me-3_1787655646452.webp";
+import milaProductImage from "@assets/glam-me-7_1787655646453.webp";
+import ellaProductImage from "@assets/glam-me-1_1787655646453.webp";
+import weddingProductImage from "@assets/glam-me-10_1787655658624.webp";
+import weekendProductImage from "@assets/glam-me-11_1787655658625.webp";
+import dayOutProductImage from "@assets/glam-me-8_1787655658625.webp";
+import dateNightProductImage from "@assets/glam-me-9_1787655658625.webp";
 
 export type CatalogVariation = {
   id: number;

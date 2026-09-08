@@ -1,4 +1,4 @@
-import notFoundDisplayImage from '@assets/glam-too-404-display-reference-no-bg.png';
+import notFoundDisplayImage from '@assets/glam-too-404-display-reference-no-bg.webp';
 import { Link } from 'wouter';
 
 export default function NotFound() {

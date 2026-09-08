@@ -1,10 +1,10 @@
 import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.png';
+import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
-import heroImage from '@assets/glam-me-home-banner_1787651354578.png';
-import aboutHeroImage from '@assets/glam-me-8_1788790609953.png';
-import aboutStudioImage from '@assets/glam-me-5_1787653559643.png';
-import aboutStoryImage from '@assets/glam-me-12_1787653559644.png';
+import heroImage from '@assets/glam-me-home-banner_1787651354578.webp';
+import aboutHeroImage from '@assets/glam-me-8_1788790609953.webp';
+import aboutStudioImage from '@assets/glam-me-5_1787653559643.webp';
+import aboutStoryImage from '@assets/glam-me-12_1787653559644.webp';
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogMediaSource, getCatalogProductImages, hydrateCatalogProductMedia, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
