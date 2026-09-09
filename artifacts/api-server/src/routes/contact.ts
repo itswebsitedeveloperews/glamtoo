@@ -3,6 +3,8 @@ import {
   SubmitContactEnquiryBody,
   SubmitContactEnquiryResponse,
 } from "@workspace/api-zod";
+import { contactEnquiriesTable, db } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
 const submissionWindows = new Map<string, number[]>();
@@ -65,15 +67,39 @@ router.post("/contact-enquiries", async (request, response): Promise<void> => {
     return;
   }
 
-  const config = mailerSendConfig();
-  if (!config) {
-    request.log.error("Contact email delivery is not configured");
-    response.status(503).json({ error: "Messages are temporarily unavailable. Please try again later." });
+  const name = parsed.data.name.trim();
+  const order = parsed.data.order?.trim();
+  let enquiryId: number;
+  try {
+    const [enquiry] = await db.insert(contactEnquiriesTable).values({
+      name,
+      email,
+      orderNumber: order || null,
+      topic: parsed.data.topic,
+      message: parsed.data.message.trim(),
+    }).returning({ id: contactEnquiriesTable.id });
+    enquiryId = enquiry.id;
+  } catch (error) {
+    request.log.error({ error }, "Contact enquiry could not be stored");
+    response.status(503).json({ error: "Your message could not be submitted. Please try again." });
     return;
   }
 
-  const name = parsed.data.name.trim();
-  const order = parsed.data.order?.trim();
+  const successResponse = SubmitContactEnquiryResponse.parse({
+    sent: true,
+    message: "Thanks — your message has been submitted successfully.",
+  });
+  const config = mailerSendConfig();
+  if (!config) {
+    await db.update(contactEnquiriesTable).set({
+      deliveryStatus: "not_configured",
+      deliveryError: "MailerSend is not configured",
+    }).where(eq(contactEnquiriesTable.id, enquiryId));
+    request.log.warn({ enquiryId }, "Contact enquiry stored; email delivery is not configured");
+    response.json(successResponse);
+    return;
+  }
+
   const subject = `Glam Too enquiry: ${parsed.data.topic}${order ? ` (${order})` : ""}`;
   const text = [
     `Name: ${name}`,
@@ -110,18 +136,28 @@ router.post("/contact-enquiries", async (request, response): Promise<void> => {
     });
 
     if (!mailResponse.ok) {
-      request.log.error({ status: mailResponse.status }, "MailerSend rejected contact enquiry");
-      response.status(503).json({ error: "Your message could not be sent. Please try again." });
+      await db.update(contactEnquiriesTable).set({
+        deliveryStatus: "failed",
+        deliveryError: `MailerSend HTTP ${mailResponse.status}`,
+      }).where(eq(contactEnquiriesTable.id, enquiryId));
+      request.log.error({ enquiryId, status: mailResponse.status }, "MailerSend rejected stored contact enquiry");
+      response.json(successResponse);
       return;
     }
 
-    response.json(SubmitContactEnquiryResponse.parse({
-      sent: true,
-      message: "Thanks — your message has been sent successfully.",
-    }));
+    await db.update(contactEnquiriesTable).set({
+      deliveryStatus: "delivered",
+      deliveryError: null,
+      deliveredAt: new Date(),
+    }).where(eq(contactEnquiriesTable.id, enquiryId));
+    response.json(successResponse);
   } catch (error) {
-    request.log.error({ error }, "Contact enquiry delivery failed");
-    response.status(503).json({ error: "Your message could not be sent. Please try again." });
+    await db.update(contactEnquiriesTable).set({
+      deliveryStatus: "failed",
+      deliveryError: "MailerSend request failed",
+    }).where(eq(contactEnquiriesTable.id, enquiryId));
+    request.log.error({ enquiryId, error }, "Stored contact enquiry delivery failed");
+    response.json(successResponse);
   }
 });
 

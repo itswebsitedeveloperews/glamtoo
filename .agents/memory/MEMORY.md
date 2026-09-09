@@ -20,3 +20,4 @@
 - [Catalog refresh routing](catalog-refresh-routing.md) — Catalog refreshes must not remount the admin route, or active admin workspace state resets to Overview.
 - [OpenAPI email validation](openapi-email-validation.md) — This workspace’s generator emits a Zod API unsupported by its installed Zod version for format: email.
 - [Contact spam protection](contact-spam-protection.md) — Do not use a hidden honeypot field; browser autofill caused valid enquiries to fail validation.
+- [Contact submission semantics](contact-submission-semantics.md) — Success means the enquiry is durably received; email delivery is best-effort and must not block customers.
