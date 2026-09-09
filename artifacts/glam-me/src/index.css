@@ -1172,13 +1172,13 @@ img { display: block; max-width: 100%; }
 .checkout-account-notice { display: grid; gap: 8px; border-left: 3px solid var(--pink); background: #f9e7ed; padding: 14px 16px; color: var(--ink); font-size: 16px; line-height: 1.45; }
 .checkout-account-notice .text-link { width: fit-content; font-size: 14px; }
 
-.admin-users-header { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; gap: 24px; margin-bottom: 38px; }
+.admin-users-header { display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-end; gap: 24px; margin-bottom: 38px; }
 .admin-users-header-copy h1 { margin: 0; font: 400 60px/.88 var(--display); letter-spacing: -.055em; }
 .admin-users-header-copy p:last-child { max-width: 620px; margin: 15px 0 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
 .admin-users-header-actions { display: flex; flex-direction: row; flex-wrap: nowrap; gap: 10px; width: auto; }
 
 @media (min-width: 768px) {
-  .admin-users-header { flex-direction: row; justify-content: space-between; align-items: flex-start; gap: 40px; }
+  .admin-users-header { flex-direction: row; justify-content: space-between; align-items: flex-end; gap: 40px; }
   .admin-users-header-copy { flex: 1; min-width: 0; }
   .admin-users-header-actions { flex: 0 0 auto; width: auto; margin-top: 16px; }
   .admin-users-header-actions button { width: auto; justify-content: center; white-space: nowrap; }
