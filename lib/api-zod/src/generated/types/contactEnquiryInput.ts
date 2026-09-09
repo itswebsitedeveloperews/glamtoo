@@ -19,7 +19,7 @@ export interface ContactEnquiryInput {
   order?: string;
   topic: ContactEnquiryInputTopic;
   /**
-     * @minLength 5
+     * @minLength 1
      * @maxLength 5000
      */
   message: string;

@@ -47,7 +47,6 @@ export const submitContactEnquiryBodyEmailMax = 250;
 
 export const submitContactEnquiryBodyOrderMax = 80;
 
-export const submitContactEnquiryBodyMessageMin = 5;
 export const submitContactEnquiryBodyMessageMax = 5000;
 
 export const submitContactEnquiryBodyWebsiteMax = 0;
@@ -59,7 +58,7 @@ export const SubmitContactEnquiryBody = zod.object({
   "email": zod.string().max(submitContactEnquiryBodyEmailMax),
   "order": zod.string().max(submitContactEnquiryBodyOrderMax).optional(),
   "topic": zod.enum(['Order help', 'Delivery', 'Returns', 'Product & sizing', 'Something else']),
-  "message": zod.string().min(submitContactEnquiryBodyMessageMin).max(submitContactEnquiryBodyMessageMax),
+  "message": zod.string().min(1).max(submitContactEnquiryBodyMessageMax),
   "website": zod.string().max(submitContactEnquiryBodyWebsiteMax).optional().describe('Spam-prevention honeypot; must remain empty.')
 })
 

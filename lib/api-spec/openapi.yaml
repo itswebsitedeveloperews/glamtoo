@@ -142,7 +142,7 @@ components:
           enum: [Order help, Delivery, Returns, Product & sizing, Something else]
         message:
           type: string
-          minLength: 5
+          minLength: 1
           maxLength: 5000
         website:
           type: string
