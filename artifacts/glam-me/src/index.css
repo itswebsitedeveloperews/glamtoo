@@ -1632,7 +1632,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-order-page .admin-order-card-heading > span,
 .admin-order-page .admin-order-item-product small,
 .admin-order-page .admin-order-item-row > span,
-.admin-order-page .admin-order-item-row > strong { font-size: 16px; }
+.admin-order-page .admin-order-item-row > strong { font-size: 14px; }
 .admin-order-page-topbar { min-height: 31px; }
 .admin-order-page-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "back back" "main actions" "progress progress"; gap: 10px 18px; padding: 15px 16px 14px; border: 1px solid var(--line); border-radius: 4px; background: #fffdfb; box-shadow: 4px 5px 0 rgba(23, 22, 21, .035); }
 .admin-order-heading-back { grid-area: back; }
