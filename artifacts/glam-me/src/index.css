@@ -1815,7 +1815,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-payment-settings, .admin-stripe-guide, .admin-payment-how { padding: 28px; border-color: #e3dbd6; box-shadow: 4px 4px 0 rgba(23, 22, 21, .025); }
 .admin-payment-settings h2, .admin-payment-control-heading h2, .admin-payment-how h2 { margin-top: 6px; font-size: 27px; line-height: .98; }
 .admin-payment-detail-grid { gap: 10px; margin: 20px 0; }
-.admin-payment-detail-grid > div { min-height: 88px; grid-template-columns: 32px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; border-color: #e8dfda; background: #faf7f4; padding: 14px; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
+.admin-payment-detail-grid > div { min-height: 70px; grid-template-columns: 32px minmax(0, 1fr); column-gap: 14px; row-gap: 2px; border-color: #e8dfda; background: #faf7f4; padding: 14px; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
 .admin-payment-detail-grid > div:hover { border-color: #dcb8c3; background: #fffdfb; transform: translateY(-1px); }
 .admin-payment-detail-grid > div > span:not(.admin-payment-detail-icon) { font-size: 14px; }
 .admin-payment-detail-grid > div > strong { font-size: 14px; }
