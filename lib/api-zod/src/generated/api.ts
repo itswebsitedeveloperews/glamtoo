@@ -37,3 +37,35 @@ export const RequestUploadUrlResponse = zod.object({
 })
 
 
+/**
+ * @summary Send a customer enquiry to the store administrator
+ */
+export const submitContactEnquiryBodyNameMin = 2;
+export const submitContactEnquiryBodyNameMax = 120;
+
+export const submitContactEnquiryBodyEmailMax = 250;
+
+export const submitContactEnquiryBodyOrderMax = 80;
+
+export const submitContactEnquiryBodyMessageMin = 5;
+export const submitContactEnquiryBodyMessageMax = 5000;
+
+export const submitContactEnquiryBodyWebsiteMax = 0;
+
+
+
+export const SubmitContactEnquiryBody = zod.object({
+  "name": zod.string().min(submitContactEnquiryBodyNameMin).max(submitContactEnquiryBodyNameMax),
+  "email": zod.string().max(submitContactEnquiryBodyEmailMax),
+  "order": zod.string().max(submitContactEnquiryBodyOrderMax).optional(),
+  "topic": zod.enum(['Order help', 'Delivery', 'Returns', 'Product & sizing', 'Something else']),
+  "message": zod.string().min(submitContactEnquiryBodyMessageMin).max(submitContactEnquiryBodyMessageMax),
+  "website": zod.string().max(submitContactEnquiryBodyWebsiteMax).optional().describe('Spam-prevention honeypot; must remain empty.')
+})
+
+export const SubmitContactEnquiryResponse = zod.object({
+  "sent": zod.boolean(),
+  "message": zod.string()
+})
+
+

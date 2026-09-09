@@ -11,6 +11,7 @@ import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { Clock, CreditCard, Headphones, HelpCircle, LayoutDashboard, LogOut, Mail, MapPin, MessageSquare, Phone, RefreshCcw, Ruler, Search, ShoppingBag, Sparkles, Truck, UserRound, X, type LucideIcon } from 'lucide-react';
 import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
+import { useSubmitContactEnquiry } from '@workspace/api-client-react';
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin-dashboard';
 
@@ -1779,24 +1780,32 @@ function FAQ() {
 }
 
 function Contact() {
+  const submitEnquiry = useSubmitContactEnquiry();
+  const [submissionMessage, setSubmissionMessage] = useState("");
+  const [submissionError, setSubmissionError] = useState("");
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setSubmissionMessage("");
+    setSubmissionError("");
     const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
     const name = String(formData.get("name") ?? "").trim();
     const email = String(formData.get("email") ?? "").trim();
     const order = String(formData.get("order") ?? "").trim();
-    const topic = String(formData.get("topic") ?? "Customer care").trim();
+    const topic = String(formData.get("topic") ?? "").trim() as "Order help" | "Delivery" | "Returns" | "Product & sizing" | "Something else";
     const message = String(formData.get("message") ?? "").trim();
-    const subject = `Glam Too enquiry: ${topic}${order ? ` (${order})` : ""}`;
-    const body = [
-      `Name: ${name}`,
-      `Email: ${email}`,
-      order ? `Order number: ${order}` : "",
-      `Topic: ${topic}`,
-      "",
-      message,
-    ].filter(Boolean).join("\n");
-    window.location.href = `mailto:hello@glamtoo.co.uk?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const website = String(formData.get("website") ?? "");
+    submitEnquiry.mutate({ data: { name, email, order: order || undefined, topic, message, website } }, {
+      onSuccess: (result) => {
+        setSubmissionMessage(result.message);
+        form.reset();
+      },
+      onError: (error) => {
+        const apiError = error as Error & { data?: { error?: string } };
+        setSubmissionError(apiError.data?.error || "Your message could not be sent. Please try again.");
+      },
+    });
   };
 
   return (
@@ -1841,6 +1850,7 @@ function Contact() {
             <p>Complete the form below and our team will get back to you as soon as possible.</p>
           </div>
           <form className="contact-form" onSubmit={handleSubmit}>
+              <div className="contact-honeypot" aria-hidden="true"><label htmlFor="contact-website">Website</label><input id="contact-website" name="website" type="text" tabIndex={-1} autoComplete="off" /></div>
               <div className="contact-form-grid">
                 <div className="field">
                   <label htmlFor="contact-name">Name</label>
@@ -1870,8 +1880,10 @@ function Contact() {
                 <label htmlFor="contact-message">Message</label>
                 <textarea id="contact-message" name="message" placeholder="Tell us more..." required data-testid="textarea-contact-message"></textarea>
               </div>
-            <button className="button" type="submit" data-testid="button-contact-submit">SEND MESSAGE</button>
-            <p className="contact-form-note">Submitting opens your email app with your enquiry ready to send.</p>
+            <button className="button" type="submit" disabled={submitEnquiry.isPending} data-testid="button-contact-submit">{submitEnquiry.isPending ? "SENDING…" : "SEND MESSAGE"}</button>
+            {submissionMessage && <p className="contact-form-success" role="status" data-testid="status-contact-success">{submissionMessage}</p>}
+            {submissionError && <p className="contact-form-error" role="alert" data-testid="status-contact-error">{submissionError}</p>}
+            {!submissionMessage && !submissionError && <p className="contact-form-note">Your message will be sent securely to the Glam Too team.</p>}
           </form>
         </div>
 

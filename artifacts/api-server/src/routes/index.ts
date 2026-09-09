@@ -5,6 +5,7 @@ import healthRouter from "./health";
 import stripeRouter from "./stripe";
 import storageRouter from "./storage";
 import catalogRouter from "./catalog";
+import contactRouter from "./contact";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(adminRouter);
 router.use(stripeRouter);
 router.use(storageRouter);
 router.use(catalogRouter);
+router.use(contactRouter);
 
 export default router;

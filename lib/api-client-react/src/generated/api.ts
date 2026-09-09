@@ -20,6 +20,8 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  ContactEnquiryInput,
+  ContactEnquiryResponse,
   ErrorEnvelope,
   HealthStatus,
   UploadUrlRequest,
@@ -200,5 +202,76 @@ export const useRequestUploadUrl = <TError = ErrorType<ErrorEnvelope>,
         TContext
       > => {
       return useMutation(getRequestUploadUrlMutationOptions(options));
+    }
+
+export const getSubmitContactEnquiryUrl = () => {
+
+
+
+
+  return `/api/contact-enquiries`
+}
+
+/**
+ * @summary Send a customer enquiry to the store administrator
+ */
+export const submitContactEnquiry = async (contactEnquiryInput: ContactEnquiryInput, options?: Parameters<typeof customFetch>[1]): Promise<ContactEnquiryResponse> => {
+
+  return customFetch<ContactEnquiryResponse>(getSubmitContactEnquiryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(contactEnquiryInput)
+  }
+);}
+
+
+
+
+
+export const getSubmitContactEnquiryMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitContactEnquiry>>, TError,{data: BodyType<ContactEnquiryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof submitContactEnquiry>>, TError,{data: BodyType<ContactEnquiryInput>}, TContext> => {
+
+const mutationKey = ['submitContactEnquiry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitContactEnquiry>>, {data: BodyType<ContactEnquiryInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  submitContactEnquiry(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SubmitContactEnquiryMutationResult = NonNullable<Awaited<ReturnType<typeof submitContactEnquiry>>>
+    export type SubmitContactEnquiryMutationBody = BodyType<ContactEnquiryInput>
+    export type SubmitContactEnquiryMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Send a customer enquiry to the store administrator
+ */
+export const useSubmitContactEnquiry = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitContactEnquiry>>, TError,{data: BodyType<ContactEnquiryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof submitContactEnquiry>>,
+        TError,
+        {data: BodyType<ContactEnquiryInput>},
+        TContext
+      > => {
+      return useMutation(getSubmitContactEnquiryMutationOptions(options));
     }
 

@@ -12,6 +12,8 @@ tags:
     description: Health operations
   - name: storage
     description: Object storage upload and serving operations
+  - name: contact
+    description: Customer contact enquiries
 paths:
   /healthz:
     get:
@@ -56,6 +58,42 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /contact-enquiries:
+    post:
+      tags: [contact]
+      operationId: submitContactEnquiry
+      summary: Send a customer enquiry to the store administrator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactEnquiryInput"
+      responses:
+        "200":
+          description: Enquiry delivered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactEnquiryResponse"
+        "400":
+          description: Invalid enquiry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Too many enquiries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Email delivery is unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
     HealthStatus:
@@ -85,6 +123,39 @@ components:
           type: string
         metadata:
           $ref: "#/components/schemas/UploadUrlRequest"
+    ContactEnquiryInput:
+      type: object
+      required: [name, email, topic, message]
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 120
+        email:
+          type: string
+          maxLength: 250
+        order:
+          type: string
+          maxLength: 80
+        topic:
+          type: string
+          enum: [Order help, Delivery, Returns, Product & sizing, Something else]
+        message:
+          type: string
+          minLength: 5
+          maxLength: 5000
+        website:
+          type: string
+          maxLength: 0
+          description: Spam-prevention honeypot; must remain empty.
+    ContactEnquiryResponse:
+      type: object
+      required: [sent, message]
+      properties:
+        sent:
+          type: boolean
+        message:
+          type: string
     ErrorEnvelope:
       type: object
       required: [error]

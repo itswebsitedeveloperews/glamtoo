@@ -21,6 +21,45 @@ export interface UploadUrlResponse {
   metadata?: UploadUrlRequest;
 }
 
+export type ContactEnquiryInputTopic = typeof ContactEnquiryInputTopic[keyof typeof ContactEnquiryInputTopic];
+
+
+export const ContactEnquiryInputTopic = {
+  Order_help: 'Order help',
+  Delivery: 'Delivery',
+  Returns: 'Returns',
+  'Product_&_sizing': 'Product & sizing',
+  Something_else: 'Something else',
+} as const;
+
+export interface ContactEnquiryInput {
+  /**
+     * @minLength 2
+     * @maxLength 120
+     */
+  name: string;
+  /** @maxLength 250 */
+  email: string;
+  /** @maxLength 80 */
+  order?: string;
+  topic: ContactEnquiryInputTopic;
+  /**
+     * @minLength 5
+     * @maxLength 5000
+     */
+  message: string;
+  /**
+     * Spam-prevention honeypot; must remain empty.
+     * @maxLength 0
+     */
+  website?: string;
+}
+
+export interface ContactEnquiryResponse {
+  sent: boolean;
+  message: string;
+}
+
 export interface ErrorEnvelope {
   error: string;
 }
