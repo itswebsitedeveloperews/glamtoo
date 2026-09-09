@@ -2732,16 +2732,23 @@ export default function AdminDashboard({
         {section === "payments" && (
           <div className="admin-payments-page">
             <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Too." action={<button className="admin-payment-view-transactions" type="button" onClick={() => setSection("orders")}>View transactions</button>} />
-            <section className="admin-payment-card">
+            <section className={`admin-payment-card ${stripeStatus.configured ? "is-connected" : ""}`}>
               <div className="admin-payment-banner-copy">
-                <span className="stripe-mark">stripe</span>
+                <div className="admin-payment-provider-row">
+                  <span className="stripe-mark">stripe</span>
+                  <span className="admin-payment-provider-label">Payment provider</span>
+                </div>
                 <h2>{stripeStatus.configured ? "Stripe checkout is connected" : stripeStatus.connected ? "Add Stripe key configuration" : "Connect Stripe to accept payments"}</h2>
                 <p>{stripeStatus.configured ? "Your keys are held by the secure workspace connection. Customers are sent to Stripe’s hosted checkout to pay by card." : stripeStatus.connected ? "Your Stripe connection is attached, but its secure secret key is not configured yet." : "Stripe is not ready yet. Check the secure workspace integration for your publishable and secret key setup."}</p>
                 <div className="admin-payment-tags"><span><CreditCard aria-hidden="true" /> Card payments</span><span><LockKeyhole aria-hidden="true" /> Secure connection</span></div>
               </div>
               <div className="admin-payment-status">
-                <div><span className={`admin-payment-status-dot ${stripeStatus.configured ? "is-connected" : ""}`} /><strong>Connection status</strong><ShieldCheck aria-hidden="true" /></div>
-                <span>{stripeStatusLoading ? "Checking…" : stripeStatus.configured ? `${stripeStatus.mode === "live" ? "Live" : "Test"} mode connected` : stripeStatus.connected ? "Key setup needed" : "Not connected"}</span>
+                <div className="admin-payment-status-icon"><ShieldCheck aria-hidden="true" /></div>
+                <div className="admin-payment-status-copy">
+                  <strong><span className={`admin-payment-status-dot ${stripeStatus.configured ? "is-connected" : ""}`} />Connection status</strong>
+                  <span>{stripeStatusLoading ? "Checking…" : stripeStatus.configured ? `${stripeStatus.mode === "live" ? "Live" : "Test"} mode connected` : stripeStatus.connected ? "Key setup needed" : "Not connected"}</span>
+                  <small>{stripeStatus.configured ? "Ready to process card payments" : "Complete setup before taking payments"}</small>
+                </div>
               </div>
             </section>
             <div className="admin-payment-layout">
@@ -2784,8 +2791,8 @@ export default function AdminDashboard({
                   </form>
                 </section>
                 <div className="admin-payment-mode-grid">
-                  <article className="is-selected"><div className="admin-payment-mode-heading"><span>Test mode</span><b>Recommended now</b></div><div className="admin-payment-mode-body"><FlaskConical aria-hidden="true" /><div><h3>Test API keys</h3><p>Use sandbox payments while you confirm checkout, webhooks, and order handling.</p><a className="admin-secondary" href="https://dashboard.stripe.com/test/apikeys" target="_blank" rel="noreferrer">Open test keys <span aria-hidden="true">↗</span></a></div></div></article>
-                  <article><div className="admin-payment-mode-heading"><span>Live mode</span></div><div className="admin-payment-mode-body"><Globe2 aria-hidden="true" /><div><h3>Live API keys</h3><p>Connect live keys only when your store is ready to accept real customer payments.</p><a className="admin-secondary" href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer">Open live keys <span aria-hidden="true">↗</span></a></div></div></article>
+                  <article className={stripeStatus.configured && stripeStatus.mode === "test" ? "is-selected" : ""}><div className="admin-payment-mode-heading"><span>Test mode</span>{stripeStatus.configured && stripeStatus.mode === "test" ? <b>Currently connected</b> : <b>Recommended for setup</b>}</div><div className="admin-payment-mode-body"><FlaskConical aria-hidden="true" /><div><h3>Test API keys</h3><p>Use sandbox payments while you confirm checkout, webhooks, and order handling.</p><a className="admin-secondary" href="https://dashboard.stripe.com/test/apikeys" target="_blank" rel="noreferrer">Open test keys <span aria-hidden="true">↗</span></a></div></div></article>
+                  <article className={stripeStatus.configured && stripeStatus.mode === "live" ? "is-selected" : ""}><div className="admin-payment-mode-heading"><span>Live mode</span>{stripeStatus.configured && stripeStatus.mode === "live" && <b>Currently connected</b>}</div><div className="admin-payment-mode-body"><Globe2 aria-hidden="true" /><div><h3>Live API keys</h3><p>Connect live keys only when your store is ready to accept real customer payments.</p><a className="admin-secondary" href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer">Open live keys <span aria-hidden="true">↗</span></a></div></div></article>
                 </div>
               </div>
             </div>

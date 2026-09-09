@@ -1788,30 +1788,35 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-payment-mode-body h3 { font-size: 20px; }
 
 /* Payments cleanup: simplify the workspace while keeping the editorial admin language. */
-.admin-payments-page { max-width: 1180px; }
+.admin-payments-page { max-width: 1240px; }
 .admin-payments-page .admin-section-title { margin-bottom: 26px; padding-bottom: 24px; border-bottom: 1px solid #e3dbd6; }
 .admin-payments-page .admin-section-title h1 { font-size: 44px; line-height: .95; }
 .admin-payments-page .admin-section-title > div > p:last-child { max-width: 540px; margin-top: 10px; line-height: 1.5; }
 .admin-payment-view-transactions { min-height: 42px; border-color: #d8b0bc; background: #fffdfb; padding: 0 16px; font-size: 14px; transition: background .2s ease, border-color .2s ease; }
-.admin-payment-card { position: relative; gap: 32px; padding: 30px 32px; border: 0; background: #211e1d; box-shadow: 8px 8px 0 rgba(23, 22, 21, .06); }
+.admin-payment-card { position: relative; gap: 40px; padding: 34px 36px; overflow: hidden; border: 0; background: radial-gradient(circle at 88% 5%, rgba(226, 61, 111, .14), transparent 32%), #211e1d; box-shadow: 8px 8px 0 rgba(23, 22, 21, .06); }
 .admin-payment-card::before { position: absolute; top: 0; bottom: 0; left: 0; width: 4px; background: #e23d6f; content: ""; }
 .admin-payment-banner-copy { padding-left: 4px; }
-.admin-payment-card .stripe-mark { margin-bottom: 12px; font-size: 19px; }
+.admin-payment-provider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.admin-payment-card .stripe-mark { margin: 0; font-size: 20px; }
+.admin-payment-provider-label { border-left: 1px solid #5b5350; padding-left: 12px; color: #bdb1ab; font-size: 14px; }
 .admin-payment-card h2 { max-width: 560px; font-size: 31px; line-height: .98; }
-.admin-payment-card p { max-width: 570px; margin-top: 12px; font-size: 14px; line-height: 1.55; }
+.admin-payment-card p { max-width: 620px; margin-top: 14px; font-size: 16px; line-height: 1.55; }
 .admin-payment-tags { gap: 9px; margin-top: 18px; }
 .admin-payment-tags span { border-color: #514b48; background: rgba(255, 253, 251, .025); padding: 7px 9px; font-size: 14px; }
-.admin-payment-status { width: min(286px, 34%); min-width: 240px; gap: 10px; padding: 18px; border-color: #5b5350; background: rgba(255, 253, 251, .035); }
-.admin-payment-status > div { gap: 9px; }
-.admin-payment-status strong { font-size: 14px; letter-spacing: .08em; }
-.admin-payment-status > div > svg { width: 26px; height: 26px; color: #f5e8e3; }
-.admin-payment-status span:last-child { font-size: 14px; }
-.admin-payment-layout { grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr); gap: 22px; margin-top: 22px; }
-.admin-payment-column { gap: 22px; }
-.admin-payment-settings, .admin-stripe-guide, .admin-payment-how { padding: 24px; border-color: #e3dbd6; box-shadow: 4px 4px 0 rgba(23, 22, 21, .025); }
+.admin-payment-status { display: flex; width: min(330px, 36%); min-width: 270px; align-items: center; gap: 16px; padding: 20px; border-color: #655c57; background: rgba(255, 253, 251, .055); }
+.admin-payment-status-icon { display: grid; width: 48px; height: 48px; flex: 0 0 auto; place-items: center; border: 1px solid #675d58; background: rgba(255, 255, 255, .04); }
+.admin-payment-status-icon svg { width: 23px; height: 23px; color: #f5e8e3; }
+.admin-payment-status-copy { display: grid; gap: 6px; min-width: 0; }
+.admin-payment-status-copy strong { display: flex; align-items: center; gap: 8px; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
+.admin-payment-status-copy > span { color: #f5a8be; font-size: 16px; font-weight: 600; }
+.admin-payment-status-copy small { color: #bdb1ab; font-size: 14px; line-height: 1.4; }
+.admin-payment-layout { grid-template-columns: minmax(0, 1.05fr) minmax(390px, .95fr); gap: 24px; margin-top: 24px; }
+.admin-payment-column { gap: 24px; }
+.admin-payment-settings, .admin-stripe-guide, .admin-payment-how { padding: 28px; border-color: #e3dbd6; box-shadow: 4px 4px 0 rgba(23, 22, 21, .025); }
 .admin-payment-settings h2, .admin-payment-control-heading h2, .admin-payment-how h2 { margin-top: 6px; font-size: 27px; line-height: .98; }
 .admin-payment-detail-grid { gap: 10px; margin: 20px 0; }
-.admin-payment-detail-grid > div { min-height: 82px; border-color: #e8dfda; background: #faf7f4; padding: 12px; }
+.admin-payment-detail-grid > div { min-height: 88px; border-color: #e8dfda; background: #faf7f4; padding: 14px; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
+.admin-payment-detail-grid > div:hover { border-color: #dcb8c3; background: #fffdfb; transform: translateY(-1px); }
 .admin-payment-detail-grid > div > span:not(.admin-payment-detail-icon) { font-size: 14px; }
 .admin-payment-detail-grid > div > strong { font-size: 14px; }
 .admin-payment-detail-icon { width: 32px; height: 32px; background: #fff0f4; }
@@ -1825,7 +1830,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-payment-how li:not(:last-child)::after { top: 35px; right: auto; bottom: 0; left: 17px; width: 1px; height: auto; background: #e3dbd6; }
 .admin-payment-how li strong { align-self: center; font-size: 14px; }
 .admin-payment-how li p { grid-column: 2; font-size: 14px; line-height: 1.5; }
-.admin-stripe-guide { gap: 17px; background: #f8f2ef; }
+.admin-stripe-guide { gap: 18px; border-top: 3px solid #e23d6f; background: #f8f2ef; }
 .admin-payment-security-note { border-color: #e8c6d0; background: #fff0f4; padding: 9px 11px; font-size: 14px; }
 .admin-stripe-credentials-form { gap: 14px; padding: 18px; border-color: #e3dbd6; }
 .admin-stripe-credentials-form label { gap: 7px; font-size: 14px; }
@@ -1835,7 +1840,8 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-stripe-credentials-form .admin-payment-actions { gap: 9px; }
 .admin-stripe-credentials-form .admin-payment-actions .admin-primary, .admin-stripe-credentials-form .admin-payment-actions .admin-danger-button { min-height: 40px; padding: 0 13px; font-size: 14px; }
 .admin-payment-mode-grid { gap: 10px; border: 0; background: transparent; }
-.admin-payment-mode-grid article { border: 1px solid #e3dbd6; box-shadow: 3px 3px 0 rgba(23, 22, 21, .025); }
+.admin-payment-mode-grid article { border: 1px solid #e3dbd6; box-shadow: 3px 3px 0 rgba(23, 22, 21, .025); transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; }
+.admin-payment-mode-grid article:hover { border-color: #dcb8c3; transform: translateY(-2px); box-shadow: 5px 5px 0 rgba(23, 22, 21, .04); }
 
 @media (max-width: 800px) {
   .about-hero { min-height: 555px; }
@@ -1864,7 +1870,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .about-intro-media, .about-story-media { aspect-ratio: .95 / 1; }
   .about-text-link { font-size: 14px; }
 }
-.admin-payment-mode-grid article.is-selected { border-color: #dfa0b2; box-shadow: inset 0 0 0 1px #e6a0b5, 3px 3px 0 rgba(23, 22, 21, .025); }
+.admin-payment-mode-grid article.is-selected { border-color: #dfa0b2; background: #fffafb; box-shadow: inset 0 3px 0 #e23d6f, 3px 3px 0 rgba(23, 22, 21, .025); }
 .admin-payment-mode-heading { min-height: 50px; border-bottom-color: #eee8e3; padding: 8px 12px; font-size: 14px; }
 .admin-payment-mode-heading b { font-size: 12px; }
 .admin-payment-mode-body { gap: 11px; padding: 15px 12px 16px; }
@@ -1884,7 +1890,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 
 @media (max-width: 1120px) {
   .admin-payment-card { display: grid; }
-  .admin-payment-status { width: auto; }
+  .admin-payment-status { width: auto; max-width: none; }
   .admin-payment-layout { grid-template-columns: 1fr; }
 }
 
@@ -1893,6 +1899,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .admin-payments-page .admin-section-title h1 { font-size: 42px; }
   .admin-payment-card { gap: 22px; padding: 24px 22px; }
   .admin-payment-card h2 { font-size: 28px; }
+  .admin-payment-status { min-width: 0; }
   .admin-payment-layout { gap: 16px; margin-top: 16px; }
   .admin-payment-column { gap: 16px; }
   .admin-payment-settings, .admin-stripe-guide, .admin-payment-how { padding: 20px; }
