@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
 import { desc, eq } from "drizzle-orm";
-import { couponsTable, customerProfilesTable, db } from "@workspace/db";
+import { contactEnquiriesTable, couponsTable, customerProfilesTable, db } from "@workspace/db";
 import { getAdminAccess, isAdminUser, isBootstrapAdminUser, requireAdmin } from "../adminAuth";
 import {
   CouponValidationError,
@@ -11,6 +11,25 @@ import {
 } from "../couponService";
 
 const router: IRouter = Router();
+
+router.get("/admin/contact-enquiries", requireAdmin, async (request, response): Promise<void> => {
+  try {
+    const enquiries = await db
+      .select()
+      .from(contactEnquiriesTable)
+      .orderBy(desc(contactEnquiriesTable.createdAt));
+    response.set("Cache-Control", "no-store").json({
+      enquiries: enquiries.map((enquiry) => ({
+        ...enquiry,
+        createdAt: enquiry.createdAt.toISOString(),
+        deliveredAt: enquiry.deliveredAt?.toISOString() ?? null,
+      })),
+    });
+  } catch (error) {
+    request.log?.error({ error }, "Admin contact enquiry list failed");
+    response.status(503).json({ error: "Customer messages could not be loaded right now." });
+  }
+});
 
 router.get("/admin/access", async (request, response) => {
   try {

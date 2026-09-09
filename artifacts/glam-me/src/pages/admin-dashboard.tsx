@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FlaskConical, FolderOpen, Globe2, Image as ImageIcon, KeyRound, LayoutDashboard, ListChecks, LockKeyhole, Mail, MapPin, Package, Save, Send, Server, ShieldCheck, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FlaskConical, FolderOpen, Globe2, Image as ImageIcon, Inbox, KeyRound, LayoutDashboard, ListChecks, LockKeyhole, Mail, MapPin, Package, Save, Send, Server, ShieldCheck, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -21,6 +21,7 @@ type AdminSection =
   | "shipping"
   | "payments"
   | "coupons"
+  | "messages"
   | "users";
 
 type ProductStatus = "Published" | "Draft";
@@ -167,6 +168,19 @@ type CouponDraft = {
   active: boolean;
 };
 
+type ContactEnquiry = {
+  id: number;
+  name: string;
+  email: string;
+  orderNumber: string | null;
+  topic: string;
+  message: string;
+  deliveryStatus: "pending" | "delivered" | "failed" | "not_configured";
+  deliveryError: string | null;
+  createdAt: string;
+  deliveredAt: string | null;
+};
+
 const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "products", label: "Products", icon: Package },
@@ -175,6 +189,7 @@ const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "shipping", label: "Shipping", icon: Truck },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "coupons", label: "Coupons", icon: TicketPercent },
+  { id: "messages", label: "Messages", icon: Inbox },
   { id: "users", label: "Users", icon: Users },
 ];
 
@@ -1648,6 +1663,9 @@ export default function AdminDashboard({
   const [coupons, setCoupons] = useState<CouponRecord[]>([]);
   const [couponsLoading, setCouponsLoading] = useState(false);
   const [couponsError, setCouponsError] = useState("");
+  const [contactEnquiries, setContactEnquiries] = useState<ContactEnquiry[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesError, setMessagesError] = useState("");
   const [couponEditorOpen, setCouponEditorOpen] = useState(false);
   const [editingCouponId, setEditingCouponId] = useState<number | null>(null);
   const [couponDraft, setCouponDraft] = useState<CouponDraft>(blankCoupon);
@@ -2157,6 +2175,21 @@ export default function AdminDashboard({
     }
   }
 
+  async function refreshMessages() {
+    setMessagesLoading(true);
+    setMessagesError("");
+    try {
+      const response = await fetch("/api/admin/contact-enquiries", { credentials: "include" });
+      const payload = await response.json() as { enquiries?: ContactEnquiry[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || "Customer messages could not be loaded.");
+      setContactEnquiries(payload.enquiries ?? []);
+    } catch (error) {
+      setMessagesError(error instanceof Error ? error.message : "Customer messages could not be loaded.");
+    } finally {
+      setMessagesLoading(false);
+    }
+  }
+
   async function refreshCoupons() {
     setCouponsLoading(true);
     setCouponsError("");
@@ -2373,6 +2406,7 @@ export default function AdminDashboard({
     if (section === "orders") void refreshOrders();
     if (section === "users") void refreshUsers();
     if (section === "coupons") void refreshCoupons();
+    if (section === "messages") void refreshMessages();
   }, [section]);
 
   const editorProduct = typeof editorProductId === "number" ? products.find((product) => product.id === editorProductId) : undefined;
@@ -2658,6 +2692,52 @@ export default function AdminDashboard({
           <>
             <SectionTitle eyebrow="Store settings" title="Shipping" description="Set delivery methods, rates, and your free-shipping threshold." />
             <form className="admin-shipping-grid" onSubmit={(event) => { event.preventDefault(); setNotice("Shipping settings saved."); }}><section className="admin-panel admin-simple-form"><p className="admin-eyebrow">Standard delivery</p><h2>UK Standard</h2><label>Rate<input defaultValue="£3.99" /></label><label>Estimated delivery<input defaultValue="3–5 working days" /></label></section><section className="admin-panel admin-simple-form"><p className="admin-eyebrow">Free shipping</p><h2>Delivery incentive</h2><label>Free shipping over<input defaultValue="£75.00" /></label><label>Announcement text<input defaultValue="Free delivery on orders over £75" /></label></section><button className="admin-primary" type="submit">Save shipping rules</button></form>
+          </>
+        )}
+
+        {section === "messages" && (
+          <>
+            <SectionTitle
+              eyebrow="Customer care"
+              title="Messages"
+              description="Review every contact enquiry, including messages retained when email delivery was unavailable."
+              action={<button className="admin-secondary" type="button" onClick={() => void refreshMessages()} disabled={messagesLoading}>{messagesLoading ? "Refreshing…" : "Refresh messages"}</button>}
+            />
+            {messagesError && <p className="admin-payment-error" role="alert">{messagesError}</p>}
+            <section className="admin-message-list" aria-label="Customer messages">
+              {messagesLoading && contactEnquiries.length === 0 ? (
+                <p className="admin-users-state">Loading customer messages…</p>
+              ) : contactEnquiries.length === 0 ? (
+                <div className="admin-message-empty"><Mail aria-hidden="true" /><strong>No customer messages yet.</strong><span>New contact enquiries will appear here as soon as they are submitted.</span></div>
+              ) : contactEnquiries.map((enquiry) => {
+                const statusLabel = enquiry.deliveryStatus === "delivered"
+                  ? "Email delivered"
+                  : enquiry.deliveryStatus === "failed"
+                    ? "Email failed"
+                    : enquiry.deliveryStatus === "not_configured"
+                      ? "Email not configured"
+                      : "Email pending";
+                return (
+                  <article className="admin-message-card" key={enquiry.id}>
+                    <header>
+                      <div>
+                        <p className="admin-eyebrow">{enquiry.topic}</p>
+                        <h2>{enquiry.name}</h2>
+                        <a href={`mailto:${enquiry.email}`}>{enquiry.email}</a>
+                      </div>
+                      <span className={`admin-message-status is-${enquiry.deliveryStatus}`}>{statusLabel}</span>
+                    </header>
+                    <dl className="admin-message-meta">
+                      <div><dt>Submitted</dt><dd>{new Date(enquiry.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</dd></div>
+                      <div><dt>Order number</dt><dd>{enquiry.orderNumber || "Not provided"}</dd></div>
+                      <div><dt>Email delivery</dt><dd>{enquiry.deliveredAt ? new Date(enquiry.deliveredAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : statusLabel}</dd></div>
+                    </dl>
+                    <div className="admin-message-body"><p>{enquiry.message}</p></div>
+                    {enquiry.deliveryError && enquiry.deliveryStatus !== "delivered" && <p className="admin-message-delivery-note">Delivery note: {enquiry.deliveryError}</p>}
+                  </article>
+                );
+              })}
+            </section>
           </>
         )}
 

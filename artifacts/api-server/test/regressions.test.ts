@@ -264,6 +264,7 @@ test("every sensitive admin endpoint keeps the shared permission guard", () => {
     };
   };
   const protectedRoutes = [
+    [adminRouter, "get", "/admin/contact-enquiries"],
     [adminRouter, "get", "/admin/users"],
     [adminRouter, "post", "/admin/users"],
     [adminRouter, "patch", "/admin/users/:userId/access"],
