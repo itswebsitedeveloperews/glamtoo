@@ -189,7 +189,7 @@ const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "shipping", label: "Shipping", icon: Truck },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "coupons", label: "Coupons", icon: TicketPercent },
-  { id: "messages", label: "Messages", icon: Inbox },
+  { id: "messages", label: "Contact Form", icon: Inbox },
   { id: "users", label: "Users", icon: Users },
 ];
 
@@ -2699,44 +2699,41 @@ export default function AdminDashboard({
           <>
             <SectionTitle
               eyebrow="Customer care"
-              title="Messages"
+              title="Contact Form"
               description="Review every contact enquiry, including messages retained when email delivery was unavailable."
               action={<button className="admin-secondary" type="button" onClick={() => void refreshMessages()} disabled={messagesLoading}>{messagesLoading ? "Refreshing…" : "Refresh messages"}</button>}
             />
             {messagesError && <p className="admin-payment-error" role="alert">{messagesError}</p>}
-            <section className="admin-message-list" aria-label="Customer messages">
+            <section className="admin-panel admin-table-panel admin-message-panel" aria-label="Contact form submissions">
               {messagesLoading && contactEnquiries.length === 0 ? (
                 <p className="admin-users-state">Loading customer messages…</p>
               ) : contactEnquiries.length === 0 ? (
                 <div className="admin-message-empty"><Mail aria-hidden="true" /><strong>No customer messages yet.</strong><span>New contact enquiries will appear here as soon as they are submitted.</span></div>
-              ) : contactEnquiries.map((enquiry) => {
-                const statusLabel = enquiry.deliveryStatus === "delivered"
-                  ? "Email delivered"
-                  : enquiry.deliveryStatus === "failed"
-                    ? "Email failed"
-                    : enquiry.deliveryStatus === "not_configured"
-                      ? "Email not configured"
-                      : "Email pending";
-                return (
-                  <article className="admin-message-card" key={enquiry.id}>
-                    <header>
-                      <div>
-                        <p className="admin-eyebrow">{enquiry.topic}</p>
-                        <h2>{enquiry.name}</h2>
+              ) : (
+                <div className="admin-table admin-message-table">
+                  <div className="admin-table-head"><span>Submitted</span><span>Customer</span><span>Email</span><span>Order</span><span>Topic</span><span>Message</span><span>Email status</span></div>
+                  {contactEnquiries.map((enquiry) => {
+                    const statusLabel = enquiry.deliveryStatus === "delivered"
+                      ? "Delivered"
+                      : enquiry.deliveryStatus === "failed"
+                        ? "Failed"
+                        : enquiry.deliveryStatus === "not_configured"
+                          ? "Not configured"
+                          : "Pending";
+                    return (
+                      <div className="admin-table-row" key={enquiry.id}>
+                        <span>{new Date(enquiry.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</span>
+                        <strong>{enquiry.name}</strong>
                         <a href={`mailto:${enquiry.email}`}>{enquiry.email}</a>
+                        <span>{enquiry.orderNumber || "—"}</span>
+                        <span>{enquiry.topic}</span>
+                        <span className="admin-message-table-copy">{enquiry.message}</span>
+                        <span className={`admin-message-status is-${enquiry.deliveryStatus}`} title={enquiry.deliveryError || undefined}>{statusLabel}</span>
                       </div>
-                      <span className={`admin-message-status is-${enquiry.deliveryStatus}`}>{statusLabel}</span>
-                    </header>
-                    <dl className="admin-message-meta">
-                      <div><dt>Submitted</dt><dd>{new Date(enquiry.createdAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</dd></div>
-                      <div><dt>Order number</dt><dd>{enquiry.orderNumber || "Not provided"}</dd></div>
-                      <div><dt>Email delivery</dt><dd>{enquiry.deliveredAt ? new Date(enquiry.deliveredAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" }) : statusLabel}</dd></div>
-                    </dl>
-                    <div className="admin-message-body"><p>{enquiry.message}</p></div>
-                    {enquiry.deliveryError && enquiry.deliveryStatus !== "delivered" && <p className="admin-message-delivery-note">Delivery note: {enquiry.deliveryError}</p>}
-                  </article>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              )}
             </section>
           </>
         )}
