@@ -1820,23 +1820,23 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-payments-page .admin-section-title h1 { font-size: 44px; line-height: .95; }
 .admin-payments-page .admin-section-title > div > p:last-child { max-width: 540px; margin-top: 10px; line-height: 1.5; }
 .admin-payment-view-transactions { min-height: 42px; border-color: #d8b0bc; background: #fffdfb; padding: 0 16px; font-size: 14px; transition: background .2s ease, border-color .2s ease; }
-.admin-payment-card { position: relative; gap: 40px; padding: 34px 36px; overflow: hidden; border: 0; background: radial-gradient(circle at 88% 5%, rgba(226, 61, 111, .14), transparent 32%), #211e1d; box-shadow: 8px 8px 0 rgba(23, 22, 21, .06); }
+.admin-payment-card { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 330px); gap: clamp(24px, 4vw, 40px); padding: 34px 36px; overflow: hidden; border: 0; background: radial-gradient(circle at 88% 5%, rgba(226, 61, 111, .14), transparent 32%), #211e1d; box-shadow: 8px 8px 0 rgba(23, 22, 21, .06); }
 .admin-payment-card::before { position: absolute; top: 0; bottom: 0; left: 0; width: 4px; background: #e23d6f; content: ""; }
-.admin-payment-banner-copy { padding-left: 4px; }
+.admin-payment-banner-copy { min-width: 0; padding-left: 4px; }
 .admin-payment-provider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
 .admin-payment-card .stripe-mark { margin: 0; font-size: 20px; }
 .admin-payment-provider-label { border-left: 1px solid #5b5350; padding-left: 12px; color: #bdb1ab; font-size: 14px; }
-.admin-payment-card h2 { max-width: 560px; font-size: 31px; line-height: .98; }
+.admin-payment-card h2 { max-width: 560px; font-size: 31px; line-height: 1.08; }
 .admin-payment-card p { max-width: 620px; margin-top: 14px; font-size: 16px; line-height: 1.55; }
 .admin-payment-tags { gap: 9px; margin-top: 18px; }
 .admin-payment-tags span { border-color: #514b48; background: rgba(255, 253, 251, .025); padding: 7px 9px; font-size: 14px; }
-.admin-payment-status { display: flex; width: min(330px, 36%); min-width: 270px; align-items: center; gap: 16px; padding: 20px; border-color: #655c57; background: rgba(255, 253, 251, .055); }
+.admin-payment-status { display: flex; width: 100%; min-width: 0; box-sizing: border-box; align-items: center; gap: 16px; padding: 20px; border-color: #655c57; background: rgba(255, 253, 251, .055); }
 .admin-payment-status-icon { display: grid; width: 48px; height: 48px; flex: 0 0 auto; place-items: center; border: 1px solid #675d58; background: rgba(255, 255, 255, .04); }
 .admin-payment-status-icon svg { width: 23px; height: 23px; color: #f5e8e3; }
 .admin-payment-status-copy { display: grid; gap: 6px; min-width: 0; }
-.admin-payment-status-copy strong { display: flex; align-items: center; gap: 8px; font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
-.admin-payment-status-copy > span { color: #f5a8be; font-size: 16px; font-weight: 600; }
-.admin-payment-status-copy small { color: #bdb1ab; font-size: 14px; line-height: 1.4; }
+.admin-payment-status-copy strong { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 14px; line-height: 1.35; letter-spacing: .08em; text-transform: uppercase; }
+.admin-payment-status-copy > span { color: #f5a8be; font-size: 16px; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; }
+.admin-payment-status-copy small { color: #bdb1ab; font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
 .admin-payment-layout { grid-template-columns: minmax(0, 1.05fr) minmax(390px, .95fr); gap: 24px; margin-top: 24px; }
 .admin-payment-column { gap: 24px; }
 .admin-payment-settings, .admin-stripe-guide, .admin-payment-how { padding: 28px; border-color: #e3dbd6; box-shadow: 4px 4px 0 rgba(23, 22, 21, .025); }
@@ -1916,7 +1916,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 
 @media (max-width: 1120px) {
-  .admin-payment-card { display: grid; }
+  .admin-payment-card { grid-template-columns: 1fr; }
   .admin-payment-status { width: auto; max-width: none; }
   .admin-payment-layout { grid-template-columns: 1fr; }
 }
