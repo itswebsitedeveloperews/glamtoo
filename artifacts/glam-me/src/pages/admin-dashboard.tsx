@@ -1026,8 +1026,8 @@ function ProductEditorWithMultipleUploads({
                       <div className="admin-product-gallery-item" key={`${image}-${index}`}>
                         {getCatalogMediaSource(image) ? <img src={getCatalogMediaSource(image)} alt={`${draft.name || "Product"} gallery view ${index + 1}`} /> : <div className="admin-image-placeholder">Loading image…</div>}
                         <div className="admin-product-gallery-item-actions">
-                          <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label={`Move gallery image ${index + 1} earlier`}>↑</button>
-                          <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === (draft.galleryImages ?? []).length - 1} aria-label={`Move gallery image ${index + 1} later`}>↓</button>
+                          <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label={`Move gallery image ${index + 1} left`}>←</button>
+                          <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === (draft.galleryImages ?? []).length - 1} aria-label={`Move gallery image ${index + 1} right`}>→</button>
                           <button className="admin-remove-button" type="button" onClick={() => removeGalleryImage(index)} aria-label={`Remove gallery image ${index + 1}`}>×</button>
                         </div>
                       </div>
@@ -1517,8 +1517,8 @@ function ProductEditor({
                       <div className="admin-product-gallery-item" key={`${image}-${index}`}>
                         {getCatalogMediaSource(image) ? <img src={getCatalogMediaSource(image)} alt={`${draft.name || "Product"} gallery view ${index + 1}`} /> : <div className="admin-image-placeholder">Loading image…</div>}
                         <div className="admin-product-gallery-item-actions">
-                          <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label={`Move gallery image ${index + 1} earlier`}>↑</button>
-                          <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === (draft.galleryImages ?? []).length - 1} aria-label={`Move gallery image ${index + 1} later`}>↓</button>
+                          <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label={`Move gallery image ${index + 1} left`}>←</button>
+                          <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === (draft.galleryImages ?? []).length - 1} aria-label={`Move gallery image ${index + 1} right`}>→</button>
                           <button className="admin-remove-button" type="button" onClick={() => removeGalleryImage(index)} aria-label={`Remove gallery image ${index + 1}`}>×</button>
                         </div>
                       </div>
