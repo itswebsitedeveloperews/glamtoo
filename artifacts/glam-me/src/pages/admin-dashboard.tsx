@@ -1010,43 +1010,34 @@ function ProductEditorWithMultipleUploads({
             <div className="admin-card-heading"><div className="admin-card-title"><span className="admin-card-icon"><ImageIcon aria-hidden="true" /></span><h2>Product media</h2></div></div>
             <div className="admin-media-workspace">
               <div className="admin-media-primary">
-                {productImagePreview ? <img className="admin-product-image-preview" src={productImagePreview} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /><strong>Add a primary product image</strong><span>PNG, JPG, WEBP or GIF · max 4MB</span></div>}
-                <label className="admin-editor-label">Primary image URL
-                  <input className="admin-editor-input" value={draft.image.startsWith("data:") || isCatalogMediaReference(draft.image) ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="https://..." />
-                </label>
-                <div className="admin-image-upload">
-                  <label className="admin-upload-button">Add primary image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
-                  <span>{productImageFileName || "Choose a storefront hero image"}</span>
+                <div className="admin-media-primary-frame">
+                  {productImagePreview ? <img className="admin-product-image-preview" src={productImagePreview} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /><strong>Add a primary product image</strong><span>PNG, JPG or WEBP · max 4MB</span></div>}
+                  <label className="admin-media-edit-button" aria-label="Change primary product image"><ImageIcon aria-hidden="true" /><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
                 </div>
+                <label className="admin-media-url-field">Primary image URL<input className="admin-editor-input" value={draft.image.startsWith("data:") || isCatalogMediaReference(draft.image) ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="Paste image URL" /></label>
               </div>
               <div className="admin-media-gallery">
                 <div className="admin-gallery-heading">
                   <strong>Gallery images</strong>
                   <small>Add supporting views for the product page. The primary image stays first.</small>
                 </div>
-                <div className="admin-gallery-add">
-                  <input className="admin-editor-input" value={galleryImageUrl} onChange={(event) => setGalleryImageUrl(event.target.value)} placeholder="Gallery image URL" aria-label="Gallery image URL" />
-                  <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add</button>
-                </div>
-                <div className="admin-image-upload">
-                  <label className="admin-upload-button">Upload gallery images<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
-                  <span>{galleryImageFileNames.filter(Boolean).join(", ") || "Select one or more images"}</span>
-                </div>
-                {(draft.galleryImages ?? []).length > 0 ? (
-                  <div className="admin-product-gallery-list" aria-label="Gallery image order">
-                    {(draft.galleryImages ?? []).map((image, index) => (
+                <div className="admin-product-gallery-strip" aria-label="Gallery image order">
+                  {(draft.galleryImages ?? []).map((image, index) => (
                       <div className="admin-product-gallery-item" key={`${image}-${index}`}>
                         {getCatalogMediaSource(image) ? <img src={getCatalogMediaSource(image)} alt={`${draft.name || "Product"} gallery view ${index + 1}`} /> : <div className="admin-image-placeholder">Loading image…</div>}
                         <div className="admin-product-gallery-item-actions">
-                          <span>View {index + 2}</span>
                           <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label={`Move gallery image ${index + 1} earlier`}>↑</button>
                           <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === (draft.galleryImages ?? []).length - 1} aria-label={`Move gallery image ${index + 1} later`}>↓</button>
                           <button className="admin-remove-button" type="button" onClick={() => removeGalleryImage(index)} aria-label={`Remove gallery image ${index + 1}`}>×</button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : <p className="admin-gallery-empty">No additional gallery images yet.</p>}
+                  ))}
+                  <label className="admin-gallery-upload-tile"><span aria-hidden="true">+</span><strong>Upload</strong><input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                </div>
+                <div className="admin-gallery-add">
+                  <input className="admin-editor-input" value={galleryImageUrl} onChange={(event) => setGalleryImageUrl(event.target.value)} placeholder="Or paste a gallery image URL" aria-label="Gallery image URL" />
+                  <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add</button>
+                </div>
               </div>
             </div>
           </section>
@@ -1510,43 +1501,34 @@ function ProductEditor({
             <div className="admin-card-heading"><div className="admin-card-title"><span className="admin-card-icon"><ImageIcon aria-hidden="true" /></span><h2>Product media</h2></div></div>
             <div className="admin-media-workspace">
               <div className="admin-media-primary">
-                {productImagePreview ? <img className="admin-product-image-preview" src={productImagePreview} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /><strong>Add a primary product image</strong><span>PNG, JPG, WEBP or GIF · max 4MB</span></div>}
-                <label className="admin-editor-label">Primary image URL
-                  <input className="admin-editor-input" value={draft.image.startsWith("data:") || isCatalogMediaReference(draft.image) ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="https://..." />
-                </label>
-                <div className="admin-image-upload">
-                  <label className="admin-upload-button">Add primary image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
-                  <span>{productImageFileName || "Choose a storefront hero image"}</span>
+                <div className="admin-media-primary-frame">
+                  {productImagePreview ? <img className="admin-product-image-preview" src={productImagePreview} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /><strong>Add a primary product image</strong><span>PNG, JPG or WEBP · max 4MB</span></div>}
+                  <label className="admin-media-edit-button" aria-label="Change primary product image"><ImageIcon aria-hidden="true" /><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
                 </div>
+                <label className="admin-media-url-field">Primary image URL<input className="admin-editor-input" value={draft.image.startsWith("data:") || isCatalogMediaReference(draft.image) ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="Paste image URL" /></label>
               </div>
               <div className="admin-media-gallery">
                 <div className="admin-gallery-heading">
                   <strong>Gallery images</strong>
                   <small>Add supporting views for the product page. The primary image stays first.</small>
                 </div>
-                <div className="admin-gallery-add">
-                  <input className="admin-editor-input" value={galleryImageUrl} onChange={(event) => setGalleryImageUrl(event.target.value)} placeholder="Gallery image URL" aria-label="Gallery image URL" />
-                  <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add</button>
-                </div>
-                <div className="admin-image-upload">
-                  <label className="admin-upload-button">Upload gallery images<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
-                  <span>{galleryImageFileNames.filter(Boolean).join(", ") || "Select one or more images"}</span>
-                </div>
-                {(draft.galleryImages ?? []).length > 0 ? (
-                  <div className="admin-product-gallery-list" aria-label="Gallery image order">
-                    {(draft.galleryImages ?? []).map((image, index) => (
+                <div className="admin-product-gallery-strip" aria-label="Gallery image order">
+                  {(draft.galleryImages ?? []).map((image, index) => (
                       <div className="admin-product-gallery-item" key={`${image}-${index}`}>
                         {getCatalogMediaSource(image) ? <img src={getCatalogMediaSource(image)} alt={`${draft.name || "Product"} gallery view ${index + 1}`} /> : <div className="admin-image-placeholder">Loading image…</div>}
                         <div className="admin-product-gallery-item-actions">
-                          <span>View {index + 2}</span>
                           <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label={`Move gallery image ${index + 1} earlier`}>↑</button>
                           <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === (draft.galleryImages ?? []).length - 1} aria-label={`Move gallery image ${index + 1} later`}>↓</button>
                           <button className="admin-remove-button" type="button" onClick={() => removeGalleryImage(index)} aria-label={`Remove gallery image ${index + 1}`}>×</button>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : <p className="admin-gallery-empty">No additional gallery images yet.</p>}
+                  ))}
+                  <label className="admin-gallery-upload-tile"><span aria-hidden="true">+</span><strong>Upload</strong><input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                </div>
+                <div className="admin-gallery-add">
+                  <input className="admin-editor-input" value={galleryImageUrl} onChange={(event) => setGalleryImageUrl(event.target.value)} placeholder="Or paste a gallery image URL" aria-label="Gallery image URL" />
+                  <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add</button>
+                </div>
               </div>
             </div>
           </section>
