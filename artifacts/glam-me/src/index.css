@@ -1008,7 +1008,7 @@ img { display: block; max-width: 100%; }
 .admin-overview-payment-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .admin-overview-payment-topline .admin-eyebrow { margin-bottom: 0; color: #a6516e; }
 .admin-overview-payment-topline > span { border: 1px solid rgba(120,47,72,.25); padding: 6px 8px; color: #8f3d5a; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.admin-overview-payment h2 { max-width: 270px; margin: 26px 0 0; font: 400 30px/1.2 var(--display); letter-spacing: -.045em; }
+.admin-overview-payment h2 { margin: 26px 0 0; font: 400 30px/1.2 var(--display); letter-spacing: -.045em; }
 .admin-overview-payment p:not(.admin-eyebrow) { max-width: 330px; margin: 16px 0 0; color: #713a4a; font-size: 16px; line-height: 1.55; }
 .admin-overview-payment-button { display: inline-flex; align-items: center; gap: 8px; margin-top: 24px; border: 1px solid #713a4a; background: transparent; padding: 10px 13px; color: #713a4a; cursor: pointer; font-size: 14px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
 .admin-overview-payment-button:hover { background: #713a4a; color: #fffdfb; }
