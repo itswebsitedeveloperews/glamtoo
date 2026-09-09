@@ -1719,9 +1719,9 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-payment-tags span { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #4c4643; border-radius: 3px; padding: 6px 8px; color: #e8dfda; font-size: 11px; }
 .admin-payment-tags svg { width: 13px; height: 13px; }
 .admin-payment-status { display: grid; width: min(270px, 34%); min-width: 220px; align-content: center; gap: 8px; padding: 15px; border: 1px solid #514b48; }
-.admin-payment-status > div { display: flex; align-items: center; gap: 8px; }
+.admin-payment-status > div { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .admin-payment-status strong { font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
-.admin-payment-status > div > svg { width: 29px; height: 29px; margin-left: auto; color: #e9e0db; stroke-width: 1.2; }
+.admin-payment-status > div > svg { width: 29px; height: 29px; color: #e9e0db; stroke-width: 1.2; }
 .admin-payment-status span:last-child { color: #f2a0ba; font-size: 12px; }
 .admin-payment-status-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #c8b9b2; }
 .admin-payment-status-dot.is-connected { background: #54d58b; box-shadow: 0 0 0 3px rgba(84, 213, 139, .12); }
