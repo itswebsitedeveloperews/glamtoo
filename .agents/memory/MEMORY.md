@@ -18,3 +18,4 @@
 - [Legacy payment reconciliation](legacy-payment-reconciliation.md) — Use stable cursors when importing historical Stripe payments; synced records can arrive while paging.
 - [Bestseller ranking](bestseller-ranking.md) — Rank products by paid units sold; never use current stock as a bestseller proxy.
 - [Catalog refresh routing](catalog-refresh-routing.md) — Catalog refreshes must not remount the admin route, or active admin workspace state resets to Overview.
+- [OpenAPI email validation](openapi-email-validation.md) — This workspace’s generator emits a Zod API unsupported by its installed Zod version for format: email.
