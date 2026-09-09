@@ -426,7 +426,7 @@ img { display: block; max-width: 100%; }
 .detail-title-row { display: flex; align-items: start; justify-content: space-between; gap: 18px; }
 .detail-title-row > div { min-width: 0; }
 .wishlist-button-detail { position: absolute; top: 16px; right: 16px; z-index: 3; width: 46px; height: 46px; }
-.detail-copy > p { color: var(--muted); font-size: 14px; }
+.detail-copy > p { color: var(--muted); font-size: 16px; }
 .detail-form { margin-top: 34px; border-top: 1px solid var(--line); padding-top: 23px; }
 .detail-form .field + .field { margin-top: 18px; }
 .detail-form .field select {
@@ -463,7 +463,7 @@ img { display: block; max-width: 100%; }
 .detail-notes p { color: var(--muted); font-size: 14px; }
 .product-information { margin-top: 64px; border-top: 1px solid var(--line); }
 .product-information details { border-bottom: 1px solid var(--line); background: var(--white); }
-.product-information summary { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 20px; padding: 0 16px; cursor: pointer; font-size: 14px; letter-spacing: .04em; list-style: none; }
+.product-information summary { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 20px; padding: 0 16px; cursor: pointer; font-size: 16px; letter-spacing: .04em; list-style: none; }
 .product-information summary::-webkit-details-marker { display: none; }
 .product-information summary span { color: var(--pink-deep); font-size: 18px; transition: transform .2s ease; }
 .product-information details[open] summary span { transform: rotate(45deg); }
@@ -474,7 +474,7 @@ img { display: block; max-width: 100%; }
 .product-policy { display: flex; gap: 14px; }
 .product-policy-icon { width: 22px; height: 22px; flex: 0 0 22px; color: var(--pink-deep); stroke-width: 1.5; }
 .product-policy-title { margin: 0 0 4px; font: 500 16px/.95 var(--display); color: var(--ink); }
-.product-policy-text { margin: 0; font: 400 14px/1.45 var(--body); color: var(--muted); }
+.product-policy-text { margin: 0; font: 400 16px/1.45 var(--body); color: var(--muted); }
 
 .related-products { padding: 0 0 112px; }
 .related-products-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 32px; padding-top: 72px; border-top: 1px solid var(--line); }
