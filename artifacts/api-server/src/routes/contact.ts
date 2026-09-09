@@ -54,7 +54,7 @@ router.post("/contact-enquiries", async (request, response): Promise<void> => {
   }
 
   const parsed = SubmitContactEnquiryBody.safeParse(request.body);
-  if (!parsed.success || parsed.data.website) {
+  if (!parsed.success) {
     response.status(400).json({ error: "Check the form details and try again." });
     return;
   }

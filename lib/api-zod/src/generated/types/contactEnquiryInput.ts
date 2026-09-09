@@ -23,9 +23,4 @@ export interface ContactEnquiryInput {
      * @maxLength 5000
      */
   message: string;
-  /**
-     * Spam-prevention honeypot; must remain empty.
-     * @maxLength 0
-     */
-  website?: string;
 }

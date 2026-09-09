@@ -1795,8 +1795,7 @@ function Contact() {
     const order = String(formData.get("order") ?? "").trim();
     const topic = String(formData.get("topic") ?? "").trim() as "Order help" | "Delivery" | "Returns" | "Product & sizing" | "Something else";
     const message = String(formData.get("message") ?? "").trim();
-    const website = String(formData.get("website") ?? "");
-    submitEnquiry.mutate({ data: { name, email, order: order || undefined, topic, message, website } }, {
+    submitEnquiry.mutate({ data: { name, email, order: order || undefined, topic, message } }, {
       onSuccess: (result) => {
         setSubmissionMessage(result.message);
         form.reset();
@@ -1850,7 +1849,6 @@ function Contact() {
             <p>Complete the form below and our team will get back to you as soon as possible.</p>
           </div>
           <form className="contact-form" onSubmit={handleSubmit}>
-              <div className="contact-honeypot" aria-hidden="true"><label htmlFor="contact-website">Website</label><input id="contact-website" name="website" type="text" tabIndex={-1} autoComplete="off" /></div>
               <div className="contact-form-grid">
                 <div className="field">
                   <label htmlFor="contact-name">Name</label>

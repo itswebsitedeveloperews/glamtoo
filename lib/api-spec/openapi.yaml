@@ -144,10 +144,6 @@ components:
           type: string
           minLength: 1
           maxLength: 5000
-        website:
-          type: string
-          maxLength: 0
-          description: Spam-prevention honeypot; must remain empty.
     ContactEnquiryResponse:
       type: object
       required: [sent, message]
