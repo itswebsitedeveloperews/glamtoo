@@ -1830,8 +1830,8 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-payment-card p { max-width: 620px; margin-top: 14px; font-size: 16px; line-height: 1.55; }
 .admin-payment-tags { gap: 9px; margin-top: 18px; }
 .admin-payment-tags span { border-color: #514b48; background: rgba(255, 253, 251, .025); padding: 7px 9px; font-size: 14px; }
-.admin-payment-status { display: flex; width: 100%; min-width: 0; box-sizing: border-box; align-items: center; gap: 16px; padding: 20px; border-color: #655c57; background: rgba(255, 253, 251, .055); }
-.admin-payment-status-icon { display: grid; width: 48px; height: 48px; flex: 0 0 auto; place-items: center; border: 1px solid #675d58; background: rgba(255, 255, 255, .04); }
+.admin-payment-status { display: flex; width: 100%; min-width: 0; height: max-content; box-sizing: border-box; align-self: center; align-items: center; gap: 16px; padding: 20px; border-color: #655c57; background: rgba(255, 253, 251, .055); }
+.admin-payment-status-icon { display: grid; width: 48px; height: 48px; flex: 0 0 auto; align-self: center; place-items: center; border: 1px solid #675d58; background: rgba(255, 255, 255, .04); }
 .admin-payment-status-icon svg { width: 23px; height: 23px; color: #f5e8e3; }
 .admin-payment-status > .admin-payment-status-copy { display: grid; min-width: 0; align-content: center; align-items: start; gap: 6px; }
 .admin-payment-status-copy strong { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: 14px; line-height: 1.35; letter-spacing: .08em; text-transform: uppercase; }
