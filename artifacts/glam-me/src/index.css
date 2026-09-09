@@ -349,7 +349,7 @@ img { display: block; max-width: 100%; }
 .field label { font-size: 14px; letter-spacing: .14em; text-transform: uppercase; }
 .field input, .field select, .field textarea { border: 1px solid var(--line); border-radius: 0; background: transparent; padding: 14px 13px; color: var(--ink); }
 .field textarea { min-height: 145px; resize: vertical; }
-.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--ink); outline: 1px solid var(--ink); }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--ink); }
 .legal { max-width: 780px; padding: 72px 0 110px; }
 .legal h1 { margin: 8px 0 42px; font: 400 clamp(52px, 7vw, 90px)/.88 var(--display); }
 .legal h2 { margin: 35px 0 10px; font: 400 29px var(--display); }
