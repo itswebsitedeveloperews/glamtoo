@@ -1005,26 +1005,26 @@ function Home() {
       </section>
       <section className="collection-collage container" aria-labelledby="collection-heading">
         <h2 id="collection-heading" className="sr-only">Shop the collection</h2>
-        <div className="collection-tile collection-dresses">
+        <a className="collection-tile collection-dresses" href="/category/dresses" aria-label="Shop dresses">
           <img src={collectionImages.dresses} alt="Dresses collection" />
-          <div><h3>Dresses</h3><p>From day dates<br />to after dark.</p><a href="/category/dresses">Shop dresses <span>→</span></a></div>
-        </div>
-        <div className="collection-tile collection-coords">
+          <div><h3>Dresses</h3><p>From day dates<br />to after dark.</p><span className="collection-tile-cta">Shop dresses <span>→</span></span></div>
+        </a>
+        <a className="collection-tile collection-coords" href="/category/co-ords" aria-label="Shop co-ords">
           <img src={collectionImages.coords} alt="Co-Ords collection" />
-          <div><h3>Co-Ords</h3><p>Effortless<br />matching sets<br />made to wear.</p><a href="/category/co-ords">Shop co-ords <span>→</span></a></div>
-        </div>
-        <div className="collection-tile collection-occasion">
+          <div><h3>Co-Ords</h3><p>Effortless<br />matching sets<br />made to wear.</p><span className="collection-tile-cta">Shop co-ords <span>→</span></span></div>
+        </a>
+        <a className="collection-tile collection-occasion" href="/category/occasion" aria-label="Shop occasion">
           <img src={collectionImages.occasion} alt="Occasion collection" />
-          <div><h3>Occasion</h3><p>For weddings,<br />parties &amp; all the<br />special plans.</p><a href="/category/occasion">Shop occasion <span>→</span></a></div>
-        </div>
-        <div className="collection-tile collection-denim">
+          <div><h3>Occasion</h3><p>For weddings,<br />parties &amp; all the<br />special plans.</p><span className="collection-tile-cta">Shop occasion <span>→</span></span></div>
+        </a>
+        <a className="collection-tile collection-denim" href="/category/denim" aria-label="Shop denim">
           <img src={collectionImages.denim} alt="Denim collection" />
-          <div><h3>Denim</h3><p>Everyday staples<br />with a fresh<br />season twist.</p><a href="/category/denim">Shop denim <span>→</span></a></div>
-        </div>
-        <div className="collection-tile collection-accessories">
+          <div><h3>Denim</h3><p>Everyday staples<br />with a fresh<br />season twist.</p><span className="collection-tile-cta">Shop denim <span>→</span></span></div>
+        </a>
+        <a className="collection-tile collection-accessories" href="/category/accessories" aria-label="Shop accessories">
           <img src={collectionImages.accessories} alt="Accessories collection" />
-          <div><h3>Accessories</h3><p>The finishing<br />touch.</p><a href="/category/accessories">Shop accessories <span>→</span></a></div>
-        </div>
+          <div><h3>Accessories</h3><p>The finishing<br />touch.</p><span className="collection-tile-cta">Shop accessories <span>→</span></span></div>
+        </a>
       </section>
       <section className="products-section container home-obsessions" aria-labelledby="obsessions-heading">
         <div className="home-obsessions-heading">
