@@ -263,10 +263,10 @@ img { display: block; max-width: 100%; }
 .quote { margin-top: 38px; padding-top: 20px; border-top: 1px solid var(--line); font: italic 22px/1.15 var(--display); max-width: 340px; }
 
 .about-page { overflow: hidden; }
-.about-hero { position: relative; min-height: 590px; display: flex; align-items: flex-end; overflow: hidden; background: #b98389; color: var(--white); }
+.about-hero { position: relative; min-height: 365px; display: flex; align-items: flex-end; overflow: hidden; background: #b98389; color: var(--white); }
 .about-hero-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 54% top; }
 .about-hero-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20, 13, 14, .66) 0%, rgba(20, 13, 14, .48) 30%, rgba(20, 13, 14, .15) 56%, rgba(20, 13, 14, .03) 100%); }
-.about-hero-copy { position: relative; z-index: 1; padding: 105px 0 82px; }
+.about-hero-copy { position: relative; z-index: 1; padding: 69px 0 52px; }
 .about-hero-copy .eyebrow { color: #f9d3dc; }
 .about-hero-copy h1 { margin: 17px 0 20px; font: 400 82px/.86 var(--display); letter-spacing: -.06em; }
 .about-hero-copy p { max-width: 365px; margin: 0; color: rgba(255,255,255,.88); font-size: 16px; line-height: 1.55; }
@@ -1880,10 +1880,10 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .admin-payment-mode-grid article:hover { border-color: #dcb8c3; transform: translateY(-2px); box-shadow: 5px 5px 0 rgba(23, 22, 21, .04); }
 
 @media (max-width: 800px) {
-  .about-hero { min-height: 555px; }
+  .about-hero { min-height: 390px; }
   .about-hero-image { object-position: 58% top; }
   .about-hero-overlay { background: linear-gradient(90deg, rgba(20, 13, 14, .7) 0%, rgba(20, 13, 14, .46) 58%, rgba(20, 13, 14, .16) 100%); }
-  .about-hero-copy { padding: 80px 0 59px; }
+  .about-hero-copy { padding: 49px 0 40px; }
   .about-hero-copy h1 { font-size: clamp(61px, 15vw, 92px); }
   .about-intro { grid-template-columns: 1fr; gap: 46px; padding-top: 75px; padding-bottom: 80px; }
   .about-intro-copy h2, .about-story-copy h2 { font-size: clamp(56px, 12vw, 78px); }
@@ -1899,9 +1899,9 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 
 @media (max-width: 460px) {
-  .about-hero { min-height: 540px; }
+  .about-hero { min-height: 390px; }
   .about-hero-image { object-position: 61% top; }
-  .about-hero-copy { padding-bottom: 52px; }
+  .about-hero-copy { padding-bottom: 40px; }
   .about-hero-copy p { max-width: 300px; }
   .about-intro { gap: 38px; }
   .about-intro-media, .about-story-media { aspect-ratio: .95 / 1; }
