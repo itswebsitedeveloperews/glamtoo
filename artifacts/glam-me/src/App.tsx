@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type FormEvent,
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.webp';
-import aboutHeroImage from '@assets/glam-me-8_1788790609953.webp';
+import aboutHeroImage from '@assets/about_banner_1789035643721.webp';
 import aboutStudioImage from '@assets/glam-me-5_1787653559643.webp';
 import aboutStoryImage from '@assets/glam-me-12_1787653559644.webp';
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogMediaSource, getCatalogProductImages, hydrateCatalogProductMedia, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
@@ -1604,7 +1604,7 @@ function About() {
     <Shell>
       <div className="about-page">
         <section className="about-hero" aria-labelledby="about-hero-heading">
-          <img className="about-hero-image" src={aboutHeroImage} alt="Woman wearing a pink printed dress beside the sea" />
+          <img className="about-hero-image" src={aboutHeroImage} alt="Woman wearing a pink printed dress seated beside the sea" />
           <div className="about-hero-overlay" aria-hidden="true" />
           <div className="container about-hero-copy">
             <div className="eyebrow">The Glam Too story</div>
