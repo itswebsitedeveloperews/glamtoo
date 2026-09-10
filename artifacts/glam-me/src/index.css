@@ -2029,6 +2029,13 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .contact-care {
   padding: 85px 20px 55px;
   background: var(--paper);
+  font-family: var(--display);
+}
+.contact-care button,
+.contact-care input,
+.contact-care select,
+.contact-care textarea {
+  font-family: var(--display);
 }
 .contact-care-head {
   max-width: 600px;
@@ -2040,7 +2047,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   margin-bottom: 15px;
 }
 .contact-care-head h1 {
-  font: 400 72px/1.1 var(--hero-display);
+  font: 400 72px/1.1 var(--display);
   margin: 0 0 20px;
 }
 .contact-care-head p {
@@ -2075,7 +2082,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   stroke-width: 1.25;
 }
 .contact-card h3 {
-  font: 400 24px/1.2 var(--hero-display);
+  font: 400 24px/1.2 var(--display);
   margin: 0 0 15px;
 }
 .contact-card p {
@@ -2106,7 +2113,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   margin-bottom: 40px;
 }
 .contact-form-head h2 {
-  font: 400 36px/1.2 var(--hero-display);
+  font: 400 36px/1.2 var(--display);
   margin: 0 0 15px;
 }
 .contact-form-head p {
@@ -2201,7 +2208,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 .contact-detail h4 {
   font-size: 20px;
-  font-family: var(--hero-display);
+  font-family: var(--display);
   font-weight: 400;
   margin: 0 0 14px;
   color: var(--ink);
@@ -2269,7 +2276,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   stroke-width: 1.2;
 }
 .contact-quick-text h3 {
-  font: 400 24px/1.2 var(--hero-display);
+  font: 400 24px/1.2 var(--display);
   margin: 0 0 5px;
 }
 .contact-quick-text p {

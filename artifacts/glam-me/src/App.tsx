@@ -1812,7 +1812,7 @@ function Contact() {
       <div className="contact-care">
         <div className="contact-care-head">
           <div className="eyebrow">Customer Care</div>
-          <h1>How can we help?</h1>
+          <h1>Contact us</h1>
           <p>We&apos;re here to make every experience effortless.<br />Tell us what you need and we&apos;ll take care of the rest.</p>
         </div>
 
