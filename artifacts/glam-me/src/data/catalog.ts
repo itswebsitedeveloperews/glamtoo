@@ -11,6 +11,8 @@ import weekendProductImage from "@assets/glam-me-11_1787655658625.webp";
 import dayOutProductImage from "@assets/glam-me-8_1787655658625.webp";
 import dateNightProductImage from "@assets/glam-me-9_1787655658625.webp";
 import militaryStyleJacketImage from "@assets/military-style-jacket.webp";
+import meshFloralSleeveTracksuitImage from "@assets/mesh-floral-sleeve-tracksuit.jpg";
+import printedAysemetricTracksuitImage from "@assets/printed-aysemetric-tracksuit.jpg";
 
 export type CatalogVariation = {
   id: number;
@@ -363,5 +365,35 @@ export const catalogProducts: CatalogProduct[] = [
       { id: 1081, size: "S/M", colour: "", sku: "GM-MILITARY-SM", price: "£35.99", stock: 2 },
       { id: 1082, size: "M/L", colour: "", sku: "GM-MILITARY-ML", price: "£35.99", stock: 2 },
     ],
+  },
+  {
+    id: 109,
+    slug: "mesh-floral-sleeve-tracksuit",
+    name: "Mesh Floral Sleeve Tracksuit",
+    category: "Co-ords",
+    price: "£39.99",
+    stock: 3,
+    status: "Published",
+    type: "Simple",
+    description: "Mesh Floral Sleeve Tracksuit",
+    sku: "GM-MESH-FLORAL",
+    image: meshFloralSleeveTracksuitImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 110,
+    slug: "printed-aysemetric-tracksuit",
+    name: "Printed Aysemetric Tracksuit",
+    category: "Co-ords",
+    price: "£29.99",
+    stock: 3,
+    status: "Published",
+    type: "Simple",
+    description: "Printed Aysemetric Tracksuit",
+    sku: "GM-PRINTED-AYSEMETRIC",
+    image: printedAysemetricTracksuitImage,
+    position: "50% 50%",
+    variations: [],
   },
 ];
