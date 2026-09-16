@@ -547,6 +547,7 @@ function getStorefrontCategories(): CatalogCategory[] {
         name: category.name!.trim(),
         image: typeof category.image === 'string' ? category.image : '',
         description: typeof category.description === 'string' ? category.description : '',
+        parentId: typeof category.parentId === 'number' ? category.parentId : null,
       }));
   } catch {
     return catalogCategories;
@@ -857,13 +858,11 @@ function Header() {
           <img src={logoImage} alt="Glam Too" />
           <button className="mobile-nav-close" type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>×</button>
         </div>
-        <a href="/shop" {...navLinkProps("/shop")} data-testid="link-nav-new-in" onClick={() => setMenuOpen(false)}>New In</a>
-        <a href="/category/dresses" {...navLinkProps("/category/dresses")} data-testid="link-nav-dresses" onClick={() => setMenuOpen(false)}>Dresses</a>
-        <a href="/shop" data-testid="link-nav-clothing" onClick={() => setMenuOpen(false)}>Clothing</a>
-        <a href="/category/occasion" {...navLinkProps("/category/occasion")} data-testid="link-nav-occasion" onClick={() => setMenuOpen(false)}>Occasion</a>
-        <a href="/category/co-ords" {...navLinkProps("/category/co-ords")} data-testid="link-nav-co-ords" onClick={() => setMenuOpen(false)}>Co-Ords</a>
-        <a href="/category/denim" {...navLinkProps("/category/denim")} data-testid="link-nav-denim" onClick={() => setMenuOpen(false)}>Denim</a>
-        <a href="/category/accessories" {...navLinkProps("/category/accessories")} data-testid="link-nav-accessories" onClick={() => setMenuOpen(false)}>Accessories</a>
+        <a href="/category/new-in" {...navLinkProps("/category/new-in")} data-testid="link-nav-new-in" onClick={() => setMenuOpen(false)}>New In</a>
+        <a href="/category/clothes" {...navLinkProps("/category/clothes")} data-testid="link-nav-clothes" onClick={() => setMenuOpen(false)}>Clothes</a>
+        <a href="/category/handbags" {...navLinkProps("/category/handbags")} data-testid="link-nav-handbags" onClick={() => setMenuOpen(false)}>Handbags</a>
+        <a href="/category/purses" {...navLinkProps("/category/purses")} data-testid="link-nav-purses" onClick={() => setMenuOpen(false)}>Purses</a>
+        <a href="/category/jewellery" {...navLinkProps("/category/jewellery")} data-testid="link-nav-jewellery" onClick={() => setMenuOpen(false)}>Jewellery</a>
         <a href="/shop" data-testid="link-nav-sale" onClick={() => setMenuOpen(false)}>Sale</a>
       </nav>
       {searchOpen && (
@@ -943,7 +942,7 @@ function Footer() {
                 </a>
               </div>
             </div>
-            <div><h4>Shop</h4><ul><li><a href="/shop" data-testid="link-footer-new-in">New In</a></li><li><a href="/category/dresses" data-testid="link-footer-dresses">Dresses</a></li><li><a href="/shop" data-testid="link-footer-clothing">Clothing</a></li><li><a href="/category/occasion" data-testid="link-footer-occasion">Occasion</a></li><li><a href="/category/co-ords" data-testid="link-footer-co-ords">Co-Ords</a></li><li><a href="/category/denim" data-testid="link-footer-denim">Denim</a></li><li><a href="/category/accessories" data-testid="link-footer-accessories">Accessories</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
+            <div><h4>Shop</h4><ul><li><a href="/category/new-in" data-testid="link-footer-new-in">New In</a></li><li><a href="/category/clothes" data-testid="link-footer-clothes">Clothes</a></li><li><a href="/category/handbags" data-testid="link-footer-handbags">Handbags</a></li><li><a href="/category/purses" data-testid="link-footer-purses">Purses</a></li><li><a href="/category/jewellery" data-testid="link-footer-jewellery">Jewellery</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
             <div><h4>Help</h4><ul><li><a href="/delivery-returns" data-testid="link-footer-delivery">Delivery &amp; Returns</a></li><li><a href="/faq" data-testid="link-footer-size-guide">Size Guide</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
             <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">About</a></li><li><a href="/about" data-testid="link-footer-style-journal">Style Journal</a></li></ul></div>
             <div className="footer-knowledge"><h4>Stay in the know</h4><p>Sign up for new arrivals<br />and exclusive offers.</p><form className="footer-newsletter-form" action="/" method="get"><label className="sr-only" htmlFor="footer-newsletter-email">Email address</label><input id="footer-newsletter-email" name="email" type="email" placeholder="Enter your email" required data-testid="input-footer-newsletter-email" /><button type="submit" aria-label="Sign me up" data-testid="button-footer-newsletter-submit">→</button></form></div>
@@ -1021,17 +1020,17 @@ function Home() {
           <img src={collectionImages.coords} alt="Co-Ords collection" />
           <div><h3>Co-Ords</h3><p>Effortless<br />matching sets<br />made to wear.</p><span className="collection-tile-cta">Shop co-ords <span>→</span></span></div>
         </a>
-        <a className="collection-tile collection-occasion" href="/category/occasion" aria-label="Shop occasion">
-          <img src={collectionImages.occasion} alt="Occasion collection" />
-          <div><h3>Occasion</h3><p>For weddings,<br />parties &amp; all the<br />special plans.</p><span className="collection-tile-cta">Shop occasion <span>→</span></span></div>
+        <a className="collection-tile collection-occasion" href="/category/jumpsuits" aria-label="Shop jumpsuits">
+          <img src={collectionImages.occasion} alt="Jumpsuits collection" />
+          <div><h3>Jumpsuits</h3><p>One-piece looks<br />made to stand<br />out.</p><span className="collection-tile-cta">Shop jumpsuits <span>→</span></span></div>
         </a>
-        <a className="collection-tile collection-denim" href="/category/denim" aria-label="Shop denim">
-          <img src={collectionImages.denim} alt="Denim collection" />
-          <div><h3>Denim</h3><p>Everyday staples<br />with a fresh<br />season twist.</p><span className="collection-tile-cta">Shop denim <span>→</span></span></div>
+        <a className="collection-tile collection-denim" href="/category/trousers" aria-label="Shop trousers">
+          <img src={collectionImages.denim} alt="Trousers collection" />
+          <div><h3>Trousers</h3><p>Everyday staples<br />with a polished<br />finish.</p><span className="collection-tile-cta">Shop trousers <span>→</span></span></div>
         </a>
-        <a className="collection-tile collection-accessories" href="/category/accessories" aria-label="Shop accessories">
-          <img src={collectionImages.accessories} alt="Accessories collection" />
-          <div><h3>Accessories</h3><p>The finishing<br />touch.</p><span className="collection-tile-cta">Shop accessories <span>→</span></span></div>
+        <a className="collection-tile collection-accessories" href="/category/jewellery" aria-label="Shop jewellery">
+          <img src={collectionImages.accessories} alt="Jewellery collection" />
+          <div><h3>Jewellery</h3><p>The finishing<br />touch.</p><span className="collection-tile-cta">Shop jewellery <span>→</span></span></div>
         </a>
       </section>
       <section className="products-section container home-obsessions" aria-labelledby="obsessions-heading">
@@ -1225,7 +1224,11 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
   const categories = getStorefrontCategories();
   const category = categories.find((item) => slugify(item.name) === params.slug);
   if (!category) return <NotFoundRoute />;
-  const products = getStorefrontProducts().filter((product) => slugify(product.category) === params.slug);
+  const childCategoryNames = categories
+    .filter((item) => item.parentId === category.id)
+    .map((item) => slugify(item.name));
+  const matchingCategorySlugs = new Set([params.slug, ...childCategoryNames]);
+  const products = getStorefrontProducts().filter((product) => matchingCategorySlugs.has(slugify(product.category)));
 
   return (
     <Shell>

@@ -86,11 +86,17 @@ function normalizeProduct(value: unknown, index: number): JsonRecord {
 
 function normalizeCategory(value: unknown, index: number): JsonRecord {
   const category = isRecord(value) ? value : {};
+  const parentId = category.parentId === null
+    ? null
+    : typeof category.parentId === "number" && Number.isInteger(category.parentId) && category.parentId > 0
+      ? category.parentId
+      : null;
   return {
     id: asPositiveInteger(category.id, index + 1),
     name: asText(category.name, "", 100),
     image: asText(category.image, "", 2000),
     description: asText(category.description, "", 1000),
+    parentId,
   };
 }
 

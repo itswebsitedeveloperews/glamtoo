@@ -48,6 +48,7 @@ export type CatalogCategory = {
   name: string;
   image: string;
   description: string;
+  parentId?: number | null;
 };
 
 const catalogMediaDatabaseName = "glam-too-catalog-media";
@@ -216,12 +217,21 @@ export function getCatalogProductImages(product: Pick<CatalogProduct, "image" | 
 }
 
 export const catalogCategories: CatalogCategory[] = [
-  { id: 1, name: "Dresses", image: dressesImage, description: "From day dates to after dark." },
-  { id: 2, name: "Occasion", image: occasionImage, description: "For weddings, parties, and special plans." },
-  { id: 3, name: "Co-Ords", image: coOrdsImage, description: "Effortless matching sets made to wear." },
-  { id: 4, name: "Denim", image: denimImage, description: "Everyday staples with a fresh season twist." },
-  { id: 5, name: "Accessories", image: accessoriesImage, description: "The finishing touch to every look." },
-  { id: 6, name: "Coats", image: militaryStyleJacketImage, description: "Polished layers for cooler days." },
+  { id: 1, name: "New In", image: dressesImage, description: "The latest arrivals at Glam Too Boutique.", parentId: null },
+  { id: 2, name: "Clothes", image: coOrdsImage, description: "Outfits for every plan.", parentId: null },
+  { id: 3, name: "Handbags", image: accessoriesImage, description: "Stunning handbags for every occasion.", parentId: null },
+  { id: 4, name: "Purses", image: accessoriesImage, description: "Chic purses and everyday essentials.", parentId: null },
+  { id: 5, name: "Jewellery", image: occasionImage, description: "Finishing touches for every look.", parentId: null },
+  { id: 201, name: "Dresses", image: dressesImage, description: "From day dates to after dark.", parentId: 2 },
+  { id: 202, name: "Tops", image: coOrdsImage, description: "Polished tops for effortless styling.", parentId: 2 },
+  { id: 203, name: "Trousers", image: denimImage, description: "Everyday and occasion-ready trousers.", parentId: 2 },
+  { id: 204, name: "Co-ords", image: coOrdsImage, description: "Effortless matching sets made to wear.", parentId: 2 },
+  { id: 205, name: "Jumpsuits", image: occasionImage, description: "One-piece outfits made to stand out.", parentId: 2 },
+  { id: 206, name: "Coats", image: militaryStyleJacketImage, description: "Polished layers for cooler days.", parentId: 2 },
+  { id: 501, name: "Necklace", image: accessoriesImage, description: "Necklaces to complete your look.", parentId: 5 },
+  { id: 502, name: "Earrings", image: accessoriesImage, description: "Statement and everyday earrings.", parentId: 5 },
+  { id: 503, name: "Bracelet", image: accessoriesImage, description: "Chic bracelets for every style.", parentId: 5 },
+  { id: 504, name: "Watches", image: accessoriesImage, description: "Stylish watches for every day.", parentId: 5 },
 ];
 
 export const catalogProducts: CatalogProduct[] = [
@@ -244,7 +254,7 @@ export const catalogProducts: CatalogProduct[] = [
     id: 102,
     slug: "ella-tailored-jumpsuit",
     name: "Ella Tailored Jumpsuit",
-    category: "Co-Ords",
+    category: "Jumpsuits",
     price: "£59.99",
     stock: 8,
     status: "Published",
@@ -259,7 +269,7 @@ export const catalogProducts: CatalogProduct[] = [
     id: 103,
     slug: "mila-satin-maxi-dress",
     name: "Mila Satin Maxi Dress",
-    category: "Occasion",
+    category: "Dresses",
     price: "£44.99",
     stock: 6,
     status: "Published",
@@ -274,7 +284,7 @@ export const catalogProducts: CatalogProduct[] = [
     id: 104,
     slug: "wedding-guest-satin-dress",
     name: "Wedding Guest Satin Dress",
-    category: "Occasion",
+    category: "Dresses",
     price: "£89.99",
     stock: 9,
     status: "Published",
@@ -289,7 +299,7 @@ export const catalogProducts: CatalogProduct[] = [
     id: 105,
     slug: "weekend-plans-sculpted-top",
     name: "Weekend Plans Sculpted Top",
-    category: "Co-Ords",
+    category: "Tops",
     price: "£39.99",
     stock: 11,
     status: "Published",
@@ -304,7 +314,7 @@ export const catalogProducts: CatalogProduct[] = [
     id: 106,
     slug: "day-out-floral-jumpsuit",
     name: "Day Out Floral Jumpsuit",
-    category: "Dresses",
+    category: "Jumpsuits",
     price: "£69.99",
     stock: 10,
     status: "Published",
@@ -319,7 +329,7 @@ export const catalogProducts: CatalogProduct[] = [
     id: 107,
     slug: "date-night-satin-halter-dress",
     name: "Date Night Satin Halter Dress",
-    category: "Occasion",
+    category: "Dresses",
     price: "£79.99",
     stock: 7,
     status: "Published",

@@ -37,6 +37,7 @@ type Category = {
   name: string;
   image: string;
   description: string;
+  parentId?: number | null;
 };
 
 function resolveBuiltInCatalogAssets(products: Product[], categories: Category[]) {
@@ -624,7 +625,7 @@ function blankProduct(category: string): ProductDraft {
 }
 
 function blankCategory(): CategoryDraft {
-  return { name: "", image: "", description: "" };
+  return { name: "", image: "", description: "", parentId: null };
 }
 
 function blankCoupon(): CouponDraft {
@@ -1710,7 +1711,8 @@ export default function AdminDashboard({
   const [categorySaving, setCategorySaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [, setCatalogMediaVersion] = useState(0);
-  const categoryNames = categories.map((category) => category.name);
+  const parentCategoryIds = new Set(categories.map((category) => category.parentId).filter((id): id is number => typeof id === "number"));
+  const categoryNames = categories.filter((category) => !parentCategoryIds.has(category.id)).map((category) => category.name);
 
   useEffect(() => {
     function handleStorageError(event: Event) {
@@ -1758,9 +1760,37 @@ export default function AdminDashboard({
           window.localStorage.setItem(catalogMigrationStorageKey, "complete");
         } else if (!catalog.initialized) {
           nextCatalog = await publishCatalog(catalogProducts, initialCategories);
+        }
+        const legacyCategoryNames = new Set(["Occasion", "Co-Ords", "Denim", "Accessories"]);
+        const needsCategoryHierarchyMigration = (nextCatalog.categories ?? []).some((category) =>
+          legacyCategoryNames.has(category.name)
+          || (category.name === "Dresses" && !category.parentId),
+        );
+        if (needsCategoryHierarchyMigration) {
+          const categoryByProductId = new Map<number, string>([
+            [101, "Dresses"],
+            [102, "Jumpsuits"],
+            [103, "Dresses"],
+            [104, "Dresses"],
+            [105, "Tops"],
+            [106, "Jumpsuits"],
+            [107, "Dresses"],
+            [108, "Coats"],
+          ]);
+          const legacyCategoryMap = new Map<string, string>([
+            ["Occasion", "Dresses"],
+            ["Co-Ords", "Co-ords"],
+            ["Denim", "Trousers"],
+            ["Accessories", "Jewellery"],
+          ]);
+          const remappedProducts = (nextCatalog.products ?? []).map((product) => ({
+            ...product,
+            category: categoryByProductId.get(product.id) ?? legacyCategoryMap.get(product.category) ?? product.category,
+          }));
+          nextCatalog = await publishCatalog(remappedProducts, initialCategories);
         } else {
           const existingProductIds = new Set((catalog.products ?? []).map((product) => product.id));
-          const existingCategoryIds = new Set((catalog.categories ?? []).map((category) => category.id));
+          const existingCategoryIds = new Set((nextCatalog.categories ?? []).map((category) => category.id));
           const missingProducts = catalogProducts.filter((product) => !existingProductIds.has(product.id));
           const missingCategories = initialCategories.filter((category) => !existingCategoryIds.has(category.id));
           if (missingProducts.length > 0 || missingCategories.length > 0) {
@@ -2005,8 +2035,8 @@ export default function AdminDashboard({
     setCategorySaving(true);
     try {
       const nextCategories = editingCategoryId !== null
-        ? categories.map((category) => category.id === editingCategoryId ? { ...category, name, image: categoryDraft.image.trim(), description } : category)
-        : [...categories, { id: Date.now(), name, image: categoryDraft.image.trim(), description }];
+        ? categories.map((category) => category.id === editingCategoryId ? { ...category, name, image: categoryDraft.image.trim(), description, parentId: categoryDraft.parentId ?? null } : category)
+        : [...categories, { id: Date.now(), name, image: categoryDraft.image.trim(), description, parentId: categoryDraft.parentId ?? null }];
       const catalog = await publishCatalog(products, nextCategories);
       commitProducts(catalog.products!);
       commitCategories(catalog.categories!);
@@ -2022,13 +2052,17 @@ export default function AdminDashboard({
 
   function editCategory(category: Category) {
     setEditingCategoryId(category.id);
-    setCategoryDraft({ name: category.name, image: category.image, description: category.description });
+    setCategoryDraft({ name: category.name, image: category.image, description: category.description, parentId: category.parentId ?? null });
     setCategoryImageFileName("");
     setNotice("");
     setSection("categories");
   }
 
   async function deleteCategory(category: Category) {
+    if (categories.some((item) => item.parentId === category.id)) {
+      setNotice(`Move or delete the subcategories inside ${category.name} before deleting it.`);
+      return;
+    }
     try {
       const catalog = await publishCatalog(products, categories.filter((item) => item.id !== category.id));
       commitProducts(catalog.products!);
@@ -2616,6 +2650,7 @@ export default function AdminDashboard({
                       {getCatalogMediaSource(category.image) ? <img src={getCatalogMediaSource(category.image)} alt="" /> : <div className="admin-category-image-empty">No image</div>}
                       <div className="admin-category-card-content">
                         <h3>{category.name}</h3>
+                        {category.parentId && <p>Parent: {categories.find((item) => item.id === category.parentId)?.name ?? "Unknown"}</p>}
                         <p>{category.description || "No description yet."}</p>
                         <div className="admin-category-actions"><button type="button" onClick={() => editCategory(category)}>Edit</button><button type="button" onClick={() => deleteCategory(category)}>Delete</button></div>
                       </div>
@@ -2627,6 +2662,12 @@ export default function AdminDashboard({
                 <p className="admin-eyebrow">{editingCategoryId !== null ? "Edit category" : "New category"}</p>
                 <h2>{editingCategoryId !== null ? "Update collection" : "Add a collection"}</h2>
                 <label>Category title<input value={categoryDraft.name} onChange={(event) => setCategoryDraft((current) => ({ ...current, name: event.target.value }))} required placeholder="e.g. Weekend plans" /></label>
+                 <label>Parent category
+                   <select value={categoryDraft.parentId ?? ""} onChange={(event) => setCategoryDraft((current) => ({ ...current, parentId: event.target.value ? Number(event.target.value) : null }))}>
+                     <option value="">None — top-level category</option>
+                     {categories.filter((category) => !category.parentId && category.id !== editingCategoryId).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                   </select>
+                 </label>
                 <label>Image URL<input type="text" value={categoryDraft.image.startsWith("data:") ? "" : categoryDraft.image} onChange={(event) => { setCategoryImageFileName(""); setCategoryDraft((current) => ({ ...current, image: event.target.value })); }} placeholder="https://... or an existing image path" /></label>
                 <div className="admin-image-upload">
                   <label className="admin-upload-button">Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleCategoryImageUpload} /></label>
