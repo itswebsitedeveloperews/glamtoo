@@ -13,6 +13,7 @@ import dateNightProductImage from "@assets/glam-me-9_1787655658625.webp";
 import militaryStyleJacketImage from "@assets/military-style-jacket.webp";
 import meshFloralSleeveTracksuitImage from "@assets/mesh-floral-sleeve-tracksuit.jpg";
 import printedAysemetricTracksuitImage from "@assets/printed-aysemetric-tracksuit.jpg";
+import denimTrimRibbedCardiganImage from "@assets/denim-trim-ribbed-cardigan.jpg";
 
 export type CatalogVariation = {
   id: number;
@@ -393,6 +394,21 @@ export const catalogProducts: CatalogProduct[] = [
     description: "Printed Aysemetric Tracksuit",
     sku: "GM-PRINTED-AYSEMETRIC",
     image: printedAysemetricTracksuitImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 111,
+    slug: "denim-trim-ribbed-cardigan",
+    name: "Denim Trim Ribbed Cardigan",
+    category: "Tops",
+    price: "£19.99",
+    stock: 4,
+    status: "Published",
+    type: "Simple",
+    description: "Denim Trim Ribbed Cardigan",
+    sku: "GM-DENIM-TRIM-CARDIGAN",
+    image: denimTrimRibbedCardiganImage,
     position: "50% 50%",
     variations: [],
   },
