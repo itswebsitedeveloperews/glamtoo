@@ -10,6 +10,7 @@ import weddingProductImage from "@assets/glam-me-10_1787655658624.webp";
 import weekendProductImage from "@assets/glam-me-11_1787655658625.webp";
 import dayOutProductImage from "@assets/glam-me-8_1787655658625.webp";
 import dateNightProductImage from "@assets/glam-me-9_1787655658625.webp";
+import militaryStyleJacketImage from "@assets/military-style-jacket.webp";
 
 export type CatalogVariation = {
   id: number;
@@ -220,6 +221,7 @@ export const catalogCategories: CatalogCategory[] = [
   { id: 3, name: "Co-Ords", image: coOrdsImage, description: "Effortless matching sets made to wear." },
   { id: 4, name: "Denim", image: denimImage, description: "Everyday staples with a fresh season twist." },
   { id: 5, name: "Accessories", image: accessoriesImage, description: "The finishing touch to every look." },
+  { id: 6, name: "Coats", image: militaryStyleJacketImage, description: "Polished layers for cooler days." },
 ];
 
 export const catalogProducts: CatalogProduct[] = [
@@ -327,5 +329,24 @@ export const catalogProducts: CatalogProduct[] = [
     image: dateNightProductImage,
     position: "50% 50%",
     variations: [],
+  },
+  {
+    id: 108,
+    slug: "military-style-jacket",
+    name: "Military Style Jacket",
+    category: "Coats",
+    price: "£35.99",
+    stock: 4,
+    status: "Published",
+    type: "Variable",
+    description: "White Military Style Jacket",
+    longDescription: "A knit jacket featuring a classic military-inspired design with button detailing and a front zip fastening. Pair it with jeans, trousers or a skirt for an effortlessly polished style, ideal for casual days or dressing up.",
+    sku: "GM-MILITARY",
+    image: militaryStyleJacketImage,
+    position: "50% 50%",
+    variations: [
+      { id: 1081, size: "S/M", colour: "White", sku: "GM-MILITARY-SM", price: "£35.99", stock: 2 },
+      { id: 1082, size: "M/L", colour: "White", sku: "GM-MILITARY-ML", price: "£35.99", stock: 2 },
+    ],
   },
 ];

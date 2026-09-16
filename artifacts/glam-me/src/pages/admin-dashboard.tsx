@@ -1758,6 +1758,18 @@ export default function AdminDashboard({
           window.localStorage.setItem(catalogMigrationStorageKey, "complete");
         } else if (!catalog.initialized) {
           nextCatalog = await publishCatalog(catalogProducts, initialCategories);
+        } else {
+          const existingProductIds = new Set((catalog.products ?? []).map((product) => product.id));
+          const existingCategoryIds = new Set((catalog.categories ?? []).map((category) => category.id));
+          const missingProducts = catalogProducts.filter((product) => !existingProductIds.has(product.id));
+          const missingCategories = initialCategories.filter((category) => !existingCategoryIds.has(category.id));
+          if (missingProducts.length > 0 || missingCategories.length > 0) {
+            nextCatalog = await publishCatalog(
+              [...(catalog.products ?? []), ...missingProducts],
+              [...(catalog.categories ?? []), ...missingCategories],
+            );
+            await Promise.all(missingProducts.map((product) => syncProductInventory(product)));
+          }
         }
         if (!active) return;
         const resolvedCatalog = resolveBuiltInCatalogAssets(
@@ -1939,7 +1951,7 @@ export default function AdminDashboard({
   }
 
   function syncProductInventory(product: Product) {
-    void fetch(`/api/admin/catalog/products/${product.id}`, {
+    return fetch(`/api/admin/catalog/products/${product.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(product),
