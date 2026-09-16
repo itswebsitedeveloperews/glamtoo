@@ -42,10 +42,16 @@ function asNonNegativeInteger(value: unknown, fallback = 0) {
 
 function normalizeVariation(value: unknown, index: number): JsonRecord {
   const variation = isRecord(value) ? value : {};
+  const attributes = isRecord(variation.attributes)
+    ? Object.fromEntries(Object.entries(variation.attributes)
+      .filter(([key, item]) => /^[a-zA-Z0-9 _-]{1,60}$/.test(key) && typeof item === "string")
+      .map(([key, item]) => [key.trim(), String(item).trim().slice(0, 200)]))
+    : {};
   return {
     id: asPositiveInteger(variation.id, index + 1),
     size: asText(variation.size),
     colour: asText(variation.colour),
+    attributes,
     sku: asText(variation.sku, "", 100),
     price: asText(variation.price, "", 50),
     stock: asNonNegativeInteger(variation.stock),
@@ -62,7 +68,9 @@ function normalizeProduct(value: unknown, index: number): JsonRecord {
     ? product.variations.map(normalizeVariation)
     : [];
   const variationAttributes = Array.isArray(product.variationAttributes)
-    ? product.variationAttributes.filter((attribute): attribute is "size" | "colour" => attribute === "size" || attribute === "colour")
+    ? [...new Set(product.variationAttributes.filter((attribute): attribute is string =>
+      typeof attribute === "string" && /^[a-zA-Z0-9 _-]{1,60}$/.test(attribute.trim()),
+    ).map((attribute) => attribute.trim()))]
     : [];
   return {
     id: asPositiveInteger(product.id, index + 1),

@@ -85,6 +85,7 @@ type CartItem = {
   size: string;
   colour?: string;
   variationId?: number;
+  options?: Record<string, string>;
   quantity: number;
 };
 
@@ -265,6 +266,9 @@ function getCartItems(): CartItem[] {
           size: item.size as string,
           colour: typeof item.colour === 'string' ? item.colour : undefined,
           variationId: typeof item.variationId === 'number' ? item.variationId : undefined,
+          options: item.options && typeof item.options === 'object'
+            ? Object.fromEntries(Object.entries(item.options).filter(([, value]) => typeof value === 'string'))
+            : undefined,
           quantity: item.quantity as number,
         }))
       : [];
@@ -320,12 +324,23 @@ function getCartQueryItem(): CartItem | null {
   const variationId = Number(params.get('variation'));
   const colour = params.get('colour');
   const quantity = Number(params.get('quantity'));
+  const optionsParam = params.get('options');
+  let options: Record<string, string> | undefined;
+  try {
+    const parsedOptions = optionsParam ? JSON.parse(optionsParam) : null;
+    if (parsedOptions && typeof parsedOptions === 'object' && !Array.isArray(parsedOptions)) {
+      options = Object.fromEntries(Object.entries(parsedOptions).filter(([, value]) => typeof value === 'string')) as Record<string, string>;
+    }
+  } catch {
+    options = undefined;
+  }
   return Number.isInteger(productId) && productId > 0 && size
     ? {
         productId,
         size,
         colour: colour || undefined,
         variationId: Number.isInteger(variationId) && variationId > 0 ? variationId : undefined,
+        options,
         quantity: Number.isInteger(quantity) && quantity > 0 ? quantity : 1,
       }
     : null;
@@ -338,7 +353,8 @@ function getCartCount() {
     item.productId === queryItem.productId
     && item.size === queryItem.size
     && item.colour === queryItem.colour
-    && item.variationId === queryItem.variationId,
+    && item.variationId === queryItem.variationId
+    && JSON.stringify(item.options ?? {}) === JSON.stringify(queryItem.options ?? {}),
   );
   return items.reduce((total, item) => total + item.quantity, 0) + (queryItem && !hasQueryItem ? 1 : 0);
 }
@@ -364,11 +380,13 @@ function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'pr
     ? product.variations.find((variation) => variation.id === selection.variationId)?.stock ?? 0
     : product.stock;
   const items = getCartItems();
+  const optionSignature = (options?: Record<string, string>) => JSON.stringify(Object.entries(options ?? {}).sort(([a], [b]) => a.localeCompare(b)));
   const existingIndex = items.findIndex((item) =>
     item.productId === product.id
     && item.size === size
     && item.colour === selection.colour
-    && item.variationId === selection.variationId,
+    && item.variationId === selection.variationId
+    && optionSignature(item.options) === optionSignature(selection.options)
   );
   const nextItems = [...items];
   if (existingIndex >= 0) {
@@ -382,6 +400,7 @@ function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'pr
       size,
       colour: selection.colour,
       variationId: selection.variationId,
+      options: selection.options,
       quantity: Math.min(availableStock, requestedQuantity),
     });
   }
@@ -1285,21 +1304,23 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     ? product.variations
     : [];
   const availableVariations = productVariations.filter((variation) => variation.stock > 0);
-  const sizes = [...new Set(productVariations.map((variation) => variation.size).filter(Boolean))];
-  const colours = [...new Set(productVariations.map((variation) => variation.colour).filter(Boolean))];
-  const hasCompatibleVariation = (size?: string, colour?: string) =>
+  const variationAttributes = product?.variationAttributes ?? [
+    ...(productVariations.some((variation) => variation.size) ? ['size'] : []),
+    ...(productVariations.some((variation) => variation.colour) ? ['colour'] : []),
+  ];
+  const optionValue = (variation: typeof productVariations[number], attribute: string) =>
+    attribute === 'size' ? variation.size : attribute === 'colour' ? variation.colour : variation.attributes?.[attribute] ?? '';
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const hasCompatibleVariation = (options: Record<string, string>) =>
     availableVariations.some((variation) =>
-      (!size || variation.size === size) && (!colour || variation.colour === colour),
+      variationAttributes.every((attribute) => !options[attribute] || optionValue(variation, attribute) === options[attribute]),
     );
-  const hasAllRequiredSelections =
-    (sizes.length === 0 || Boolean(selectedSize))
-    && (colours.length === 0 || Boolean(selectedColour));
+  const hasAllRequiredSelections = variationAttributes.every((attribute) => Boolean(selectedOptions[attribute]));
   const selectedVariation = product?.type === 'Variable'
-    ? (sizes.length > 0 && !selectedSize) || (colours.length > 0 && !selectedColour)
+    ? !hasAllRequiredSelections
       ? undefined
       : availableVariations.find((variation) =>
-      (!sizes.length || variation.size === selectedSize)
-      && (!colours.length || variation.colour === selectedColour),
+      variationAttributes.every((attribute) => optionValue(variation, attribute) === selectedOptions[attribute]),
     )
     : undefined;
   const displayedPrice = selectedVariation?.price ?? product?.price ?? '';
@@ -1345,7 +1366,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
       return;
     }
     const selection = selectedVariation
-      ? { size: selectedVariation.size || 'One size', colour: selectedVariation.colour || undefined, variationId: selectedVariation.id }
+      ? { size: selectedVariation.size || 'One size', colour: selectedVariation.colour || undefined, options: selectedVariation.attributes, variationId: selectedVariation.id }
       : { size: 'One size' };
     const wasSaved = addProductToCart(selectedProduct, selection, quantity);
     const fallbackParams = new URLSearchParams({
@@ -1354,6 +1375,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     });
     if (selection.colour) fallbackParams.set('colour', selection.colour);
     if (selection.variationId) fallbackParams.set('variation', String(selection.variationId));
+    if (selection.options && Object.keys(selection.options).length > 0) fallbackParams.set('options', JSON.stringify(selection.options));
     fallbackParams.set('quantity', String(quantity));
     window.location.href = wasSaved ? '/cart' : `/cart?${fallbackParams.toString()}`;
   }
@@ -1437,8 +1459,10 @@ function ProductDetail({ params }: { params: { slug: string } }) {
               <input type="hidden" name="product" value={product.id} />
                {product.type === 'Variable' && (
                  <>
-                   {sizes.length > 0 && <div className="field"><label htmlFor={`product-size-${product.id}`}>Select size</label><select id={`product-size-${product.id}`} name="size" value={selectedSize} onChange={(event) => { const nextSize = event.target.value; setSelectedSize(nextSize); if (selectedColour && !hasCompatibleVariation(nextSize, selectedColour)) setSelectedColour(''); setVariationMessage(''); }} required data-testid={`select-product-size-${product.id}`}><option value="" disabled>Choose a size</option>{sizes.map((size) => <option key={size} disabled={!hasAllRequiredSelections && !hasCompatibleVariation(size, selectedColour || undefined)}>{size}</option>)}</select></div>}
-                   {colours.length > 0 && <div className="field"><label htmlFor={`product-colour-${product.id}`}>Select colour</label><select id={`product-colour-${product.id}`} name="colour" value={selectedColour} onChange={(event) => { const nextColour = event.target.value; setSelectedColour(nextColour); if (selectedSize && !hasCompatibleVariation(selectedSize, nextColour)) setSelectedSize(''); setVariationMessage(''); }} required data-testid={`select-product-colour-${product.id}`}><option value="" disabled>Choose a colour</option>{colours.map((colour) => <option key={colour} disabled={!hasAllRequiredSelections && !hasCompatibleVariation(selectedSize || undefined, colour)}>{colour}</option>)}</select></div>}
+                   {variationAttributes.map((attribute) => {
+                     const values = [...new Set(productVariations.map((variation) => optionValue(variation, attribute)).filter(Boolean))];
+                     return <div className="field" key={attribute}><label htmlFor={`product-${attribute}-${product.id}`}>Select {attribute === 'size' ? 'size' : attribute === 'colour' ? 'colour' : attribute}</label><select id={`product-${attribute}-${product.id}`} name={attribute} value={selectedOptions[attribute] ?? ''} onChange={(event) => { const next = { ...selectedOptions, [attribute]: event.target.value }; setSelectedOptions(next); setVariationMessage(''); }} required data-testid={`select-product-${attribute}-${product.id}`}><option value="" disabled>Choose {attribute === 'size' ? 'a size' : attribute === 'colour' ? 'a colour' : `a ${attribute}`}</option>{values.map((value) => <option key={value} value={value} disabled={!hasAllRequiredSelections && !hasCompatibleVariation({ ...selectedOptions, [attribute]: value })}>{value}</option>)}</select></div>;
+                   })}
                    {availableVariations.length === 0 && <p className="variation-message">This product is currently unavailable.</p>}
                    {variationMessage && <p className="variation-message" role="alert">{variationMessage}</p>}
                  </>
@@ -2140,7 +2164,7 @@ function Cart() {
                   <img src={product.image} alt={product.name} style={{ objectPosition: product.position }} />
                   <div>
                     <h3>{product.name}</h3>
-                    <p>{[item.size !== 'One size' ? item.size : '', item.colour ?? ''].filter(Boolean).join(' · ')}</p>
+                    <p>{[item.size !== 'One size' ? item.size : '', item.colour ?? '', ...Object.values(item.options ?? {})].filter(Boolean).join(' · ')}</p>
                     <div className="cart-quantity" aria-label={`Quantity for ${product.name}`}>
                       <button
                         className="cart-quantity-button"
@@ -2568,7 +2592,7 @@ function Checkout() {
           </div>
           <aside className="checkout-order-review">
             <div className="checkout-order-heading"><h2>Your order</h2><span>{cartLines.reduce((count, { item }) => count + item.quantity, 0)} item{cartLines.reduce((count, { item }) => count + item.quantity, 0) === 1 ? "" : "s"}</span></div>
-            {cartLines.length === 0 ? <div className="checkout-empty-order"><p>Your bag is empty.</p><a className="text-link" href="/shop">Continue shopping</a></div> : <div className="checkout-order-items">{cartLines.map(({ item, product, variation }) => <article className="checkout-order-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ""}`}><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /><div><h3>{product.name}</h3><p>{[item.size !== "One size" ? item.size : "", item.colour ?? ""].filter(Boolean).join(" · ") || "One size"} · Qty {item.quantity}</p></div><strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong></article>)}</div>}
+            {cartLines.length === 0 ? <div className="checkout-empty-order"><p>Your bag is empty.</p><a className="text-link" href="/shop">Continue shopping</a></div> : <div className="checkout-order-items">{cartLines.map(({ item, product, variation }) => <article className="checkout-order-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ""}`}><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /><div><h3>{product.name}</h3><p>{[item.size !== "One size" ? item.size : "", item.colour ?? "", ...Object.values(item.options ?? {})].filter(Boolean).join(" · ") || "One size"} · Qty {item.quantity}</p></div><strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong></article>)}</div>}
             <div className="checkout-coupon" aria-label="Coupon code">
               <label htmlFor="checkout-coupon-code">Coupon code</label>
               {appliedCoupon ? (

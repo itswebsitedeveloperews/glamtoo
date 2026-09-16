@@ -391,6 +391,7 @@ function parseCatalogProductInput(value: unknown, productId: string): CatalogPro
         id: inventoryIdentifier(item.id),
         size: safeText(item.size, 80),
         colour: safeText(item.colour, 80),
+        attributes: Object.fromEntries(Object.entries(asRecord(item.attributes)).filter(([, value]) => typeof value === "string").map(([key, value]) => [key, String(value)])),
         price: safeText(item.price, 40),
         stock: Number(item.stock),
       };

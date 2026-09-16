@@ -16,6 +16,8 @@ export type CatalogVariation = {
   id: number;
   size: string;
   colour: string;
+  /** Values for named attributes (including custom attributes). Legacy size/colour remain canonical. */
+  attributes?: Record<string, string>;
   sku: string;
   price: string;
   stock: number;
@@ -40,7 +42,8 @@ export type CatalogProduct = {
   image: string;
   position: string;
   galleryImages?: string[];
-  variationAttributes?: Array<"size" | "colour">;
+  /** Ordered attribute keys. Built-ins use size and colour; any other key is a custom attribute name. */
+  variationAttributes?: string[];
   variations: CatalogVariation[];
 };
 

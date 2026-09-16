@@ -29,6 +29,7 @@ type ProductType = "Simple" | "Variable";
 
 type ProductVariation = CatalogVariation;
 type Product = CatalogProduct;
+type VariationAttribute = string;
 
 type ProductDraft = Omit<Product, "id">;
 
@@ -786,13 +787,13 @@ function ProductEditorWithMultipleUploads({
       return;
     }
     if (isVariableProduct && draft.variations.some((variation) =>
-      (draft.variationAttributes ?? []).some((attribute) => !variation[attribute].trim()),
+      (draft.variationAttributes ?? []).some((attribute) => !(attribute === "size" ? variation.size : attribute === "colour" ? variation.colour : variation.attributes?.[attribute] ?? "").trim()),
     )) {
       setValidationMessage("Complete every selected attribute for each variation.");
       return;
     }
     const combinationKeys = draft.variations.map((variation) =>
-      (draft.variationAttributes ?? []).map((attribute) => variation[attribute].trim().toLowerCase()).join("|"),
+      (draft.variationAttributes ?? []).map((attribute) => (attribute === "size" ? variation.size : attribute === "colour" ? variation.colour : variation.attributes?.[attribute] ?? "").trim().toLowerCase()).join("|"),
     );
     if (isVariableProduct && new Set(combinationKeys).size !== combinationKeys.length) {
       setValidationMessage("Each variation combination must be unique.");
@@ -834,29 +835,35 @@ function ProductEditorWithMultipleUploads({
           sku: current.sku ? `${current.sku}-${current.variations.length + 1}` : "",
           price: current.price,
           stock: 0,
+          attributes: {},
         },
       ],
     }));
   }
 
-  function toggleVariationAttribute(attribute: "size" | "colour") {
+  function toggleVariationAttribute(attribute: VariationAttribute) {
     setDraft((current) => {
       const attributes = current.variationAttributes ?? [];
       const enabled = attributes.includes(attribute);
       return {
         ...current,
-        variationAttributes: enabled
-          ? attributes.filter((item) => item !== attribute)
-          : [...attributes, attribute],
+        variationAttributes: enabled ? attributes.filter((item) => item !== attribute) : [...attributes, attribute],
         variations: enabled
-          ? current.variations.map((variation) => ({ ...variation, [attribute]: "" }))
+          ? current.variations.map((variation) => ({ ...variation, attributes: { ...variation.attributes, [attribute]: "" } }))
           : current.variations,
       };
     });
-    setValidationMessage("");
   }
 
-  function updateVariation(id: number, patch: Partial<ProductVariation>) {
+  function addCustomVariationAttribute() {
+    const name = window.prompt("Attribute name (for example Material or Length)")?.trim();
+    if (!name || !/^[a-zA-Z0-9 _-]{1,60}$/.test(name)) return;
+    setDraft((current) => current.variationAttributes?.includes(name)
+      ? current
+      : { ...current, variationAttributes: [...(current.variationAttributes ?? []), name] });
+  }
+
+  function updateVariation(id: number, patch: Partial<ProductVariation> & { attributes?: Record<string, string> }) {
     setDraft((current) => ({
       ...current,
       variations: current.variations.map((variation) =>
@@ -1058,24 +1065,32 @@ function ProductEditorWithMultipleUploads({
             <section className="admin-editor-card admin-variations-card">
               <div className="admin-card-heading">
                 <div><p className="admin-eyebrow">Variable product</p><h2>Variations</h2><p className="admin-card-description">Choose the attributes this product needs, then add each purchasable combination.</p></div>
-                <button className="admin-secondary" type="button" onClick={addVariation}>+ Add variation</button>
+                <button className="admin-secondary" type="button" onClick={addVariation} disabled={(draft.variationAttributes ?? []).length === 0}>+ Add variation</button>
+              </div>
+              <div className="admin-variation-attributes">
+                <span className="admin-card-description">Attributes</span>
+                <label><input type="checkbox" checked={(draft.variationAttributes ?? []).includes("size")} onChange={() => toggleVariationAttribute("size")} /> Size</label>
+                <label><input type="checkbox" checked={(draft.variationAttributes ?? []).includes("colour")} onChange={() => toggleVariationAttribute("colour")} /> Colour</label>
+                {(draft.variationAttributes ?? []).filter((attribute) => attribute !== "size" && attribute !== "colour").map((attribute) => <label key={attribute}><input type="checkbox" checked onChange={() => toggleVariationAttribute(attribute)} /> {attribute}</label>)}
+                <button className="admin-secondary" type="button" onClick={addCustomVariationAttribute}>+ Custom attribute</button>
               </div>
               <div className="admin-variation-attributes">
                 <strong>1. Choose attributes</strong>
                 <div>
                   <label><input type="checkbox" checked={(draft.variationAttributes ?? []).includes("size")} onChange={() => toggleVariationAttribute("size")} /> Size</label>
                   <label><input type="checkbox" checked={(draft.variationAttributes ?? []).includes("colour")} onChange={() => toggleVariationAttribute("colour")} /> Colour</label>
+                  {(draft.variationAttributes ?? []).filter((attribute) => attribute !== "size" && attribute !== "colour").map((attribute) => <label key={attribute}><input type="checkbox" checked onChange={() => toggleVariationAttribute(attribute)} /> {attribute}</label>)}
+                  <button type="button" className="admin-secondary" onClick={addCustomVariationAttribute}>+ Custom attribute</button>
                 </div>
               </div>
               {draft.variations.length === 0 ? (
-                <div className="admin-empty-variations"><strong>2. Add combinations</strong><span>Add each combination with its own SKU, price, and stock.</span><button className="admin-primary" type="button" onClick={addVariation}>Add first variation</button></div>
+                <div className="admin-empty-variations"><strong>2. Add combinations</strong><span>Add each combination with its own SKU, price, and stock.</span><button className="admin-primary" type="button" onClick={addVariation} disabled={(draft.variationAttributes ?? []).length === 0}>Add first variation</button></div>
               ) : (
                 <div className={`admin-variation-table ${(draft.variationAttributes ?? []).length === 1 ? "is-single-attribute" : ""}`}>
-                  <div className="admin-variation-table-head">{(draft.variationAttributes ?? []).includes("size") && <span>Size</span>}{(draft.variationAttributes ?? []).includes("colour") && <span>Colour</span>}<span>Variation SKU</span><span>Price *</span><span>Stock</span><span /></div>
+                  <div className="admin-variation-table-head">{(draft.variationAttributes ?? []).map((attribute) => <span key={attribute}>{attribute === "size" ? "Size" : attribute === "colour" ? "Colour" : attribute}</span>)}<span>Variation SKU</span><span>Price *</span><span>Stock</span><span /></div>
                   {draft.variations.map((variation) => (
                     <div className="admin-variation-row" key={variation.id}>
-                      {(draft.variationAttributes ?? []).includes("size") && <input aria-label="Variation size" value={variation.size} onChange={(event) => updateVariation(variation.id, { size: event.target.value })} placeholder="UK 8" />}
-                      {(draft.variationAttributes ?? []).includes("colour") && <input aria-label="Variation colour" value={variation.colour} onChange={(event) => updateVariation(variation.id, { colour: event.target.value })} placeholder="Blush" />}
+                      {(draft.variationAttributes ?? []).map((attribute) => <input key={attribute} aria-label={`Variation ${attribute}`} value={attribute === "size" ? variation.size : attribute === "colour" ? variation.colour : variation.attributes?.[attribute] ?? ""} onChange={(event) => attribute === "size" || attribute === "colour" ? updateVariation(variation.id, { [attribute]: event.target.value }) : updateVariation(variation.id, { attributes: { ...variation.attributes, [attribute]: event.target.value } })} placeholder={attribute === "size" ? "UK 8" : attribute === "colour" ? "Blush" : `Enter ${attribute}`} />)}
                       <input aria-label="Variation SKU" value={variation.sku} onChange={(event) => updateVariation(variation.id, { sku: event.target.value })} placeholder="GM-001-8" />
                       <input aria-label="Variation price" type="number" min="0.01" step="0.01" value={variation.price} onChange={(event) => updateVariation(variation.id, { price: event.target.value })} inputMode="decimal" placeholder="89.99" required />
                       <input aria-label="Variation stock" type="number" min="0" value={variation.stock} onChange={(event) => updateVariation(variation.id, { stock: Number(event.target.value) || 0 })} />
@@ -1234,6 +1249,10 @@ function ProductEditor({
            image: product.image,
            position: product.position,
            galleryImages: [...new Set((product.galleryImages ?? []).filter((image) => image !== product.image))],
+           variationAttributes: product.variationAttributes ?? [
+             ...(product.variations.some((variation) => variation.size) ? ["size"] : []),
+             ...(product.variations.some((variation) => variation.colour) ? ["colour"] : []),
+           ],
            variations: product.variations.map((variation) => ({ ...variation, price: getCatalogPriceInput(variation.price) })),
         }
       : blankProduct(categories[0] ?? "Dresses"),
@@ -1244,6 +1263,7 @@ function ProductEditor({
   const [galleryImageFileNames, setGalleryImageFileNames] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [pendingGalleryUploads, setPendingGalleryUploads] = useState(0);
+  const [customAttributeName, setCustomAttributeName] = useState("");
   const productImagePreview = getCatalogMediaSource(draft.image);
 
   const publishLabel = product && draft.status === "Published" ? "Update product" : "Publish product";
@@ -1293,6 +1313,27 @@ function ProductEditor({
       setValidationMessage("Add at least one variation or change the product type to Simple.");
       return;
     }
+    if (isVariableProduct && (draft.variationAttributes ?? []).length === 0) {
+      setValidationMessage("Choose at least one variation attribute.");
+      return;
+    }
+    if (isVariableProduct && draft.variations.some((variation) =>
+      (draft.variationAttributes ?? []).some((attribute) =>
+        !(attribute === "size" ? variation.size : attribute === "colour" ? variation.colour : variation.attributes?.[attribute] ?? "").trim(),
+      ),
+    )) {
+      setValidationMessage("Complete every selected attribute for each variation.");
+      return;
+    }
+    const combinationKeys = draft.variations.map((variation) =>
+      (draft.variationAttributes ?? []).map((attribute) =>
+        (attribute === "size" ? variation.size : attribute === "colour" ? variation.colour : variation.attributes?.[attribute] ?? "").trim().toLowerCase(),
+      ).join("|"),
+    );
+    if (isVariableProduct && new Set(combinationKeys).size !== combinationKeys.length) {
+      setValidationMessage("Each variation combination must be unique.");
+      return;
+    }
     if (isVariableProduct && draft.variations.some((variation) => !formatCatalogPrice(variation.price))) {
       setValidationMessage("Add a valid price for every variation before saving.");
       return;
@@ -1334,6 +1375,7 @@ function ProductEditor({
           sku: current.sku ? `${current.sku}-${current.variations.length + 1}` : "",
           price: current.price,
           stock: 0,
+          attributes: {},
         },
       ],
     }));
@@ -1346,6 +1388,37 @@ function ProductEditor({
         variation.id === id ? { ...variation, ...patch } : variation,
       ),
     }));
+  }
+
+  function toggleVariationAttribute(attribute: string) {
+    setDraft((current) => {
+      const attributes = current.variationAttributes ?? [];
+      const enabled = attributes.includes(attribute);
+      return {
+        ...current,
+        variationAttributes: enabled ? attributes.filter((item) => item !== attribute) : [...attributes, attribute],
+        variations: enabled ? current.variations.map((variation) => ({
+          ...variation,
+          size: attribute === "size" ? "" : variation.size,
+          colour: attribute === "colour" ? "" : variation.colour,
+          attributes: Object.fromEntries(Object.entries(variation.attributes ?? {}).filter(([key]) => key !== attribute)),
+        })) : current.variations,
+      };
+    });
+    setValidationMessage("");
+  }
+
+  function addCustomVariationAttribute() {
+    const name = customAttributeName.trim();
+    if (!name || !/^[a-zA-Z0-9 _-]{1,60}$/.test(name)) {
+      setValidationMessage("Enter an attribute name using letters, numbers, spaces, hyphens, or underscores.");
+      return;
+    }
+    setDraft((current) => current.variationAttributes?.includes(name)
+      ? current
+      : { ...current, variationAttributes: [...(current.variationAttributes ?? []), name] });
+    setCustomAttributeName("");
+    setValidationMessage("");
   }
 
   function removeVariation(id: number) {
@@ -1555,18 +1628,32 @@ function ProductEditor({
           {draft.type === "Variable" && (
             <section className="admin-editor-card admin-variations-card">
               <div className="admin-card-heading">
-                <div><p className="admin-eyebrow">Variable product</p><h2>Variations</h2><p className="admin-card-description">Add each purchasable combination of size, colour, price, and stock.</p></div>
-                <button className="admin-secondary" type="button" onClick={addVariation}>+ Add variation</button>
+                <div><p className="admin-eyebrow">Variable product</p><h2>Variations</h2><p className="admin-card-description">Choose the attributes this product needs, then add each purchasable combination.</p></div>
+                <button className="admin-secondary" type="button" onClick={addVariation} disabled={(draft.variationAttributes ?? []).length === 0}>+ Add variation</button>
+              </div>
+              <div className="admin-variation-attributes">
+                <strong>1. Choose attributes</strong>
+                <div>
+                  <label><input type="checkbox" checked={(draft.variationAttributes ?? []).includes("size")} onChange={() => toggleVariationAttribute("size")} /> Size</label>
+                  <label><input type="checkbox" checked={(draft.variationAttributes ?? []).includes("colour")} onChange={() => toggleVariationAttribute("colour")} /> Colour</label>
+                  {(draft.variationAttributes ?? []).filter((attribute) => attribute !== "size" && attribute !== "colour").map((attribute) => <label key={attribute}><input type="checkbox" checked onChange={() => toggleVariationAttribute(attribute)} /> {attribute}</label>)}
+                </div>
+                <div className="admin-custom-attribute-field">
+                  <input value={customAttributeName} onChange={(event) => setCustomAttributeName(event.target.value)} placeholder="e.g. Material or Length" maxLength={60} />
+                  <button className="admin-secondary" type="button" onClick={addCustomVariationAttribute}>+ Add custom attribute</button>
+                </div>
               </div>
               {draft.variations.length === 0 ? (
-                <div className="admin-empty-variations"><strong>No variations yet</strong><span>Add your first size and colour combination to make this product ready to sell.</span><button className="admin-primary" type="button" onClick={addVariation}>Add first variation</button></div>
+                <div className="admin-empty-variations"><strong>2. Add combinations</strong><span>Add each combination with its own SKU, price, and stock.</span><button className="admin-primary" type="button" onClick={addVariation} disabled={(draft.variationAttributes ?? []).length === 0}>Add first variation</button></div>
               ) : (
                 <div className="admin-variation-table">
-                  <div className="admin-variation-table-head"><span>Size</span><span>Colour</span><span>Variation SKU</span><span>Price *</span><span>Stock</span><span /></div>
+                  <div className="admin-variation-table-head" style={{ gridTemplateColumns: `${(draft.variationAttributes ?? []).map(() => "minmax(110px, 1fr)").join(" ")} minmax(150px, 1.35fr) minmax(90px, .8fr) minmax(75px, .65fr) 28px` }}>
+                    {(draft.variationAttributes ?? []).map((attribute) => <span key={attribute}>{attribute === "size" ? "Size" : attribute === "colour" ? "Colour" : attribute}</span>)}
+                    <span>Variation SKU</span><span>Price *</span><span>Stock</span><span />
+                  </div>
                   {draft.variations.map((variation) => (
-                    <div className="admin-variation-row" key={variation.id}>
-                      <input aria-label="Variation size" value={variation.size} onChange={(event) => updateVariation(variation.id, { size: event.target.value })} placeholder="UK 8" />
-                      <input aria-label="Variation colour" value={variation.colour} onChange={(event) => updateVariation(variation.id, { colour: event.target.value })} placeholder="Blush" />
+                    <div className="admin-variation-row" key={variation.id} style={{ gridTemplateColumns: `${(draft.variationAttributes ?? []).map(() => "minmax(110px, 1fr)").join(" ")} minmax(150px, 1.35fr) minmax(90px, .8fr) minmax(75px, .65fr) 28px` }}>
+                      {(draft.variationAttributes ?? []).map((attribute) => <input key={attribute} aria-label={`Variation ${attribute}`} value={attribute === "size" ? variation.size : attribute === "colour" ? variation.colour : variation.attributes?.[attribute] ?? ""} onChange={(event) => attribute === "size" || attribute === "colour" ? updateVariation(variation.id, { [attribute]: event.target.value }) : updateVariation(variation.id, { attributes: { ...variation.attributes, [attribute]: event.target.value } })} placeholder={attribute === "size" ? "UK 8" : attribute === "colour" ? "Blush" : `Enter ${attribute}`} />)}
                       <input aria-label="Variation SKU" value={variation.sku} onChange={(event) => updateVariation(variation.id, { sku: event.target.value })} placeholder="GM-001-8" />
                       <input aria-label="Variation price" type="number" min="0.01" step="0.01" value={variation.price} onChange={(event) => updateVariation(variation.id, { price: event.target.value })} inputMode="decimal" placeholder="89.99" required />
                       <input aria-label="Variation stock" type="number" min="0" value={variation.stock} onChange={(event) => updateVariation(variation.id, { stock: Number(event.target.value) || 0 })} />

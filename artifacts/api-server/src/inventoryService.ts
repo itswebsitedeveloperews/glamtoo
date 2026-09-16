@@ -29,6 +29,7 @@ export type CatalogProductInput = {
     id: string;
     size: string;
     colour: string;
+    attributes?: Record<string, string>;
     price: string;
     stock: number;
   }>;
@@ -38,8 +39,8 @@ export class InventoryError extends Error {
   statusCode = 409;
 }
 
-function formatVariationName(productName: string, size: string, colour: string) {
-  const options = [size, colour].filter(Boolean).join(" · ");
+function formatVariationName(productName: string, size: string, colour: string, attributes?: Record<string, string>) {
+  const options = [size, colour, ...Object.values(attributes ?? {})].filter(Boolean).join(" · ");
   return options ? `${productName} · ${options}` : productName;
 }
 
@@ -145,7 +146,7 @@ export async function syncCatalogProduct(input: CatalogProductInput) {
     ? input.variations.map((variation) => ({
       productId: input.id,
       variationId: variation.id,
-      name: formatVariationName(input.name, variation.size, variation.colour),
+      name: formatVariationName(input.name, variation.size, variation.colour, variation.attributes),
       description: input.description,
       unitAmount: parseUnitAmount(variation.price),
       stock: variation.stock,
