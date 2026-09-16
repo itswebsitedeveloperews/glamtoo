@@ -1015,7 +1015,7 @@ img { display: block; max-width: 100%; }
 .admin-overview-payment-button:hover { background: #713a4a; color: #fffdfb; }
 .admin-product-form { display: grid; grid-template-columns: 1.4fr 1fr .72fr .58fr auto; gap: 10px; align-items: end; margin: -12px 0 20px; padding: 18px; background: #eee7e2; border: 1px solid var(--line); }
 .admin-product-form label, .admin-simple-form label { display: grid; gap: 6px; color: var(--muted); font-size: 14px; }
-.admin-product-form input, .admin-product-form select, .admin-simple-form input, .admin-shipping-grid input, .admin-variation-layout select, .admin-table-row select { min-width: 0; height: 38px; border: 1px solid #d8d0ca; border-radius: 0; background: #fffdfb; padding: 0 10px; color: var(--ink); outline-color: #e23d6f; font-size: 14px; }
+.admin-product-form input, .admin-product-form select, .admin-simple-form input, .admin-simple-form select, .admin-shipping-grid input, .admin-variation-layout select, .admin-table-row select { min-width: 0; width: 100%; height: 38px; box-sizing: border-box; border: 1px solid #d8d0ca; border-radius: 0; background: #fffdfb; padding: 0 10px; color: var(--ink); outline-color: #e23d6f; font-size: 14px; }
 .admin-table-panel { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; padding: 0; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
 .admin-table { width: 100%; min-width: 720px; }
 .admin-table-head, .admin-table-row { display: grid; grid-template-columns: 2.1fr 1.1fr .7fr .55fr .75fr .55fr; align-items: center; gap: 14px; padding: 15px 22px; }
@@ -1536,6 +1536,8 @@ input:focus, select:focus, textarea:focus { outline: none; }
   font-size: 14px;
 }
 .admin-editor-input,
+.admin-simple-form input,
+.admin-simple-form select,
 .admin-category-form textarea,
 .admin-variation-row input {
   font-size: 16px;
