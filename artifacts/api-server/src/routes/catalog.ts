@@ -61,6 +61,9 @@ function normalizeProduct(value: unknown, index: number): JsonRecord {
   const variations = Array.isArray(product.variations)
     ? product.variations.map(normalizeVariation)
     : [];
+  const variationAttributes = Array.isArray(product.variationAttributes)
+    ? product.variationAttributes.filter((attribute): attribute is "size" | "colour" => attribute === "size" || attribute === "colour")
+    : [];
   return {
     id: asPositiveInteger(product.id, index + 1),
     slug: asText(product.slug, "", 200),
@@ -80,6 +83,7 @@ function normalizeProduct(value: unknown, index: number): JsonRecord {
     image: asText(product.image, "", 2000),
     position: asText(product.position, "50% 50%", 100),
     galleryImages,
+    variationAttributes: type === "Variable" ? variationAttributes : [],
     variations: type === "Variable" ? variations : [],
   };
 }

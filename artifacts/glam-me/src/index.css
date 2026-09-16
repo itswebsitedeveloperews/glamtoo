@@ -1282,6 +1282,12 @@ img { display: block; max-width: 100%; }
 .admin-empty-variations span { max-width: 425px; margin-bottom: 9px; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .admin-variation-table { overflow-x: auto; }
 .admin-variation-table-head, .admin-variation-row { display: grid; grid-template-columns: .8fr .9fr 1.2fr .7fr .55fr 28px; align-items: center; gap: 8px; min-width: 670px; }
+.admin-variation-table.is-single-attribute .admin-variation-table-head, .admin-variation-table.is-single-attribute .admin-variation-row { grid-template-columns: 1fr 1.35fr .8fr .65fr 28px; min-width: 570px; }
+.admin-variation-attributes { margin: 2px 0 17px; border: 1px solid #e6ddd7; background: #faf7f4; padding: 14px 16px; }
+.admin-variation-attributes > strong { display: block; margin-bottom: 10px; font-size: 16px; }
+.admin-variation-attributes > div { display: flex; flex-wrap: wrap; gap: 18px; }
+.admin-variation-attributes label { display: inline-flex; align-items: center; gap: 7px; font-size: 16px; }
+.admin-variation-attributes input { width: 17px; height: 17px; accent-color: #e23d6f; }
 .admin-variation-table-head { padding: 0 9px 10px; color: var(--muted); font-size: 14px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .admin-variation-row { padding: 9px; border-top: 1px solid #eee8e3; }
 .admin-variation-row input { width: 100%; min-width: 0; height: 36px; box-sizing: border-box; border: 1px solid #d8d0ca; border-radius: 0; background: #fffdfb; padding: 0 8px; color: var(--ink); outline-color: #e23d6f; font-size: 14px; }

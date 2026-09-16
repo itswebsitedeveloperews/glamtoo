@@ -40,6 +40,7 @@ export type CatalogProduct = {
   image: string;
   position: string;
   galleryImages?: string[];
+  variationAttributes?: Array<"size" | "colour">;
   variations: CatalogVariation[];
 };
 
@@ -354,9 +355,10 @@ export const catalogProducts: CatalogProduct[] = [
     sku: "GM-MILITARY",
     image: militaryStyleJacketImage,
     position: "50% 50%",
+    variationAttributes: ["size"],
     variations: [
-      { id: 1081, size: "S/M", colour: "White", sku: "GM-MILITARY-SM", price: "£35.99", stock: 2 },
-      { id: 1082, size: "M/L", colour: "White", sku: "GM-MILITARY-ML", price: "£35.99", stock: 2 },
+      { id: 1081, size: "S/M", colour: "", sku: "GM-MILITARY-SM", price: "£35.99", stock: 2 },
+      { id: 1082, size: "M/L", colour: "", sku: "GM-MILITARY-ML", price: "£35.99", stock: 2 },
     ],
   },
 ];
