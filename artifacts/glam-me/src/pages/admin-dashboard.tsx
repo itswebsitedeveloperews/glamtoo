@@ -39,6 +39,26 @@ type Category = {
   description: string;
 };
 
+function resolveBuiltInCatalogAssets(products: Product[], categories: Category[]) {
+  const resolvedProducts = products.map((product) => {
+    const fallback = catalogProducts.find((candidate) =>
+      candidate.id === product.id || candidate.name.toLowerCase() === product.name.toLowerCase(),
+    );
+    return fallback && product.image.startsWith("/assets/")
+      ? { ...product, image: fallback.image }
+      : product;
+  });
+  const resolvedCategories = categories.map((category) => {
+    const fallback = catalogCategories.find((candidate) =>
+      candidate.id === category.id || candidate.name.toLowerCase() === category.name.toLowerCase(),
+    );
+    return fallback && category.image.startsWith("/assets/")
+      ? { ...category, image: fallback.image }
+      : category;
+  });
+  return { products: resolvedProducts, categories: resolvedCategories };
+}
+
 type CategoryDraft = Omit<Category, "id">;
 
 type StripeStatus = {
@@ -1740,8 +1760,12 @@ export default function AdminDashboard({
           nextCatalog = await publishCatalog(catalogProducts, initialCategories);
         }
         if (!active) return;
-        commitProducts(nextCatalog.products ?? []);
-        commitCategories(nextCatalog.categories ?? []);
+        const resolvedCatalog = resolveBuiltInCatalogAssets(
+          nextCatalog.products ?? [],
+          nextCatalog.categories ?? [],
+        );
+        commitProducts(resolvedCatalog.products);
+        commitCategories(resolvedCatalog.categories);
       } catch (error) {
         if (active) setNotice(error instanceof Error ? error.message : "The shared catalog could not be loaded.");
       }
