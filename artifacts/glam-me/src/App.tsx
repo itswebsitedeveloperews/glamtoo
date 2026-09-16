@@ -523,7 +523,8 @@ function normalizeStorefrontProducts(products: Array<Partial<CatalogProduct>>): 
           price: formatCatalogPrice(variation.price),
         })),
       } as CatalogProduct;
-    });
+    })
+    .sort((first, second) => second.id - first.id);
 }
 function getStoredCatalogMediaRecords(): Array<Pick<CatalogProduct, "image" | "galleryImages">> {
   try {

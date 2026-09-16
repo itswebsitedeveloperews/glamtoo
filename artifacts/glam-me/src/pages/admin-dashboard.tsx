@@ -2743,7 +2743,7 @@ export default function AdminDashboard({
                 <span className="admin-muted-count">{products.length} products</span>
               </div>
               <div className="admin-product-catalog-grid">
-                {products.map((product) => (
+                {[...products].sort((first, second) => second.id - first.id).map((product) => (
                   <article className="admin-product-catalog-card" key={product.id} data-testid={`admin-card-product-${product.id}`}>
                     <div className="admin-product-catalog-image">
                       {getCatalogMediaSource(product.image) ? <img src={getCatalogMediaSource(product.image)} alt={`${product.name} product preview`} /> : <div className="admin-image-placeholder">Add product media</div>}
