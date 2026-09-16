@@ -475,7 +475,11 @@ function normalizeStorefrontProducts(products: Array<Partial<CatalogProduct>>): 
         slugify(category.name) === slugify(String(product.category ?? "")),
       );
       const productId = Number(product.id);
-      const primaryImage = getCatalogMediaSource(product.image || matchingCatalogProduct?.image || matchingCategory?.image || fashionImage)
+      const savedPrimaryImage = typeof product.image === "string" ? product.image : "";
+      const primaryImageSource = matchingCatalogProduct && savedPrimaryImage.startsWith("/assets/")
+        ? matchingCatalogProduct.image
+        : savedPrimaryImage || matchingCatalogProduct?.image || matchingCategory?.image || fashionImage;
+      const primaryImage = getCatalogMediaSource(primaryImageSource)
         || matchingCatalogProduct?.image
         || matchingCategory?.image
         || fashionImage;
@@ -525,7 +529,11 @@ function slugify(value: string): string {
 function getStorefrontCategories(): CatalogCategory[] {
   if (sharedCatalog) return sharedCatalog.categories.map((category) => ({
     ...category,
-    image: getCatalogMediaSource(category.image),
+    image: getCatalogMediaSource(
+      category.image.startsWith("/assets/")
+        ? catalogCategories.find((fallback) => slugify(fallback.name) === slugify(category.name))?.image ?? category.image
+        : category.image,
+    ),
   }));
   try {
     const stored = window.localStorage.getItem(adminCategoriesStorageKey);
