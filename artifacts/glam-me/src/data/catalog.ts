@@ -14,6 +14,7 @@ import militaryStyleJacketImage from "@assets/military-style-jacket.webp";
 import meshFloralSleeveTracksuitImage from "@assets/mesh-floral-sleeve-tracksuit.jpg";
 import printedAysemetricTracksuitImage from "@assets/printed-aysemetric-tracksuit.jpg";
 import denimTrimRibbedCardiganImage from "@assets/denim-trim-ribbed-cardigan.jpg";
+import aysemetricSequinDressImage from "@assets/aysemetric-sequin-dress.jpeg";
 
 export type CatalogVariation = {
   id: number;
@@ -411,5 +412,25 @@ export const catalogProducts: CatalogProduct[] = [
     image: denimTrimRibbedCardiganImage,
     position: "50% 50%",
     variations: [],
+  },
+  {
+    id: 112,
+    slug: "aysemetric-sequin-dress",
+    name: "Aysemetric Sequin Dress",
+    category: "Dresses",
+    price: "£29.99",
+    stock: 4,
+    status: "Published",
+    type: "Variable",
+    description: "Black Asymmetric Satin And Sequin Dress",
+    longDescription: "A glamorous satin and sequin asymmetric dress featuring a sleek, figure-flattering silhouette. The luxurious satin fabric creates an elegant, fluid drape, while shimmering sequin detailing adds a touch of sparkle and sophistication.",
+    sku: "GM-AYSEMETRIC-SEQUIN",
+    image: aysemetricSequinDressImage,
+    position: "50% 50%",
+    variationAttributes: ["size"],
+    variations: [
+      { id: 1121, size: "S/M", colour: "", sku: "GM-AYSEMETRIC-SEQUIN-SM", price: "£29.99", stock: 2 },
+      { id: 1122, size: "M/L", colour: "", sku: "GM-AYSEMETRIC-SEQUIN-ML", price: "£29.99", stock: 2 },
+    ],
   },
 ];
