@@ -1485,7 +1485,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 <div className="product-policy">
                   <RefreshCcw className="product-policy-icon" aria-hidden="true" />
                   <div>
-                    <h3 className="product-policy-title">28-Day Returns</h3>
+                    <h3 className="product-policy-title">21-Day Returns</h3>
                     <p className="product-policy-text">Return unworn items with tags attached for a full refund.</p>
                   </div>
                 </div>

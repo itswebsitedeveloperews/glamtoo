@@ -69,6 +69,20 @@ export type CatalogCategory = {
   parentId?: number | null;
 };
 
+export const defaultDeliveryAndReturns = `Return policy lasts 21 days. If 21 days have gone by since your purchase, unfortunately we can’t offer you a refund or exchange.
+
+To be eligible for a return, your item must be unused and in the same condition that you received it. It must also be in the original packaging with all tags attached.
+
+Once your return is received and inspected, we will send you an email to notify you that we have received your returned item. We will also notify you of the approval or rejection of your refund.
+If you are approved, then your refund will be processed, and a credit will automatically be applied to your credit card or original method of payment.
+
+Non returnable items for hygiene reasons
+Earrings
+
+We reserve the right not to refund if you return items to us outside the terms or our returns policy
+
+We also reserve the right to refuse to refund if the item returned is used or damaged`;
+
 const catalogMediaDatabaseName = "glam-too-catalog-media";
 const catalogMediaStoreName = "images";
 const catalogMediaReferencePrefix = "glam-too-media:";
@@ -252,7 +266,7 @@ export const catalogCategories: CatalogCategory[] = [
   { id: 504, name: "Watches", image: accessoriesImage, description: "Stylish watches for every day.", parentId: 5 },
 ];
 
-export const catalogProducts: CatalogProduct[] = [
+export const catalogProducts: CatalogProduct[] = ([
   {
     id: 101,
     slug: "luna-ruffle-mini-dress",
@@ -599,4 +613,4 @@ export const catalogProducts: CatalogProduct[] = [
     position: "50% 50%",
     variations: [],
   },
-];
+] satisfies CatalogProduct[]).map((product) => ({ ...product, deliveryAndReturns: defaultDeliveryAndReturns }));

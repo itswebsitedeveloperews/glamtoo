@@ -4,6 +4,7 @@ import {
   catalogCategories,
   catalogProducts,
   createProductSlug,
+  defaultDeliveryAndReturns,
   formatCatalogPrice,
   getCatalogMediaSource,
   getCatalogPriceInput,
@@ -46,9 +47,10 @@ function resolveBuiltInCatalogAssets(products: Product[], categories: Category[]
     const fallback = catalogProducts.find((candidate) =>
       candidate.id === product.id || candidate.name.toLowerCase() === product.name.toLowerCase(),
     );
-    return fallback && product.image.startsWith("/assets/")
+    const resolvedProduct = fallback && product.image.startsWith("/assets/")
       ? { ...product, image: fallback.image }
       : product;
+    return { ...resolvedProduct, deliveryAndReturns: defaultDeliveryAndReturns };
   });
   const resolvedCategories = categories.map((category) => {
     const fallback = catalogCategories.find((candidate) =>
@@ -287,7 +289,9 @@ function getStoredProducts() {
     const storedProducts = window.localStorage.getItem(productsStorageKey);
     if (!storedProducts) return getInitialProducts();
     const parsed = JSON.parse(storedProducts) as Product[];
-    return Array.isArray(parsed) ? parsed.map(withoutProductDetail) : getInitialProducts();
+    return Array.isArray(parsed)
+      ? parsed.map((product) => withoutProductDetail({ ...product, deliveryAndReturns: defaultDeliveryAndReturns }))
+      : getInitialProducts();
   } catch {
     return getInitialProducts();
   }
@@ -635,7 +639,7 @@ function blankProduct(category: string): ProductDraft {
     description: "",
     longDescription: "",
     fitAndSize: "",
-    deliveryAndReturns: "",
+    deliveryAndReturns: defaultDeliveryAndReturns,
     careDetails: "",
     sku: "",
     image: "",
@@ -1960,6 +1964,15 @@ export default function AdminDashboard({
             );
             await Promise.all(missingProducts.map((product) => syncProductInventory(product)));
           }
+        }
+        if ((nextCatalog.products ?? []).some((product) => product.deliveryAndReturns !== defaultDeliveryAndReturns)) {
+          nextCatalog = await publishCatalog(
+            (nextCatalog.products ?? []).map((product) => ({
+              ...product,
+              deliveryAndReturns: defaultDeliveryAndReturns,
+            })),
+            nextCatalog.categories ?? [],
+          );
         }
         if (!active) return;
         const resolvedCatalog = resolveBuiltInCatalogAssets(
