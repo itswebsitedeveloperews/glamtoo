@@ -246,7 +246,12 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .footer-legal-links { display: flex; gap: 20px; }
 
 .page-hero { padding: 92px 0 82px; border-bottom: 1px solid var(--line); }
-.page-hero h1 { margin: 16px 0 0; font: 400 72px/.86 var(--display); letter-spacing: -.05em; }
+.page-hero h1 {
+  margin: 16px 0 0;
+  font: 400 62px/.86 var(--display);
+  letter-spacing: -.02em;
+  text-transform: capitalize;
+}
 .page-hero p { color: var(--muted); margin: 23px 0 0; }
 .shop-layout { display: grid; grid-template-columns: 185px 1fr; gap: 45px; padding: 64px 0 110px; }
 .filter { font-size: 14px; }
