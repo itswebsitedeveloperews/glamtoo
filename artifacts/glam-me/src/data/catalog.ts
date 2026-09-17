@@ -21,6 +21,7 @@ import goldButtonWaistCoatTrouserSetImage from "@assets/gold-button-waist-coat-t
 import buttonUpBeltedTrouserSetImage from "@assets/button-up-belted-trouser-set.jpg";
 import leatherCapeJacketImage from "@assets/leather-cape-jacket.webp";
 import longSleevedBowKnittedTopImage from "@assets/long-sleeved-bow-knitted-top.jpeg";
+import buttonUpShortSleeveBlazerImage from "@assets/button-up-short-sleeve-blazer.jpg";
 
 export type CatalogVariation = {
   id: number;
@@ -530,6 +531,21 @@ export const catalogProducts: CatalogProduct[] = [
     longDescription: "A chic long-sleeve sequin bow top designed to make a statement. Covered in shimmering sequins, it catches the light beautifully, while the elegant bow detail adds a feminine and sophisticated touch.",
     sku: "GM-LONG-SLEEVED-BOW-TOP",
     image: longSleevedBowKnittedTopImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 119,
+    slug: "button-up-short-sleeve-blazer",
+    name: "Button Up Short Sleeve Blazer",
+    category: "Coats",
+    price: "£39.99",
+    stock: 2,
+    status: "Published",
+    type: "Simple",
+    description: "Button Up Short Sleeve Blazer",
+    sku: "GM-BUTTON-UP-SHORT-SLEEVE-BLAZER",
+    image: buttonUpShortSleeveBlazerImage,
     position: "50% 50%",
     variations: [],
   },
