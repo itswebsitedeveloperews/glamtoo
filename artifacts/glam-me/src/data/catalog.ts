@@ -15,6 +15,7 @@ import meshFloralSleeveTracksuitImage from "@assets/mesh-floral-sleeve-tracksuit
 import printedAysemetricTracksuitImage from "@assets/printed-aysemetric-tracksuit.jpg";
 import denimTrimRibbedCardiganImage from "@assets/denim-trim-ribbed-cardigan.jpg";
 import aysemetricSequinDressImage from "@assets/aysemetric-sequin-dress.jpeg";
+import doubledBreastedKnitBeltDressImage from "@assets/doubled-breasted-knit-belt-dress.webp";
 
 export type CatalogVariation = {
   id: number;
@@ -431,6 +432,25 @@ export const catalogProducts: CatalogProduct[] = [
     variations: [
       { id: 1121, size: "S/M", colour: "", sku: "GM-AYSEMETRIC-SEQUIN-SM", price: "£29.99", stock: 2 },
       { id: 1122, size: "M/L", colour: "", sku: "GM-AYSEMETRIC-SEQUIN-ML", price: "£29.99", stock: 2 },
+    ],
+  },
+  {
+    id: 113,
+    slug: "doubled-breasted-knit-belt-dress",
+    name: "Doubled Breasted Knit Belt Dress",
+    category: "Dresses",
+    price: "£34.99",
+    stock: 4,
+    status: "Published",
+    type: "Variable",
+    description: "Black Double Breasted Belt Long Dress",
+    longDescription: "Double Breasted Knit Long Dress, a timeless piece blending structure, elegance, and comfort. Crafted from premium stretch knit fabric, this dress features a double-breasted button design, notched lapel collar, and waist-defining belt for a sophisticated, tailored silhouette.",
+    sku: "GM-DOUBLED-BREASTED-KNIT",
+    image: doubledBreastedKnitBeltDressImage,
+    position: "50% 50%",
+    variationAttributes: ["size"],
+    variations: [
+      { id: 1131, size: "One Size", colour: "", sku: "GM-DOUBLED-BREASTED-KNIT-OS", price: "£34.99", stock: 4 },
     ],
   },
 ];
