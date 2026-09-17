@@ -1173,7 +1173,7 @@ function Shop() {
       ? `${selectedCategory.label} pieces`
       : "Showing all";
   const toolbarSort = activeSort ? ` · ${activeSort.label}` : "";
-  const productsPerPage = 16;
+  const productsPerPage = 12;
   const totalPages = Math.max(1, Math.ceil(visibleProducts.length / productsPerPage));
   const currentPage = Number.isInteger(requestedPage) && requestedPage > 0
     ? Math.min(requestedPage, totalPages)
