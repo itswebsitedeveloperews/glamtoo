@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FlaskConical, FolderOpen, Globe2, Image as ImageIcon, Inbox, KeyRound, LayoutDashboard, ListChecks, LockKeyhole, Mail, MapPin, Package, Save, Send, Server, ShieldCheck, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FlaskConical, FolderOpen, Globe2, Image as ImageIcon, Inbox, KeyRound, LayoutDashboard, ListChecks, LockKeyhole, Mail, MapPin, Package, Save, Send, Server, ShieldCheck, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, Upload, X, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -722,11 +722,13 @@ function compressProductImage(file: File) {
 function ProductEditorWithMultipleUploads({
   product,
   categories,
+  availableImages,
   onCancel,
   onSave,
 }: {
   product?: Product;
   categories: string[];
+  availableImages: string[];
   onCancel: () => void;
   onSave: (draft: ProductDraft) => void;
 }) {
@@ -761,6 +763,8 @@ function ProductEditorWithMultipleUploads({
   const [productImageFileName, setProductImageFileName] = useState("");
   const [galleryImageUrl, setGalleryImageUrl] = useState("");
   const [galleryImageFileNames, setGalleryImageFileNames] = useState<string[]>([]);
+  const [primaryMediaLibraryOpen, setPrimaryMediaLibraryOpen] = useState(false);
+  const [galleryMediaLibraryOpen, setGalleryMediaLibraryOpen] = useState(false);
   const productImagePreview = getCatalogMediaSource(draft.image);
 
   const publishLabel = product && draft.status === "Published" ? "Update product" : "Publish product";
@@ -1133,7 +1137,19 @@ function ProductEditorWithMultipleUploads({
               <div className="admin-media-primary">
                 <div className="admin-media-primary-frame">
                   {productImagePreview ? <img className="admin-product-image-preview" src={productImagePreview} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /><strong>Add a primary product image</strong><span>PNG, JPG or WEBP · max 4MB</span></div>}
-                  <label className="admin-media-edit-button" aria-label="Change primary product image"><ImageIcon aria-hidden="true" /><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
+                  <button type="button" className="admin-media-edit-button" aria-label="Change primary product image" onClick={() => setPrimaryMediaLibraryOpen(true)}><ImageIcon aria-hidden="true" /></button>
+                  <MediaLibrary
+                    isOpen={primaryMediaLibraryOpen}
+                    onClose={() => setPrimaryMediaLibraryOpen(false)}
+                    availableImages={availableImages}
+                    onSelect={(images) => {
+                      if (images[0]) {
+                        setProductImageFileName("");
+                        updateDraft({ image: images[0] });
+                      }
+                    }}
+                    onUpload={handleProductImageUpload}
+                  />
                 </div>
                 <label className="admin-media-url-field">Primary image URL<input className="admin-editor-input" value={draft.image.startsWith("data:") || isCatalogMediaReference(draft.image) ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="Paste image URL" /></label>
               </div>
@@ -1153,7 +1169,17 @@ function ProductEditorWithMultipleUploads({
                         </div>
                       </div>
                   ))}
-                  <label className="admin-gallery-upload-tile"><span aria-hidden="true">+</span><strong>Upload</strong><input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                  <button type="button" className="admin-gallery-upload-tile" onClick={() => setGalleryMediaLibraryOpen(true)}><span aria-hidden="true">+</span><strong>Select</strong></button>
+                  <MediaLibrary
+                    isOpen={galleryMediaLibraryOpen}
+                    onClose={() => setGalleryMediaLibraryOpen(false)}
+                    availableImages={availableImages}
+                    multiple
+                    onSelect={(images) => {
+                      addGalleryImages(images, images.map(() => ""));
+                    }}
+                    onUpload={handleGalleryImageUpload}
+                  />
                 </div>
                 <div className="admin-gallery-add">
                   <input className="admin-editor-input" value={galleryImageUrl} onChange={(event) => setGalleryImageUrl(event.target.value)} placeholder="Or paste a gallery image URL" aria-label="Gallery image URL" />
@@ -1194,7 +1220,7 @@ function ProductEditorWithMultipleUploads({
                <input className="admin-editor-input" value={draft.image.startsWith("data:") ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="https://..." />
              </label>
              <div className="admin-image-upload">
-               <label className="admin-upload-button">Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
+               <button type="button" className="admin-upload-button" onClick={() => setPrimaryMediaLibraryOpen(true)}>Select image</button>
                <span>{productImageFileName || "PNG, JPG, WEBP or GIF · max 4MB"}</span>
              </div>
               <div className="admin-gallery-divider" />
@@ -1207,7 +1233,7 @@ function ProductEditorWithMultipleUploads({
                 <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add image</button>
               </div>
               <div className="admin-image-upload">
-                <label className="admin-upload-button">Upload gallery images<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                <button type="button" className="admin-upload-button" onClick={() => setGalleryMediaLibraryOpen(true)}>Select gallery images</button>
                 <span>{galleryImageFileNames.filter(Boolean).join(", ") || "Select one or more · max 4MB each"}</span>
               </div>
               {(draft.galleryImages ?? []).length > 0 ? (
@@ -1242,15 +1268,115 @@ function ProductEditorWithMultipleUploads({
     </form>
   );
 }
+type MediaLibraryProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelect: (images: string[]) => void;
+  multiple?: boolean;
+  availableImages: string[];
+  onUpload: (e: ChangeEvent<HTMLInputElement>) => Promise<void> | void;
+  isUploading?: boolean;
+};
+
+function MediaLibrary({
+  isOpen,
+  onClose,
+  onSelect,
+  multiple = false,
+  availableImages,
+  onUpload,
+  isUploading,
+}: MediaLibraryProps) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) setSelected(new Set());
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!isOpen) return null;
+
+  function toggleSelection(image: string) {
+    const next = new Set(multiple ? selected : []);
+    if (next.has(image)) {
+      next.delete(image);
+    } else {
+      next.add(image);
+    }
+    setSelected(next);
+  }
+
+  return (
+    <div className="admin-modal-overlay" onClick={onClose}>
+      <div className="admin-modal admin-media-library" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="media-library-title">
+        <header className="admin-modal-header">
+          <h2 id="media-library-title">Select Image</h2>
+          <button type="button" className="admin-modal-close" onClick={onClose} aria-label="Close"><X aria-hidden="true" /></button>
+        </header>
+        <div className="admin-media-library-content">
+          <div className="admin-media-library-grid">
+            <div className="admin-media-library-upload-card" onClick={() => fileInputRef.current?.click()} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}>
+              <Upload aria-hidden="true" />
+              <span>Upload new</span>
+              <input ref={fileInputRef} type="file" multiple={multiple} accept="image/png,image/jpeg,image/webp,image/gif" className="sr-only" onChange={(e) => {
+                void onUpload(e);
+                onClose();
+              }} disabled={isUploading} />
+            </div>
+            {availableImages.map((image, i) => {
+              const isSelected = selected.has(image);
+              const preview = getCatalogMediaSource(image);
+              return (
+                <button
+                  key={`${image}-${i}`}
+                  className={`admin-media-library-item ${isSelected ? "is-selected" : ""}`}
+                  type="button"
+                  onClick={() => toggleSelection(image)}
+                >
+                  {preview ? <img src={preview} alt="" /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /></div>}
+                  {isSelected && <div className="admin-media-library-item-check"><Check aria-hidden="true" /></div>}
+                </button>
+              );
+            })}
+            {availableImages.length === 0 && (
+              <div className="admin-media-library-empty">No images found.</div>
+            )}
+          </div>
+        </div>
+        <footer className="admin-modal-footer">
+          <span className="admin-media-library-count">{selected.size} selected</span>
+          <div className="admin-modal-actions">
+            <button type="button" className="admin-secondary" onClick={onClose}>Cancel</button>
+            <button type="button" className="admin-primary" disabled={selected.size === 0 || isUploading} onClick={() => { onSelect(Array.from(selected)); onClose(); }}>
+              {isUploading ? "Uploading..." : "Select"}
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 // The active editor below combines the multi-upload UI with storage-safe persistence.
 function ProductEditor({
   product,
   categories,
+  availableImages,
   onCancel,
   onSave,
 }: {
   product?: Product;
   categories: string[];
+  availableImages: string[];
   onCancel: () => void;
   onSave: (draft: ProductDraft) => Promise<boolean>;
 }) {
@@ -1288,6 +1414,8 @@ function ProductEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [pendingGalleryUploads, setPendingGalleryUploads] = useState(0);
   const [customAttributeName, setCustomAttributeName] = useState("");
+  const [primaryMediaLibraryOpen, setPrimaryMediaLibraryOpen] = useState(false);
+  const [galleryMediaLibraryOpen, setGalleryMediaLibraryOpen] = useState(false);
   const productImagePreview = getCatalogMediaSource(draft.image);
 
   const publishLabel = product && draft.status === "Published" ? "Update product" : "Publish product";
@@ -1696,7 +1824,19 @@ function ProductEditor({
               <div className="admin-media-primary">
                 <div className="admin-media-primary-frame">
                   {productImagePreview ? <img className="admin-product-image-preview" src={productImagePreview} alt={`${draft.name || "Product"} preview`} /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /><strong>Add a primary product image</strong><span>PNG, JPG or WEBP · max 4MB</span></div>}
-                  <label className="admin-media-edit-button" aria-label="Change primary product image"><ImageIcon aria-hidden="true" /><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
+                  <button type="button" className="admin-media-edit-button" aria-label="Change primary product image" onClick={() => setPrimaryMediaLibraryOpen(true)}><ImageIcon aria-hidden="true" /></button>
+                  <MediaLibrary
+                    isOpen={primaryMediaLibraryOpen}
+                    onClose={() => setPrimaryMediaLibraryOpen(false)}
+                    availableImages={availableImages}
+                    onSelect={(images) => {
+                      if (images[0]) {
+                        setProductImageFileName("");
+                        updateDraft({ image: images[0] });
+                      }
+                    }}
+                    onUpload={handleProductImageUpload}
+                  />
                 </div>
                 <label className="admin-media-url-field">Primary image URL<input className="admin-editor-input" value={draft.image.startsWith("data:") || isCatalogMediaReference(draft.image) ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="Paste image URL" /></label>
               </div>
@@ -1716,7 +1856,17 @@ function ProductEditor({
                         </div>
                       </div>
                   ))}
-                  <label className="admin-gallery-upload-tile"><span aria-hidden="true">+</span><strong>Upload</strong><input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                  <button type="button" className="admin-gallery-upload-tile" onClick={() => setGalleryMediaLibraryOpen(true)}><span aria-hidden="true">+</span><strong>Select</strong></button>
+                  <MediaLibrary
+                    isOpen={galleryMediaLibraryOpen}
+                    onClose={() => setGalleryMediaLibraryOpen(false)}
+                    availableImages={availableImages}
+                    multiple
+                    onSelect={(images) => {
+                      addGalleryImages(images, images.map(() => ""));
+                    }}
+                    onUpload={handleGalleryImageUpload}
+                  />
                 </div>
                 <div className="admin-gallery-add">
                   <input className="admin-editor-input" value={galleryImageUrl} onChange={(event) => setGalleryImageUrl(event.target.value)} placeholder="Or paste a gallery image URL" aria-label="Gallery image URL" />
@@ -1757,7 +1907,7 @@ function ProductEditor({
                <input className="admin-editor-input" value={draft.image.startsWith("data:") || isCatalogMediaReference(draft.image) ? "" : draft.image} onChange={(event) => { setProductImageFileName(""); updateDraft({ image: event.target.value }); }} placeholder="https://..." />
              </label>
              <div className="admin-image-upload">
-               <label className="admin-upload-button">Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleProductImageUpload} /></label>
+               <button type="button" className="admin-upload-button" onClick={() => setPrimaryMediaLibraryOpen(true)}>Select image</button>
                <span>{productImageFileName || "PNG, JPG, WEBP or GIF · max 4MB"}</span>
              </div>
               <div className="admin-gallery-divider" />
@@ -1770,7 +1920,7 @@ function ProductEditor({
                 <button className="admin-secondary" type="button" onClick={() => addGalleryImage(galleryImageUrl)} disabled={!galleryImageUrl.trim()}>Add image</button>
               </div>
               <div className="admin-image-upload">
-                <label className="admin-upload-button">Upload gallery images<input type="file" multiple accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleGalleryImageUpload} /></label>
+                <button type="button" className="admin-upload-button" onClick={() => setGalleryMediaLibraryOpen(true)}>Select gallery images</button>
                 <span>{galleryImageFileNames.filter(Boolean).join(", ") || "Select one or more · max 4MB each"}</span>
               </div>
               {(draft.galleryImages ?? []).length > 0 ? (
@@ -1873,6 +2023,7 @@ export default function AdminDashboard({
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft>(blankCategory);
   const [categoryImageFileName, setCategoryImageFileName] = useState("");
   const [categorySaving, setCategorySaving] = useState(false);
+  const [categoryMediaLibraryOpen, setCategoryMediaLibraryOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [, setCatalogMediaVersion] = useState(0);
   const parentCategoryIds = new Set(categories.map((category) => category.parentId).filter((id): id is number => typeof id === "number"));
@@ -2025,6 +2176,20 @@ export default function AdminDashboard({
       active = false;
     };
   }, [setProducts]);
+
+  const catalogImages = useMemo(() => {
+    const images = new Set<string>();
+    for (const p of products) {
+      if (p.image && !p.image.startsWith("data:")) images.add(p.image);
+      for (const img of p.galleryImages ?? []) {
+        if (img && !img.startsWith("data:")) images.add(img);
+      }
+    }
+    for (const c of categories) {
+      if (c.image && !c.image.startsWith("data:")) images.add(c.image);
+    }
+    return Array.from(images);
+  }, [products, categories]);
 
   const inventoryTotal = useMemo(
     () => products.reduce((total, product) => total + (product.type === "Variable" ? product.variations.reduce((sum, variation) => sum + variation.stock, 0) : product.stock), 0),
@@ -2849,7 +3014,7 @@ export default function AdminDashboard({
           </div>
         )}
 
-        {section === "products" && editorProductId !== null && <ProductEditor product={editorProduct} categories={categoryNames} onCancel={() => setEditorProductId(null)} onSave={saveProduct} />}
+        {section === "products" && editorProductId !== null && <ProductEditor product={editorProduct} categories={categoryNames} availableImages={catalogImages} onCancel={() => setEditorProductId(null)} onSave={saveProduct} />}
 
         {section === "products" && editorProductId === null && (
           <>
@@ -2920,8 +3085,20 @@ export default function AdminDashboard({
                  </label>
                 <label>Image URL<input type="text" value={categoryDraft.image.startsWith("data:") ? "" : categoryDraft.image} onChange={(event) => { setCategoryImageFileName(""); setCategoryDraft((current) => ({ ...current, image: event.target.value })); }} placeholder="https://... or an existing image path" /></label>
                 <div className="admin-image-upload">
-                  <label className="admin-upload-button">Upload image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleCategoryImageUpload} /></label>
+                  <button type="button" className="admin-upload-button" onClick={() => setCategoryMediaLibraryOpen(true)}>Select image</button>
                   <span>{categoryImageFileName || "PNG, JPG, WEBP or GIF · max 4MB"}</span>
+                  <MediaLibrary
+                    isOpen={categoryMediaLibraryOpen}
+                    onClose={() => setCategoryMediaLibraryOpen(false)}
+                    availableImages={catalogImages}
+                    onSelect={(images) => {
+                      if (images[0]) {
+                        setCategoryImageFileName("");
+                        setCategoryDraft((current) => ({ ...current, image: images[0] }));
+                      }
+                    }}
+                    onUpload={handleCategoryImageUpload}
+                  />
                 </div>
                 {getCatalogMediaSource(categoryDraft.image) && <img className="admin-category-form-preview" src={getCatalogMediaSource(categoryDraft.image)} alt="Category preview" />}
                 <label>Description<textarea value={categoryDraft.description} onChange={(event) => setCategoryDraft((current) => ({ ...current, description: event.target.value }))} placeholder="A short description for this collection." rows={4} /></label>
