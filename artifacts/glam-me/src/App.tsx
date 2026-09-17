@@ -840,19 +840,51 @@ function Header() {
         >
           <span className="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
         </button>
-        <button
-          className="tool-label search-link"
-          type="button"
-          aria-expanded={searchOpen}
-          aria-controls="header-search-panel"
-          data-testid="button-search"
-          onClick={() => setSearchOpen((open) => !open)}
-        >
-          <span className="tool-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
-          </span>
-          <span>Search</span>
-        </button>
+        {searchOpen ? (
+          <form
+            className="header-inline-search"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const query = searchQuery.trim();
+              setSearchOpen(false);
+              window.location.assign(`${basePath}/shop${query ? `?search=${encodeURIComponent(query)}` : ""}`);
+            }}
+          >
+            <button type="submit" aria-label="Submit search" data-testid="button-header-search-submit">
+              <span className="tool-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
+              </span>
+            </button>
+            <label className="sr-only" htmlFor="header-search-input">Search the shop</label>
+            <input
+              id="header-search-input"
+              name="search"
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setSearchOpen(false);
+              }}
+              placeholder="Search products..."
+              autoFocus
+              data-testid="input-header-search"
+            />
+          </form>
+        ) : (
+          <button
+            className="tool-label search-link"
+            type="button"
+            aria-expanded={false}
+            data-testid="button-search"
+            onClick={() => setSearchOpen(true)}
+          >
+            <span className="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
+            </span>
+            <span>Search</span>
+          </button>
+        )}
         <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Glam Too" /></a>
         <div className="header-tools">
           <a href="/account" className="tool-label icon-link" aria-label="Account" data-testid="link-account">
@@ -887,33 +919,6 @@ function Header() {
         <a href="/category/jewellery" {...navLinkProps("/category/jewellery")} data-testid="link-nav-jewellery" onClick={() => setMenuOpen(false)}>Jewellery</a>
         <a href="/shop" data-testid="link-nav-sale" onClick={() => setMenuOpen(false)}>Sale</a>
       </nav>
-      {searchOpen && (
-        <form
-          id="header-search-panel"
-          className="header-search-panel"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const query = searchQuery.trim();
-            setSearchOpen(false);
-            window.location.assign(`${basePath}/shop${query ? `?search=${encodeURIComponent(query)}` : ""}`);
-          }}
-        >
-          <label htmlFor="header-search-input">Search the shop</label>
-          <div className="header-search-form-row">
-            <input
-              id="header-search-input"
-              name="search"
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search dresses, accessories..."
-              autoFocus
-              data-testid="input-header-search"
-            />
-            <button type="submit" className="header-search-submit" data-testid="button-header-search-submit">Search</button>
-          </div>
-        </form>
-      )}
     </header>
   );
 }
