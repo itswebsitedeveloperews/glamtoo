@@ -20,6 +20,7 @@ import daisyEmbellishedKnitDressImage from "@assets/daisy-embellished-knit-dress
 import goldButtonWaistCoatTrouserSetImage from "@assets/gold-button-waist-coat-trouser-set.jpeg";
 import buttonUpBeltedTrouserSetImage from "@assets/button-up-belted-trouser-set.jpg";
 import leatherCapeJacketImage from "@assets/leather-cape-jacket.webp";
+import longSleevedBowKnittedTopImage from "@assets/long-sleeved-bow-knitted-top.jpeg";
 
 export type CatalogVariation = {
   id: number;
@@ -513,6 +514,22 @@ export const catalogProducts: CatalogProduct[] = [
     description: "Leather Cape Jacket",
     sku: "GM-LEATHER-CAPE-JACKET",
     image: leatherCapeJacketImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 118,
+    slug: "long-sleeved-bow-knitted-top",
+    name: "Long Sleeved Bow Knitted Top",
+    category: "Tops",
+    price: "£29.99",
+    stock: 4,
+    status: "Published",
+    type: "Simple",
+    description: "Black Sequin Bow Top Long Sleeve",
+    longDescription: "A chic long-sleeve sequin bow top designed to make a statement. Covered in shimmering sequins, it catches the light beautifully, while the elegant bow detail adds a feminine and sophisticated touch.",
+    sku: "GM-LONG-SLEEVED-BOW-TOP",
+    image: longSleevedBowKnittedTopImage,
     position: "50% 50%",
     variations: [],
   },
