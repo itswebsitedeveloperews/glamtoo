@@ -203,6 +203,26 @@ type ContactEnquiry = {
   deliveredAt: string | null;
 };
 
+type ShippingMethod = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  freeOver: number | null;
+  enabled: boolean;
+  sortOrder: number;
+};
+
+type ShippingDraft = {
+  name: string;
+  description: string;
+  price: string;
+  freeOver: string;
+  enabled: boolean;
+};
+
+const blankShipping: ShippingDraft = { name: "", description: "", price: "0", freeOver: "", enabled: true };
+
 const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "products", label: "Products", icon: Package },
@@ -1825,6 +1845,13 @@ export default function AdminDashboard({
   const [couponDraft, setCouponDraft] = useState<CouponDraft>(blankCoupon);
   const [couponSaving, setCouponSaving] = useState(false);
   const [deletingCouponId, setDeletingCouponId] = useState<number | null>(null);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [shippingSaving, setShippingSaving] = useState(false);
+  const [shippingError, setShippingError] = useState("");
+  const [shippingDraft, setShippingDraft] = useState<ShippingDraft>(blankShipping);
+  const [editingShippingId, setEditingShippingId] = useState<string | null>(null);
+  const [deletingShippingId, setDeletingShippingId] = useState<string | null>(null);
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState("");
@@ -2408,6 +2435,82 @@ export default function AdminDashboard({
     }
   }
 
+  async function refreshShipping() {
+    setShippingLoading(true);
+    setShippingError("");
+    try {
+      const response = await fetch("/api/admin/shipping-methods", { credentials: "include" });
+      const payload = await response.json() as { shippingMethods?: ShippingMethod[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || "Shipping methods could not be loaded.");
+      setShippingMethods(payload.shippingMethods ?? []);
+    } catch (error) {
+      setShippingError(error instanceof Error ? error.message : "Shipping methods could not be loaded.");
+    } finally { setShippingLoading(false); }
+  }
+
+  function editShipping(method: ShippingMethod) {
+    setEditingShippingId(method.id);
+    setShippingDraft({ name: method.name, description: method.description, price: String(method.price / 100), freeOver: method.freeOver === null ? "" : String(method.freeOver / 100), enabled: method.enabled });
+    setShippingError("");
+  }
+
+  async function saveShipping(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const price = Number(shippingDraft.price);
+    const freeOver = shippingDraft.freeOver.trim() ? Number(shippingDraft.freeOver) : null;
+    if (!shippingDraft.name.trim() || !Number.isFinite(price) || price < 0 || (freeOver !== null && (!Number.isFinite(freeOver) || freeOver < 0))) {
+      setShippingError("Enter a name and valid non-negative GBP amounts.");
+      return;
+    }
+    setShippingSaving(true);
+    setShippingError("");
+    try {
+      const response = await fetch(editingShippingId ? `/api/admin/shipping-methods/${editingShippingId}` : "/api/admin/shipping-methods", {
+        method: editingShippingId ? "PATCH" : "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: shippingDraft.name, description: shippingDraft.description, price, freeOver, enabled: shippingDraft.enabled, sortOrder: editingShippingId ? shippingMethods.find((item) => item.id === editingShippingId)?.sortOrder ?? 0 : shippingMethods.length }),
+      });
+      const result = await response.json() as { shippingMethod?: ShippingMethod; error?: string };
+      if (!response.ok || !result.shippingMethod) throw new Error(result.error || "Shipping method could not be saved.");
+      setShippingMethods((current) => editingShippingId ? current.map((item) => item.id === result.shippingMethod!.id ? result.shippingMethod! : item) : [...current, result.shippingMethod!]);
+      setShippingDraft(blankShipping);
+      setEditingShippingId(null);
+      setNotice(`${result.shippingMethod.name} was ${editingShippingId ? "updated" : "created"}.`);
+    } catch (error) { setShippingError(error instanceof Error ? error.message : "Shipping method could not be saved."); }
+    finally { setShippingSaving(false); }
+  }
+
+  async function updateShipping(method: ShippingMethod, updates: Partial<ShippingDraft> & { sortOrder?: number }) {
+    setShippingError("");
+    try {
+      const payload = { ...updates, ...(updates.price !== undefined ? { price: Number(updates.price) } : {}), ...(updates.freeOver !== undefined ? { freeOver: updates.freeOver.trim() ? Number(updates.freeOver) : null } : {}) };
+      const response = await fetch(`/api/admin/shipping-methods/${method.id}`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const result = await response.json() as { shippingMethod?: ShippingMethod; error?: string };
+      if (!response.ok || !result.shippingMethod) throw new Error(result.error || "Shipping method could not be updated.");
+      setShippingMethods((current) => current.map((item) => item.id === method.id ? result.shippingMethod! : item));
+    } catch (error) { setShippingError(error instanceof Error ? error.message : "Shipping method could not be updated."); }
+  }
+
+  async function deleteShipping(method: ShippingMethod) {
+    if (!window.confirm(`Delete ${method.name}?`)) return;
+    setDeletingShippingId(method.id);
+    try {
+      const response = await fetch(`/api/admin/shipping-methods/${method.id}`, { method: "DELETE", credentials: "include" });
+      if (!response.ok) { const result = await response.json() as { error?: string }; throw new Error(result.error || "Shipping method could not be deleted."); }
+      setShippingMethods((current) => current.filter((item) => item.id !== method.id));
+      setNotice(`${method.name} was deleted.`);
+    } catch (error) { setShippingError(error instanceof Error ? error.message : "Shipping method could not be deleted."); }
+    finally { setDeletingShippingId(null); }
+  }
+
+  async function moveShipping(method: ShippingMethod, direction: -1 | 1) {
+    const index = shippingMethods.findIndex((item) => item.id === method.id);
+    const other = shippingMethods[index + direction];
+    if (!other) return;
+    await Promise.all([updateShipping(method, { sortOrder: other.sortOrder }), updateShipping(other, { sortOrder: method.sortOrder })]);
+    setShippingMethods((current) => { const next = [...current]; [next[index], next[index + direction]] = [next[index + direction], next[index]]; return next; });
+  }
+
   function openNewCoupon() {
     setCouponDraft(blankCoupon());
     setEditingCouponId(null);
@@ -2609,6 +2712,7 @@ export default function AdminDashboard({
     if (section === "orders") void refreshOrders();
     if (section === "users") void refreshUsers();
     if (section === "coupons") void refreshCoupons();
+    if (section === "shipping") void refreshShipping();
     if (section === "messages") void refreshMessages();
   }, [section]);
 
@@ -2901,7 +3005,20 @@ export default function AdminDashboard({
         {section === "shipping" && (
           <>
             <SectionTitle eyebrow="Store settings" title="Shipping" description="Set delivery methods, rates, and your free-shipping threshold." />
-            <form className="admin-shipping-grid" onSubmit={(event) => { event.preventDefault(); setNotice("Shipping settings saved."); }}><section className="admin-panel admin-simple-form"><p className="admin-eyebrow">Standard delivery</p><h2>UK Standard</h2><label>Rate<input defaultValue="£3.99" /></label><label>Estimated delivery<input defaultValue="3–5 working days" /></label></section><section className="admin-panel admin-simple-form"><p className="admin-eyebrow">Free shipping</p><h2>Delivery incentive</h2><label>Free shipping over<input defaultValue="£75.00" /></label><label>Announcement text<input defaultValue="Free delivery on orders over £75" /></label></section><button className="admin-primary" type="submit">Save shipping rules</button></form>
+            <div className="admin-shipping-toolbar"><p>Customers see every enabled method at checkout. Prices are in GBP; a zero price is shown as Free.</p><button className="admin-secondary" type="button" onClick={() => void refreshShipping()} disabled={shippingLoading}>{shippingLoading ? "Refreshing…" : "Refresh"}</button></div>
+            {shippingError && <p className="admin-form-error" role="alert">{shippingError}</p>}
+            <form className="admin-panel admin-shipping-editor" onSubmit={saveShipping}>
+              <div className="admin-panel-heading"><div><p className="admin-eyebrow">{editingShippingId ? "Edit method" : "New method"}</p><h2>{editingShippingId ? "Update delivery method" : "Add a delivery method"}</h2></div></div>
+              <div className="admin-shipping-form-grid">
+                <label>Name<input required value={shippingDraft.name} onChange={(event) => setShippingDraft((draft) => ({ ...draft, name: event.target.value }))} placeholder="Standard" /></label>
+                <label>Price (GBP)<input required min="0" step="0.01" type="number" value={shippingDraft.price} onChange={(event) => setShippingDraft((draft) => ({ ...draft, price: event.target.value }))} /><small>Use 0 for a Free method.</small></label>
+                <label className="admin-shipping-wide">Checkout description<input value={shippingDraft.description} onChange={(event) => setShippingDraft((draft) => ({ ...draft, description: event.target.value }))} placeholder="2–4 working days" /></label>
+                <label>Free over (GBP)<input min="0" step="0.01" type="number" value={shippingDraft.freeOver} onChange={(event) => setShippingDraft((draft) => ({ ...draft, freeOver: event.target.value }))} placeholder="Optional" /><small>Leave blank to never make this method free.</small></label>
+                <label className="admin-checkbox"><input type="checkbox" checked={shippingDraft.enabled} onChange={(event) => setShippingDraft((draft) => ({ ...draft, enabled: event.target.checked }))} /> Enabled at checkout</label>
+              </div>
+              <div className="admin-form-actions"><button className="admin-primary" type="submit" disabled={shippingSaving}>{shippingSaving ? "Saving…" : editingShippingId ? "Save changes" : "Add method"}</button>{editingShippingId && <button className="admin-secondary" type="button" onClick={() => { setEditingShippingId(null); setShippingDraft(blankShipping); }}>Cancel</button>}</div>
+            </form>
+            {shippingLoading && shippingMethods.length === 0 ? <p className="admin-users-state">Loading shipping methods…</p> : shippingMethods.length === 0 ? <div className="admin-panel admin-shipping-empty"><strong>No shipping methods yet.</strong><span>Add one above to offer delivery at checkout.</span></div> : <div className="admin-shipping-list">{shippingMethods.map((method, index) => <article className="admin-panel admin-shipping-method" key={method.id}><div className="admin-shipping-method-main"><div><p className="admin-eyebrow">{method.enabled ? "Enabled" : "Disabled"}</p><h2>{method.name}</h2><p>{method.description || "No checkout description."}</p></div><strong>{method.price === 0 ? "Free" : `£${(method.price / 100).toFixed(2)}`}</strong></div><div className="admin-shipping-method-meta"><span>{method.freeOver === null ? "No free-shipping threshold" : `Free over £${(method.freeOver / 100).toFixed(2)}`}</span><div className="admin-section-actions"><button className="admin-secondary" type="button" onClick={() => void updateShipping(method, { enabled: !method.enabled })}>{method.enabled ? "Disable" : "Enable"}</button><button className="admin-secondary" type="button" onClick={() => moveShipping(method, -1)} disabled={index === 0}>Move up</button><button className="admin-secondary" type="button" onClick={() => moveShipping(method, 1)} disabled={index === shippingMethods.length - 1}>Move down</button><button className="admin-secondary" type="button" onClick={() => editShipping(method)}>Edit</button><button className="admin-danger" type="button" onClick={() => void deleteShipping(method)} disabled={deletingShippingId === method.id}>{deletingShippingId === method.id ? "Deleting…" : "Delete"}</button></div></div></article>)}</div>}
           </>
         )}
 

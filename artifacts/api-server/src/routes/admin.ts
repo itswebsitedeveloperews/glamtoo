@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
 import { desc, eq } from "drizzle-orm";
-import { contactEnquiriesTable, couponsTable, customerProfilesTable, db } from "@workspace/db";
+import { contactEnquiriesTable, couponsTable, customerProfilesTable, db, shippingMethodsTable } from "@workspace/db";
+import { listShippingMethods, serializeShippingMethod } from "../shippingMethods";
 import { getAdminAccess, isAdminUser, isBootstrapAdminUser, requireAdmin } from "../adminAuth";
 import {
   CouponValidationError,
@@ -11,6 +12,58 @@ import {
 } from "../couponService";
 
 const router: IRouter = Router();
+
+router.get("/admin/shipping-methods", requireAdmin, async (_request, response) => {
+  response.set("Cache-Control", "no-store").json({ shippingMethods: (await listShippingMethods()).map(serializeShippingMethod) });
+});
+router.post("/admin/shipping-methods", requireAdmin, async (request, response) => {
+  const name = textValue(request.body?.name, 100);
+  const description = textValue(request.body?.description, 500);
+  const price = Math.round(Number(request.body?.price) * 100);
+  const rawFree = request.body?.freeOver;
+  const freeOver = rawFree === null || rawFree === "" || rawFree === undefined ? null : Math.round(Number(rawFree) * 100);
+  if (!name || !Number.isInteger(price) || price < 0 || (freeOver !== null && (!Number.isInteger(freeOver) || freeOver < 0))) return response.status(400).json({ error: "Enter a valid shipping name and non-negative prices." });
+  try {
+    const [method] = await db.insert(shippingMethodsTable).values({ name, description, price, freeOver, enabled: request.body?.enabled !== false, sortOrder: Number.isInteger(request.body?.sortOrder) ? request.body.sortOrder : 0 }).returning();
+    return response.status(201).json({ shippingMethod: serializeShippingMethod(method) });
+  } catch { return response.status(409).json({ error: "A shipping method with that name already exists." }); }
+});
+router.patch("/admin/shipping-methods/:methodId", requireAdmin, async (request, response) => {
+  const id = Number(request.params.methodId);
+  if (!Number.isInteger(id)) return response.status(400).json({ error: "Choose a valid shipping method." });
+  const updates: Record<string, unknown> = {};
+  if (request.body?.name !== undefined) {
+    const name = textValue(request.body.name, 100);
+    if (!name) return response.status(400).json({ error: "Shipping method name cannot be empty." });
+    updates.name = name;
+  }
+  if (request.body?.description !== undefined) updates.description = textValue(request.body.description, 500);
+  if (request.body?.price !== undefined) {
+    const price = Number(request.body.price);
+    if (!Number.isFinite(price) || price < 0) return response.status(400).json({ error: "Shipping price must be a non-negative number." });
+    updates.price = Math.round(price * 100);
+  }
+  if (request.body?.freeOver !== undefined) {
+    if (request.body.freeOver === null || request.body.freeOver === "") updates.freeOver = null;
+    else {
+      const freeOver = Number(request.body.freeOver);
+      if (!Number.isFinite(freeOver) || freeOver < 0) return response.status(400).json({ error: "Free-over threshold must be a non-negative number." });
+      updates.freeOver = Math.round(freeOver * 100);
+    }
+  }
+  if (typeof request.body?.enabled === "boolean") updates.enabled = request.body.enabled;
+  if (Number.isInteger(request.body?.sortOrder)) updates.sortOrder = request.body.sortOrder;
+  try {
+    const [method] = await db.update(shippingMethodsTable).set(updates).where(eq(shippingMethodsTable.id, id)).returning();
+    return method ? response.json({ shippingMethod: serializeShippingMethod(method) }) : response.status(404).json({ error: "Shipping method not found." });
+  } catch { return response.status(409).json({ error: "Shipping method could not be updated." }); }
+});
+router.delete("/admin/shipping-methods/:methodId", requireAdmin, async (request, response) => {
+  const id = Number(request.params.methodId);
+  if (!Number.isInteger(id)) return response.status(400).json({ error: "Choose a valid shipping method." });
+  await db.delete(shippingMethodsTable).where(eq(shippingMethodsTable.id, id));
+  return response.status(204).send();
+});
 
 router.get("/admin/contact-enquiries", requireAdmin, async (request, response): Promise<void> => {
   try {

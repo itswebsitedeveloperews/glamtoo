@@ -45,7 +45,7 @@ import {
 } from "../orderService";
 import { attemptPaymentRefund } from "../paymentResolution";
 import { calculateIncludedVat, VAT_RATE_PERCENT } from "../taxService";
-import { calculateDeliveryAmount, EXPRESS_DELIVERY_AMOUNT } from "../shippingService";
+import { resolveShippingMethod } from "../shippingMethods";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -122,7 +122,7 @@ function orderInput(
   customerName: string,
   phone: string,
   address: PendingOrderInput["address"],
-  delivery: "standard" | "express",
+  delivery: string,
   subtotal: number,
   deliveryAmount: number,
   total: number,
@@ -590,8 +590,9 @@ router.post("/stripe/payment-intent", async (request, response) => {
 
     const lines = checkoutLines as CheckoutLine[];
     const subtotal = lines.reduce((total, line) => total + line.unitAmount * line.quantity, 0);
-    const delivery = request.body?.delivery === "express" ? "express" : "standard";
-    const deliveryAmount = calculateDeliveryAmount(delivery, subtotal);
+    const resolvedShipping = await resolveShippingMethod(request.body?.delivery, subtotal);
+    const delivery = resolvedShipping.method.name;
+    const deliveryAmount = resolvedShipping.amount;
     const couponCode = safeText(request.body?.couponCode, 80);
     const pricing = couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
     const amount = pricing?.total ?? subtotal + deliveryAmount;
@@ -731,8 +732,9 @@ router.post("/stripe/checkout", async (request, response) => {
     const lines = [...checkoutLines] as CheckoutLine[];
     const inventoryLines = [...lines];
     const subtotal = lines.reduce((total, line) => total + line.unitAmount * line.quantity, 0);
-    const delivery = request.body?.delivery === "express" ? "express" : "standard";
-    const deliveryAmount = calculateDeliveryAmount(delivery, subtotal);
+    const resolvedShipping = await resolveShippingMethod(request.body?.delivery, subtotal);
+    const delivery = resolvedShipping.method.name;
+    const deliveryAmount = resolvedShipping.amount;
     const couponCode = safeText(request.body?.couponCode, 80);
     const pricing = couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
     const amount = pricing?.total ?? subtotal + deliveryAmount;
@@ -768,9 +770,9 @@ router.post("/stripe/checkout", async (request, response) => {
       lines.push({
         productId: "delivery",
         variationId: delivery,
-        name: delivery === "express" ? "Express delivery" : "Standard delivery",
-        description: delivery === "express" ? "1–2 working days" : "2–4 working days",
-        unitAmount: delivery === "express" ? EXPRESS_DELIVERY_AMOUNT : deliveryAmount,
+        name: resolvedShipping.method.name,
+        description: resolvedShipping.method.description,
+        unitAmount: deliveryAmount,
         quantity: 1,
       });
     }
@@ -865,8 +867,9 @@ router.post("/stripe/coupon/validate", async (request, response) => {
       return response.status(400).json({ error: "Your bag is empty or contains an invalid item." });
     }
     const subtotal = (checkoutLines as CheckoutLine[]).reduce((total, line) => total + line.unitAmount * line.quantity, 0);
-    const delivery = request.body?.delivery === "express" ? "express" : "standard";
-    const deliveryAmount = calculateDeliveryAmount(delivery, subtotal);
+    const resolvedShipping = await resolveShippingMethod(request.body?.delivery, subtotal);
+    const delivery = resolvedShipping.method.name;
+    const deliveryAmount = resolvedShipping.amount;
     const pricing = await calculateCouponPricing(request.body?.code, subtotal, deliveryAmount);
     return response.set("Cache-Control", "no-store").json({
       coupon: {

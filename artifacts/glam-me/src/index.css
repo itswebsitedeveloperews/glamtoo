@@ -1129,6 +1129,27 @@ img { display: block; max-width: 100%; }
 .admin-shipping-grid > .admin-primary { justify-self: start; grid-column: 1 / -1; margin-top: 8px; }
 .admin-shipping-grid .admin-simple-form { gap: 16px; }
 .admin-shipping-grid .admin-simple-form label { display: grid; gap: 7px; }
+.admin-shipping-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+.admin-shipping-toolbar p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.admin-shipping-editor { margin-bottom: 22px; }
+.admin-shipping-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+.admin-shipping-form-grid label { display: grid; gap: 7px; color: var(--ink); font-size: 14px; font-weight: 600; }
+.admin-shipping-form-grid input:not([type="checkbox"]) { width: 100%; box-sizing: border-box; min-height: 40px; border: 1px solid #d8d0ca; background: #fffdfb; padding: 0 10px; color: var(--ink); }
+.admin-shipping-form-grid small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.admin-shipping-wide { grid-column: 1 / -1; }
+.admin-checkbox { display: flex !important; align-items: center; gap: 9px !important; align-self: end; min-height: 40px; }
+.admin-checkbox input { width: 16px; height: 16px; accent-color: var(--pink-deep); }
+.admin-form-actions { display: flex; gap: 10px; margin-top: 20px; }
+.admin-shipping-list { display: grid; gap: 12px; }
+.admin-shipping-method { padding: 21px 24px; }
+.admin-shipping-method-main { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
+.admin-shipping-method-main h2 { margin: 3px 0 5px; font: 400 28px/.95 var(--display); }
+.admin-shipping-method-main p:last-child { margin: 0; color: var(--muted); font-size: 14px; }
+.admin-shipping-method-main > strong { font-size: 18px; white-space: nowrap; }
+.admin-shipping-method-meta { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 17px; padding-top: 15px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+.admin-shipping-method-meta .admin-section-actions { flex-wrap: wrap; justify-content: end; }
+.admin-shipping-empty { display: grid; gap: 8px; color: var(--muted); }
+.admin-shipping-empty strong { color: var(--ink); }
 .admin-payment-card { display: flex; align-items: center; justify-content: space-between; gap: 30px; min-height: 245px; padding: 38px; background: #171615; color: #fffdfb; }
 .stripe-mark { display: inline-block; margin-bottom: 20px; font-size: 18px; font-weight: 700; letter-spacing: -.06em; }
 .admin-payment-card h2 { margin: 0; font: 400 36px/.9 var(--display); letter-spacing: -.05em; }
@@ -1446,6 +1467,10 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .admin-section-title, .admin-payment-card { display: grid; align-items: start; }
   .admin-section-title h1 { font-size: 48px; letter-spacing: -.045em; }
   .admin-stat-grid, .admin-two-column, .admin-shipping-grid { grid-template-columns: 1fr; }
+  .admin-shipping-form-grid { grid-template-columns: 1fr; }
+  .admin-shipping-toolbar, .admin-shipping-method-meta { align-items: stretch; flex-direction: column; }
+  .admin-shipping-wide { grid-column: auto; }
+  .admin-shipping-method-meta .admin-section-actions { justify-content: start; }
   .admin-overview-heading { display: grid; align-items: start; gap: 24px; margin-bottom: 32px; }
   .admin-overview-heading-actions { width: 100%; }
   .admin-overview-heading-actions > * { flex: 1; justify-content: center; }

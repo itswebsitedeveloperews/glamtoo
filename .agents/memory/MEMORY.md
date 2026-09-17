@@ -22,3 +22,4 @@
 - [Contact spam protection](contact-spam-protection.md) — Do not use a hidden honeypot field; browser autofill caused valid enquiries to fail validation.
 - [Contact submission semantics](contact-submission-semantics.md) — Success means the enquiry is durably received; email delivery is best-effort and must not block customers.
 - [Flexible variation attributes](flexible-variation-attributes.md) — Products define ordered attributes first; combinations and storefront selectors must render only those definitions.
+- [Configurable shipping methods](configurable-shipping-methods.md) — Checkout shipping comes from enabled database methods; the server resolves every selected rate and threshold.

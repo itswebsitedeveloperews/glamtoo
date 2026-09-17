@@ -28,7 +28,7 @@ export type PendingOrderInput = {
     postcode: string;
     country: string;
   };
-  delivery: "standard" | "express";
+  delivery: string;
   subtotal: number;
   deliveryAmount: number;
   discountAmount: number;
