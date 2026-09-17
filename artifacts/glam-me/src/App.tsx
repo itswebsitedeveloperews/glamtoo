@@ -951,7 +951,9 @@ function Footer() {
               <p className="footer-intro">Outfits that make every moment yours. Expressive pieces for the beautifully busy life.</p>
               <div className="footer-socials" aria-label="Social links">
                 <a href="#" aria-label="Linktr.ee" data-testid="link-footer-linktree">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5.5 8.5 12 3l6.5 5.5M4 13h16M7 18h10"></path></svg>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M10.5 1h3v9h-3zM1 8.5h22v3H1zM4.2 3.3l2.1-2.1 13.5 13.5-2.1 2.1zM17.7 1.2l2.1 2.1L6.3 16.8l-2.1-2.1zM10.5 13.5h3V23h-3z" fill="currentColor" stroke="none"></path>
+                  </svg>
                 </a>
                 <a href="#" aria-label="Instagram" data-testid="link-footer-instagram">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"></rect><circle cx="12" cy="12" r="3.5"></circle><circle cx="17.3" cy="6.8" r=".8" fill="currentColor" stroke="none"></circle></svg>
