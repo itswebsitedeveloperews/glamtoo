@@ -22,6 +22,9 @@ import buttonUpBeltedTrouserSetImage from "@assets/button-up-belted-trouser-set.
 import leatherCapeJacketImage from "@assets/leather-cape-jacket.webp";
 import longSleevedBowKnittedTopImage from "@assets/long-sleeved-bow-knitted-top.jpeg";
 import buttonUpShortSleeveBlazerImage from "@assets/button-up-short-sleeve-blazer.jpg";
+import fauxLeatherThreeCompartmentToteBagImage from "@assets/faux-leather-three-compartment-tote-bag.jpeg";
+import fauxLeatherMediumToteBagImage from "@assets/faux-leather-medium-tote-bag.jpeg";
+import miniToteBagImage from "@assets/mini-tote-bag.webp";
 
 export type CatalogVariation = {
   id: number;
@@ -546,6 +549,53 @@ export const catalogProducts: CatalogProduct[] = [
     description: "Button Up Short Sleeve Blazer",
     sku: "GM-BUTTON-UP-SHORT-SLEEVE-BLAZER",
     image: buttonUpShortSleeveBlazerImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 120,
+    slug: "faux-leather-three-compartment-tote-bag",
+    name: "Faux Leather 3 Compartment Tote Bag",
+    category: "Handbags",
+    price: "£29.99",
+    stock: 8,
+    status: "Published",
+    type: "Simple",
+    description: "Black Triple Compartment Tote Bag",
+    longDescription: "A stylish and versatile everyday tote bag designed for practicality and comfort. Featuring three spacious compartments, it keeps your essentials neatly organised and easy to access. Made from faux leather with a long strap.",
+    sku: "GM-FAUX-LEATHER-3-COMPARTMENT",
+    image: fauxLeatherThreeCompartmentToteBagImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 121,
+    slug: "faux-leather-medium-tote-bag",
+    name: "Faux Leather Medium Tote Bag",
+    category: "Handbags",
+    price: "£34.99",
+    stock: 5,
+    status: "Published",
+    type: "Simple",
+    description: "Black Faux Leather Medium Tote Bag",
+    longDescription: "A spacious tote bag big enough for your essentials, including your phone, makeup, purse, diary, and more. Ideal for work, shopping, or casual outings, the double top handles make it comfortable to carry, while premium stitching and a textured leather effect elevate the overall look.",
+    sku: "GM-FAUX-LEATHER-MEDIUM-TOTE",
+    image: fauxLeatherMediumToteBagImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 122,
+    slug: "mini-tote-bag",
+    name: "Mini Tote Bag",
+    category: "Handbags",
+    price: "£19.99",
+    stock: 8,
+    status: "Published",
+    type: "Simple",
+    description: "Black Mini Tote Bag",
+    sku: "GM-MINI-TOTE-BAG",
+    image: miniToteBagImage,
     position: "50% 50%",
     variations: [],
   },
