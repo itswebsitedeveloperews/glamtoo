@@ -16,6 +16,7 @@ import printedAysemetricTracksuitImage from "@assets/printed-aysemetric-tracksui
 import denimTrimRibbedCardiganImage from "@assets/denim-trim-ribbed-cardigan.jpg";
 import aysemetricSequinDressImage from "@assets/aysemetric-sequin-dress.jpeg";
 import doubledBreastedKnitBeltDressImage from "@assets/doubled-breasted-knit-belt-dress.webp";
+import daisyEmbellishedKnitDressImage from "@assets/daisy-embellished-knit-dress.webp";
 
 export type CatalogVariation = {
   id: number;
@@ -447,6 +448,22 @@ export const catalogProducts: CatalogProduct[] = [
     longDescription: "Double Breasted Knit Long Dress, a timeless piece blending structure, elegance, and comfort. Crafted from premium stretch knit fabric, this dress features a double-breasted button design, notched lapel collar, and waist-defining belt for a sophisticated, tailored silhouette.",
     sku: "GM-DOUBLED-BREASTED-KNIT",
     image: doubledBreastedKnitBeltDressImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 114,
+    slug: "daisy-embellished-knit-dress",
+    name: "Daisy Embellished Knit Dress",
+    category: "Dresses",
+    price: "£34.99",
+    stock: 4,
+    status: "Published",
+    type: "Simple",
+    description: "Black Daisy Embellished Knit Dress",
+    longDescription: "Add a touch of charm to your knitwear collection with this daisy embellished midi knit dress. It features delicate daisy trims at the neckline and cuffs, button-through front detail, and a pleated skirt for a flattering finish.",
+    sku: "GM-DAISY-EMBELLISHED-KNIT",
+    image: daisyEmbellishedKnitDressImage,
     position: "50% 50%",
     variations: [],
   },
