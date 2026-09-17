@@ -620,7 +620,10 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .checkout-security-copy { margin: 15px 0 0; color: var(--muted); font-size: 14px; line-height: 1.5; text-align: center; }
 .confirmation { text-align: center; padding: 115px 0 150px; }
 .confirmation-mark { width: 70px; height: 70px; border: 1px solid var(--pink-deep); border-radius: 50%; display: grid; place-items: center; margin: 0 auto 30px; font-family: var(--display); font-size: 32px; }
-.confirmation h1 { margin: 0 0 17px; font: 400 clamp(57px, 9vw, 105px)/.85 var(--display); }
+.confirmation h1 {
+  margin: 20px 0 26px;
+  font: 400 clamp(57px, 9vw, 70px)/.85 var(--display);
+}
 .confirmation p { max-width: 400px; margin: 0 auto 29px; color: var(--muted); }
 
 @media (max-width: 800px) {
