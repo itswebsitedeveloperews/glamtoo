@@ -10,7 +10,7 @@ import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } 
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { Clock, CreditCard, Headphones, HelpCircle, LayoutDashboard, LogOut, Mail, MapPin, MessageSquare, Phone, RefreshCcw, Ruler, Search, ShoppingBag, Sparkles, Truck, UserRound, X, type LucideIcon } from 'lucide-react';
-import { Link, Route, Router as WouterRouter, Switch, useLocation } from 'wouter';
+import { Link, Route, Router as WouterRouter, Switch, useLocation, useSearch } from 'wouter';
 import { useSubmitContactEnquiry } from '@workspace/api-client-react';
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin-dashboard';
@@ -1120,6 +1120,7 @@ function sortProducts(products: CatalogProduct[], sort: string, salesByProduct: 
 function Shop() {
   useLiveInventory();
   const [, navigate] = useLocation();
+  const search = useSearch();
   const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
   useEffect(() => {
     let active = true;
@@ -1139,17 +1140,21 @@ function Shop() {
     };
   }, []);
   const products = getStorefrontProducts();
-  const searchParams = new URLSearchParams(window.location.search);
+  const searchParams = new URLSearchParams(search);
   const searchQuery = searchParams.get("search")?.trim() ?? "";
   const categoryFilter = searchParams.get("category")?.trim().toLowerCase() ?? "";
   const sortFilter = searchParams.get("sort")?.trim().toLowerCase() ?? "";
   const requestedPage = Number(searchParams.get("page"));
+  const productCategories = new Map<string, string>();
+  products.forEach((product) => {
+    const label = product.category.trim();
+    const value = slugify(label);
+    if (label && value && !productCategories.has(value)) productCategories.set(value, label);
+  });
   const categoryOptions = [
-    { value: "", label: "All pieces", matches: [] },
-    { value: "dresses", label: "Dresses", matches: ["dresses"] },
-    { value: "occasion", label: "Occasionwear", matches: ["occasion"] },
-    { value: "tops-tailoring", label: "Tops & tailoring", matches: ["co-ords", "tops", "tailoring"] },
-    { value: "accessories", label: "Accessories", matches: ["accessories"] },
+    { value: "", label: "All pieces", matches: [] as string[] },
+    ...Array.from(productCategories, ([value, label]) => ({ value, label, matches: [value] }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
   ];
   const selectedCategory = categoryOptions.find((option) => option.value === categoryFilter) ?? categoryOptions[0];
   const activeSort = productSortOptions.find((option) => option.value === sortFilter) ?? productSortOptions[0];
@@ -1309,6 +1314,7 @@ function CategoryIndex() {
 function CategoryDetail({ params }: { params: { slug: string } }) {
   useLiveInventory();
   const [, navigate] = useLocation();
+  const search = useSearch();
   const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
   useEffect(() => {
     let active = true;
@@ -1327,7 +1333,7 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
     .filter((item) => item.parentId === category.id)
     .map((item) => slugify(item.name));
   const matchingCategorySlugs = new Set([params.slug, ...childCategoryNames]);
-  const sortFilter = new URLSearchParams(window.location.search).get("sort")?.trim().toLowerCase() ?? "new";
+  const sortFilter = new URLSearchParams(search).get("sort")?.trim().toLowerCase() ?? "new";
   const activeSort = productSortOptions.some((option) => option.value === sortFilter) ? sortFilter : "new";
   const products = sortProducts(
     getStorefrontProducts().filter((product) => matchingCategorySlugs.has(slugify(product.category))),
@@ -1335,7 +1341,7 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
     salesByProduct,
   );
   const updateSort = (value: string) => {
-    const query = new URLSearchParams(window.location.search);
+    const query = new URLSearchParams(search);
     query.set("sort", value);
     navigate(`${basePath}/category/${params.slug}?${query.toString()}`);
   };
