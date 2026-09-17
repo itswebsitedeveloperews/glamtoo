@@ -1142,6 +1142,7 @@ function Shop() {
   const searchQuery = searchParams.get("search")?.trim() ?? "";
   const categoryFilter = searchParams.get("category")?.trim().toLowerCase() ?? "";
   const sortFilter = searchParams.get("sort")?.trim().toLowerCase() ?? "";
+  const requestedPage = Number(searchParams.get("page"));
   const categoryOptions = [
     { value: "", label: "All pieces", matches: [] },
     { value: "dresses", label: "Dresses", matches: ["dresses"] },
@@ -1152,11 +1153,12 @@ function Shop() {
   const selectedCategory = categoryOptions.find((option) => option.value === categoryFilter) ?? categoryOptions[0];
   const activeSort = productSortOptions.find((option) => option.value === sortFilter) ?? productSortOptions[0];
   const normalizedQuery = searchQuery.toLowerCase();
-  const buildShopUrl = (nextCategory = selectedCategory.value, nextSort = activeSort?.value ?? "") => {
+  const buildShopUrl = (nextCategory = selectedCategory.value, nextSort = activeSort?.value ?? "", nextPage = 1) => {
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
     if (nextCategory) params.set("category", nextCategory);
     if (nextSort) params.set("sort", nextSort);
+    if (nextPage > 1) params.set("page", String(nextPage));
     const query = params.toString();
     return `${basePath}/shop${query ? `?${query}` : ""}`;
   };
@@ -1171,6 +1173,13 @@ function Shop() {
       ? `${selectedCategory.label} pieces`
       : "Showing all";
   const toolbarSort = activeSort ? ` · ${activeSort.label}` : "";
+  const productsPerPage = 16;
+  const totalPages = Math.max(1, Math.ceil(visibleProducts.length / productsPerPage));
+  const currentPage = Number.isInteger(requestedPage) && requestedPage > 0
+    ? Math.min(requestedPage, totalPages)
+    : 1;
+  const pageStart = (currentPage - 1) * productsPerPage;
+  const paginatedProducts = visibleProducts.slice(pageStart, pageStart + productsPerPage);
   return (
     <Shell>
       <PageHero eyebrow="The shop" title="Pieces with presence." copy="A considered wardrobe of colour, texture and easy confidence. Find something for the plan you have, and the one you haven't made yet." />
@@ -1195,7 +1204,41 @@ function Shop() {
             <ProductSortControl value={activeSort.value} onChange={(value) => window.location.assign(buildShopUrl(selectedCategory.value, value))} />
           </div>
           {visibleProducts.length > 0 ? (
-            <div className="product-grid">{visibleProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={index < 2} />)}</div>
+            <>
+              <div className="product-grid">{paginatedProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={currentPage === 1 && index < 2} />)}</div>
+              {totalPages > 1 && (
+                <nav className="shop-pagination" aria-label="Shop pages">
+                  <a
+                    className={currentPage === 1 ? "is-disabled" : ""}
+                    href={buildShopUrl(selectedCategory.value, activeSort.value, Math.max(1, currentPage - 1))}
+                    aria-disabled={currentPage === 1}
+                    tabIndex={currentPage === 1 ? -1 : undefined}
+                  >
+                    Previous
+                  </a>
+                  <div>
+                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                      <a
+                        key={page}
+                        href={buildShopUrl(selectedCategory.value, activeSort.value, page)}
+                        className={page === currentPage ? "is-active" : ""}
+                        aria-current={page === currentPage ? "page" : undefined}
+                      >
+                        {page}
+                      </a>
+                    ))}
+                  </div>
+                  <a
+                    className={currentPage === totalPages ? "is-disabled" : ""}
+                    href={buildShopUrl(selectedCategory.value, activeSort.value, Math.min(totalPages, currentPage + 1))}
+                    aria-disabled={currentPage === totalPages}
+                    tabIndex={currentPage === totalPages ? -1 : undefined}
+                  >
+                    Next
+                  </a>
+                </nav>
+              )}
+            </>
           ) : (
             <div className="shop-empty-state">
               <h2>No pieces found.</h2>
