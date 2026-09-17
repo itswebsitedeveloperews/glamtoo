@@ -49,7 +49,7 @@ img { display: block; max-width: 100%; }
 .tool-label { display: inline-flex; gap: 7px; align-items: center; }
 .tool-icon { position: relative; display: inline-grid; place-items: center; width: 18px; height: 18px; letter-spacing: 0; }
 .tool-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.45; stroke-linecap: round; stroke-linejoin: round; }
-h2 { font-size: 48px !important; letter-spacing: -.02em !important; }
+h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transform: capitalize !important; }
 .menu-toggle { display: none; border: 0; padding: 8px 0; background: transparent; color: var(--ink); cursor: pointer; }
 .menu-toggle-icon { display: grid; width: 24px; gap: 4px; }
 .menu-toggle-icon span { display: block; width: 100%; height: 1px; background: currentColor; transition: transform .2s ease, opacity .2s ease; }
@@ -89,7 +89,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; }
 .hero:after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(17,12,12,.56), rgba(17,12,12,.05) 68%), linear-gradient(0deg, rgba(17,12,12,.3), transparent 35%); }
 .hero-copy { position: relative; z-index: 1; color: var(--white); width: min(1240px, calc(100% - 48px)); margin: auto; padding: 72px 0; }
 .hero-copy .eyebrow { color: #f4cad5; }
-.hero-copy h1 { max-width: 570px; margin: 13px 0 32px; font: 400 100px/.84 var(--hero-display); letter-spacing: -.045em; }
+.hero-copy h1 { max-width: 570px; margin: 13px 0 32px; font: 400 100px/1 var(--hero-display); letter-spacing: -.045em; }
 .hero-copy p { width: 230px; margin: 0 0 27px; color: #fff; font-size: 16px; }
 .button {
   display: inline-flex; align-items: center; justify-content: center; min-height: 43px;
