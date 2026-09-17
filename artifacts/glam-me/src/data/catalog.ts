@@ -17,6 +17,7 @@ import denimTrimRibbedCardiganImage from "@assets/denim-trim-ribbed-cardigan.jpg
 import aysemetricSequinDressImage from "@assets/aysemetric-sequin-dress.jpeg";
 import doubledBreastedKnitBeltDressImage from "@assets/doubled-breasted-knit-belt-dress.webp";
 import daisyEmbellishedKnitDressImage from "@assets/daisy-embellished-knit-dress.webp";
+import goldButtonWaistCoatTrouserSetImage from "@assets/gold-button-waist-coat-trouser-set.jpeg";
 
 export type CatalogVariation = {
   id: number;
@@ -464,6 +465,22 @@ export const catalogProducts: CatalogProduct[] = [
     longDescription: "Add a touch of charm to your knitwear collection with this daisy embellished midi knit dress. It features delicate daisy trims at the neckline and cuffs, button-through front detail, and a pleated skirt for a flattering finish.",
     sku: "GM-DAISY-EMBELLISHED-KNIT",
     image: daisyEmbellishedKnitDressImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 115,
+    slug: "gold-button-waist-coat-and-trouser-set",
+    name: "Gold Button Waist Coat And Trouser Set",
+    category: "Co-ords",
+    price: "£39.99",
+    stock: 3,
+    status: "Published",
+    type: "Simple",
+    description: "Black Sleeveless Belted Waistcoat And Wide Leg Trousers",
+    longDescription: "Elevate your everyday wardrobe with this effortlessly chic two-piece co-ord set, designed for comfort without compromising style. Crafted in rich black, this matching set features a relaxed sleeveless top with a waisted belt. The coordinating wide-leg trousers sit comfortably with an elasticated waistband and adjustable drawstring, offering an easy, laid-back fit.",
+    sku: "GM-GOLD-BUTTON-WAISTCOAT-SET",
+    image: goldButtonWaistCoatTrouserSetImage,
     position: "50% 50%",
     variations: [],
   },
