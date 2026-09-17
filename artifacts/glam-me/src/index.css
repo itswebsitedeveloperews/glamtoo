@@ -196,7 +196,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; }
 .product-meta { color: var(--muted); font-size: 14px; margin-top: 3px; }
 .price { font-size: 14px; white-space: nowrap; }
 
-.moments { padding: 84px 0 96px; background: var(--pink); }
+.moments { padding: 84px 0 96px; background: var(--pink-deep); }
 .moments-heading { margin: 0 auto 34px; color: var(--white); text-align: center; }
 .moments-heading .eyebrow { color: rgba(255,255,255,.8); }
 .moments-heading h2 { margin: 10px 0 0; font: 400 clamp(44px, 5.2vw, 70px)/.94 var(--hero-display); letter-spacing: -.04em; }
