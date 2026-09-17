@@ -1088,6 +1088,35 @@ function PageHero({ eyebrow, title, copy }: { eyebrow: string; title: string; co
   return <section className="page-hero"><div className="container"><div className="eyebrow">{eyebrow}</div><h1>{title}</h1>{copy && <p>{copy}</p>}</div></section>;
 }
 
+const productSortOptions = [
+  { value: "new", label: "New in" },
+  { value: "bestsellers", label: "Bestsellers" },
+  { value: "price-asc", label: "Price: low to high" },
+];
+
+function ProductSortControl({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="product-sort-control">
+      <span>Sort by</span>
+      <select value={value || "new"} onChange={(event) => onChange(event.target.value)} aria-label="Sort products">
+        {productSortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function sortProducts(products: CatalogProduct[], sort: string, salesByProduct: Record<string, number>) {
+  const sorted = [...products];
+  if (sort === "price-asc") sorted.sort((a, b) => parsePounds(a.price) - parsePounds(b.price));
+  if (sort === "bestsellers") {
+    sorted.sort((a, b) =>
+      (salesByProduct[String(b.id)] ?? 0) - (salesByProduct[String(a.id)] ?? 0)
+      || a.name.localeCompare(b.name),
+    );
+  }
+  return sorted;
+}
+
 function Shop() {
   useLiveInventory();
   const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
@@ -1120,13 +1149,8 @@ function Shop() {
     { value: "tops-tailoring", label: "Tops & tailoring", matches: ["co-ords", "tops", "tailoring"] },
     { value: "accessories", label: "Accessories", matches: ["accessories"] },
   ];
-  const sortOptions = [
-    { value: "new", label: "New in" },
-    { value: "bestsellers", label: "Bestsellers" },
-    { value: "price-asc", label: "Price: low to high" },
-  ];
   const selectedCategory = categoryOptions.find((option) => option.value === categoryFilter) ?? categoryOptions[0];
-  const activeSort = sortOptions.find((option) => option.value === sortFilter);
+  const activeSort = productSortOptions.find((option) => option.value === sortFilter) ?? productSortOptions[0];
   const normalizedQuery = searchQuery.toLowerCase();
   const buildShopUrl = (nextCategory = selectedCategory.value, nextSort = activeSort?.value ?? "") => {
     const params = new URLSearchParams();
@@ -1136,18 +1160,11 @@ function Shop() {
     const query = params.toString();
     return `${basePath}/shop${query ? `?${query}` : ""}`;
   };
-  const visibleProducts = products.filter((product) => {
+  const visibleProducts = sortProducts(products.filter((product) => {
     const matchesSearch = !normalizedQuery || [product.name, product.category, product.slug].some((value) => value.toLowerCase().includes(normalizedQuery));
     const matchesCategory = !selectedCategory.value || selectedCategory.matches.includes(slugify(product.category));
     return matchesSearch && matchesCategory;
-  });
-  if (activeSort?.value === "price-asc") visibleProducts.sort((a, b) => parsePounds(a.price) - parsePounds(b.price));
-  if (activeSort?.value === "bestsellers") {
-    visibleProducts.sort((a, b) =>
-      (salesByProduct[String(b.id)] ?? 0) - (salesByProduct[String(a.id)] ?? 0)
-      || a.name.localeCompare(b.name),
-    );
-  }
+  }), activeSort.value, salesByProduct);
   const toolbarDescription = searchQuery
     ? `Search results for “${searchQuery}”`
     : selectedCategory.value
@@ -1171,23 +1188,11 @@ function Shop() {
               {option.label}
             </a>
           ))}
-          <h3 style={{ marginTop: 36 }}>Sort by</h3>
-          {sortOptions.map((option) => (
-            <a
-              key={option.value}
-              href={buildShopUrl(selectedCategory.value, option.value)}
-              className={activeSort?.value === option.value ? "is-active" : ""}
-              aria-current={activeSort?.value === option.value ? "page" : undefined}
-              data-testid={`filter-sort-${option.value}`}
-            >
-              {option.label}
-            </a>
-          ))}
         </aside>
         <section className="shop-main">
           <div className="shop-toolbar">
-            <span>{visibleProducts.length} {visibleProducts.length === 1 ? "piece" : "pieces"}</span>
-            <span>{toolbarDescription}{toolbarSort}</span>
+            <div><span>{visibleProducts.length} {visibleProducts.length === 1 ? "piece" : "pieces"}</span><span>{toolbarDescription}{toolbarSort}</span></div>
+            <ProductSortControl value={activeSort.value} onChange={(value) => window.location.assign(buildShopUrl(selectedCategory.value, value))} />
           </div>
           {visibleProducts.length > 0 ? (
             <div className="product-grid">{visibleProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={index < 2} />)}</div>
@@ -1243,6 +1248,17 @@ function CategoryIndex() {
 
 function CategoryDetail({ params }: { params: { slug: string } }) {
   useLiveInventory();
+  const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let active = true;
+    fetch("/api/stripe/product-sales")
+      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Unable to load product sales")))
+      .then(({ sales }: { sales?: Record<string, number> }) => {
+        if (active && sales) setSalesByProduct(sales);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
   const categories = getStorefrontCategories();
   const category = categories.find((item) => slugify(item.name) === params.slug);
   if (!category) return <NotFoundRoute />;
@@ -1250,7 +1266,18 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
     .filter((item) => item.parentId === category.id)
     .map((item) => slugify(item.name));
   const matchingCategorySlugs = new Set([params.slug, ...childCategoryNames]);
-  const products = getStorefrontProducts().filter((product) => matchingCategorySlugs.has(slugify(product.category)));
+  const sortFilter = new URLSearchParams(window.location.search).get("sort")?.trim().toLowerCase() ?? "new";
+  const activeSort = productSortOptions.some((option) => option.value === sortFilter) ? sortFilter : "new";
+  const products = sortProducts(
+    getStorefrontProducts().filter((product) => matchingCategorySlugs.has(slugify(product.category))),
+    activeSort,
+    salesByProduct,
+  );
+  const updateSort = (value: string) => {
+    const query = new URLSearchParams(window.location.search);
+    query.set("sort", value);
+    window.location.assign(`${basePath}/category/${params.slug}?${query.toString()}`);
+  };
 
   return (
     <Shell>
@@ -1270,7 +1297,10 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
       <section className="container category-products" id="category-products" aria-labelledby="category-products-heading">
         <div className="section-heading">
           <div><div className="eyebrow">The edit</div><h2 id="category-products-heading">{category.name} pieces</h2></div>
-          <span className="category-count">{products.length} {products.length === 1 ? "piece" : "pieces"}</span>
+          <div className="category-products-actions">
+            <span className="category-count">{products.length} {products.length === 1 ? "piece" : "pieces"}</span>
+            <ProductSortControl value={activeSort} onChange={updateSort} />
+          </div>
         </div>
         {products.length > 0 ? (
           <div className="product-grid">{products.map((product) => <ProductCard key={product.id} product={product} />)}</div>
