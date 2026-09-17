@@ -950,17 +950,23 @@ function Footer() {
               <img className="footer-logo" src={logoImage} alt="Glam Too" />
               <p className="footer-intro">Outfits that make every moment yours. Expressive pieces for the beautifully busy life.</p>
               <div className="footer-socials" aria-label="Social links">
-                <a href="/" aria-label="Instagram">
+                <a href="#" aria-label="Linktr.ee" data-testid="link-footer-linktree">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18M5.5 8.5 12 3l6.5 5.5M4 13h16M7 18h10"></path></svg>
+                </a>
+                <a href="#" aria-label="Instagram" data-testid="link-footer-instagram">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"></rect><circle cx="12" cy="12" r="3.5"></circle><circle cx="17.3" cy="6.8" r=".8" fill="currentColor" stroke="none"></circle></svg>
                 </a>
-                <a href="/" aria-label="Facebook">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 20v-7h2.4l.4-3H14V8.2c0-.9.3-1.5 1.6-1.5H17V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 4v2H8.5v3h2.4v7"></path></svg>
-                </a>
-                <a href="/" aria-label="TikTok">
+                <a href="#" aria-label="TikTok" data-testid="link-footer-tiktok">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4v10.2a3.7 3.7 0 1 1-3-3.6"></path><path d="M14 4c.5 2.5 2 4 4.5 4.3"></path></svg>
                 </a>
-                <a href="/" aria-label="Pinterest">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 20c1-2 1.2-3.2 1.7-5.2.4.8 1.4 1.6 2.8 1.6 3.7 0 6-3.1 6-6.8C20 6.2 16.8 4 12.4 4 7 4 4 7.4 4 11c0 2.1.8 4 2.5 4.7.2.1.4 0 .5-.2l.4-1.5c.1-.2 0-.3-.1-.5-.5-.6-.8-1.4-.8-2.5 0-3.3 2.5-6.2 6.5-6.2 3.5 0 5.4 2.1 5.4 4.9 0 3.7-1.6 6.8-4 6.8-1.3 0-2.3-1-2-2.3.4-1.7 1.1-3.5 1.1-4.7 0-1.1-.6-2-1.8-2-1.4 0-2.5 1.4-2.5 3.3 0 1.2.4 2 .4 2l-1.6 6.8"></path></svg>
+                <a href="#" aria-label="Facebook" data-testid="link-footer-facebook">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 20v-7h2.4l.4-3H14V8.2c0-.9.3-1.5 1.6-1.5H17V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 4v2H8.5v3h2.4v7"></path></svg>
+                </a>
+                <a href="#" aria-label="YouTube" data-testid="link-footer-youtube">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3"></rect><path d="m10 9 5 3-5 3Z"></path></svg>
+                </a>
+                <a href="#" aria-label="WhatsApp" data-testid="link-footer-whatsapp">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.7a8 8 0 0 1-11.8 7L4 20l1.3-4.1A8 8 0 1 1 20 11.7Z"></path><path d="M9 8.2c.3 2.7 2.1 4.6 4.8 5.6l1.3-1.3c.2-.2.4-.2.7-.1l2 .9"></path></svg>
                 </a>
               </div>
             </div>
