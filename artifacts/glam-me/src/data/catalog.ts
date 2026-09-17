@@ -442,15 +442,12 @@ export const catalogProducts: CatalogProduct[] = [
     price: "£34.99",
     stock: 4,
     status: "Published",
-    type: "Variable",
+    type: "Simple",
     description: "Black Double Breasted Belt Long Dress",
     longDescription: "Double Breasted Knit Long Dress, a timeless piece blending structure, elegance, and comfort. Crafted from premium stretch knit fabric, this dress features a double-breasted button design, notched lapel collar, and waist-defining belt for a sophisticated, tailored silhouette.",
     sku: "GM-DOUBLED-BREASTED-KNIT",
     image: doubledBreastedKnitBeltDressImage,
     position: "50% 50%",
-    variationAttributes: ["size"],
-    variations: [
-      { id: 1131, size: "One Size", colour: "", sku: "GM-DOUBLED-BREASTED-KNIT-OS", price: "£34.99", stock: 4 },
-    ],
+    variations: [],
   },
 ];
