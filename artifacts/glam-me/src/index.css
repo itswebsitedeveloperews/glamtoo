@@ -184,7 +184,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; }
 .wishlist-notice { position: fixed; z-index: 60; right: 24px; bottom: 24px; max-width: min(390px, calc(100vw - 36px)); border: 1px solid #c4788d; background: #fff5f7; box-shadow: 7px 7px 0 rgba(23, 22, 21, .1); padding: 14px 17px; color: #76243d; font-size: 16px; }
 .wishlist-notice-error { border-color: #a33c58; background: #fff1f3; color: #8b1d3d; }
 .product-info { display: flex; justify-content: space-between; gap: 8px; padding: 13px 2px; }
-.product-name { font-size: 14px; letter-spacing: .05em; text-transform: uppercase; }
+.product-name { font-size: 18px; font-weight: 600; }
 .product-meta { color: var(--muted); font-size: 14px; margin-top: 3px; }
 .price { font-size: 14px; white-space: nowrap; }
 
