@@ -18,6 +18,7 @@ import aysemetricSequinDressImage from "@assets/aysemetric-sequin-dress.jpeg";
 import doubledBreastedKnitBeltDressImage from "@assets/doubled-breasted-knit-belt-dress.webp";
 import daisyEmbellishedKnitDressImage from "@assets/daisy-embellished-knit-dress.webp";
 import goldButtonWaistCoatTrouserSetImage from "@assets/gold-button-waist-coat-trouser-set.jpeg";
+import buttonUpBeltedTrouserSetImage from "@assets/button-up-belted-trouser-set.jpg";
 
 export type CatalogVariation = {
   id: number;
@@ -481,6 +482,21 @@ export const catalogProducts: CatalogProduct[] = [
     longDescription: "Elevate your everyday wardrobe with this effortlessly chic two-piece co-ord set, designed for comfort without compromising style. Crafted in rich black, this matching set features a relaxed sleeveless top with a waisted belt. The coordinating wide-leg trousers sit comfortably with an elasticated waistband and adjustable drawstring, offering an easy, laid-back fit.",
     sku: "GM-GOLD-BUTTON-WAISTCOAT-SET",
     image: goldButtonWaistCoatTrouserSetImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 116,
+    slug: "button-up-belted-trouser-set",
+    name: "Button Up Belted Trouser Set",
+    category: "Co-ords",
+    price: "£39.99",
+    stock: 2,
+    status: "Published",
+    type: "Simple",
+    description: "Button Up Belted Trouser Set",
+    sku: "GM-BUTTON-UP-BELTED-SET",
+    image: buttonUpBeltedTrouserSetImage,
     position: "50% 50%",
     variations: [],
   },
