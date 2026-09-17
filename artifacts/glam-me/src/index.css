@@ -194,7 +194,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .product-info { display: flex; justify-content: space-between; gap: 8px; padding: 13px 2px; }
 .product-name { font-size: 18px; font-weight: 600; }
 .product-meta { color: var(--muted); font-size: 14px; margin-top: 3px; }
-.price { font-size: 14px; white-space: nowrap; }
+.price { font-size: 16px; white-space: nowrap; }
 
 .moments { padding: 84px 0 96px; background: var(--pink-deep); }
 .moments-heading { margin: 0 auto 34px; color: var(--white); text-align: center; }
