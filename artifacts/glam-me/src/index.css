@@ -90,7 +90,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .hero-copy { position: relative; z-index: 1; color: var(--white); width: min(1240px, calc(100% - 48px)); margin: auto; padding: 72px 0; }
 .hero-copy .eyebrow { color: #f4cad5; }
 .hero-copy h1 { max-width: 570px; margin: 13px 0 32px; font: 400 100px/1 var(--hero-display); letter-spacing: -.045em; }
-.hero-copy p { width: 230px; margin: 0 0 27px; color: #fff; font-size: 16px; }
+.hero-copy p { margin: 0 0 27px; color: #fff; font-size: 16px; }
 .button {
   display: inline-flex; align-items: center; justify-content: center; min-height: 43px;
   border: 1px solid var(--ink); background: var(--ink); color: var(--white);
