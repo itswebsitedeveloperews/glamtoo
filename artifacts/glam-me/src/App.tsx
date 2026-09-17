@@ -1119,6 +1119,7 @@ function sortProducts(products: CatalogProduct[], sort: string, salesByProduct: 
 
 function Shop() {
   useLiveInventory();
+  const [, navigate] = useLocation();
   const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
   useEffect(() => {
     let active = true;
@@ -1190,6 +1191,10 @@ function Shop() {
             <a
               key={option.value || "all"}
               href={buildShopUrl(option.value, activeSort?.value)}
+              onClick={(event) => {
+                event.preventDefault();
+                navigate(buildShopUrl(option.value, activeSort?.value));
+              }}
               className={selectedCategory.value === option.value ? "is-active" : ""}
               aria-current={selectedCategory.value === option.value ? "page" : undefined}
               data-testid={`filter-category-${option.value || "all"}`}
@@ -1201,7 +1206,7 @@ function Shop() {
         <section className="shop-main">
           <div className="shop-toolbar">
             <div><span>{visibleProducts.length} {visibleProducts.length === 1 ? "piece" : "pieces"}</span><span>{toolbarDescription}{toolbarSort}</span></div>
-            <ProductSortControl value={activeSort.value} onChange={(value) => window.location.assign(buildShopUrl(selectedCategory.value, value))} />
+            <ProductSortControl value={activeSort.value} onChange={(value) => navigate(buildShopUrl(selectedCategory.value, value))} />
           </div>
           {visibleProducts.length > 0 ? (
             <>
@@ -1211,6 +1216,10 @@ function Shop() {
                   <a
                     className={currentPage === 1 ? "is-disabled" : ""}
                     href={buildShopUrl(selectedCategory.value, activeSort.value, Math.max(1, currentPage - 1))}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (currentPage > 1) navigate(buildShopUrl(selectedCategory.value, activeSort.value, currentPage - 1));
+                    }}
                     aria-disabled={currentPage === 1}
                     tabIndex={currentPage === 1 ? -1 : undefined}
                   >
@@ -1221,6 +1230,10 @@ function Shop() {
                       <a
                         key={page}
                         href={buildShopUrl(selectedCategory.value, activeSort.value, page)}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          navigate(buildShopUrl(selectedCategory.value, activeSort.value, page));
+                        }}
                         className={page === currentPage ? "is-active" : ""}
                         aria-current={page === currentPage ? "page" : undefined}
                       >
@@ -1231,6 +1244,10 @@ function Shop() {
                   <a
                     className={currentPage === totalPages ? "is-disabled" : ""}
                     href={buildShopUrl(selectedCategory.value, activeSort.value, Math.min(totalPages, currentPage + 1))}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      if (currentPage < totalPages) navigate(buildShopUrl(selectedCategory.value, activeSort.value, currentPage + 1));
+                    }}
                     aria-disabled={currentPage === totalPages}
                     tabIndex={currentPage === totalPages ? -1 : undefined}
                   >
@@ -1291,6 +1308,7 @@ function CategoryIndex() {
 
 function CategoryDetail({ params }: { params: { slug: string } }) {
   useLiveInventory();
+  const [, navigate] = useLocation();
   const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
   useEffect(() => {
     let active = true;
@@ -1319,7 +1337,7 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
   const updateSort = (value: string) => {
     const query = new URLSearchParams(window.location.search);
     query.set("sort", value);
-    window.location.assign(`${basePath}/category/${params.slug}?${query.toString()}`);
+    navigate(`${basePath}/category/${params.slug}?${query.toString()}`);
   };
 
   return (
