@@ -160,7 +160,7 @@ img { display: block; max-width: 100%; }
 .product-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
 .home-obsessions { padding-top: 82px; }
 .home-obsessions-heading { margin-bottom: 34px; text-align: center; }
-.home-obsessions-heading h2 { margin: 9px 0 0; font: 400 clamp(38px, 5vw, 62px)/.9 var(--display); letter-spacing: -.02em; }
+.home-obsessions-heading h2 { margin: 9px 0 0; font: 400 clamp(38px, 5vw, 48px)/.9 var(--display); letter-spacing: -.02em; }
 .home-obsessions-heading h2:after { content: ''; display: block; width: 98px; height: 2px; margin: 23px auto 0; background: #eaa3b8; }
 .home-obsessions .product-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0 auto; }
 .home-obsessions .product-info { display: grid; grid-template-columns: 1fr; justify-items: center; gap: 9px; padding: 14px 0 0; text-align: center; }
