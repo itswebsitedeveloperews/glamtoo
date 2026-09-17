@@ -253,7 +253,7 @@ img { display: block; max-width: 100%; }
 .shop-toolbar > div:first-child { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .product-sort-control { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; color: var(--ink); font-size: 14px; font-weight: 600; }
 .product-sort-control span { white-space: nowrap; }
-.product-sort-control select { min-width: 180px; border: 1px solid var(--line); background: var(--white); color: var(--ink); padding: 10px 34px 10px 12px; font: inherit; cursor: pointer; }
+.product-sort-control select { min-width: 180px; border: 1px solid var(--line); outline: none !important; background: var(--white); color: var(--ink); padding: 10px 34px 10px 12px; font: inherit; cursor: pointer; }
 .product-sort-control select:focus-visible { outline: 2px solid var(--pink-deep); outline-offset: 2px; }
 .category-products-actions { display: flex; align-items: center; gap: 20px; }
 .shop-empty-state { border: 1px solid var(--line); background: var(--white); padding: 58px 30px; text-align: center; }
