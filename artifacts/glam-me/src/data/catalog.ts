@@ -19,6 +19,7 @@ import doubledBreastedKnitBeltDressImage from "@assets/doubled-breasted-knit-bel
 import daisyEmbellishedKnitDressImage from "@assets/daisy-embellished-knit-dress.webp";
 import goldButtonWaistCoatTrouserSetImage from "@assets/gold-button-waist-coat-trouser-set.jpeg";
 import buttonUpBeltedTrouserSetImage from "@assets/button-up-belted-trouser-set.jpg";
+import leatherCapeJacketImage from "@assets/leather-cape-jacket.webp";
 
 export type CatalogVariation = {
   id: number;
@@ -497,6 +498,21 @@ export const catalogProducts: CatalogProduct[] = [
     description: "Button Up Belted Trouser Set",
     sku: "GM-BUTTON-UP-BELTED-SET",
     image: buttonUpBeltedTrouserSetImage,
+    position: "50% 50%",
+    variations: [],
+  },
+  {
+    id: 117,
+    slug: "leather-cape-jacket",
+    name: "Leather Cape Jacket",
+    category: "Coats",
+    price: "£49.99",
+    stock: 4,
+    status: "Published",
+    type: "Simple",
+    description: "Leather Cape Jacket",
+    sku: "GM-LEATHER-CAPE-JACKET",
+    image: leatherCapeJacketImage,
     position: "50% 50%",
     variations: [],
   },
