@@ -1206,38 +1206,36 @@ function Shop() {
           {visibleProducts.length > 0 ? (
             <>
               <div className="product-grid">{paginatedProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={currentPage === 1 && index < 2} />)}</div>
-              {totalPages > 1 && (
-                <nav className="shop-pagination" aria-label="Shop pages">
-                  <a
-                    className={currentPage === 1 ? "is-disabled" : ""}
-                    href={buildShopUrl(selectedCategory.value, activeSort.value, Math.max(1, currentPage - 1))}
-                    aria-disabled={currentPage === 1}
-                    tabIndex={currentPage === 1 ? -1 : undefined}
-                  >
-                    Previous
-                  </a>
-                  <div>
-                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
-                      <a
-                        key={page}
-                        href={buildShopUrl(selectedCategory.value, activeSort.value, page)}
-                        className={page === currentPage ? "is-active" : ""}
-                        aria-current={page === currentPage ? "page" : undefined}
-                      >
-                        {page}
-                      </a>
-                    ))}
-                  </div>
-                  <a
-                    className={currentPage === totalPages ? "is-disabled" : ""}
-                    href={buildShopUrl(selectedCategory.value, activeSort.value, Math.min(totalPages, currentPage + 1))}
-                    aria-disabled={currentPage === totalPages}
-                    tabIndex={currentPage === totalPages ? -1 : undefined}
-                  >
-                    Next
-                  </a>
-                </nav>
-              )}
+              <nav className="shop-pagination" aria-label="Shop pages">
+                <a
+                  className={currentPage === 1 ? "is-disabled" : ""}
+                  href={buildShopUrl(selectedCategory.value, activeSort.value, Math.max(1, currentPage - 1))}
+                  aria-disabled={currentPage === 1}
+                  tabIndex={currentPage === 1 ? -1 : undefined}
+                >
+                  Previous
+                </a>
+                <div>
+                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                    <a
+                      key={page}
+                      href={buildShopUrl(selectedCategory.value, activeSort.value, page)}
+                      className={page === currentPage ? "is-active" : ""}
+                      aria-current={page === currentPage ? "page" : undefined}
+                    >
+                      {page}
+                    </a>
+                  ))}
+                </div>
+                <a
+                  className={currentPage === totalPages ? "is-disabled" : ""}
+                  href={buildShopUrl(selectedCategory.value, activeSort.value, Math.min(totalPages, currentPage + 1))}
+                  aria-disabled={currentPage === totalPages}
+                  tabIndex={currentPage === totalPages ? -1 : undefined}
+                >
+                  Next
+                </a>
+              </nav>
             </>
           ) : (
             <div className="shop-empty-state">
