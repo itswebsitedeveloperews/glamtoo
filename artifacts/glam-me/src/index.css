@@ -59,7 +59,7 @@ img { display: block; max-width: 100%; }
 .mobile-nav-head { display: none; }
 .mobile-nav-close { border: 0; padding: 8px; background: transparent; color: var(--ink); font-size: 32px; font-weight: 300; line-height: 1; cursor: pointer; }
 .search-link { border: 0; outline: none; background: transparent; padding: 0; color: inherit; cursor: pointer; font-size: 16px; }
-.header-inline-search { display: flex; align-items: center; width: min(240px, 100%); border-bottom: 1px solid var(--ink); }
+.header-inline-search { display: flex; align-items: center; width: min(380px, 100%); border-bottom: 1px solid var(--ink); }
 .header-inline-search button { display: inline-grid; flex: 0 0 auto; place-items: center; border: 0; background: transparent; padding: 4px 6px 4px 0; color: inherit; cursor: pointer; }
 .header-inline-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; padding: 6px 0; color: var(--ink); font-size: 16px; }
 .header-inline-search input::placeholder { color: var(--muted); }
