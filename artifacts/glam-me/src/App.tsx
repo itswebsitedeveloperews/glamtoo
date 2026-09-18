@@ -1548,17 +1548,17 @@ function ProductDetail({ params }: { params: { slug: string } }) {
             <p>{product.description}</p>
             <form className="detail-form" onSubmit={handleAddToCart}>
               <input type="hidden" name="product" value={product.id} />
-               {product.type === 'Variable' && (
-                 <>
+                <div className={`detail-purchase-controls${product.type !== 'Variable' ? ' detail-purchase-controls-simple' : ''}`}>
+                  {product.type === 'Variable' && (
+                    <div className="detail-variation-fields">
                    {variationAttributes.map((attribute) => {
                      const values = [...new Set(productVariations.map((variation) => optionValue(variation, attribute)).filter(Boolean))];
                      return <div className="field" key={attribute}><label htmlFor={`product-${attribute}-${product.id}`}>Select {attribute === 'size' ? 'size' : attribute === 'colour' ? 'colour' : attribute}</label><select id={`product-${attribute}-${product.id}`} name={attribute} value={selectedOptions[attribute] ?? ''} onChange={(event) => { const next = { ...selectedOptions, [attribute]: event.target.value }; setSelectedOptions(next); setVariationMessage(''); }} required data-testid={`select-product-${attribute}-${product.id}`}><option value="" disabled>Choose {attribute === 'size' ? 'a size' : attribute === 'colour' ? 'a colour' : `a ${attribute}`}</option>{values.map((value) => <option key={value} value={value} disabled={!hasAllRequiredSelections && !hasCompatibleVariation({ ...selectedOptions, [attribute]: value })}>{value}</option>)}</select></div>;
                    })}
                    {availableVariations.length === 0 && <p className="variation-message">This product is currently unavailable.</p>}
                    {variationMessage && <p className="variation-message" role="alert">{variationMessage}</p>}
-                 </>
-               )}
-                {isSoldOut && <p className="variation-message">This product is currently out of stock.</p>}
+                    </div>
+                  )}
                  <div className="detail-quantity">
                    <span className="detail-quantity-label">Quantity</span>
                    <div className="detail-quantity-control">
@@ -1567,6 +1567,8 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                      <button type="button" onClick={() => setQuantity((current) => Math.min(availableQuantity, current + 1))} disabled={isSoldOut || !availableQuantity || quantity >= availableQuantity} aria-label="Increase quantity">+</button>
                    </div>
                  </div>
+                </div>
+                {isSoldOut && <p className="variation-message">This product is currently out of stock.</p>}
                   <button className="button" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation)} data-testid={`button-add-to-bag-${product.id}`}>{isSoldOut ? 'Out of stock' : `Add to bag · ${displayedPrice}`}</button>
 
               <div className="product-policies">
