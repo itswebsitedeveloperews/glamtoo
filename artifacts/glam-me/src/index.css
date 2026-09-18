@@ -2208,6 +2208,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .contact-card h3 {
   font: 400 24px/1.2 var(--display);
   margin: 0 0 15px;
+  text-transform: capitalize;
 }
 .contact-card p {
   color: var(--muted);
