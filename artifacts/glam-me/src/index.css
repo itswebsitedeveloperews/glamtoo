@@ -1387,6 +1387,9 @@ article.admin-shipping-method h2 {
 .admin-product-editor .admin-back-button { color: #8b817a; font-weight: 500; letter-spacing: 0; text-transform: none; }
 .admin-product-editor .admin-editor-heading { align-items: center; margin-bottom: 28px; }
 .admin-product-editor .admin-editor-heading h1 { font-size: 40px; }
+.admin-app .admin-product-editor h2 {
+  font-size: 24px !important;
+}
 .admin-product-editor .admin-editor-heading p:last-child { margin-top: 8px; font-size: 16px; }
 .admin-editor-heading-actions { align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .admin-editor-save-state { display: inline-flex; align-items: center; gap: 7px; margin-right: 4px; color: #8b817a; font-size: 14px; white-space: nowrap; }
