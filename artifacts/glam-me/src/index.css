@@ -323,11 +323,11 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .about-hero-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(20, 13, 14, .66) 0%, rgba(20, 13, 14, .48) 30%, rgba(20, 13, 14, .15) 56%, rgba(20, 13, 14, .03) 100%); }
 .about-hero-copy { position: relative; z-index: 1; padding: 69px 0 52px; }
 .about-hero-copy .eyebrow { color: #f9d3dc; }
-.about-hero-copy h1 { margin: 17px 0 20px; font: 400 82px/.86 var(--display); letter-spacing: -.06em; }
+.about-hero-copy h1 { margin: 17px 0 20px; font: 400 72px/.86 var(--display); letter-spacing: -.02em; text-transform: capitalize; }
 .about-hero-copy p { max-width: 365px; margin: 0; color: rgba(255,255,255,.88); font-size: 16px; line-height: 1.55; }
 .about-intro { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; padding-top: 112px; padding-bottom: 120px; }
 .about-intro-copy { width: 100%; }
-.about-intro-copy h2, .about-story-copy h2 { margin: 16px 0 25px; font: 400 60px/.87 var(--display); letter-spacing: -.055em; }
+.about-intro-copy h2, .about-story-copy h2 { margin: 16px 0 25px; font: 400 60px/1 var(--display) !important; letter-spacing: -.055em !important; }
 .about-intro-copy > p, .about-story-copy > p { color: var(--muted); font-size: 16px; line-height: 1.65; }
 .about-intro-copy strong, .about-story-copy strong { display: block; margin-top: 25px; font: 400 23px/1.2 var(--display); }
 .about-text-link { display: inline-flex; align-items: center; gap: 9px; margin-top: 30px; padding-bottom: 5px; border-bottom: 1px solid currentColor; color: var(--ink); font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
