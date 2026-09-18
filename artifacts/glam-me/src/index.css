@@ -493,8 +493,10 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .detail-form .field + .field { margin-top: 18px; }
 .detail-form .field select {
   width: 100%;
-  min-height: 48px;
+  height: 48px;
+  box-sizing: border-box;
   background-color: var(--white);
+  padding: 0 13px;
   font-size: 16px;
 }
 .detail-form .field select:focus,
@@ -504,10 +506,12 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
   box-shadow: 0 0 0 1px var(--ink);
 }
 .detail-purchase-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: end; gap: 24px; }
+.detail-purchase-controls > * { min-width: 0; }
 .detail-purchase-controls-simple { grid-template-columns: 1fr; }
+.detail-purchase-controls .field label, .detail-quantity-label { display: flex; min-height: 17px; align-items: center; line-height: 1.2; }
 .detail-quantity { display: flex; flex-direction: column; align-items: stretch; gap: 8px; margin-top: 0; }
 .detail-quantity-label { padding-bottom: 0; font-size: 14px; letter-spacing: .14em; text-transform: uppercase; }
-.detail-quantity-control { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; width: 100%; height: 48px; border: 1px solid var(--line); background: var(--white); }
+.detail-quantity-control { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; width: 100%; height: 48px; box-sizing: border-box; border: 1px solid var(--line); background: var(--white); }
 .detail-quantity-control button { border: 0; background: transparent; color: var(--ink); cursor: pointer; font-size: 22px; line-height: 1; }
 .detail-quantity-control button:hover:not(:disabled) { background: var(--paper-deep); }
 .detail-quantity-control button:disabled { color: #b9b2ad; cursor: not-allowed; }
