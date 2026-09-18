@@ -551,11 +551,7 @@ function slugify(value: string): string {
 function getStorefrontCategories(): CatalogCategory[] {
   if (sharedCatalog) return sharedCatalog.categories.map((category) => ({
     ...category,
-    image: getCatalogMediaSource(
-      category.image.startsWith("/assets/")
-        ? catalogCategories.find((fallback) => slugify(fallback.name) === slugify(category.name))?.image ?? category.image
-        : category.image,
-    ),
+    image: getCatalogMediaSource(category.image),
   }));
   try {
     const stored = window.localStorage.getItem(adminCategoriesStorageKey);
