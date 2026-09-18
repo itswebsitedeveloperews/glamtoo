@@ -16,6 +16,17 @@
   --body: 'DM Sans', sans-serif;
 }
 
+.admin-app h1,
+.admin-auth-page h1 {
+  font-size: 52px !important;
+  letter-spacing: -.02em !important;
+}
+
+.admin-app h2,
+.admin-auth-page h2 {
+  font-size: 30px !important;
+}
+
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
