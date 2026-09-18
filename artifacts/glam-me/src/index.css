@@ -527,7 +527,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .product-information details { border-bottom: 1px solid var(--line); background: var(--white); }
 .product-information summary { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 20px; padding: 0 16px; cursor: pointer; font-size: 16px; letter-spacing: .04em; list-style: none; }
 .product-information summary::-webkit-details-marker { display: none; }
-.product-information summary span { color: var(--pink-deep); font-size: 18px; transition: transform .2s ease; }
+.product-information summary span { color: var(--pink-deep); font-size: 36px; transition: transform .2s ease; }
 .product-information details[open] summary span { transform: rotate(45deg); }
 .product-information-content { padding: 0 16px 20px; }
 .product-information-content p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.65; white-space: pre-line; }
