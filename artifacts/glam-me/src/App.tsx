@@ -1979,11 +1979,11 @@ function Contact() {
           <form className="contact-form" onSubmit={handleSubmit}>
               <div className="contact-form-grid">
                 <div className="field">
-                  <label htmlFor="contact-name">Name</label>
+                  <label htmlFor="contact-name">Name *</label>
                   <input id="contact-name" name="name" type="text" placeholder="Enter your name" required data-testid="input-contact-name" />
                 </div>
                 <div className="field">
-                  <label htmlFor="contact-email">Email address</label>
+                  <label htmlFor="contact-email">Email address *</label>
                   <input id="contact-email" name="email" type="email" placeholder="Enter your email address" required data-testid="input-contact-email" />
                 </div>
                 <div className="field">
