@@ -81,6 +81,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .nav { display: flex; justify-content: center; gap: clamp(20px, 3vw, 45px); padding: 0 20px 17px; font-size: 16px; text-transform: none; letter-spacing: .015em; }
 .nav a:last-child { color: var(--pink-deep); }
 .nav a.is-active { color: #e23d6f; }
+.nav a:last-child { color: #e23d6f; }
 .mobile-nav-note { display: none; }
 
 .page { overflow: hidden; }
