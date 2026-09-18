@@ -368,7 +368,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .faq-support-icon svg { width: 34px; height: 34px; stroke-width: 1.25; }
 .faq-support .eyebrow { color: var(--pink-deep); }
 .faq-support h2 { margin: 10px 0 11px; font: 400 34px/.95 var(--display); letter-spacing: -.035em; }
-.faq-support p { max-width: 390px; margin: 0 0 17px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+.faq-support p { max-width: 390px; margin: 0 0 16px; color: var(--muted); font-size: 14px; line-height: 1.45; }
 .faq-support .button { min-height: 37px; padding: 0 16px; font-size: 12px; }
 .form-page { padding: 85px 0 115px; }
 .form-layout { display: grid; grid-template-columns: .75fr 1.25fr; gap: 10vw; }
@@ -2075,7 +2075,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .faq-support-icon svg { width: 23px; height: 23px; }
 .faq-support .eyebrow { color: #c95f7d; font-size: 14px; }
 .faq-support h2 { margin: 10px 0 11px; font: 400 29px/1 var(--display); letter-spacing: -.04em; }
-.faq-support p { max-width: 290px; margin: 0 0 8px; color: #735f5d; font-size: 14px; line-height: 1.4; }
+.faq-support p { max-width: 290px; margin: 0 0 16px; color: #735f5d; font-size: 14px; line-height: 1.4; }
 .faq-support .button { min-height: 34px; padding: 0 14px; font-size: 14px; }
 .faq-page .button { font-family: var(--display); }
 .faq-support-image { height: 100%; overflow: hidden; }
