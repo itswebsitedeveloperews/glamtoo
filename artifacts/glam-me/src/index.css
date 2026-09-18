@@ -2173,6 +2173,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .contact-care-head h1 {
   font: 400 72px/1.1 var(--display);
   margin: 0 0 20px;
+  text-transform: capitalize;
 }
 .contact-care-head p {
   color: var(--ink);
