@@ -34,13 +34,13 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 
 ## User preferences
 
-- When publishing Glam Too, deploy both the storefront and API and verify that the production database contains the intended development products and categories.
+- On the first Glam Too publish, deploy both the storefront and API and create production products and categories to match the current development catalog exactly.
 - Verify that every product and category image uses durable Object Storage references and loads successfully in production.
 
 ## Gotchas
 
 - Replit Publish applies managed PostgreSQL schema changes, but production catalog data and media must still be checked explicitly. Do not declare a publish complete until product/category counts and representative images are verified in production.
-- Never overwrite an existing production catalog blindly. Compare development and production first, preserve production orders and customer data, and confirm any destructive data replacement with the user.
+- Production is not live yet, so the first publish may initialize its catalog from development. After the store goes live, compare environments first and preserve production orders, customers, payments, and live catalog changes.
 
 ## Pointers
 
