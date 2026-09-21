@@ -484,7 +484,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .gallery-viewer-zoom { position: absolute; top: 20px; right: 20px; z-index: 2; width: 44px; height: 44px; display: grid; place-items: center; background: var(--white); border-radius: 50%; border: 0; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.06); }
 .gallery-viewer-zoom:hover { color: var(--pink-deep); }
 .gallery-lightbox { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; background: rgba(20, 17, 16, .88); padding: 34px; }
-.gallery-lightbox img { width: min(92vw, 920px); max-height: 88vh; object-fit: contain; background: var(--white); }
+.gallery-lightbox img { display: block; width: auto; max-width: 92vw; max-height: 88vh; object-fit: contain; background: transparent; }
 .gallery-lightbox-close { position: fixed; top: 22px; right: 22px; display: grid; width: 46px; height: 46px; place-items: center; border: 1px solid rgba(255,255,255,.4); border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; cursor: pointer; }
 .gallery-lightbox-close:hover { background: #fff; color: var(--ink); }
 
