@@ -1531,7 +1531,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                   className={galleryTransitionDirection > 0 ? "gallery-slide-next" : "gallery-slide-prev"}
                   src={galleryImages[displayedGalleryIndex] || product.image}
                   alt={`${product.name} view ${displayedGalleryIndex + 1}`}
-                  style={{ objectPosition: product.position }}
+                  style={{ objectPosition: "center top" }}
                 />
               </div>
               <span className="sr-only" aria-live="polite" aria-atomic="true">
