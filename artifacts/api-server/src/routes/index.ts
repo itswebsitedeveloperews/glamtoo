@@ -8,6 +8,7 @@ import catalogRouter from "./catalog";
 import contactRouter from "./contact";
 import { listShippingMethods, serializeShippingMethod } from "../shippingMethods";
 import { listDeliveryInformation, serializeDeliveryInformation } from "../deliveryInformation";
+import { listSizeGuide, serializeSizeGuideRow } from "../sizeGuide";
 
 const router: IRouter = Router();
 
@@ -30,6 +31,16 @@ router.get("/delivery-information", async (request, response) => {
   } catch (error) {
     request.log?.error({ error }, "Public delivery information could not be loaded");
     return response.status(503).json({ error: "Delivery information could not be loaded right now." });
+  }
+});
+router.get("/size-guide", async (request, response) => {
+  try {
+    return response.set("Cache-Control", "no-store").json({
+      sizeGuide: (await listSizeGuide()).map(serializeSizeGuideRow),
+    });
+  } catch (error) {
+    request.log?.error({ error }, "Public size guide could not be loaded");
+    return response.status(503).json({ error: "Size guide could not be loaded right now." });
   }
 });
 

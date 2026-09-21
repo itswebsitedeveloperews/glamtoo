@@ -1,8 +1,9 @@
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
 import { asc, desc, eq, inArray } from "drizzle-orm";
-import { contactEnquiriesTable, couponsTable, customerProfilesTable, db, deliveryInformationTable, shippingMethodsTable } from "@workspace/db";
+import { contactEnquiriesTable, couponsTable, customerProfilesTable, db, deliveryInformationTable, shippingMethodsTable, sizeGuideTable } from "@workspace/db";
 import { listDeliveryInformation, serializeDeliveryInformation } from "../deliveryInformation";
+import { listSizeGuide, serializeSizeGuideRow } from "../sizeGuide";
 import { listShippingMethods, serializeShippingMethod } from "../shippingMethods";
 import { getAdminAccess, isAdminUser, isBootstrapAdminUser, requireAdmin } from "../adminAuth";
 import {
@@ -140,6 +141,84 @@ router.put("/admin/delivery-information", requireAdmin, async (request, response
   } catch (error) {
     request.log?.error({ error }, "Delivery information could not be saved");
     return response.status(503).json({ error: "Delivery information could not be saved right now." });
+  }
+});
+
+router.get("/admin/size-guide", requireAdmin, async (request, response) => {
+  try {
+    return response.set("Cache-Control", "no-store").json({
+      sizeGuide: (await listSizeGuide()).map(serializeSizeGuideRow),
+    });
+  } catch (error) {
+    request.log?.error({ error }, "Size guide could not be loaded");
+    return response.status(503).json({ error: "Size guide could not be loaded right now." });
+  }
+});
+
+router.put("/admin/size-guide", requireAdmin, async (request, response) => {
+  const rows = Array.isArray(request.body?.sizeGuide) ? request.body.sizeGuide : null;
+  if (!rows || rows.length > 100) {
+    return response.status(400).json({ error: "Add no more than 100 size guide rows." });
+  }
+
+  const parsedRows: Array<{ id: number | null; size: string; ukSize: string; bust: string; waist: string; hips: string; sortOrder: number }> = rows.map((value: unknown, index: number) => {
+    const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+    const id = Number(row.id);
+    return {
+      id: Number.isInteger(id) && id > 0 ? id : null,
+      size: textValue(row.size, 30),
+      ukSize: textValue(row.ukSize, 30),
+      bust: textValue(row.bust, 100),
+      waist: textValue(row.waist, 100),
+      hips: textValue(row.hips, 100),
+      sortOrder: index,
+    };
+  });
+
+  if (parsedRows.some((row) => !row.size || !row.ukSize || !row.bust || !row.waist || !row.hips)) {
+    return response.status(400).json({ error: "Every size guide row needs a size, UK size, bust, waist, and hips value." });
+  }
+  const existingIds = parsedRows.flatMap((row) => row.id === null ? [] : [row.id]);
+  if (new Set(existingIds).size !== existingIds.length) {
+    return response.status(400).json({ error: "Size guide rows contain duplicate identifiers." });
+  }
+
+  try {
+    await db.transaction(async (transaction) => {
+      const currentRows = await transaction.select({ id: sizeGuideTable.id }).from(sizeGuideTable).orderBy(asc(sizeGuideTable.id));
+      const currentIds = new Set(currentRows.map((row) => row.id));
+      if (existingIds.some((id) => !currentIds.has(id))) throw new Error("Size guide row not found.");
+
+      const removedIds = currentRows.map((row) => row.id).filter((id) => !existingIds.includes(id));
+      if (removedIds.length > 0) {
+        await transaction.delete(sizeGuideTable).where(inArray(sizeGuideTable.id, removedIds));
+      }
+      for (const row of parsedRows) {
+        if (row.id === null) {
+          await transaction.insert(sizeGuideTable).values({
+            size: row.size,
+            ukSize: row.ukSize,
+            bust: row.bust,
+            waist: row.waist,
+            hips: row.hips,
+            sortOrder: row.sortOrder,
+          });
+        } else {
+          await transaction.update(sizeGuideTable).set({
+            size: row.size,
+            ukSize: row.ukSize,
+            bust: row.bust,
+            waist: row.waist,
+            hips: row.hips,
+            sortOrder: row.sortOrder,
+          }).where(eq(sizeGuideTable.id, row.id));
+        }
+      }
+    });
+    return response.json({ sizeGuide: (await listSizeGuide()).map(serializeSizeGuideRow) });
+  } catch (error) {
+    request.log?.error({ error }, "Size guide could not be saved");
+    return response.status(503).json({ error: "Size guide could not be saved right now." });
   }
 });
 

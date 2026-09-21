@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FlaskConical, FolderOpen, Globe2, Image as ImageIcon, Inbox, KeyRound, LayoutDashboard, ListChecks, LockKeyhole, Mail, MapPin, Package, Save, Send, Server, ShieldCheck, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, Upload, X, type LucideIcon } from "lucide-react";
+import { ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FlaskConical, FolderOpen, Globe2, Image as ImageIcon, Inbox, KeyRound, LayoutDashboard, ListChecks, LockKeyhole, Mail, MapPin, Package, Ruler, Save, Send, Server, ShieldCheck, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, Upload, X, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -21,6 +21,7 @@ type AdminSection =
   | "orders"
   | "shipping"
   | "delivery"
+  | "size-guide"
   | "payments"
   | "coupons"
   | "messages"
@@ -240,6 +241,24 @@ const blankDeliveryRow = (): DeliveryInformationRow => ({
   cost: "",
 });
 
+type SizeGuideRow = {
+  id: string;
+  size: string;
+  ukSize: string;
+  bust: string;
+  waist: string;
+  hips: string;
+};
+
+const blankSizeGuideRow = (): SizeGuideRow => ({
+  id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+  size: "",
+  ukSize: "",
+  bust: "",
+  waist: "",
+  hips: "",
+});
+
 const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "products", label: "Products", icon: Package },
@@ -247,6 +266,7 @@ const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "orders", label: "Orders", icon: ShoppingBag },
   { id: "shipping", label: "Shipping", icon: Truck },
   { id: "delivery", label: "Delivery", icon: MapPin },
+  { id: "size-guide", label: "Size Guide", icon: Ruler },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "coupons", label: "Coupons", icon: TicketPercent },
   { id: "messages", label: "Contact Form", icon: Inbox },
@@ -2039,6 +2059,10 @@ export default function AdminDashboard({
   const [deliveryLoading, setDeliveryLoading] = useState(false);
   const [deliverySaving, setDeliverySaving] = useState(false);
   const [deliveryError, setDeliveryError] = useState("");
+  const [sizeGuide, setSizeGuide] = useState<SizeGuideRow[]>([]);
+  const [sizeGuideLoading, setSizeGuideLoading] = useState(false);
+  const [sizeGuideSaving, setSizeGuideSaving] = useState(false);
+  const [sizeGuideError, setSizeGuideError] = useState("");
   const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState("");
@@ -2804,6 +2828,66 @@ export default function AdminDashboard({
     }
   }
 
+  async function refreshSizeGuide() {
+    setSizeGuideLoading(true);
+    setSizeGuideError("");
+    try {
+      const response = await fetch("/api/admin/size-guide", { credentials: "include" });
+      const payload = await response.json() as { sizeGuide?: SizeGuideRow[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || "Size guide could not be loaded.");
+      setSizeGuide(payload.sizeGuide ?? []);
+    } catch (error) {
+      setSizeGuideError(error instanceof Error ? error.message : "Size guide could not be loaded.");
+    } finally {
+      setSizeGuideLoading(false);
+    }
+  }
+
+  function updateSizeGuideRow(id: string, updates: Partial<SizeGuideRow>) {
+    setSizeGuide((rows) => rows.map((row) => row.id === id ? { ...row, ...updates } : row));
+  }
+
+  function moveSizeGuideRow(index: number, direction: -1 | 1) {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= sizeGuide.length) return;
+    setSizeGuide((rows) => {
+      const next = [...rows];
+      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+      return next;
+    });
+  }
+
+  async function saveSizeGuide(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (sizeGuide.some((row) => !row.size.trim() || !row.ukSize.trim() || !row.bust.trim() || !row.waist.trim() || !row.hips.trim())) {
+      setSizeGuideError("Every row needs a size, UK size, bust, waist, and hips value.");
+      return;
+    }
+    setSizeGuideSaving(true);
+    setSizeGuideError("");
+    try {
+      const response = await fetch("/api/admin/size-guide", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sizeGuide: sizeGuide.map((row) => ({
+            ...row,
+            id: row.id.startsWith("new-") ? undefined : row.id,
+          })),
+        }),
+      });
+      const payload = await response.json() as { sizeGuide?: SizeGuideRow[]; error?: string };
+      if (!response.ok || !payload.sizeGuide) throw new Error(payload.error || "Size guide could not be saved.");
+      setSizeGuide(payload.sizeGuide);
+      setNotice("Product size guide was saved.");
+    } catch (error) {
+      setSizeGuideError(error instanceof Error ? error.message : "Size guide could not be saved.");
+    } finally {
+      setSizeGuideSaving(false);
+    }
+  }
+
   function openNewCoupon() {
     setCouponDraft(blankCoupon());
     setEditingCouponId(null);
@@ -3007,6 +3091,7 @@ export default function AdminDashboard({
     if (section === "coupons") void refreshCoupons();
     if (section === "shipping") void refreshShipping();
     if (section === "delivery") void refreshDeliveryInformation();
+    if (section === "size-guide") void refreshSizeGuide();
     if (section === "messages") void refreshMessages();
   }, [section]);
 
@@ -3371,6 +3456,57 @@ export default function AdminDashboard({
                 <div className="admin-form-actions">
                   <button className="admin-primary" type="submit" disabled={deliverySaving}>{deliverySaving ? "Saving…" : "Save delivery information"}</button>
                   <button className="admin-secondary" type="button" onClick={() => setDeliveryInformation((rows) => [...rows, blankDeliveryRow()])}>Add another row</button>
+                </div>
+              )}
+            </form>
+          </>
+        )}
+
+        {section === "size-guide" && (
+          <>
+            <SectionTitle
+              eyebrow="Product information"
+              title="Size Guide"
+              description="Manage the measurement table shown inside the Size Guide accordion on every product page."
+              action={<button className="admin-secondary" type="button" onClick={() => void refreshSizeGuide()} disabled={sizeGuideLoading}>{sizeGuideLoading ? "Refreshing…" : "Refresh"}</button>}
+            />
+            <div className="admin-size-guide-toolbar">
+              <p>Add one row for each UK size. Use the same letter size on consecutive rows to group them together in the product table.</p>
+              <button className="admin-secondary" type="button" onClick={() => setSizeGuide((rows) => [...rows, blankSizeGuideRow()])}>Add size row</button>
+            </div>
+            {sizeGuideError && <p className="admin-form-error" role="alert">{sizeGuideError}</p>}
+            <form className="admin-panel admin-size-guide-editor" onSubmit={saveSizeGuide}>
+              {sizeGuideLoading && sizeGuide.length === 0 ? (
+                <p className="admin-users-state">Loading size guide…</p>
+              ) : sizeGuide.length === 0 ? (
+                <div className="admin-size-guide-empty">
+                  <strong>No size guide rows yet.</strong>
+                  <span>Add your first size to create the product-page measurement table.</span>
+                  <button className="admin-primary" type="button" onClick={() => setSizeGuide([blankSizeGuideRow()])}>Add size row</button>
+                </div>
+              ) : (
+                <div className="admin-size-guide-repeater">
+                  {sizeGuide.map((row, index) => (
+                    <fieldset className="admin-size-guide-row" key={row.id}>
+                      <legend>Size row {index + 1}</legend>
+                      <label>Size<input required maxLength={30} value={row.size} onChange={(event) => updateSizeGuideRow(row.id, { size: event.target.value })} placeholder="S" /></label>
+                      <label>UK size<input required maxLength={30} value={row.ukSize} onChange={(event) => updateSizeGuideRow(row.id, { ukSize: event.target.value })} placeholder="10" /></label>
+                      <label>Bust<input required maxLength={100} value={row.bust} onChange={(event) => updateSizeGuideRow(row.id, { bust: event.target.value })} placeholder={'88.5cm / 34.8"'} /></label>
+                      <label>Waist<input required maxLength={100} value={row.waist} onChange={(event) => updateSizeGuideRow(row.id, { waist: event.target.value })} placeholder={'71.5cm / 28.2"'} /></label>
+                      <label>Hips<input required maxLength={100} value={row.hips} onChange={(event) => updateSizeGuideRow(row.id, { hips: event.target.value })} placeholder={'95cm / 37.4"'} /></label>
+                      <div className="admin-size-guide-row-actions">
+                        <button className="admin-secondary" type="button" onClick={() => moveSizeGuideRow(index, -1)} disabled={index === 0}>Move up</button>
+                        <button className="admin-secondary" type="button" onClick={() => moveSizeGuideRow(index, 1)} disabled={index === sizeGuide.length - 1}>Move down</button>
+                        <button className="admin-danger" type="button" onClick={() => setSizeGuide((rows) => rows.filter((item) => item.id !== row.id))}>Remove</button>
+                      </div>
+                    </fieldset>
+                  ))}
+                </div>
+              )}
+              {sizeGuide.length > 0 && (
+                <div className="admin-form-actions">
+                  <button className="admin-primary" type="submit" disabled={sizeGuideSaving}>{sizeGuideSaving ? "Saving…" : "Save size guide"}</button>
+                  <button className="admin-secondary" type="button" onClick={() => setSizeGuide((rows) => [...rows, blankSizeGuideRow()])}>Add another row</button>
                 </div>
               )}
             </form>

@@ -376,6 +376,7 @@ function calculateCheckoutDeliveryAmount(delivery: "standard" | "express", subto
 
 type ShippingMethod = { id: string; name: string; description: string; price: number; freeOver: number | null; enabled: boolean };
 type DeliveryInformationRow = { id: string; option: string; information: string; cost: number; sortOrder: number };
+type SizeGuideRow = { id: string; size: string; ukSize: string; bust: string; waist: string; hips: string; sortOrder: number };
 
 function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'productId' | 'quantity'> = { size: 'One size' }, quantity = 1) {
   const size = selection.size || 'One size';
@@ -1385,6 +1386,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const [variationMessage, setVariationMessage] = useState('');
   const [openProductInformation, setOpenProductInformation] = useState<string | null>(null);
   const [deliveryInformation, setDeliveryInformation] = useState<DeliveryInformationRow[]>([]);
+  const [sizeGuide, setSizeGuide] = useState<SizeGuideRow[]>([]);
 
   useEffect(() => {
     setActiveGalleryIndex(0);
@@ -1403,6 +1405,22 @@ function ProductDetail({ params }: { params: { slug: string } }) {
       })
       .catch(() => {
         if (active) setDeliveryInformation([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/size-guide")
+      .then(async (response) => {
+        const payload = await response.json() as { sizeGuide?: SizeGuideRow[] };
+        if (!response.ok) throw new Error("Size guide could not be loaded.");
+        if (active) setSizeGuide(payload.sizeGuide ?? []);
+      })
+      .catch(() => {
+        if (active) setSizeGuide([]);
       });
     return () => {
       active = false;
@@ -1445,6 +1463,13 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     { title: 'Returns', content: product?.deliveryAndReturns },
     { title: 'Care Details', content: product?.careDetails },
   ].filter((section): section is { title: string; content: string } => Boolean(section.content?.trim()));
+  const sizeGuideRowSpans = sizeGuide.map((row, index) => {
+    const normalizedSize = row.size.trim().toLowerCase();
+    if (index > 0 && sizeGuide[index - 1].size.trim().toLowerCase() === normalizedSize) return 0;
+    let count = 1;
+    while (index + count < sizeGuide.length && sizeGuide[index + count].size.trim().toLowerCase() === normalizedSize) count += 1;
+    return count;
+  });
 
   if (!product) return <NotFoundRoute />;
   const selectedProduct = product;
@@ -1653,7 +1678,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 </div>
               </div>
               
-               {(productInformation.length > 0 || deliveryInformation.length > 0) && (
+               {(productInformation.length > 0 || sizeGuide.length > 0 || deliveryInformation.length > 0) && (
                  <div className="detail-accordion" aria-label="Product information">
                    {productInformation.map((section) => (
                      <details key={section.title} open={openProductInformation === section.title}>
@@ -1664,6 +1689,39 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                        <div className="detail-accordion-content"><p>{section.content}</p></div>
                      </details>
                    ))}
+                   {sizeGuide.length > 0 && (
+                     <details open={openProductInformation === "Size Guide"}>
+                       <summary onClick={(event) => {
+                         event.preventDefault();
+                         setOpenProductInformation((current) => current === "Size Guide" ? null : "Size Guide");
+                       }}>Size Guide<span aria-hidden="true">+</span></summary>
+                       <div className="detail-accordion-content detail-size-guide-content">
+                         <div className="size-guide-table-wrap">
+                           <table className="size-guide-table">
+                             <thead>
+                               <tr>
+                                 <th scope="col" colSpan={2}>Size</th>
+                                 <th scope="col">Bust</th>
+                                 <th scope="col">Waist</th>
+                                 <th scope="col">Hips</th>
+                               </tr>
+                             </thead>
+                             <tbody>
+                               {sizeGuide.map((row, index) => (
+                                 <tr key={row.id}>
+                                   {sizeGuideRowSpans[index] > 0 && <th scope="rowgroup" rowSpan={sizeGuideRowSpans[index]}>{row.size}</th>}
+                                   <th scope="row">{row.ukSize}</th>
+                                   <td>{row.bust}</td>
+                                   <td>{row.waist}</td>
+                                   <td>{row.hips}</td>
+                                 </tr>
+                               ))}
+                             </tbody>
+                           </table>
+                         </div>
+                       </div>
+                     </details>
+                   )}
                    {deliveryInformation.length > 0 && (
                      <details open={openProductInformation === "Delivery"}>
                        <summary onClick={(event) => {
