@@ -503,7 +503,13 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .gallery-pagination-status { letter-spacing: 0.1em; }
 
 .detail-copy { padding-top: 10px; }
-.detail-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.detail-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+  padding-bottom: 5px;
+}
 .detail-header-row .eyebrow { margin: 0; color: var(--muted); letter-spacing: 0.1em; font-size: 12px; }
 .detail-brand-tag { text-align: right; }
 
