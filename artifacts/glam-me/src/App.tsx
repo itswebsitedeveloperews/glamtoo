@@ -2291,11 +2291,7 @@ function ReturnsPage() {
             <p>Everything you need to know about returning an item and receiving your refund.</p>
           </header>
 
-          <section className="returns-policy-card returns-faq-card" aria-labelledby="returns-policy-heading">
-            <div className="returns-policy-heading">
-              <span>Returns help</span>
-              <h2 id="returns-policy-heading">Frequently asked questions</h2>
-            </div>
+          <section className="returns-policy-card returns-faq-card" aria-label="Returns frequently asked questions">
             <div className="returns-faq-list">
               {returnQuestions.map((item, index) => (
                 <details key={item.question} open={index === 0}>
