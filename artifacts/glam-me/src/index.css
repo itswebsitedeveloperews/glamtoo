@@ -855,7 +855,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
   .filter a { margin: 0; }
   .shop-main .product-grid { grid-template-columns: repeat(2, 1fr); }
   .related-products-heading { align-items: start; }
-  .related-products-heading h2 { font-size: 28px; line-height: 1; letter-spacing: -.035em; }
+  .related-products-heading h2 { font-size: 28px !important; line-height: 1; letter-spacing: -.035em; }
   .related-products-heading > .text-link { display: none; }
   .related-products .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .related-products-mobile-link { display: block; width: fit-content; margin: 32px auto 0; text-align: center; }
