@@ -1442,7 +1442,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const productInformation = [
     { title: 'Description', content: product?.longDescription },
     { title: 'Fit & Size', content: product?.fitAndSize },
-    { title: 'Delivery & Returns', content: product?.deliveryAndReturns },
+    { title: 'Returns', content: product?.deliveryAndReturns },
     { title: 'Care Details', content: product?.careDetails },
   ].filter((section): section is { title: string; content: string } => Boolean(section.content?.trim()));
 
