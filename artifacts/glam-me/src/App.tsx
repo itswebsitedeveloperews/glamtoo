@@ -15,6 +15,7 @@ import { Link, Route, Router as WouterRouter, Switch, useLocation, useSearch } f
 import { useSubmitContactEnquiry } from '@workspace/api-client-react';
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin-dashboard';
+import { hasRichTextContent, sanitizeRichTextHtml } from '@/utils/rich-text';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const clerkPubKey = publishableKeyFromHost(
@@ -1462,7 +1463,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     { title: 'Fit & Size', content: product?.fitAndSize },
     { title: 'Returns', content: product?.deliveryAndReturns },
     { title: 'Care Details', content: product?.careDetails },
-  ].filter((section): section is { title: string; content: string } => Boolean(section.content?.trim()));
+  ].filter((section): section is { title: string; content: string } => Boolean(section.content && hasRichTextContent(section.content)));
   const sizeGuideRowSpans = sizeGuide.map((row, index) => {
     const normalizedSize = row.size.trim().toLowerCase();
     if (index > 0 && sizeGuide[index - 1].size.trim().toLowerCase() === normalizedSize) return 0;
@@ -1686,7 +1687,10 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                          event.preventDefault();
                          setOpenProductInformation((current) => current === section.title ? null : section.title);
                        }}>{section.title}<span aria-hidden="true">+</span></summary>
-                       <div className="detail-accordion-content"><p>{section.content}</p></div>
+                        <div
+                          className="detail-accordion-content detail-rich-text"
+                          dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(section.content) }}
+                        />
                      </details>
                    ))}
                    {sizeGuide.length > 0 && (

@@ -13,6 +13,55 @@ import {
   type CatalogProduct,
   type CatalogVariation,
 } from "@/data/catalog";
+import { sanitizeRichTextHtml } from "@/utils/rich-text";
+
+type RichTextEditorProps = {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+};
+
+function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (editor && document.activeElement !== editor && editor.innerHTML !== value) {
+      editor.innerHTML = sanitizeRichTextHtml(value);
+    }
+  }, [value]);
+
+  function runCommand(command: string) {
+    editorRef.current?.focus();
+    document.execCommand(command);
+    const editor = editorRef.current;
+    if (editor) onChange(sanitizeRichTextHtml(editor.innerHTML));
+  }
+
+  return (
+    <div className="admin-rich-text">
+      <div className="admin-rich-text-toolbar" role="toolbar" aria-label="Returns formatting">
+        <button type="button" aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("bold")}><strong>B</strong></button>
+        <button type="button" aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("italic")}><em>I</em></button>
+        <button type="button" aria-label="Underline" title="Underline" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("underline")}><u>U</u></button>
+        <button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("insertUnorderedList")}>• List</button>
+        <button type="button" aria-label="Numbered list" title="Numbered list" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("insertOrderedList")}>1. List</button>
+      </div>
+      <div
+        ref={editorRef}
+        className="admin-rich-text-editor"
+        contentEditable
+        suppressContentEditableWarning
+        role="textbox"
+        aria-multiline="true"
+        aria-label="Returns"
+        data-placeholder={placeholder}
+        onInput={(event) => onChange(sanitizeRichTextHtml(event.currentTarget.innerHTML))}
+        onBlur={(event) => onChange(sanitizeRichTextHtml(event.currentTarget.innerHTML))}
+      />
+    </div>
+  );
+}
 
 type AdminSection =
   | "overview"
@@ -1101,7 +1150,7 @@ function ProductEditorWithMultipleUploads({
                 <textarea className="admin-editor-input admin-editor-textarea" value={draft.fitAndSize ?? ""} onChange={(event) => updateDraft({ fitAndSize: event.target.value })} placeholder="Add fit guidance, measurements, and sizing advice." rows={4} />
               </label>
               <label className="admin-editor-label">Returns
-                <textarea className="admin-editor-input admin-editor-textarea" value={draft.deliveryAndReturns ?? ""} onChange={(event) => updateDraft({ deliveryAndReturns: event.target.value })} placeholder="Add product-specific returns information." rows={4} />
+                <RichTextEditor value={draft.deliveryAndReturns ?? ""} onChange={(deliveryAndReturns) => updateDraft({ deliveryAndReturns })} placeholder="Add product-specific returns information." />
               </label>
               <label className="admin-editor-label">Care details
                 <textarea className="admin-editor-input admin-editor-textarea" value={draft.careDetails ?? ""} onChange={(event) => updateDraft({ careDetails: event.target.value })} placeholder="Add washing, ironing, storage, and fabric-care instructions." rows={4} />
@@ -1795,7 +1844,7 @@ function ProductEditor({
                 <textarea className="admin-editor-input admin-editor-textarea" value={draft.fitAndSize ?? ""} onChange={(event) => updateDraft({ fitAndSize: event.target.value })} placeholder="Add fit guidance, measurements, and sizing advice." rows={4} />
               </label>
               <label className="admin-editor-label">Returns
-                <textarea className="admin-editor-input admin-editor-textarea" value={draft.deliveryAndReturns ?? ""} onChange={(event) => updateDraft({ deliveryAndReturns: event.target.value })} placeholder="Add product-specific returns information." rows={4} />
+                <RichTextEditor value={draft.deliveryAndReturns ?? ""} onChange={(deliveryAndReturns) => updateDraft({ deliveryAndReturns })} placeholder="Add product-specific returns information." />
               </label>
               <label className="admin-editor-label">Care details
                 <textarea className="admin-editor-input admin-editor-textarea" value={draft.careDetails ?? ""} onChange={(event) => updateDraft({ careDetails: event.target.value })} placeholder="Add washing, ironing, storage, and fabric-care instructions." rows={4} />
