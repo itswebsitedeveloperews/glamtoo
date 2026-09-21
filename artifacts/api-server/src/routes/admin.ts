@@ -1,9 +1,10 @@
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
 import { asc, desc, eq, inArray } from "drizzle-orm";
-import { contactEnquiriesTable, couponsTable, customerProfilesTable, db, deliveryInformationTable, shippingMethodsTable, sizeGuideTable } from "@workspace/db";
+import { contactEnquiriesTable, couponsTable, customerProfilesTable, db, deliveryInformationTable, returnInformationTable, shippingMethodsTable, sizeGuideTable } from "@workspace/db";
 import { listDeliveryInformation, serializeDeliveryInformation } from "../deliveryInformation";
 import { listSizeGuide, serializeSizeGuideRow } from "../sizeGuide";
+import { getReturnInformation } from "../returnInformation";
 import { listShippingMethods, serializeShippingMethod } from "../shippingMethods";
 import { getAdminAccess, isAdminUser, isBootstrapAdminUser, requireAdmin } from "../adminAuth";
 import {
@@ -141,6 +142,32 @@ router.put("/admin/delivery-information", requireAdmin, async (request, response
   } catch (error) {
     request.log?.error({ error }, "Delivery information could not be saved");
     return response.status(503).json({ error: "Delivery information could not be saved right now." });
+  }
+});
+
+router.get("/admin/return-information", requireAdmin, async (request, response) => {
+  try {
+    return response.set("Cache-Control", "no-store").json(await getReturnInformation());
+  } catch (error) {
+    request.log?.error({ error }, "Return information could not be loaded");
+    return response.status(503).json({ error: "Return information could not be loaded right now." });
+  }
+});
+
+router.put("/admin/return-information", requireAdmin, async (request, response) => {
+  const content = textValue(request.body?.content, 50000);
+  try {
+    await db
+      .insert(returnInformationTable)
+      .values({ id: 1, content })
+      .onConflictDoUpdate({
+        target: returnInformationTable.id,
+        set: { content, updatedAt: new Date() },
+      });
+    return response.json(await getReturnInformation());
+  } catch (error) {
+    request.log?.error({ error }, "Return information could not be saved");
+    return response.status(503).json({ error: "Return information could not be saved right now." });
   }
 });
 

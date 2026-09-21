@@ -1387,6 +1387,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const [variationMessage, setVariationMessage] = useState('');
   const [openProductInformation, setOpenProductInformation] = useState<string | null>(null);
   const [deliveryInformation, setDeliveryInformation] = useState<DeliveryInformationRow[]>([]);
+  const [returnInformation, setReturnInformation] = useState("");
   const [sizeGuide, setSizeGuide] = useState<SizeGuideRow[]>([]);
 
   useEffect(() => {
@@ -1428,6 +1429,22 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    fetch("/api/return-information")
+      .then(async (response) => {
+        const payload = await response.json() as { content?: string };
+        if (!response.ok) throw new Error("Return information could not be loaded.");
+        if (active) setReturnInformation(payload.content ?? "");
+      })
+      .catch(() => {
+        if (active) setReturnInformation("");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const productVariations = product?.type === 'Variable' ? product.variations : [];
   const availableVariations = productVariations.filter((variation) => variation.stock > 0);
   const variationAttributes = product?.variationAttributes ?? [
@@ -1461,7 +1478,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const productInformation = [
     { title: 'Description', content: product?.longDescription },
     { title: 'Fit & Size', content: product?.fitAndSize },
-    { title: 'Returns', content: product?.deliveryAndReturns },
+    { title: 'Returns', content: returnInformation },
     { title: 'Care Details', content: product?.careDetails },
   ].filter((section): section is { title: string; content: string } => Boolean(section.content && hasRichTextContent(section.content)));
   const sizeGuideRowSpans = sizeGuide.map((row, index) => {

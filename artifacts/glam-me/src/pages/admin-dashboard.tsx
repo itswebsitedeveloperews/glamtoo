@@ -314,7 +314,7 @@ const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "categories", label: "Categories", icon: Tags },
   { id: "orders", label: "Orders", icon: ShoppingBag },
   { id: "shipping", label: "Shipping", icon: Truck },
-  { id: "delivery", label: "Delivery", icon: MapPin },
+  { id: "delivery", label: "Delivery & Return", icon: MapPin },
   { id: "size-guide", label: "Size Guide", icon: Ruler },
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "coupons", label: "Coupons", icon: TicketPercent },
@@ -1149,9 +1149,6 @@ function ProductEditorWithMultipleUploads({
               <label className="admin-editor-label">Fit &amp; size
                 <textarea className="admin-editor-input admin-editor-textarea" value={draft.fitAndSize ?? ""} onChange={(event) => updateDraft({ fitAndSize: event.target.value })} placeholder="Add fit guidance, measurements, and sizing advice." rows={4} />
               </label>
-              <label className="admin-editor-label">Returns
-                <RichTextEditor value={draft.deliveryAndReturns ?? ""} onChange={(deliveryAndReturns) => updateDraft({ deliveryAndReturns })} placeholder="Add product-specific returns information." />
-              </label>
               <label className="admin-editor-label">Care details
                 <textarea className="admin-editor-input admin-editor-textarea" value={draft.careDetails ?? ""} onChange={(event) => updateDraft({ careDetails: event.target.value })} placeholder="Add washing, ironing, storage, and fabric-care instructions." rows={4} />
               </label>
@@ -1843,9 +1840,6 @@ function ProductEditor({
               <label className="admin-editor-label">Fit &amp; size
                 <textarea className="admin-editor-input admin-editor-textarea" value={draft.fitAndSize ?? ""} onChange={(event) => updateDraft({ fitAndSize: event.target.value })} placeholder="Add fit guidance, measurements, and sizing advice." rows={4} />
               </label>
-              <label className="admin-editor-label">Returns
-                <RichTextEditor value={draft.deliveryAndReturns ?? ""} onChange={(deliveryAndReturns) => updateDraft({ deliveryAndReturns })} placeholder="Add product-specific returns information." />
-              </label>
               <label className="admin-editor-label">Care details
                 <textarea className="admin-editor-input admin-editor-textarea" value={draft.careDetails ?? ""} onChange={(event) => updateDraft({ careDetails: event.target.value })} placeholder="Add washing, ironing, storage, and fabric-care instructions." rows={4} />
               </label>
@@ -2108,6 +2102,11 @@ export default function AdminDashboard({
   const [deliveryLoading, setDeliveryLoading] = useState(false);
   const [deliverySaving, setDeliverySaving] = useState(false);
   const [deliveryError, setDeliveryError] = useState("");
+  const [deliveryContentTab, setDeliveryContentTab] = useState<"delivery" | "return">("delivery");
+  const [returnInformation, setReturnInformation] = useState("");
+  const [returnLoading, setReturnLoading] = useState(false);
+  const [returnSaving, setReturnSaving] = useState(false);
+  const [returnError, setReturnError] = useState("");
   const [sizeGuide, setSizeGuide] = useState<SizeGuideRow[]>([]);
   const [sizeGuideLoading, setSizeGuideLoading] = useState(false);
   const [sizeGuideSaving, setSizeGuideSaving] = useState(false);
@@ -2877,6 +2876,43 @@ export default function AdminDashboard({
     }
   }
 
+  async function refreshReturnInformation() {
+    setReturnLoading(true);
+    setReturnError("");
+    try {
+      const response = await fetch("/api/admin/return-information", { credentials: "include" });
+      const payload = await response.json() as { content?: string; error?: string };
+      if (!response.ok) throw new Error(payload.error || "Return information could not be loaded.");
+      setReturnInformation(payload.content ?? "");
+    } catch (error) {
+      setReturnError(error instanceof Error ? error.message : "Return information could not be loaded.");
+    } finally {
+      setReturnLoading(false);
+    }
+  }
+
+  async function saveReturnInformation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setReturnSaving(true);
+    setReturnError("");
+    try {
+      const response = await fetch("/api/admin/return-information", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: returnInformation }),
+      });
+      const payload = await response.json() as { content?: string; error?: string };
+      if (!response.ok || typeof payload.content !== "string") throw new Error(payload.error || "Return information could not be saved.");
+      setReturnInformation(payload.content);
+      setNotice("Product return information was saved.");
+    } catch (error) {
+      setReturnError(error instanceof Error ? error.message : "Return information could not be saved.");
+    } finally {
+      setReturnSaving(false);
+    }
+  }
+
   async function refreshSizeGuide() {
     setSizeGuideLoading(true);
     setSizeGuideError("");
@@ -3139,7 +3175,11 @@ export default function AdminDashboard({
     if (section === "users") void refreshUsers();
     if (section === "coupons") void refreshCoupons();
     if (section === "shipping") void refreshShipping();
-    if (section === "delivery") void refreshDeliveryInformation();
+    if (section === "delivery") {
+      setDeliveryContentTab("delivery");
+      void refreshDeliveryInformation();
+      void refreshReturnInformation();
+    }
     if (section === "size-guide") void refreshSizeGuide();
     if (section === "messages") void refreshMessages();
   }, [section]);
@@ -3466,48 +3506,46 @@ export default function AdminDashboard({
           <>
             <SectionTitle
               eyebrow="Product information"
-              title="Delivery"
-              description="Create the delivery table shown inside the Delivery accordion on every product page."
-              action={<button className="admin-secondary" type="button" onClick={() => void refreshDeliveryInformation()} disabled={deliveryLoading}>{deliveryLoading ? "Refreshing…" : "Refresh"}</button>}
+              title="Delivery & Return"
+              description="Manage the global Delivery and Returns accordions shown on every product page."
+              action={<button className="admin-secondary" type="button" onClick={() => deliveryContentTab === "delivery" ? void refreshDeliveryInformation() : void refreshReturnInformation()} disabled={deliveryContentTab === "delivery" ? deliveryLoading : returnLoading}>{deliveryContentTab === "delivery" ? (deliveryLoading ? "Refreshing…" : "Refresh") : (returnLoading ? "Refreshing…" : "Refresh")}</button>}
             />
-            <div className="admin-delivery-toolbar">
-              <p>Add, remove, and reorder delivery rows. Costs are entered in GBP and this table is informational; checkout rates remain managed under Shipping.</p>
-              <button className="admin-secondary" type="button" onClick={() => setDeliveryInformation((rows) => [...rows, blankDeliveryRow()])}>Add delivery row</button>
+            <div className="admin-content-tabs" role="tablist" aria-label="Delivery and return settings">
+              <button type="button" role="tab" aria-selected={deliveryContentTab === "delivery"} className={deliveryContentTab === "delivery" ? "is-active" : ""} onClick={() => setDeliveryContentTab("delivery")}>Delivery</button>
+              <button type="button" role="tab" aria-selected={deliveryContentTab === "return"} className={deliveryContentTab === "return" ? "is-active" : ""} onClick={() => setDeliveryContentTab("return")}>Return</button>
             </div>
-            {deliveryError && <p className="admin-form-error" role="alert">{deliveryError}</p>}
-            <form className="admin-panel admin-delivery-editor" onSubmit={saveDeliveryInformation}>
-              {deliveryLoading && deliveryInformation.length === 0 ? (
-                <p className="admin-users-state">Loading delivery information…</p>
-              ) : deliveryInformation.length === 0 ? (
-                <div className="admin-delivery-empty">
-                  <strong>No delivery information yet.</strong>
-                  <span>Add your first row to create the product-page delivery table.</span>
-                  <button className="admin-primary" type="button" onClick={() => setDeliveryInformation([blankDeliveryRow()])}>Add delivery row</button>
+            {deliveryContentTab === "delivery" ? (
+              <>
+                <div className="admin-delivery-toolbar">
+                  <p>Add, remove, and reorder delivery rows. Costs are entered in GBP and this table is informational; checkout rates remain managed under Shipping.</p>
+                  <button className="admin-secondary" type="button" onClick={() => setDeliveryInformation((rows) => [...rows, blankDeliveryRow()])}>Add delivery row</button>
                 </div>
-              ) : (
-                <div className="admin-delivery-repeater">
-                  {deliveryInformation.map((row, index) => (
-                    <fieldset className="admin-delivery-row" key={row.id}>
-                      <legend>Delivery row {index + 1}</legend>
-                      <label>Delivery option<input required maxLength={120} value={row.option} onChange={(event) => updateDeliveryRow(row.id, { option: event.target.value })} placeholder="UK Next Day" /></label>
-                      <label className="admin-delivery-information-field">Delivery information<textarea required maxLength={2000} rows={4} value={row.information} onChange={(event) => updateDeliveryRow(row.id, { information: event.target.value })} placeholder="Order before 8pm Mon–Thu. Delivered next working day." /></label>
-                      <label>Delivery cost (GBP)<input required type="number" min="0" step="0.01" value={row.cost} onChange={(event) => updateDeliveryRow(row.id, { cost: event.target.value })} placeholder="5.99" /></label>
-                      <div className="admin-delivery-row-actions">
-                        <button className="admin-secondary" type="button" onClick={() => moveDeliveryRow(index, -1)} disabled={index === 0}>Move up</button>
-                        <button className="admin-secondary" type="button" onClick={() => moveDeliveryRow(index, 1)} disabled={index === deliveryInformation.length - 1}>Move down</button>
-                        <button className="admin-danger" type="button" onClick={() => setDeliveryInformation((rows) => rows.filter((item) => item.id !== row.id))}>Remove</button>
-                      </div>
-                    </fieldset>
-                  ))}
-                </div>
-              )}
-              {deliveryInformation.length > 0 && (
-                <div className="admin-form-actions">
-                  <button className="admin-primary" type="submit" disabled={deliverySaving}>{deliverySaving ? "Saving…" : "Save delivery information"}</button>
-                  <button className="admin-secondary" type="button" onClick={() => setDeliveryInformation((rows) => [...rows, blankDeliveryRow()])}>Add another row</button>
-                </div>
-              )}
-            </form>
+                {deliveryError && <p className="admin-form-error" role="alert">{deliveryError}</p>}
+                <form className="admin-panel admin-delivery-editor" onSubmit={saveDeliveryInformation}>
+                  {deliveryLoading && deliveryInformation.length === 0 ? <p className="admin-users-state">Loading delivery information…</p> : deliveryInformation.length === 0 ? <div className="admin-delivery-empty"><strong>No delivery information yet.</strong><span>Add your first row to create the product-page delivery table.</span><button className="admin-primary" type="button" onClick={() => setDeliveryInformation([blankDeliveryRow()])}>Add delivery row</button></div> : (
+                    <div className="admin-delivery-repeater">{deliveryInformation.map((row, index) => (
+                      <fieldset className="admin-delivery-row" key={row.id}>
+                        <legend>Delivery row {index + 1}</legend>
+                        <label>Delivery option<input required maxLength={120} value={row.option} onChange={(event) => updateDeliveryRow(row.id, { option: event.target.value })} placeholder="UK Next Day" /></label>
+                        <label className="admin-delivery-information-field">Delivery information<textarea required maxLength={2000} rows={4} value={row.information} onChange={(event) => updateDeliveryRow(row.id, { information: event.target.value })} placeholder="Order before 8pm Mon–Thu. Delivered next working day." /></label>
+                        <label>Delivery cost (GBP)<input required type="number" min="0" step="0.01" value={row.cost} onChange={(event) => updateDeliveryRow(row.id, { cost: event.target.value })} placeholder="5.99" /></label>
+                        <div className="admin-delivery-row-actions"><button className="admin-secondary" type="button" onClick={() => moveDeliveryRow(index, -1)} disabled={index === 0}>Move up</button><button className="admin-secondary" type="button" onClick={() => moveDeliveryRow(index, 1)} disabled={index === deliveryInformation.length - 1}>Move down</button><button className="admin-danger" type="button" onClick={() => setDeliveryInformation((rows) => rows.filter((item) => item.id !== row.id))}>Remove</button></div>
+                      </fieldset>
+                    ))}</div>
+                  )}
+                  {deliveryInformation.length > 0 && <div className="admin-form-actions"><button className="admin-primary" type="submit" disabled={deliverySaving}>{deliverySaving ? "Saving…" : "Save delivery information"}</button><button className="admin-secondary" type="button" onClick={() => setDeliveryInformation((rows) => [...rows, blankDeliveryRow()])}>Add another row</button></div>}
+                </form>
+              </>
+            ) : (
+              <>
+                <div className="admin-return-intro"><p>Write the return policy shown in the Returns accordion on every product page.</p></div>
+                {returnError && <p className="admin-form-error" role="alert">{returnError}</p>}
+                <form className="admin-panel admin-return-editor" onSubmit={saveReturnInformation}>
+                  {returnLoading ? <p className="admin-users-state">Loading return information…</p> : <RichTextEditor value={returnInformation} onChange={setReturnInformation} placeholder="Add your return policy, refund times, exclusions, and instructions." />}
+                  <div className="admin-form-actions"><button className="admin-primary" type="submit" disabled={returnSaving || returnLoading}>{returnSaving ? "Saving…" : "Save return information"}</button></div>
+                </form>
+              </>
+            )}
           </>
         )}
 

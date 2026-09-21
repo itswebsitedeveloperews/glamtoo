@@ -11,3 +11,4 @@ export * from "./catalog";
 export * from "./contact-enquiries";
 export * from "./delivery-information";
 export * from "./size-guide";
+export * from "./return-information";

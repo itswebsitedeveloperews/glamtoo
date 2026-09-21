@@ -824,7 +824,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
   .split-page { grid-template-columns: 1fr; }
   .split-image { min-height: 460px; max-height: 560px; }
   .split-copy { padding: 65px 25px 85px; }
-  .product-detail { padding-top: 40px; }
+  .product-detail { padding: 40px 0 70px; }
   .product-detail-layout { grid-template-columns: 1fr; gap: 38px; }
 
   .product-gallery { position: static; flex-direction: column; gap: 12px; }
@@ -1307,6 +1307,14 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .admin-form-actions { display: flex; gap: 10px; margin-top: 20px; }
 .admin-shipping-list { display: grid; gap: 12px; }
 .admin-delivery-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+.admin-content-tabs { display: flex; gap: 6px; margin: 4px 0 22px; border-bottom: 1px solid var(--line); }
+.admin-content-tabs button { min-width: 150px; border: 0; border-bottom: 3px solid transparent; background: transparent; padding: 13px 20px 11px; color: var(--muted); font: 600 14px var(--body); cursor: pointer; }
+.admin-content-tabs button:hover { color: var(--ink); }
+.admin-content-tabs button.is-active { border-bottom-color: var(--pink-deep); color: var(--ink); }
+.admin-return-intro { margin-bottom: 18px; color: var(--muted); font-size: 14px; }
+.admin-return-intro p { margin: 0; }
+.admin-return-editor { padding: 24px; }
+.admin-return-editor .admin-form-actions { margin-top: 20px; }
 .admin-delivery-toolbar p { max-width: 760px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .admin-delivery-editor { padding: 24px; }
 .admin-delivery-repeater { display: grid; gap: 18px; }
