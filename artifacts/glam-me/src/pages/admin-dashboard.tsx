@@ -38,6 +38,24 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
     if (editor) onChange(sanitizeRichTextHtml(editor.innerHTML));
   }
 
+  function addLink() {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !editorRef.current?.contains(selection.anchorNode)) {
+      window.alert("Select the text you want to link first.");
+      return;
+    }
+    const href = window.prompt("Enter a link, for example /returns or https://example.com");
+    if (!href?.trim()) return;
+    runCommandWithValue("createLink", href.trim());
+  }
+
+  function runCommandWithValue(command: string, value: string) {
+    editorRef.current?.focus();
+    document.execCommand(command, false, value);
+    const editor = editorRef.current;
+    if (editor) onChange(sanitizeRichTextHtml(editor.innerHTML));
+  }
+
   return (
     <div className="admin-rich-text">
       <div className="admin-rich-text-toolbar" role="toolbar" aria-label="Returns formatting">
@@ -46,6 +64,8 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
         <button type="button" aria-label="Underline" title="Underline" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("underline")}><u>U</u></button>
         <button type="button" aria-label="Bulleted list" title="Bulleted list" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("insertUnorderedList")}>• List</button>
         <button type="button" aria-label="Numbered list" title="Numbered list" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("insertOrderedList")}>1. List</button>
+        <button type="button" aria-label="Add link" title="Add link" onMouseDown={(event) => event.preventDefault()} onClick={addLink}>Link</button>
+        <button type="button" aria-label="Remove link" title="Remove link" onMouseDown={(event) => event.preventDefault()} onClick={() => runCommand("unlink")}>Unlink</button>
       </div>
       <div
         ref={editorRef}

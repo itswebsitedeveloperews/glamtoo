@@ -1530,6 +1530,7 @@ article.admin-shipping-method h2 {
 .admin-rich-text-editor p { margin: 0 0 10px; }
 .admin-rich-text-editor p:last-child { margin-bottom: 0; }
 .admin-rich-text-editor ul, .admin-rich-text-editor ol { margin: 8px 0; padding-left: 24px; }
+.admin-rich-text-editor a, .detail-rich-text a { color: var(--pink-deep); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 .admin-editor-label small { color: var(--muted); font-size: 14px; font-weight: 400; line-height: 1.45; }
 .admin-product-image-preview { display: block; width: 100%; aspect-ratio: .92; margin: 10px 0 16px; object-fit: cover; background: var(--paper-deep); }
 .admin-image-placeholder { display: grid; min-height: 150px; place-items: center; margin: 10px 0 16px; padding: 18px; border: 1px dashed #cfc7c1; color: #746f6b; text-align: center; font-size: 14px; font-weight: 400; line-height: 1.45; }
