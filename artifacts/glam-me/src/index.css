@@ -557,7 +557,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .detail-accordion details:last-child { border-bottom: 0; }
 .detail-accordion summary { display: flex; min-height: 52px; justify-content: space-between; align-items: center; gap: 20px; padding: 0 16px; font-size: 15px; font-weight: 500; color: var(--ink); cursor: pointer; list-style: none; }
 .detail-accordion summary::-webkit-details-marker { display: none; }
-.detail-accordion summary span { color: #b24869; font-size: 20px; font-weight: 400; }
+.detail-accordion summary span { color: #b24869; font-size: 32px; font-weight: 400; }
 .detail-accordion details[open] summary span { transform: rotate(45deg); display: inline-block; transition: transform 0.2s ease; }
 .detail-accordion-content { padding: 0 16px 20px; }
 .detail-accordion-content p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.6; }
