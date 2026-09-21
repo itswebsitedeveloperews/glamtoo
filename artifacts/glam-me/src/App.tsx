@@ -2237,27 +2237,44 @@ function Contact() {
 }
 
 function ReturnsPage() {
-  const [returnInformation, setReturnInformation] = useState("");
-  const [returnLoading, setReturnLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    fetch("/api/return-information")
-      .then(async (response) => {
-        const payload = await response.json() as { content?: string };
-        if (!response.ok) throw new Error("Return information could not be loaded.");
-        if (active) setReturnInformation(payload.content ?? "");
-      })
-      .catch(() => {
-        if (active) setReturnInformation("");
-      })
-      .finally(() => {
-        if (active) setReturnLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const returnQuestions = [
+    {
+      question: "How do I make a return or exchange?",
+      answer: "Contact our customer care team with your order number and the item you would like to return. We’ll send you the return address and instructions. Items must be returned unworn, unused, and with their original tags attached.",
+    },
+    {
+      question: "What should I do if I receive an incorrect or faulty item?",
+      answer: "Please contact us before sending the item back. Include your order number, a description of the problem, and clear photographs where possible. Our team will arrange the most appropriate replacement, exchange, or refund.",
+    },
+    {
+      question: "What is the Glam Too returns policy?",
+      answer: "Return requests must be made within 21 days of purchase. Returned items must be unused, undamaged, in their original packaging, and have all tags attached. Earrings and other hygiene-sensitive items cannot be returned unless faulty.",
+    },
+    {
+      question: "How much does it cost to return an item?",
+      answer: "Customers are responsible for return postage unless the item is incorrect or faulty. We recommend using a tracked postal service because returned parcels remain your responsibility until they reach us.",
+    },
+    {
+      question: "How do I track my return?",
+      answer: "Use the tracking number supplied by your chosen postal service. Keep your postage receipt until your return has been processed.",
+    },
+    {
+      question: "Where is my refund?",
+      answer: "We’ll email you after your return has been received and inspected. Approved refunds are sent to your original payment method. Your bank or card provider may take several working days to display the funds.",
+    },
+    {
+      question: "Why have I been refunded a different amount?",
+      answer: "Original delivery charges and return postage are not normally refundable. Discounts, promotional codes, and partial order returns can also affect the final refund amount. Contact us if you believe the amount is incorrect.",
+    },
+    {
+      question: "What is the process for international returns?",
+      answer: "Contact our team before returning an international order. You are responsible for return postage, customs forms, and any related charges. Mark the parcel clearly as returned goods to help prevent customs delays.",
+    },
+    {
+      question: "How can I make a complaint?",
+      answer: "Please use our contact form and include your order number and a clear description of the issue. Our customer care team will review your complaint and respond as soon as possible.",
+    },
+  ];
 
   return (
     <Shell>
@@ -2274,21 +2291,19 @@ function ReturnsPage() {
             <p>Everything you need to know about returning an item and receiving your refund.</p>
           </header>
 
-          <section className="returns-policy-card" aria-labelledby="returns-policy-heading">
+          <section className="returns-policy-card returns-faq-card" aria-labelledby="returns-policy-heading">
             <div className="returns-policy-heading">
-              <span>Returns information</span>
-              <h2 id="returns-policy-heading">Our returns policy</h2>
+              <span>Returns help</span>
+              <h2 id="returns-policy-heading">Frequently asked questions</h2>
             </div>
-            {returnLoading ? (
-              <p className="returns-policy-state">Loading returns information…</p>
-            ) : returnInformation && hasRichTextContent(returnInformation) ? (
-              <div
-                className="returns-policy-content detail-rich-text"
-                dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(returnInformation) }}
-              />
-            ) : (
-              <p className="returns-policy-state">Returns information is currently being updated. Please contact our team if you need help.</p>
-            )}
+            <div className="returns-faq-list">
+              {returnQuestions.map((item, index) => (
+                <details key={item.question} open={index === 0}>
+                  <summary>{item.question}<ChevronDown aria-hidden="true" /></summary>
+                  <div className="returns-faq-answer"><p>{item.answer}</p></div>
+                </details>
+              ))}
+            </div>
           </section>
 
           <section className="returns-help">

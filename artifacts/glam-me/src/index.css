@@ -437,6 +437,15 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .returns-policy-content { color: var(--ink); font-size: 16px; line-height: 1.75; }
 .returns-policy-content p { color: inherit; font-size: inherit; line-height: inherit; }
 .returns-policy-state { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.6; }
+.returns-faq-card { padding-bottom: 34px; }
+.returns-faq-list { border-top: 1px solid #d7d2ce; }
+.returns-faq-list details { border-bottom: 1px solid #d7d2ce; }
+.returns-faq-list summary { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 20px; padding: 0 8px; color: var(--ink); font-size: 16px; letter-spacing: .025em; cursor: pointer; list-style: none; }
+.returns-faq-list summary::-webkit-details-marker { display: none; }
+.returns-faq-list summary svg { flex: 0 0 20px; width: 20px; height: 20px; color: var(--pink-deep); transition: transform .2s ease; }
+.returns-faq-list details[open] summary svg { transform: rotate(180deg); }
+.returns-faq-answer { padding: 0 44px 20px 8px; }
+.returns-faq-answer p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.7; }
 .returns-help { display: flex; align-items: center; justify-content: space-between; gap: 30px; margin-top: 22px; background: #191817; padding: 28px 32px; color: #fff; }
 .returns-help > div { display: flex; align-items: center; gap: 18px; }
 .returns-help svg { flex: 0 0 28px; width: 28px; height: 28px; color: #efa4bb; stroke-width: 1.5; }
