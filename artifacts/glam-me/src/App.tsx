@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
 import logoImage from '@assets/glam_me_logo_1787652435373.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.webp';
@@ -1544,7 +1545,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 <button className="gallery-pagination-control" type="button" onClick={() => changeGallery(1)} aria-label="View next product image">&rsaquo;</button>
               </div>
             </div>
-            {galleryZoomOpen && (
+            {galleryZoomOpen && createPortal(
               <div
                 className="gallery-lightbox"
                 role="dialog"
@@ -1573,7 +1574,8 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                   </>
                 )}
                 <img src={galleryImages[displayedGalleryIndex] || product.image} alt={`${product.name} enlarged view ${displayedGalleryIndex + 1}`} style={{ objectPosition: product.position }} onClick={(event) => event.stopPropagation()} />
-              </div>
+              </div>,
+              document.body,
             )}
           </div>
           <div className="detail-copy">
