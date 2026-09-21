@@ -1545,8 +1545,33 @@ function ProductDetail({ params }: { params: { slug: string } }) {
               </div>
             </div>
             {galleryZoomOpen && (
-              <div className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`${product.name} enlarged image`} onClick={() => setGalleryZoomOpen(false)}>
+              <div
+                className="gallery-lightbox"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`${product.name} enlarged image`}
+                tabIndex={0}
+                autoFocus
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowLeft") {
+                    event.preventDefault();
+                    changeGallery(-1);
+                  }
+                  if (event.key === "ArrowRight") {
+                    event.preventDefault();
+                    changeGallery(1);
+                  }
+                  if (event.key === "Escape") setGalleryZoomOpen(false);
+                }}
+                onClick={() => setGalleryZoomOpen(false)}
+              >
                 <button className="gallery-lightbox-close" type="button" onClick={() => setGalleryZoomOpen(false)} aria-label="Close enlarged image"><X aria-hidden="true" /></button>
+                {galleryImages.length > 1 && (
+                  <>
+                    <button className="gallery-lightbox-arrow gallery-lightbox-arrow-prev" type="button" onClick={(event) => { event.stopPropagation(); changeGallery(-1); }} aria-label="View previous product image">&lsaquo;</button>
+                    <button className="gallery-lightbox-arrow gallery-lightbox-arrow-next" type="button" onClick={(event) => { event.stopPropagation(); changeGallery(1); }} aria-label="View next product image">&rsaquo;</button>
+                  </>
+                )}
                 <img src={galleryImages[displayedGalleryIndex] || product.image} alt={`${product.name} enlarged view ${displayedGalleryIndex + 1}`} style={{ objectPosition: product.position }} onClick={(event) => event.stopPropagation()} />
               </div>
             )}

@@ -487,6 +487,10 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .gallery-lightbox img { display: block; width: auto; max-width: 92vw; max-height: 88vh; object-fit: contain; background: transparent; }
 .gallery-lightbox-close { position: fixed; top: 22px; right: 22px; display: grid; width: 46px; height: 46px; place-items: center; border: 1px solid rgba(255,255,255,.4); border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; cursor: pointer; }
 .gallery-lightbox-close:hover { background: #fff; color: var(--ink); }
+.gallery-lightbox-arrow { position: fixed; z-index: 1; top: 50%; display: grid; width: 54px; height: 54px; place-items: center; border: 1px solid rgba(255,255,255,.42); border-radius: 50%; background: rgba(20,17,16,.45); color: #fff; cursor: pointer; font-size: 38px; line-height: 1; transform: translateY(-50%); transition: background .2s ease, color .2s ease; }
+.gallery-lightbox-arrow:hover { background: #fff; color: var(--ink); }
+.gallery-lightbox-arrow-prev { left: 24px; }
+.gallery-lightbox-arrow-next { right: 24px; }
 
 .gallery-image { position: relative; aspect-ratio: 0.85; max-height: 800px; overflow: hidden; background: var(--paper-deep); }
 .gallery-image img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
