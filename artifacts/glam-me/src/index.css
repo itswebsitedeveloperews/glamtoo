@@ -840,6 +840,13 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
   .account-order-page-heading h2 { font-size: 36px; }
   .account-shortcuts { grid-template-columns: 1fr; margin-top: 28px; }
 }
+@media (max-width: 767px) {
+  .product-detail-layout { display: flex; flex-direction: column; gap: 0; }
+  .detail-copy { display: contents; }
+  .detail-intro { order: 1; }
+  .product-gallery { order: 2; width: 100%; margin-top: 24px; }
+  .detail-form { order: 3; width: 100%; margin-top: 24px; }
+}
 @media (max-width: 460px) {
   .announcement { font-size: 14px; letter-spacing: .1em; }
   .header-inner { grid-template-columns: 1fr auto 40px; }

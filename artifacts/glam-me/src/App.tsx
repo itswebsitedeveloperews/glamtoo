@@ -1579,12 +1579,14 @@ function ProductDetail({ params }: { params: { slug: string } }) {
             )}
           </div>
           <div className="detail-copy">
-            <div className="detail-header-row">
-              <span className="eyebrow">{product.eyebrow?.trim() || product.category}</span>
+            <div className="detail-intro">
+              <div className="detail-header-row">
+                <span className="eyebrow">{product.eyebrow?.trim() || product.category}</span>
+              </div>
+              <h1>{product.name}</h1>
+              <div className="detail-price">{displayedPrice}</div>
+              <p className="detail-description">{product.description}</p>
             </div>
-            <h1>{product.name}</h1>
-            <div className="detail-price">{displayedPrice}</div>
-            <p className="detail-description">{product.description}</p>
             
             <form className="detail-form" onSubmit={handleAddToCart}>
               <input type="hidden" name="product" value={product.id} />
