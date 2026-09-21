@@ -957,7 +957,7 @@ function Footer() {
               </div>
             </div>
             <div><h4>Shop</h4><ul><li><a href="/category/new-in" data-testid="link-footer-new-in">New In</a></li><li><a href="/category/clothes" data-testid="link-footer-clothes">Clothes</a></li><li><a href="/category/handbags" data-testid="link-footer-handbags">Handbags</a></li><li><a href="/category/purses" data-testid="link-footer-purses">Purses</a></li><li><a href="/category/jewellery" data-testid="link-footer-jewellery">Jewellery</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
-            <div><h4>Help</h4><ul><li><a href="/delivery-returns" data-testid="link-footer-delivery">Delivery &amp; Returns</a></li><li><a href="/faq" data-testid="link-footer-size-guide">Size Guide</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
+            <div><h4>Help</h4><ul><li><a href="/returns" data-testid="link-footer-delivery">Returns</a></li><li><a href="/faq" data-testid="link-footer-size-guide">Size Guide</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
             <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">About</a></li><li><a href="/about" data-testid="link-footer-style-journal">Style Journal</a></li></ul></div>
             <div className="footer-knowledge"><h4>Stay in the know</h4><p>Sign up for new arrivals<br />and exclusive offers.</p><form className="footer-newsletter-form" action="/" method="get"><label className="sr-only" htmlFor="footer-newsletter-email">Email address</label><input id="footer-newsletter-email" name="email" type="email" placeholder="Enter your email" required data-testid="input-footer-newsletter-email" /><button type="submit" aria-label="Sign me up" data-testid="button-footer-newsletter-submit">→</button></form></div>
           </div>
@@ -2232,6 +2232,77 @@ function Contact() {
           <Link href="/faq" className="text-link" style={{ color: 'var(--pink-deep)', borderColor: 'var(--pink-deep)' }}>VISIT OUR FAQ <span>&#8594;</span></Link>
         </div>
       </div>
+    </Shell>
+  );
+}
+
+function ReturnsPage() {
+  const [returnInformation, setReturnInformation] = useState("");
+  const [returnLoading, setReturnLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/return-information")
+      .then(async (response) => {
+        const payload = await response.json() as { content?: string };
+        if (!response.ok) throw new Error("Return information could not be loaded.");
+        if (active) setReturnInformation(payload.content ?? "");
+      })
+      .catch(() => {
+        if (active) setReturnInformation("");
+      })
+      .finally(() => {
+        if (active) setReturnLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  return (
+    <Shell>
+      <main className="returns-page">
+        <div className="container returns-page-inner">
+          <nav className="returns-breadcrumb" aria-label="Breadcrumb">
+            <Link href="/">Home</Link><span aria-hidden="true">/</span><span>Returns</span>
+          </nav>
+
+          <header className="returns-page-header">
+            <div className="returns-page-icon"><RefreshCcw aria-hidden="true" /></div>
+            <p className="eyebrow">Need some help?</p>
+            <h1>Returns</h1>
+            <p>Everything you need to know about returning an item and receiving your refund.</p>
+          </header>
+
+          <section className="returns-policy-card" aria-labelledby="returns-policy-heading">
+            <div className="returns-policy-heading">
+              <span>Returns information</span>
+              <h2 id="returns-policy-heading">Our returns policy</h2>
+            </div>
+            {returnLoading ? (
+              <p className="returns-policy-state">Loading returns information…</p>
+            ) : returnInformation && hasRichTextContent(returnInformation) ? (
+              <div
+                className="returns-policy-content detail-rich-text"
+                dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(returnInformation) }}
+              />
+            ) : (
+              <p className="returns-policy-state">Returns information is currently being updated. Please contact our team if you need help.</p>
+            )}
+          </section>
+
+          <section className="returns-help">
+            <div>
+              <Mail aria-hidden="true" />
+              <div>
+                <h2>Need help with a return?</h2>
+                <p>Our customer care team can help with your order, return, or refund.</p>
+              </div>
+            </div>
+            <Link href="/contact" className="button button-pink">Contact us</Link>
+          </section>
+        </div>
+      </main>
     </Shell>
   );
 }
@@ -3733,7 +3804,8 @@ function AppRoutes() {
     <Route path="/contact" component={Contact} />
     <Route path="/privacy" component={() => <LegalPage type="privacy" />} />
     <Route path="/terms" component={() => <LegalPage type="terms" />} />
-    <Route path="/delivery-returns" component={DeliveryReturnsPage} />
+    <Route path="/returns" component={ReturnsPage} />
+    <Route path="/delivery-returns" component={ReturnsPage} />
     <Route path="/cart" component={Cart} />
     <Route path="/wishlist" component={WishlistPage} />
     <Route path="/checkout" component={Checkout} />
