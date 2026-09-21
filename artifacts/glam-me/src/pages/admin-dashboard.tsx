@@ -2064,6 +2064,13 @@ export default function AdminDashboard({
   }, [products]);
 
   useEffect(() => {
+    if (editorProductId === null) return;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }, [editorProductId]);
+
+  useEffect(() => {
     let active = true;
     const locallySavedProducts = window.localStorage.getItem(productsStorageKey);
     const locallySavedLegacyProducts = window.localStorage.getItem(legacyProductsStorageKey);
@@ -2117,16 +2124,13 @@ export default function AdminDashboard({
           }));
           nextCatalog = await publishCatalog(remappedProducts, initialCategories);
         } else {
-          const existingProductIds = new Set((catalog.products ?? []).map((product) => product.id));
           const existingCategoryIds = new Set((nextCatalog.categories ?? []).map((category) => category.id));
-          const missingProducts = catalogProducts.filter((product) => !existingProductIds.has(product.id));
           const missingCategories = initialCategories.filter((category) => !existingCategoryIds.has(category.id));
-          if (missingProducts.length > 0 || missingCategories.length > 0) {
+          if (missingCategories.length > 0) {
             nextCatalog = await publishCatalog(
-              [...(catalog.products ?? []), ...missingProducts],
+              catalog.products ?? [],
               [...(catalog.categories ?? []), ...missingCategories],
             );
-            await Promise.all(missingProducts.map((product) => syncProductInventory(product)));
           }
         }
         if ((nextCatalog.products ?? []).some((product) => product.deliveryAndReturns !== defaultDeliveryAndReturns)) {

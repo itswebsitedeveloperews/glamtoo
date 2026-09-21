@@ -24,3 +24,4 @@
 - [Flexible variation attributes](flexible-variation-attributes.md) — Products define ordered attributes first; combinations and storefront selectors must render only those definitions.
 - [Configurable shipping methods](configurable-shipping-methods.md) — Checkout shipping comes from enabled database methods; the server resolves every selected rate and threshold.
 - [Reactive Wouter query state](reactive-wouter-query-state.md) — Subscribe to search changes when query parameters drive UI; pathname location alone can leave views stale.
+- [Catalog seed lifecycle](catalog-seed-lifecycle.md) — Seed built-in products only for an uninitialized catalog; never restore missing products after admins delete them.
