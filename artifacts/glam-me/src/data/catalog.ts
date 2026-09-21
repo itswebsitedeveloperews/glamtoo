@@ -42,6 +42,7 @@ export type CatalogProduct = {
   slug: string;
   name: string;
   category: string;
+  eyebrow?: string;
   price: string;
   salePrice?: string;
   stock: number;

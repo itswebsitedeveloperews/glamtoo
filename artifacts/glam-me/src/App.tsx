@@ -511,6 +511,7 @@ function normalizeStorefrontProducts(products: Array<Partial<CatalogProduct>>): 
         slug: createProductSlug(String(product.slug || product.name || matchingCatalogProduct?.slug || matchingCatalogProduct?.name || `product-${index + 1}`)),
         name: product.name || matchingCatalogProduct?.name || "Glam Too piece",
         category: product.category || matchingCatalogProduct?.category || "",
+        eyebrow: typeof product.eyebrow === "string" ? product.eyebrow : matchingCatalogProduct?.eyebrow,
         price: formatCatalogPrice(product.price || matchingCatalogProduct?.price || ""),
         description: typeof product.description === "string" ? product.description : matchingCatalogProduct?.description ?? "",
         longDescription: typeof product.longDescription === "string" ? product.longDescription : matchingCatalogProduct?.longDescription,
@@ -1537,7 +1538,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
             )}
           </div>
           <div className="detail-copy">
-            <div className="eyebrow">{product.category} edit · Glam Too</div>
+            <div className="eyebrow">{product.eyebrow?.trim() || `${product.category} edit · Glam Too`}</div>
             <div className="detail-title-row">
               <div><h1>{product.name}</h1><div className="detail-price">{displayedPrice}</div></div>
             </div>

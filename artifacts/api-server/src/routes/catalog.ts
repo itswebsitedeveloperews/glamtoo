@@ -77,6 +77,7 @@ function normalizeProduct(value: unknown, index: number): JsonRecord {
     slug: asText(product.slug, "", 200),
     name: asText(product.name, "Glam Too piece", 200),
     category: asText(product.category, "", 100),
+    eyebrow: asText(product.eyebrow, "", 200),
     price: asText(product.price, "", 50),
     ...(typeof product.salePrice === "string" && product.salePrice.trim() ? { salePrice: product.salePrice.trim().slice(0, 50) } : {}),
     stock: asNonNegativeInteger(product.stock),

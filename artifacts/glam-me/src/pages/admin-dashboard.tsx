@@ -632,6 +632,7 @@ function blankProduct(category: string): ProductDraft {
     slug: "",
     name: "",
     category,
+    eyebrow: "",
     price: "",
     stock: 0,
     status: "Draft",
@@ -738,6 +739,7 @@ function ProductEditorWithMultipleUploads({
            slug: product.slug || createProductSlug(product.name),
           name: product.name,
           category: product.category,
+          eyebrow: product.eyebrow ?? "",
            price: getCatalogPriceInput(product.price),
           stock: product.stock,
           status: product.status,
@@ -835,6 +837,7 @@ function ProductEditorWithMultipleUploads({
       ...draft,
       slug: createProductSlug(draft.slug || draft.name),
       name: draft.name.trim(),
+      eyebrow: draft.eyebrow?.trim(),
       description: draft.description.trim(),
       longDescription: draft.longDescription?.trim(),
       fitAndSize: draft.fitAndSize?.trim(),
@@ -1047,6 +1050,10 @@ function ProductEditorWithMultipleUploads({
                   <input className="admin-editor-input" value={draft.slug} onChange={(event) => updateDraft({ slug: event.target.value })} placeholder="sienna-slip-dress" />
                   <small><Check aria-hidden="true" />Auto-generated</small>
                 </span>
+              </label>
+              <label className="admin-editor-label">Product eyebrow
+                <input className="admin-editor-input" value={draft.eyebrow ?? ""} onChange={(event) => updateDraft({ eyebrow: event.target.value })} placeholder={`${draft.category || "Dresses"} edit · Glam Too`} />
+                <small>Shown above the product title. Leave blank to use the category automatically.</small>
               </label>
               <label className="admin-editor-label">Description
                 <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="A short description shown beside the product title." rows={3} />
@@ -1386,6 +1393,7 @@ function ProductEditor({
            slug: product.slug || createProductSlug(product.name),
           name: product.name,
           category: product.category,
+          eyebrow: product.eyebrow ?? "",
            price: getCatalogPriceInput(product.price),
           stock: product.stock,
           status: product.status,
@@ -1495,6 +1503,7 @@ function ProductEditor({
       ...draft,
       slug: createProductSlug(draft.slug || draft.name),
       name: draft.name.trim(),
+      eyebrow: draft.eyebrow?.trim(),
       description: draft.description.trim(),
       longDescription: draft.longDescription?.trim(),
       fitAndSize: draft.fitAndSize?.trim(),
@@ -1735,6 +1744,10 @@ function ProductEditor({
                   <input className="admin-editor-input" value={draft.slug} onChange={(event) => updateDraft({ slug: event.target.value })} placeholder="sienna-slip-dress" />
                   <small><Check aria-hidden="true" />Auto-generated</small>
                 </span>
+              </label>
+              <label className="admin-editor-label">Product eyebrow
+                <input className="admin-editor-input" value={draft.eyebrow ?? ""} onChange={(event) => updateDraft({ eyebrow: event.target.value })} placeholder={`${draft.category || "Dresses"} edit · Glam Too`} />
+                <small>Shown above the product title. Leave blank to use the category automatically.</small>
               </label>
               <label className="admin-editor-label">Description
                 <textarea className="admin-editor-input admin-editor-textarea" value={draft.description} onChange={(event) => updateDraft({ description: event.target.value })} placeholder="A short description shown beside the product title." rows={3} />
