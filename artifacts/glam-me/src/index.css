@@ -521,10 +521,11 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .detail-price { font-size: 22px; font-family: var(--display); margin-bottom: 12px; }
 .detail-description { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; max-width: 90%; }
 
-.detail-form { margin-top: 24px; }
+.detail-form { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px; }
 .detail-purchase-controls { display: grid; grid-template-columns: 1fr 1fr; align-items: end; gap: 20px; }
 .detail-purchase-controls-simple { grid-template-columns: 1fr; }
 .detail-purchase-controls .field, .detail-quantity { display: flex; flex-direction: column; align-items: stretch; }
+.detail-variation-fields .field { gap: 0; }
 .detail-purchase-controls .field label, .detail-quantity-label { display: flex; height: 16px; align-items: center; margin: 0 0 8px; color: var(--ink); font-size: 13px; font-weight: 500; line-height: 16px; letter-spacing: 0.1em; text-transform: uppercase; }
 
 .detail-form .field select {
