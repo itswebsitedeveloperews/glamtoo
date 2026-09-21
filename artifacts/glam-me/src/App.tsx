@@ -9,7 +9,7 @@ import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPri
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
-import { Clock, CreditCard, Headphones, HelpCircle, LayoutDashboard, LogOut, Mail, MapPin, MessageSquare, Phone, RefreshCcw, Ruler, Search, ShoppingBag, Sparkles, Truck, UserRound, X, type LucideIcon } from 'lucide-react';
+import { ChevronDown, ZoomIn, Clock, CreditCard, Headphones, HelpCircle, LayoutDashboard, LogOut, Mail, MapPin, MessageSquare, Phone, RefreshCcw, Ruler, Search, ShoppingBag, Sparkles, Truck, UserRound, X, type LucideIcon } from 'lucide-react';
 import { Link, Route, Router as WouterRouter, Switch, useLocation, useSearch } from 'wouter';
 import { useSubmitContactEnquiry } from '@workspace/api-client-react';
 import NotFound from '@/pages/not-found';
@@ -1371,39 +1371,44 @@ function Product() {
   return <Shell><div className="container product-detail"><div className="product-detail-layout"><div className="product-gallery"><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress in blush pink, full editorial view" /></div><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress detail" /></div><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress styled for occasionwear" /></div></div><div className="detail-copy"><div className="eyebrow">The occasion edit · Just in</div><h1>Luna Ruffle Mini Dress</h1><div className="detail-price">£89.99</div><p>A little romance, a lot of movement. Luna is cut in soft recycled satin with a gathered neckline, floaty ruffles and a hem made for dancing.</p><form className="detail-form" action="/cart" method="get"><div className="field"><label htmlFor="dress-size">Select size</label><select id="dress-size" name="size" defaultValue="" required data-testid="select-product-size"><option value="" disabled>Choose a size</option><option>UK 6</option><option>UK 8</option><option>UK 10</option><option>UK 12</option><option>UK 14</option></select></div><div className="field"><label>Colour · Blush</label><div className="swatches" aria-label="Available colours"><span className="swatch swatch-pink" title="Blush"></span><span className="swatch swatch-black" title="Black"></span><span className="swatch swatch-blue" title="Sky"></span></div></div><button className="button" type="submit" data-testid="button-add-to-bag">Add to bag · £89.99</button></form><div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with a relaxed, floaty fit. Adjustable straps and invisible side zip. Dress length: 82cm.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery over £75. Return unworn pieces within 28 days.</p></details></div></div></div></div></Shell>;
 }
 
-function ProductDetail({ params }: { params: { slug: string } }) {
+function ProductDetail({ params }: { params: { slug: string } }) { 
   useLiveInventory();
   const product = getStorefrontProducts().find((item) => item.slug === params.slug || String(item.id) === params.slug);
   const galleryImages = getCatalogProductImages(product ?? { image: "" });
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
   const [galleryTransitionDirection, setGalleryTransitionDirection] = useState<1 | -1>(1);
+  const [galleryZoomOpen, setGalleryZoomOpen] = useState(false);
   const galleryTouchStartX = useRef<number | null>(null);
-  const [selectedSize, setSelectedSize] = useState('');
-  const [selectedColour, setSelectedColour] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [variationMessage, setVariationMessage] = useState('');
   const [openProductInformation, setOpenProductInformation] = useState<string | null>(null);
+
   useEffect(() => {
     setActiveGalleryIndex(0);
     setGalleryTransitionDirection(1);
+    setGalleryZoomOpen(false);
     setQuantity(1);
   }, [product?.id, params.slug]);
-  const productVariations = product?.type === 'Variable'
-    ? product.variations
-    : [];
+
+  const productVariations = product?.type === 'Variable' ? product.variations : [];
   const availableVariations = productVariations.filter((variation) => variation.stock > 0);
   const variationAttributes = product?.variationAttributes ?? [
     ...(productVariations.some((variation) => variation.size) ? ['size'] : []),
     ...(productVariations.some((variation) => variation.colour) ? ['colour'] : []),
   ];
+
   const optionValue = (variation: typeof productVariations[number], attribute: string) =>
     attribute === 'size' ? variation.size : attribute === 'colour' ? variation.colour : variation.attributes?.[attribute] ?? '';
+
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+
   const hasCompatibleVariation = (options: Record<string, string>) =>
     availableVariations.some((variation) =>
       variationAttributes.every((attribute) => !options[attribute] || optionValue(variation, attribute) === options[attribute]),
     );
+
   const hasAllRequiredSelections = variationAttributes.every((attribute) => Boolean(selectedOptions[attribute]));
+
   const selectedVariation = product?.type === 'Variable'
     ? !hasAllRequiredSelections
       ? undefined
@@ -1411,17 +1416,16 @@ function ProductDetail({ params }: { params: { slug: string } }) {
       variationAttributes.every((attribute) => optionValue(variation, attribute) === selectedOptions[attribute]),
     )
     : undefined;
+
   const displayedPrice = selectedVariation?.price ?? product?.price ?? '';
   const availableQuantity = product?.type === 'Variable' ? selectedVariation?.stock ?? 0 : product?.stock ?? 0;
+  
   const productInformation = [
     { title: 'Description', content: product?.longDescription },
     { title: 'Fit & Size', content: product?.fitAndSize },
     { title: 'Delivery & Returns', content: product?.deliveryAndReturns },
     { title: 'Care Details', content: product?.careDetails },
   ].filter((section): section is { title: string; content: string } => Boolean(section.content?.trim()));
-  useEffect(() => {
-    setOpenProductInformation(productInformation[0]?.title ?? null);
-  }, [product?.id]);
 
   if (!product) return <NotFoundRoute />;
   const selectedProduct = product;
@@ -1473,6 +1477,25 @@ function ProductDetail({ params }: { params: { slug: string } }) {
       <div className="container product-detail">
         <div className="product-detail-layout">
           <div className="product-gallery">
+            {galleryImages.length > 1 && (
+              <div className="gallery-thumbnails-col">
+                <div className="gallery-thumbnails" aria-label="Choose product image">
+                  {galleryImages.map((image, index) => (
+                    <button
+                      className={`gallery-thumbnail ${index === displayedGalleryIndex ? "is-active" : ""}`}
+                      type="button"
+                      key={`${image}-${index}`}
+                      onClick={() => selectGalleryImage(index)}
+                      aria-label={`View ${product.name} image ${index + 1}`}
+                      aria-current={index === displayedGalleryIndex ? "true" : undefined}
+                    >
+                      <img src={image} alt="" style={{ objectPosition: product.position }} />
+                    </button>
+                  ))}
+                </div>
+                <button className="gallery-thumbnails-more" onClick={() => changeGallery(1)} aria-label="View next product image"><ChevronDown /></button>
+              </div>
+            )}
             <div
               className="gallery-viewer"
               role="group"
@@ -1501,6 +1524,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
               }}
             >
               <WishlistButton product={product} detail />
+              <button className="gallery-viewer-zoom" type="button" onClick={() => setGalleryZoomOpen(true)} aria-label="Open larger product image"><ZoomIn size={18} /></button>
               <div className="gallery-image">
                 <img
                   key={galleryImages[displayedGalleryIndex] || product.image}
@@ -1513,36 +1537,28 @@ function ProductDetail({ params }: { params: { slug: string } }) {
               <span className="sr-only" aria-live="polite" aria-atomic="true">
                 Image {displayedGalleryIndex + 1} of {galleryImages.length}
               </span>
-              {galleryImages.length > 1 && (
-                <>
-                  <button className="gallery-control gallery-control-prev" type="button" onClick={() => changeGallery(-1)} aria-label="View previous product image">←</button>
-                  <button className="gallery-control gallery-control-next" type="button" onClick={() => changeGallery(1)} aria-label="View next product image">→</button>
-                </>
-              )}
+              
+              <div className="gallery-viewer-pagination">
+                <button className="gallery-pagination-control" type="button" onClick={() => changeGallery(-1)} aria-label="View previous product image">&lsaquo;</button>
+                <span className="gallery-pagination-status">{displayedGalleryIndex + 1} / {galleryImages.length}</span>
+                <button className="gallery-pagination-control" type="button" onClick={() => changeGallery(1)} aria-label="View next product image">&rsaquo;</button>
+              </div>
             </div>
-            {galleryImages.length > 1 && (
-              <div className="gallery-thumbnails" aria-label="Choose product image">
-                {galleryImages.map((image, index) => (
-                  <button
-                    className={`gallery-thumbnail ${index === displayedGalleryIndex ? "is-active" : ""}`}
-                    type="button"
-                    key={`${image}-${index}`}
-                    onClick={() => selectGalleryImage(index)}
-                    aria-label={`View ${product.name} image ${index + 1}`}
-                    aria-current={index === displayedGalleryIndex ? "true" : undefined}
-                  >
-                    <img src={image} alt="" style={{ objectPosition: product.position }} />
-                  </button>
-                ))}
+            {galleryZoomOpen && (
+              <div className="gallery-lightbox" role="dialog" aria-modal="true" aria-label={`${product.name} enlarged image`} onClick={() => setGalleryZoomOpen(false)}>
+                <button className="gallery-lightbox-close" type="button" onClick={() => setGalleryZoomOpen(false)} aria-label="Close enlarged image"><X aria-hidden="true" /></button>
+                <img src={galleryImages[displayedGalleryIndex] || product.image} alt={`${product.name} enlarged view ${displayedGalleryIndex + 1}`} style={{ objectPosition: product.position }} onClick={(event) => event.stopPropagation()} />
               </div>
             )}
           </div>
           <div className="detail-copy">
-            <div className="eyebrow">{product.eyebrow?.trim() || `${product.category} edit · Glam Too`}</div>
-            <div className="detail-title-row">
-              <div><h1>{product.name}</h1><div className="detail-price">{displayedPrice}</div></div>
+            <div className="detail-header-row">
+              <span className="eyebrow">{product.eyebrow?.trim() || product.category}</span>
             </div>
-            <p>{product.description}</p>
+            <h1>{product.name}</h1>
+            <div className="detail-price">{displayedPrice}</div>
+            <p className="detail-description">{product.description}</p>
+            
             <form className="detail-form" onSubmit={handleAddToCart}>
               <input type="hidden" name="product" value={product.id} />
                 <div className={`detail-purchase-controls${product.type !== 'Variable' ? ' detail-purchase-controls-simple' : ''}`}>
@@ -1559,14 +1575,19 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                  <div className="detail-quantity">
                    <span className="detail-quantity-label">Quantity</span>
                    <div className="detail-quantity-control">
-                     <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} disabled={quantity <= 1} aria-label="Decrease quantity">−</button>
+                     <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} disabled={quantity <= 1} aria-label="Decrease quantity">&minus;</button>
                      <output aria-live="polite" aria-label={`Quantity ${quantity}`}>{quantity}</output>
                      <button type="button" onClick={() => setQuantity((current) => Math.min(availableQuantity, current + 1))} disabled={isSoldOut || !availableQuantity || quantity >= availableQuantity} aria-label="Increase quantity">+</button>
                    </div>
                  </div>
                 </div>
+                
                 {isSoldOut && <p className="variation-message">This product is currently out of stock.</p>}
-                  <button className="button" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation)} data-testid={`button-add-to-bag-${product.id}`}>{isSoldOut ? 'Out of stock' : `Add to bag · ${displayedPrice}`}</button>
+                
+                <button className="button detail-add-to-bag" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation)} data-testid={`button-add-to-bag-${product.id}`}>
+                  {isSoldOut ? 'Out of stock' : `ADD TO BAG · ${displayedPrice}`}
+                  <ShoppingBag size={18} />
+                </button>
 
               <div className="product-policies">
                 <div className="product-policy">
@@ -1584,22 +1605,23 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                   </div>
                 </div>
               </div>
+              
+               {productInformation.length > 0 && (
+                 <div className="detail-accordion" aria-label="Product information">
+                   {productInformation.map((section) => (
+                     <details key={section.title} open={openProductInformation === section.title}>
+                       <summary onClick={(event) => {
+                         event.preventDefault();
+                         setOpenProductInformation((current) => current === section.title ? null : section.title);
+                       }}>{section.title}<span aria-hidden="true">+</span></summary>
+                       <div className="detail-accordion-content"><p>{section.content}</p></div>
+                     </details>
+                   ))}
+                 </div>
+               )}
             </form>
           </div>
         </div>
-         {productInformation.length > 0 && (
-           <section className="product-information" aria-label="Product information">
-             {productInformation.map((section) => (
-               <details key={section.title} open={openProductInformation === section.title}>
-                 <summary onClick={(event) => {
-                   event.preventDefault();
-                   setOpenProductInformation((current) => current === section.title ? null : section.title);
-                 }}>{section.title}<span aria-hidden="true">+</span></summary>
-                 <div className="product-information-content"><p>{section.content}</p></div>
-               </details>
-             ))}
-           </section>
-         )}
       </div>
       {relatedProducts.length > 0 && (
         <section className="related-products container" aria-labelledby="related-products-heading" data-testid="section-related-products">
@@ -1608,7 +1630,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
               <div className="eyebrow">Keep exploring</div>
               <h2 id="related-products-heading">Related products</h2>
             </div>
-            <a className="text-link" href={`/category/${slugify(product.category)}`}>Shop {product.category.toLowerCase()} <span aria-hidden="true">→</span></a>
+            <a className="text-link" href={`/category/${slugify(product.category)}`}>Shop {product.category.toLowerCase()} <span aria-hidden="true">&rarr;</span></a>
           </div>
           <div className="product-grid">
             {relatedProducts.map((relatedProduct) => <ProductCard key={relatedProduct.id} product={relatedProduct} />)}
