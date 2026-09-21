@@ -655,7 +655,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .wishlist-item:hover .wishlist-item-image img { transform: scale(1.035); }
 .wishlist-item-content { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; gap: 24px; padding: 23px 21px 21px; }
 .wishlist-item-category { margin: 0 0 7px; color: var(--muted); font-size: 14px; letter-spacing: .09em; text-transform: uppercase; }
-.wishlist-item h2 { margin: 0; font: 400 28px/.95 var(--display); letter-spacing: -.035em; }
+.wishlist-item h2 { margin: 0; font: 400 28px/.95 var(--display) !important; letter-spacing: -.035em; }
 .wishlist-item h2 a:hover { color: var(--pink-deep); }
 .wishlist-item-price { display: flex; align-items: baseline; gap: 9px; margin-top: 15px; font-size: 16px; }
 .wishlist-item-price del { color: var(--muted); font-size: 14px; }
