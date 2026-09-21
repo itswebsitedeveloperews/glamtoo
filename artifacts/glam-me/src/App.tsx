@@ -375,6 +375,7 @@ function calculateCheckoutDeliveryAmount(delivery: "standard" | "express", subto
 }
 
 type ShippingMethod = { id: string; name: string; description: string; price: number; freeOver: number | null; enabled: boolean };
+type DeliveryInformationRow = { id: string; option: string; information: string; cost: number; sortOrder: number };
 
 function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'productId' | 'quantity'> = { size: 'One size' }, quantity = 1) {
   const size = selection.size || 'One size';
@@ -1383,6 +1384,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const [quantity, setQuantity] = useState(1);
   const [variationMessage, setVariationMessage] = useState('');
   const [openProductInformation, setOpenProductInformation] = useState<string | null>(null);
+  const [deliveryInformation, setDeliveryInformation] = useState<DeliveryInformationRow[]>([]);
 
   useEffect(() => {
     setActiveGalleryIndex(0);
@@ -1390,6 +1392,22 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     setGalleryZoomOpen(false);
     setQuantity(1);
   }, [product?.id, params.slug]);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/delivery-information")
+      .then(async (response) => {
+        const payload = await response.json() as { deliveryInformation?: DeliveryInformationRow[] };
+        if (!response.ok) throw new Error("Delivery information could not be loaded.");
+        if (active) setDeliveryInformation(payload.deliveryInformation ?? []);
+      })
+      .catch(() => {
+        if (active) setDeliveryInformation([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const productVariations = product?.type === 'Variable' ? product.variations : [];
   const availableVariations = productVariations.filter((variation) => variation.stock > 0);
@@ -1635,7 +1653,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 </div>
               </div>
               
-               {productInformation.length > 0 && (
+               {(productInformation.length > 0 || deliveryInformation.length > 0) && (
                  <div className="detail-accordion" aria-label="Product information">
                    {productInformation.map((section) => (
                      <details key={section.title} open={openProductInformation === section.title}>
@@ -1646,6 +1664,36 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                        <div className="detail-accordion-content"><p>{section.content}</p></div>
                      </details>
                    ))}
+                   {deliveryInformation.length > 0 && (
+                     <details open={openProductInformation === "Delivery"}>
+                       <summary onClick={(event) => {
+                         event.preventDefault();
+                         setOpenProductInformation((current) => current === "Delivery" ? null : "Delivery");
+                       }}>Delivery<span aria-hidden="true">+</span></summary>
+                       <div className="detail-accordion-content detail-delivery-content">
+                         <div className="delivery-table-wrap">
+                           <table className="delivery-information-table">
+                             <thead>
+                               <tr>
+                                 <th scope="col">Delivery option</th>
+                                 <th scope="col">Delivery information</th>
+                                 <th scope="col">Delivery cost</th>
+                               </tr>
+                             </thead>
+                             <tbody>
+                               {deliveryInformation.map((row) => (
+                                 <tr key={row.id}>
+                                   <td data-label="Delivery option">{row.option}</td>
+                                   <td data-label="Delivery information">{row.information}</td>
+                                   <td data-label="Delivery cost">{row.cost === 0 ? "Free" : formatPounds(row.cost / 100)}</td>
+                                 </tr>
+                               ))}
+                             </tbody>
+                           </table>
+                         </div>
+                       </div>
+                     </details>
+                   )}
                  </div>
                )}
             </form>

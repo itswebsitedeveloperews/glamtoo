@@ -1,7 +1,8 @@
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
-import { desc, eq } from "drizzle-orm";
-import { contactEnquiriesTable, couponsTable, customerProfilesTable, db, shippingMethodsTable } from "@workspace/db";
+import { asc, desc, eq, inArray } from "drizzle-orm";
+import { contactEnquiriesTable, couponsTable, customerProfilesTable, db, deliveryInformationTable, shippingMethodsTable } from "@workspace/db";
+import { listDeliveryInformation, serializeDeliveryInformation } from "../deliveryInformation";
 import { listShippingMethods, serializeShippingMethod } from "../shippingMethods";
 import { getAdminAccess, isAdminUser, isBootstrapAdminUser, requireAdmin } from "../adminAuth";
 import {
@@ -63,6 +64,83 @@ router.delete("/admin/shipping-methods/:methodId", requireAdmin, async (request,
   if (!Number.isInteger(id)) return response.status(400).json({ error: "Choose a valid shipping method." });
   await db.delete(shippingMethodsTable).where(eq(shippingMethodsTable.id, id));
   return response.status(204).send();
+});
+
+router.get("/admin/delivery-information", requireAdmin, async (request, response) => {
+  try {
+    return response.set("Cache-Control", "no-store").json({
+      deliveryInformation: (await listDeliveryInformation()).map(serializeDeliveryInformation),
+    });
+  } catch (error) {
+    request.log?.error({ error }, "Delivery information could not be loaded");
+    return response.status(503).json({ error: "Delivery information could not be loaded right now." });
+  }
+});
+
+router.put("/admin/delivery-information", requireAdmin, async (request, response) => {
+  const rows = Array.isArray(request.body?.deliveryInformation) ? request.body.deliveryInformation : null;
+  if (!rows || rows.length > 50) {
+    return response.status(400).json({ error: "Add no more than 50 delivery rows." });
+  }
+
+  const parsedRows: Array<{ id: number | null; option: string; information: string; cost: number; sortOrder: number }> = rows.map((value: unknown, index: number) => {
+    const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
+    const id = Number(row.id);
+    const option = textValue(row.option, 120);
+    const information = textValue(row.information, 2000);
+    const cost = Math.round(Number(row.cost) * 100);
+    return {
+      id: Number.isInteger(id) && id > 0 ? id : null,
+      option,
+      information,
+      cost,
+      sortOrder: index,
+    };
+  });
+
+  if (parsedRows.some((row) => !row.option || !row.information || !Number.isInteger(row.cost) || row.cost < 0)) {
+    return response.status(400).json({ error: "Every delivery row needs an option, information, and a valid non-negative cost." });
+  }
+  const existingIds = parsedRows.flatMap((row) => row.id === null ? [] : [row.id]);
+  if (new Set(existingIds).size !== existingIds.length) {
+    return response.status(400).json({ error: "Delivery rows contain duplicate identifiers." });
+  }
+
+  try {
+    await db.transaction(async (transaction) => {
+      const currentRows = await transaction.select({ id: deliveryInformationTable.id }).from(deliveryInformationTable).orderBy(asc(deliveryInformationTable.id));
+      const currentIds = new Set(currentRows.map((row) => row.id));
+      if (existingIds.some((id) => !currentIds.has(id))) throw new Error("Delivery row not found.");
+
+      const removedIds = currentRows.map((row) => row.id).filter((id) => !existingIds.includes(id));
+      if (removedIds.length > 0) {
+        await transaction.delete(deliveryInformationTable).where(inArray(deliveryInformationTable.id, removedIds));
+      }
+      for (const row of parsedRows) {
+        if (row.id === null) {
+          await transaction.insert(deliveryInformationTable).values({
+            option: row.option,
+            information: row.information,
+            cost: row.cost,
+            sortOrder: row.sortOrder,
+          });
+        } else {
+          await transaction.update(deliveryInformationTable).set({
+            option: row.option,
+            information: row.information,
+            cost: row.cost,
+            sortOrder: row.sortOrder,
+          }).where(eq(deliveryInformationTable.id, row.id));
+        }
+      }
+    });
+    return response.json({
+      deliveryInformation: (await listDeliveryInformation()).map(serializeDeliveryInformation),
+    });
+  } catch (error) {
+    request.log?.error({ error }, "Delivery information could not be saved");
+    return response.status(503).json({ error: "Delivery information could not be saved right now." });
+  }
 });
 
 router.get("/admin/contact-enquiries", requireAdmin, async (request, response): Promise<void> => {
