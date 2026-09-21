@@ -1791,6 +1791,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
           <div className="product-grid">
             {relatedProducts.map((relatedProduct) => <ProductCard key={relatedProduct.id} product={relatedProduct} />)}
           </div>
+          <a className="text-link related-products-mobile-link" href={`/category/${slugify(product.category)}`}>Shop {product.category.toLowerCase()} <span aria-hidden="true">&rarr;</span></a>
         </section>
       )}
     </Shell>
