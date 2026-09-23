@@ -816,6 +816,8 @@ function Header() {
   const [cartCount, setCartCount] = useState(getCartCount);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
+  const searchFormRef = useRef<HTMLFormElement>(null);
   const { count: wishlistCount } = useWishlist();
   const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
   const navLinkProps = (path: string) => currentPath === path
@@ -828,6 +830,27 @@ function Header() {
     return () => window.removeEventListener('glam-cart-updated', updateCartCount);
   }, []);
 
+  useEffect(() => {
+    if (!searchOpen) return;
+    const closeOnOutsideClick = (event: PointerEvent) => {
+      if (!searchButtonRef.current?.contains(event.target as Node) && !searchFormRef.current?.contains(event.target as Node)) {
+        setSearchOpen(false);
+      }
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSearchOpen(false);
+        searchButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [searchOpen]);
+
   return (
     <header className="site-header" data-testid="site-header">
       <div className="header-inner">
@@ -838,12 +861,29 @@ function Header() {
           aria-expanded={menuOpen}
           aria-controls="primary-navigation"
           data-testid="button-menu-toggle"
-          onClick={() => setMenuOpen((open) => !open)}
+          onClick={() => { setSearchOpen(false); setMenuOpen((open) => !open); }}
         >
           <span className="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
         </button>
-        {searchOpen ? (
+        <button
+          ref={searchButtonRef}
+          className="tool-label search-link"
+          type="button"
+          aria-label="Search"
+          aria-expanded={searchOpen}
+          aria-controls="header-search-form"
+          data-testid="button-search"
+          onClick={() => { setMenuOpen(false); setSearchOpen((open) => !open); }}
+        >
+          <span className="tool-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
+          </span>
+          <span>Search</span>
+        </button>
+        {searchOpen && (
           <form
+            ref={searchFormRef}
+            id="header-search-form"
             className="header-inline-search"
             role="search"
             onSubmit={(event) => {
@@ -853,39 +893,26 @@ function Header() {
               window.location.assign(`${basePath}/shop${query ? `?search=${encodeURIComponent(query)}` : ""}`);
             }}
           >
-            <button type="submit" aria-label="Submit search" data-testid="button-header-search-submit">
-              <span className="tool-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
-              </span>
-            </button>
-            <label className="sr-only" htmlFor="header-search-input">Search the shop</label>
+            <label className="header-search-label" htmlFor="header-search-input">Search products</label>
+            <button className="header-search-close" type="button" aria-label="Close search" onClick={() => { setSearchOpen(false); searchButtonRef.current?.focus(); }}><X size={20} /></button>
             <input
               id="header-search-input"
               name="search"
               type="search"
+              aria-label="Search products"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Escape") setSearchOpen(false);
-              }}
               placeholder="Search products..."
               autoFocus
               data-testid="input-header-search"
             />
+            <button className="header-search-submit" type="submit" data-testid="button-header-search-submit">
+              <span className="tool-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
+              </span>
+              <span className="mobile-search-submit-label">Search</span>
+            </button>
           </form>
-        ) : (
-          <button
-            className="tool-label search-link"
-            type="button"
-            aria-expanded={false}
-            data-testid="button-search"
-            onClick={() => setSearchOpen(true)}
-          >
-            <span className="tool-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
-            </span>
-            <span>Search</span>
-          </button>
         )}
         <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Glam Too Boutique" /></a>
         <div className="header-tools">
