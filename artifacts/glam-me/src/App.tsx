@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
-import logoImage from './assets/boutique-logo.svg';
+import logoImage from './assets/glam-too-boutique-logo.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.webp';
 import aboutHeroImage from '@assets/about_banner_1789035643721.webp';
 import aboutStudioImage from '@assets/glam-me-5_1787653559643.webp';
@@ -887,7 +887,7 @@ function Header() {
             <span>Search</span>
           </button>
         )}
-        <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Boutique" /></a>
+        <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Glam Too Boutique" /></a>
         <div className="header-tools">
           <a href="/account" className="tool-label icon-link" aria-label="Account" data-testid="link-account">
             <span className="tool-icon" aria-hidden="true">
@@ -911,7 +911,7 @@ function Header() {
       {menuOpen && <button className="nav-overlay" type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
       <nav id="primary-navigation" className={menuOpen ? 'nav nav-open' : 'nav'} aria-label="Primary navigation">
         <div className="mobile-nav-head">
-          <img src={logoImage} alt="Boutique" />
+          <img src={logoImage} alt="Glam Too Boutique" />
           <button className="mobile-nav-close" type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>×</button>
         </div>
         <a href="/category/new-in" {...navLinkProps("/category/new-in")} data-testid="link-nav-new-in" onClick={() => setMenuOpen(false)}>New In</a>
@@ -932,7 +932,7 @@ function Footer() {
         <div className="container">
           <div className="footer-grid">
             <div className="footer-brand">
-              <img className="footer-logo" src={logoImage} alt="Boutique" />
+              <img className="footer-logo" src={logoImage} alt="Glam Too Boutique" />
               <p className="footer-intro">Outfits that make every moment yours. Expressive pieces for the beautifully busy life.</p>
               <div className="footer-socials" aria-label="Social links">
                 <a href="#" aria-label="Linktr.ee" data-testid="link-footer-linktree">

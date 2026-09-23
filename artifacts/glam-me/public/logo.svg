@@ -1,6 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 90" width="390" height="90" role="img" aria-labelledby="title">
-  <title id="title">Boutique</title>
-  <rect width="390" height="90" fill="#080808"/>
-  <path d="M0 51H57 M333 51H390" fill="none" stroke="#e23d6f" stroke-width="3"/>
-  <text x="195" y="68" fill="#e23d6f" font-family="Georgia, Times New Roman, serif" font-size="62" font-weight="400" letter-spacing="-2" text-anchor="middle">Boutique</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 337" width="800" height="337" role="img" aria-labelledby="title">
+  <title id="title">Glam Too Boutique</title>
+  <rect width="800" height="337" fill="#fff"/>
+  <text x="400" y="184" text-anchor="middle" fill="#080808" font-family="Georgia, Times New Roman, serif" font-size="180" font-weight="400" letter-spacing="-5" textLength="790" lengthAdjust="spacingAndGlyphs">Glam Too</text>
+  <path d="M0 281H208 M592 281H800" fill="none" stroke="#e23d6f" stroke-width="2"/>
+  <text x="400" y="310" text-anchor="middle" fill="#e23d6f" font-family="Georgia, Times New Roman, serif" font-size="86" font-weight="400" letter-spacing="-2">Boutique</text>
 </svg>

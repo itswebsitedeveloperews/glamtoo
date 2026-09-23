@@ -27,4 +27,4 @@
 - [Catalog seed lifecycle](catalog-seed-lifecycle.md) — Seed built-in products only for an uninitialized catalog; never restore missing products after admins delete them.
 - [Delivery content and checkout shipping](delivery-content-vs-shipping.md) — Product-page delivery rows are global informational content; checkout Shipping remains the source of prices and totals.
 - [Home page curation](home-page-curation.md) — An unset homepage uses defaults; intentionally empty saved selections must stay empty after refresh.
-- [Boutique wordmark](boutique-wordmark.md) — Boutique replaces the visible logo in the original serif; this is not a full Glam Too copy rebrand.
+- [Glam Too Boutique wordmark](boutique-wordmark.md) — Keep Glam Too above Boutique, with the original serif and pink Boutique rules.
