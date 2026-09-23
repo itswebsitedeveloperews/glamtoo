@@ -116,29 +116,18 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .button-pink { background: #e23d6f; border-color: #e23d6f; color: #fff; }
 .button-pink:hover { background: #c93260; border-color: #c93260; color: #fff; }
 
-.collection-collage { display: grid; grid-template-columns: 1.05fr .82fr .9fr; grid-template-rows: repeat(2, minmax(245px, 1fr)); gap: 12px; padding: 62px 0; }
-.collection-tile { position: relative; display: block; overflow: hidden; min-height: 350px; background: var(--paper-deep); color: inherit; text-decoration: none; }
+.collection-collage { display: grid; grid-template-columns: 1.05fr .82fr .9fr; grid-auto-rows: minmax(245px, auto); gap: 12px; padding: 62px 0; }
+.collection-tile { position: relative; display: block; overflow: hidden; min-height: 350px; background: #514947; color: #fffdfb; text-decoration: none; }
 .collection-tile:focus-visible { outline: 3px solid #e23d6f; outline-offset: 3px; }
-.collection-tile img { width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2,.65,.25,1); }
+.collection-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2,.65,.25,1); }
 .collection-tile:hover img { transform: scale(1.035); }
-.collection-tile:after { content: ''; position: absolute; z-index: 0; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(255,255,255,.78) 0%, rgba(255,255,255,.4) 43%, rgba(255,255,255,0) 78%); }
+.collection-tile:after { content: ''; position: absolute; z-index: 0; inset: 0; pointer-events: none; background: linear-gradient(0deg, rgba(23, 22, 21, .84), rgba(23, 22, 21, .5) 40%, rgba(23, 22, 21, 0) 80%); }
 .collection-tile > div { position: absolute; z-index: 1; left: 28px; bottom: 28px; max-width: 190px; }
 .collection-tile h3 { margin: 0 0 6px; font: 500 clamp(23px, 2.1vw, 31px)/.98 var(--display); letter-spacing: -.035em; }
 .collection-tile p { margin: 0 0 18px; font-size: 14px; line-height: 1.38; }
 .collection-tile-cta { display: inline-block; padding-bottom: 4px; border-bottom: 1px solid currentColor; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .collection-tile-cta span { margin-left: 3px; font-size: 15px; vertical-align: -1px; }
-.collection-dresses { grid-column: 1; grid-row: 1; color: #fffdfb; }
-.collection-dresses img { object-position: 58% 45%; }
-.collection-dresses:after, .collection-occasion:after { background: linear-gradient(90deg, rgba(25,11,17,.48) 0%, rgba(25,11,17,.2) 45%, rgba(25,11,17,0) 74%); }
-.collection-coords { grid-column: 2; grid-row: 1 / span 2; color: var(--ink); }
-.collection-coords img { object-position: 64% center; }
-.collection-coords > div { bottom: 30px; }
-.collection-occasion { grid-column: 3; grid-row: 1; color: #fffdfb; }
-.collection-occasion img { object-position: 57% center; }
-.collection-denim { grid-column: 1; grid-row: 2; color: var(--ink); }
-.collection-denim img { object-position: 70% center; }
-.collection-accessories { grid-column: 3; grid-row: 2; color: var(--ink); }
-.collection-accessories img { object-position: center; }
+.collection-tile:nth-child(3) { grid-column: 2; grid-row: 1 / span 2; }
 
 .category-directory { padding: 78px 0 118px; }
 .category-count { color: var(--muted); font-size: 14px; }
@@ -808,13 +797,9 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
   .hero { min-height: 570px; }
   .hero-image { object-position: 58% center; }
   .hero-copy h1 { font-size: 72px; }
-  .collection-collage { grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 250px) 220px; gap: 9px; padding: 42px 0; }
+  .collection-collage { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 250px; gap: 9px; padding: 42px 0; }
   .collection-tile { min-height: 0; }
-  .collection-coords { grid-column: 2; grid-row: 1 / span 2; }
-  .collection-dresses { grid-column: 1; grid-row: 1; }
-  .collection-occasion { grid-column: 1; grid-row: 2; }
-  .collection-denim { grid-column: 1; grid-row: 3; }
-  .collection-accessories { grid-column: 2; grid-row: 3; }
+  .collection-tile:nth-child(3) { grid-column: 2; grid-row: 1 / span 2; }
   .collection-tile > div { left: 17px; bottom: 17px; max-width: 125px; }
   .collection-tile h3 { font-size: 24px; }
   .collection-tile p { margin-bottom: 10px; font-size: 14px; }

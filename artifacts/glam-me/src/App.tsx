@@ -999,15 +999,7 @@ function Home() {
   useLiveInventory();
   const products = getStorefrontProducts();
   const categories = getStorefrontCategories();
-  const categoryImage = (name: string, fallback: string) =>
-    categories.find((category) => slugify(category.name) === slugify(name))?.image || fallback;
-  const collectionImages = {
-    dresses: categoryImage("Dresses", catalogCategories[0].image),
-    coords: categoryImage("Co-Ords", catalogCategories[2].image),
-    occasion: categoryImage("Occasion", catalogCategories[1].image),
-    denim: categoryImage("Denim", catalogCategories[3].image),
-    accessories: categoryImage("Accessories", catalogCategories[4].image),
-  };
+  const featuredCategories = categories.filter((category) => category.parentId == null);
   const momentPlans = [
     { name: "Day Out", copy: "Bright looks for sunny plans." },
     { name: "Date Night", copy: "Turn heads from six to midnight." },
@@ -1024,29 +1016,21 @@ function Home() {
           <a className="button button-pink" href="/shop" data-testid="link-hero-shop">Shop New In</a>
         </div>
       </section>
-      <section className="collection-collage container" aria-labelledby="collection-heading">
-        <h2 id="collection-heading" className="sr-only">Shop the collection</h2>
-        <a className="collection-tile collection-dresses" href="/category/dresses" aria-label="Shop dresses">
-          <img src={collectionImages.dresses} alt="Dresses collection" />
-          <div><h3>Dresses</h3><p>From day dates<br />to after dark.</p><span className="collection-tile-cta">Shop dresses <span>→</span></span></div>
-        </a>
-        <a className="collection-tile collection-coords" href="/category/co-ords" aria-label="Shop co-ords">
-          <img src={collectionImages.coords} alt="Co-Ords collection" />
-          <div><h3>Co-Ords</h3><p>Effortless<br />matching sets<br />made to wear.</p><span className="collection-tile-cta">Shop co-ords <span>→</span></span></div>
-        </a>
-        <a className="collection-tile collection-occasion" href="/category/jumpsuits" aria-label="Shop jumpsuits">
-          <img src={collectionImages.occasion} alt="Jumpsuits collection" />
-          <div><h3>Jumpsuits</h3><p>One-piece looks<br />made to stand<br />out.</p><span className="collection-tile-cta">Shop jumpsuits <span>→</span></span></div>
-        </a>
-        <a className="collection-tile collection-denim" href="/category/trousers" aria-label="Shop trousers">
-          <img src={collectionImages.denim} alt="Trousers collection" />
-          <div><h3>Trousers</h3><p>Everyday staples<br />with a polished<br />finish.</p><span className="collection-tile-cta">Shop trousers <span>→</span></span></div>
-        </a>
-        <a className="collection-tile collection-accessories" href="/category/jewellery" aria-label="Shop jewellery">
-          <img src={collectionImages.accessories} alt="Jewellery collection" />
-          <div><h3>Jewellery</h3><p>The finishing<br />touch.</p><span className="collection-tile-cta">Shop jewellery <span>→</span></span></div>
-        </a>
-      </section>
+      {featuredCategories.length > 0 && (
+        <section className="collection-collage container" aria-labelledby="collection-heading">
+          <h2 id="collection-heading" className="sr-only">Shop the collection</h2>
+          {featuredCategories.map((category) => (
+            <a className="collection-tile" key={category.id} href={`/category/${slugify(category.name)}`} aria-label={`Shop ${category.name}`}>
+              {category.image && <img src={category.image} alt="" />}
+              <div>
+                <h3>{category.name}</h3>
+                {category.description && <p>{category.description}</p>}
+                <span className="collection-tile-cta">Shop {category.name} <span aria-hidden="true">→</span></span>
+              </div>
+            </a>
+          ))}
+        </section>
+      )}
       <section className="products-section container home-obsessions" aria-labelledby="obsessions-heading">
         <div className="home-obsessions-heading">
           <div className="eyebrow">The Glam Edit</div>
