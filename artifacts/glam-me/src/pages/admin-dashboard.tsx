@@ -14,7 +14,7 @@ import {
   type CatalogVariation,
 } from "@/data/catalog";
 import { sanitizeRichTextHtml } from "@/utils/rich-text";
-import logoImage from "@assets/logo_1790166071801.svg";
+import logoImage from "@assets/final_1790166635332.svg";
 import AdminHomePage from "./admin-home-page";
 
 type RichTextEditorProps = {
