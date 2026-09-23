@@ -893,7 +893,6 @@ function Header() {
               window.location.assign(`${basePath}/shop${query ? `?search=${encodeURIComponent(query)}` : ""}`);
             }}
           >
-            <button className="header-search-close" type="button" aria-label="Close search" onClick={() => { setSearchOpen(false); searchButtonRef.current?.focus(); }}><X size={20} /></button>
             <input
               id="header-search-input"
               name="search"
