@@ -893,7 +893,6 @@ function Header() {
               window.location.assign(`${basePath}/shop${query ? `?search=${encodeURIComponent(query)}` : ""}`);
             }}
           >
-            <label className="header-search-label" htmlFor="header-search-input">Search products</label>
             <button className="header-search-close" type="button" aria-label="Close search" onClick={() => { setSearchOpen(false); searchButtonRef.current?.focus(); }}><X size={20} /></button>
             <input
               id="header-search-input"
@@ -906,11 +905,10 @@ function Header() {
               autoFocus
               data-testid="input-header-search"
             />
-            <button className="header-search-submit" type="submit" data-testid="button-header-search-submit">
+            <button className="header-search-submit" type="submit" aria-label="Submit search" data-testid="button-header-search-submit">
               <span className="tool-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
               </span>
-              <span className="mobile-search-submit-label">Search</span>
             </button>
           </form>
         )}
