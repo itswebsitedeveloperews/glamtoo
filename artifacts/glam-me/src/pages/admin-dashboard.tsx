@@ -14,6 +14,7 @@ import {
   type CatalogVariation,
 } from "@/data/catalog";
 import { sanitizeRichTextHtml } from "@/utils/rich-text";
+import logoImage from "@assets/logo_1790166071801.svg";
 import AdminHomePage from "./admin-home-page";
 
 type RichTextEditorProps = {
@@ -3227,7 +3228,10 @@ export default function AdminDashboard({
       )}
       <aside className={`admin-sidebar${adminMenuOpen ? " is-menu-open" : ""}`}>
         <a className="admin-brand" href="/" aria-label="Return to Glam Too storefront">
-          <img src="/logo-on-dark.svg" alt="Glam Too Boutique" />
+          <span className="admin-brand-mark">
+            <img src={logoImage} alt="Glam Too logo" />
+            <img className="admin-brand-mark-light" src={logoImage} alt="" aria-hidden="true" />
+          </span>
           <small>Commerce Studio</small>
         </a>
         <button

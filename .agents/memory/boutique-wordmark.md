@@ -3,8 +3,8 @@ name: Glam Too Boutique wordmark
 description: User's intended composition and typography for the site logo.
 ---
 
-Use the two-line “Glam Too Boutique” SVG: large black “Glam Too” in the prior Georgia-style lettering above smaller centered “Boutique” in #e23d6f, with thin horizontal lines in the same pink on either side. Keep the lower word's outlined serif letterforms and the transparent background.
+Use the user's latest uploaded transparent SVG as the website logo, including its black upper lettering and pink lower lettering and rules. Do not reconstruct its letterforms from fonts or a PNG. On the dark Admin sidebar, show the same uploaded shape with light upper lettering so it remains visible.
 
-**Why:** The user preferred this earlier SVG composition, corrected “Bourtique,” and requested pink Boutique text and lines. After an update changed both lines to reference-style outlines, they explicitly asked to restore the previous “Glam Too” font while retaining the other improvements.
+**Why:** The user explicitly supplied a new vector logo and asked to use that exact logo on the website after several rounds of typography changes. This supersedes the prior font reconstruction and earlier SVG variants.
 
-**How to apply:** Keep the header, footer, Admin, and sign-in composition consistent. On dark surfaces, use a transparent version with light “Glam Too” lettering and the same pink Boutique and lines for contrast, rather than adding a white rectangle behind the logo.
+**How to apply:** Keep storefront, sign-in, and Admin branding aligned to the uploaded vector. The supplied lower word visibly spells “Bourtique”; leave the supplied artwork unchanged unless the user asks to correct it. Keep dark-surface treatments transparent, without a white rectangle.
