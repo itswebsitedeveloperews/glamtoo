@@ -113,9 +113,9 @@ export default function AdminHomePage({ categories, products }: { categories: Ca
       </div>
       <section className="admin-panel admin-home-panel">
         {loading ? <p role="status">Loading home page settings…</p> : draft && <>
-          <SelectionDropdown title="Category select" description="Choose categories for the image tiles. The order you select them is the order they appear." choices={categoryChoices} selected={draft.categoryIds} onChange={(ids) => update("categoryIds", ids)} />
-          <SelectionDropdown title="Our Current Obsessions" description="Choose up to three published products, in display order." choices={productChoices} selected={draft.obsessionIds} onChange={(ids) => update("obsessionIds", ids)} maxSelections={3} />
-          <SelectionDropdown title="Outfits for Every Plan" description="Choose up to four published products, in display order." choices={productChoices} selected={draft.momentIds} onChange={(ids) => update("momentIds", ids)} maxSelections={4} />
+          <SelectionDropdown title="Category Section" description="Choose categories for the image tiles. The order you select them is the order they appear." choices={categoryChoices} selected={draft.categoryIds} onChange={(ids) => update("categoryIds", ids)} />
+          <SelectionDropdown title="Obsessions Section" description="Choose up to three published products, in display order." choices={productChoices} selected={draft.obsessionIds} onChange={(ids) => update("obsessionIds", ids)} maxSelections={3} />
+          <SelectionDropdown title="Outfits Plan Section" description="Choose up to four published products, in display order." choices={productChoices} selected={draft.momentIds} onChange={(ids) => update("momentIds", ids)} maxSelections={4} />
           <div className="admin-home-actions">
             <button className="admin-primary" type="button" disabled={saving} onClick={() => void save()}>{saving ? "Saving…" : "Save Home Page"}</button>
             {saved && <span role="status">Home page saved.</span>}
