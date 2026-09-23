@@ -1156,8 +1156,14 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .admin-home-options small { display: block; margin-top: 2px; color: var(--muted); font-size: 14px; }
 .admin-home-options > p { margin: 0; padding: 16px; color: var(--muted); }
 .admin-home-selected { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.admin-home-selected button { border: 1px solid #e8c6d2; background: #fcf1f5; padding: 8px 10px; color: var(--ink); cursor: pointer; font: 500 14px var(--body); }
-.admin-home-selected button span { margin-left: 8px; color: var(--pink-deep); font-size: 18px; vertical-align: -1px; }
+.admin-home-chip { display: inline-flex; align-items: center; gap: 5px; min-height: 39px; border: 1px solid #e8c6d2; background: #fcf1f5; padding: 4px 8px 4px 4px; color: var(--ink); font: 500 14px var(--body); user-select: none; touch-action: none; cursor: grab; transition: opacity .15s ease, box-shadow .15s ease; }
+.admin-home-chip.is-dragging { opacity: .55; cursor: grabbing; }
+.admin-home-chip.is-drop-before { box-shadow: -4px 0 0 #e23d6f; }
+.admin-home-chip.is-drop-after { box-shadow: 4px 0 0 #e23d6f; }
+.admin-home-chip button { display: inline-grid; place-items: center; flex: 0 0 auto; border: 0; background: transparent; padding: 2px; color: var(--pink-deep); cursor: pointer; }
+.admin-home-chip .admin-home-drag-handle { width: 30px; min-height: 30px; touch-action: none; cursor: grab; }
+.admin-home-chip .admin-home-drag-handle:active { cursor: grabbing; }
+.admin-home-chip .admin-home-remove { min-width: 24px; min-height: 30px; margin-left: 2px; font: 400 19px/1 var(--body); }
 .admin-home-actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding-top: 26px; }
 .admin-home-actions span { color: #356d4f; font-size: 14px; }
 .admin-home-error { color: #b42342; font-size: 14px; }

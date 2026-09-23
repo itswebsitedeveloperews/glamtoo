@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { GripVertical } from "lucide-react";
 import type { CatalogCategory, CatalogProduct } from "@/data/catalog";
 import { defaultHomePageSettings, type HomePageSettings } from "@/data/home-page";
 
@@ -16,6 +17,35 @@ function SelectionDropdown({
   maxSelections?: number;
 }) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const selectedRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{ id: number; pointerId: number } | null>(null);
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ id: number; after: boolean } | null>(null);
+
+  function targetAt(x: number, y: number) {
+    const element = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-home-chip-id]");
+    if (!element || !selectedRef.current?.contains(element)) return null;
+    return {
+      id: Number(element.dataset.homeChipId),
+      after: x >= element.getBoundingClientRect().left + element.getBoundingClientRect().width / 2,
+    };
+  }
+
+  function move(id: number, targetId: number, after: boolean) {
+    if (id === targetId) return;
+    const next = selected.filter((item) => item !== id);
+    const targetIndex = next.indexOf(targetId);
+    if (targetIndex === -1) return;
+    next.splice(targetIndex + (after ? 1 : 0), 0, id);
+    onChange(next);
+  }
+
+  function finishDrag() {
+    dragRef.current = null;
+    setDraggedId(null);
+    setDropTarget(null);
+  }
+
   useEffect(() => {
     function closeOnOutsidePointerDown(event: PointerEvent) {
       if (detailsRef.current?.open && !detailsRef.current.contains(event.target as Node)) {
@@ -42,11 +72,55 @@ function SelectionDropdown({
           ))}
         </div>
       </details>
-      {selected.length > 0 && <div className="admin-home-selected" aria-label={`Selected ${title}`}>
-        {selected.map((id) => (
-          <button type="button" key={id} onClick={() => onChange(selected.filter((item) => item !== id))} aria-label={`Remove ${names.get(id) ?? `item ${id}`} from ${title}`}>
-            {names.get(id) ?? `Unavailable item ${id}`} <span aria-hidden="true">×</span>
-          </button>
+      {selected.length > 0 && <div ref={selectedRef} className="admin-home-selected" role="list" aria-label={`Selected ${title}, drag items or use arrow keys to change order`}>
+        {selected.map((id, index) => (
+          <div
+            key={id}
+            role="listitem"
+            data-home-chip-id={id}
+            className={`admin-home-chip${draggedId === id ? " is-dragging" : ""}${dropTarget?.id === id ? ` is-drop-${dropTarget.after ? "after" : "before"}` : ""}`}
+            onPointerDown={(event) => {
+              if ((event.target as Element).closest(".admin-home-remove") || (event.pointerType === "mouse" && event.button !== 0)) return;
+              dragRef.current = { id, pointerId: event.pointerId };
+              event.currentTarget.setPointerCapture(event.pointerId);
+              setDraggedId(id);
+            }}
+            onPointerMove={(event) => {
+              if (dragRef.current?.pointerId !== event.pointerId) return;
+              const target = targetAt(event.clientX, event.clientY);
+              const nextTarget = target?.id === id ? null : target;
+              setDropTarget((current) => current?.id === nextTarget?.id && current?.after === nextTarget?.after ? current : nextTarget);
+            }}
+            onPointerUp={(event) => {
+              if (dragRef.current?.pointerId === event.pointerId) {
+                const target = targetAt(event.clientX, event.clientY);
+                if (target) move(dragRef.current.id, target.id, target.after);
+              }
+              finishDrag();
+            }}
+            onPointerCancel={finishDrag}
+            onLostPointerCapture={finishDrag}
+          >
+            <button
+              type="button"
+              className="admin-home-drag-handle"
+              aria-label={`Reorder ${names.get(id) ?? `item ${id}`}, position ${index + 1} of ${selected.length}. Drag, or use arrow keys to change order.`}
+              title="Drag to reorder, or use arrow keys"
+              onKeyDown={(event) => {
+                const direction = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : 0;
+                if (!direction) return;
+                event.preventDefault();
+                const index = selected.indexOf(id);
+                const swapIndex = index + direction;
+                if (swapIndex < 0 || swapIndex >= selected.length) return;
+                const next = [...selected];
+                [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
+                onChange(next);
+              }}
+            ><GripVertical size={16} aria-hidden="true" /></button>
+            <span>{names.get(id) ?? `Unavailable item ${id}`}</span>
+            <button type="button" className="admin-home-remove" onClick={() => onChange(selected.filter((item) => item !== id))} aria-label={`Remove ${names.get(id) ?? `item ${id}`} from ${title}`}>×</button>
+          </div>
         ))}
       </div>}
     </div>
