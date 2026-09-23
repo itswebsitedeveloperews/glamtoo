@@ -3227,7 +3227,7 @@ export default function AdminDashboard({
       )}
       <aside className={`admin-sidebar${adminMenuOpen ? " is-menu-open" : ""}`}>
         <a className="admin-brand" href="/" aria-label="Return to Glam Too storefront">
-          <img src="/logo.svg" alt="Glam Too Boutique" />
+          <img src="/logo-on-dark.svg" alt="Glam Too Boutique" />
           <small>Commerce Studio</small>
         </a>
         <button
