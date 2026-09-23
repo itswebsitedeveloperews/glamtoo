@@ -250,7 +250,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .footer { padding: 52px 0 22px; background: var(--paper); }
 .footer-grid { display: grid; grid-template-columns: 1.55fr .9fr .9fr .8fr 1.35fr; gap: 30px; padding-bottom: 46px; }
 .footer-grid > * { min-width: 0; }
-.footer-logo { width: 205px; margin-bottom: 15px; mix-blend-mode: multiply; }
+.footer-logo { width: 205px; margin-bottom: 15px; }
 .footer-intro { max-width: 220px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
 .footer-socials { display: flex; align-items: center; gap: 16px; margin-top: 18px; }
 .footer-socials a { display: inline-grid; width: 18px; height: 18px; place-items: center; }
@@ -1113,7 +1113,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .admin-app { min-height: 100vh; display: grid; grid-template-columns: 250px minmax(0, 1fr); background: #f8f5f1; color: var(--ink); }
 .admin-sidebar { min-height: 100vh; display: flex; flex-direction: column; padding: 35px 20px 22px; background: #171615; color: #fffdfb; position: sticky; top: 0; height: 100vh; }
 .admin-brand { display: grid; gap: 1px; padding: 0 13px 38px; }
-.admin-brand img { width: 176px; height: auto; filter: invert(1); }
+.admin-brand img { width: 176px; height: auto; }
 .admin-brand small { color: #cfc4bd; font-size: 14px; letter-spacing: .16em; text-transform: uppercase; }
 .admin-nav-overlay { display: none; }
 .admin-menu-toggle { display: none; width: 44px; height: 44px; place-items: center; border: 1px solid #4b4541; background: transparent; color: #fffdfb; cursor: pointer; }
