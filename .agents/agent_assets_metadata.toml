@@ -28,3 +28,17 @@ mtime_ms = 1790165511817
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/19db2e31-6095-41a2-b7f8-7f3be4612805/e8bcad27-c873-4834-a6ba-581b7871cd46"
 storage_version_token = "1790165570968234"
 content_type = "image/svg+xml"
+
+[[outputs]]
+id = "vZBoJhtDj5SgSUnW7o1Sd"
+uri = "file://assets/glam-too-bourtique-original.svg"
+type = "image"
+title = "Glam Too logo — traced SVG"
+description = "Transparent, scalable vector tracing of the attached PNG, preserving its original dark lettering and spelling."
+logical_id = "e9dd1de8-b292-4c30-b170-2331776b9226"
+content_hash = "sha256:433a2fe5dd17d603ae541b8481a5fec2fc7e64a7e9801387dddea539094f5757"
+size = 7791
+mtime_ms = 1790165939370
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/e9dd1de8-b292-4c30-b170-2331776b9226/ca24f445-5cc0-44e4-9094-9a229410fe46"
+storage_version_token = "1790165958269630"
+content_type = "image/svg+xml"
