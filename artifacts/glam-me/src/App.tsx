@@ -1006,12 +1006,6 @@ function Home() {
   const featuredCategories = settings.categoryIds.map((id) => categoryById.get(id)).filter((category): category is CatalogCategory => Boolean(category));
   const obsessionProducts = settings.obsessionIds.map((id) => productById.get(id)).filter((product): product is CatalogProduct => Boolean(product));
   const momentProducts = settings.momentIds.map((id) => productById.get(id)).filter((product): product is CatalogProduct => Boolean(product));
-  const momentPlans = [
-    { name: "Day Out", copy: "Bright looks for sunny plans." },
-    { name: "Date Night", copy: "Turn heads from six to midnight." },
-    { name: "Weddings", copy: "Guest-ready looks for the loved-up days." },
-    { name: "Weekend Plans", copy: "Effortless pieces for off-duty hours." },
-  ];
   return (
     <Shell>
       <section className="hero" aria-label="The new occasion edit">
@@ -1049,11 +1043,10 @@ function Home() {
           <div className="moments-heading"><div className="eyebrow">Shop by moment</div><h2 id="moments-heading">Outfits for Every Plan</h2></div>
           <div className="moment-grid">
             {momentProducts.map((product, index) => {
-              const moment = momentPlans[index] ?? { name: product.name, copy: product.category };
-              return <article className="moment-card" key={moment.name} data-testid={`card-moment-${index}`}>
+              return <article className="moment-card" key={product.id} data-testid={`card-moment-${index}`}>
                 <a className="moment-card-link" href={`/product/${product.slug}`} data-testid={`link-moment-${index}`}>
-                  <img src={product.image} alt={`${product.name}, ${moment.name} fashion edit`} style={{ objectPosition: product.position }} />
-                  <div className="moment-copy"><h3>{moment.name}</h3><p>{moment.copy}</p><span className="moment-shop-link">Shop now <span aria-hidden="true">→</span></span></div>
+                  <img src={product.image} alt={product.name} style={{ objectPosition: product.position }} />
+                  <div className="moment-copy"><h3>{product.name}</h3>{product.description && <p>{product.description}</p>}<span className="moment-shop-link">Shop now <span aria-hidden="true">→</span></span></div>
                 </a>
                 <WishlistButton product={product} />
               </article>;
