@@ -229,7 +229,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .moment-card:hover img { transform: scale(1.06); }
 .moment-card:after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(0deg, rgba(25,11,17,.72), rgba(25,11,17,.12) 54%, transparent 78%); }
 .moment-copy { position: absolute; bottom: 21px; left: 20px; z-index: 1; right: 12px; }
-.moment-copy h3 { margin: 0 0 10px; font: 400 clamp(22px, 2.4vw, 30px)/1.03 var(--hero-display); overflow-wrap: anywhere; }
+.moment-copy h3 { margin: 0 0 10px; font: 400 24px/1.2 var(--hero-display); overflow-wrap: anywhere; }
 .moment-copy p { display: -webkit-box; overflow: hidden; margin: 0 0 13px; font-size: 14px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .moment-shop-link { display: inline-block; padding-bottom: 4px; border-bottom: 1px solid currentColor; color: var(--white); font-size: 14px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
 .moment-shop-link span { margin-left: 3px; font-size: 16px; }
