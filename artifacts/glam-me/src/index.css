@@ -779,15 +779,13 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
   .dr-cards { grid-template-columns: 1fr; }
   .dr-step { flex-direction: column; gap: 15px; padding: 25px; }
 
-  .header-inner { grid-template-columns: 1fr auto auto 40px; padding: 16px 18px 12px; }
-  .menu-toggle { display: inline-flex; grid-column: 4; grid-row: 1; align-items: center; justify-content: flex-end; }
+  .header-inner { grid-template-columns: minmax(0, 1fr) auto 40px; padding: 16px 18px 12px; }
+  .menu-toggle { display: inline-flex; grid-column: 3; grid-row: 1; align-items: center; justify-content: flex-end; }
   .header-inner > .logo { grid-column: 1; grid-row: 1; justify-self: start; width: 145px; }
   .search-link { display: inline-flex; grid-column: 2; grid-row: 1; justify-self: end; }
   .search-link > span:last-child { display: none; }
   .header-inline-search { grid-column: 2; grid-row: 1; width: min(170px, 32vw); justify-self: end; }
-  .header-tools { grid-column: 3; grid-row: 1; }
-  .header-tools { gap: 12px; }
-  .header-tools .tool-label span { display: none; }
+  .header-tools { display: none; }
   .nav { display: none; }
   .nav-overlay { display: block; position: fixed; inset: 0; z-index: 1; padding: 0; border: 0; background: rgba(23, 22, 21, .28); cursor: pointer; }
   .nav.nav-open { display: flex; position: fixed; z-index: 2; top: 0; right: 0; flex-direction: column; box-sizing: border-box; justify-content: flex-start; width: 80vw; max-width: 600px; height: 100dvh; overflow-x: hidden; overflow-y: auto; gap: 0; padding: 0 24px 28px; border: 0; background: var(--paper); box-shadow: -16px 0 35px rgba(23, 22, 21, .12); text-align: left; }
@@ -908,9 +906,8 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 }
 @media (max-width: 460px) {
   .announcement { font-size: 14px; letter-spacing: .1em; }
-  .header-inner { grid-template-columns: 1fr auto 40px; }
+  .header-inner { grid-template-columns: minmax(0, 1fr) auto 40px; }
   .header-inner > .logo { grid-column: 1; grid-row: 1; }
-  .header-tools { grid-column: 2; grid-row: 1; }
   .hero-copy h1 { font-size: 54px; }
   .hero-copy { padding-top: 100px; }
   .category-directory-grid { grid-template-columns: 1fr; }
