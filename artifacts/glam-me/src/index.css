@@ -1142,7 +1142,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .admin-home-panel { display: grid; gap: 0; max-width: 790px; }
 .admin-home-field { padding: 26px 0; border-bottom: 1px solid var(--line); }
 .admin-home-field:first-child { padding-top: 0; }
-.admin-home-field h2 { margin: 0 0 7px; font: 400 27px/1.15 var(--display); }
+.admin-home-field h2 { margin: 0 0 7px; padding-bottom: 5px; font: 400 27px/1.2 var(--display); }
 .admin-home-field > p { margin: 0 0 15px; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .admin-home-dropdown { position: relative; border: 1px solid var(--line); background: #fffdfb; }
 .admin-home-dropdown summary { padding: 13px 15px; cursor: pointer; font-size: 16px; font-weight: 500; }
