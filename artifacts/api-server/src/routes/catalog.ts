@@ -139,7 +139,7 @@ function parseHomePageSettings(body: unknown): HomePageSettings | null {
     const ids = body[field];
     if (!Array.isArray(ids) || ids.length > 50 || ids.some((id) => !Number.isSafeInteger(id) || id <= 0 || new Set(ids).size !== ids.length)) return null;
   }
-  if ((body.obsessionIds as number[]).length > 3 || (body.momentIds as number[]).length > 4) return null;
+  if ((body.categoryIds as number[]).length > 5 || (body.obsessionIds as number[]).length > 3 || (body.momentIds as number[]).length > 4) return null;
   return { categoryIds: body.categoryIds as number[], obsessionIds: body.obsessionIds as number[], momentIds: body.momentIds as number[] };
 }
 
@@ -208,7 +208,7 @@ router.get("/admin/catalog", requireAdmin, async (request, response) => {
 router.put("/admin/catalog/home-page", requireAdmin, async (request, response) => {
   const settings = parseHomePageSettings(request.body);
   if (!settings) {
-    response.status(400).json({ error: "Select valid categories and products (up to three obsessions and four outfits)." });
+    response.status(400).json({ error: "Select valid categories and products (up to five categories, three obsessions, and four outfits)." });
     return;
   }
   try {

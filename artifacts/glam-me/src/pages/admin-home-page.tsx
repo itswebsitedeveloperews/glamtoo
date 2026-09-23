@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CatalogCategory, CatalogProduct } from "@/data/catalog";
 import { defaultHomePageSettings, type HomePageSettings } from "@/data/home-page";
 
@@ -15,12 +15,22 @@ function SelectionDropdown({
   onChange: (ids: number[]) => void;
   maxSelections?: number;
 }) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    function closeOnOutsidePointerDown(event: PointerEvent) {
+      if (detailsRef.current?.open && !detailsRef.current.contains(event.target as Node)) {
+        detailsRef.current.open = false;
+      }
+    }
+    document.addEventListener("pointerdown", closeOnOutsidePointerDown);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePointerDown);
+  }, []);
   const names = new Map(choices.map((choice) => [choice.id, choice.label]));
   return (
     <div className="admin-home-field">
       <h2>{title}</h2>
       <p>{description}</p>
-      <details className="admin-home-dropdown">
+      <details ref={detailsRef} className="admin-home-dropdown">
         <summary>{selected.length ? `${selected.length} selected` : "Select items"}</summary>
         <div className="admin-home-options">
           {choices.length === 0 && <p>No published items available.</p>}
@@ -113,7 +123,7 @@ export default function AdminHomePage({ categories, products }: { categories: Ca
       </div>
       <section className="admin-panel admin-home-panel">
         {loading ? <p role="status">Loading home page settings…</p> : draft && <>
-          <SelectionDropdown title="Category Section" description="Choose categories for the image tiles. The order you select them is the order they appear." choices={categoryChoices} selected={draft.categoryIds} onChange={(ids) => update("categoryIds", ids)} />
+          <SelectionDropdown title="Category Section" description="Choose up to five categories for the image tiles, in display order." choices={categoryChoices} selected={draft.categoryIds} onChange={(ids) => update("categoryIds", ids)} maxSelections={5} />
           <SelectionDropdown title="Obsessions Section" description="Choose up to three published products, in display order." choices={productChoices} selected={draft.obsessionIds} onChange={(ids) => update("obsessionIds", ids)} maxSelections={3} />
           <SelectionDropdown title="Outfits Plan Section" description="Choose up to four published products, in display order." choices={productChoices} selected={draft.momentIds} onChange={(ids) => update("momentIds", ids)} maxSelections={4} />
           <div className="admin-home-actions">
