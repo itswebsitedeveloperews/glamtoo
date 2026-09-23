@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "zc4Na92GrvWuUXJxNoTfG"
+uri = "file://assets/glam-too-bourtique.png"
+type = "image"
+title = "Glam Too Bourtique logo (PNG)"
+description = "Transparent, high-resolution PNG with Bourtique centered beneath the existing Glam Too wordmark."
+logical_id = "8833c76e-424c-4367-9481-bbe298497587"
+content_hash = "sha256:f0b8bb9170940c243d551516fb451338de8a1b0ec18a58763f84d6ec1656bba6"
+size = 65928
+mtime_ms = 1790155377913
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/8833c76e-424c-4367-9481-bbe298497587/ac80a845-ad1f-4c3c-8d75-8b914c0e3e20"
+storage_version_token = "1790155401433380"
+content_type = "image/png"
