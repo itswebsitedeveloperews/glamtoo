@@ -18,9 +18,13 @@ function ensureCatalogTable() {
       id integer PRIMARY KEY,
       products jsonb NOT NULL,
       categories jsonb NOT NULL,
+      home_page jsonb,
       updated_at timestamp with time zone NOT NULL DEFAULT NOW()
     )
-  `).then(() => undefined);
+  `).then(() => pool.query("ALTER TABLE store_catalog ADD COLUMN IF NOT EXISTS home_page jsonb")).then(() => undefined).catch((error) => {
+    catalogTableReady = undefined;
+    throw error;
+  });
   return catalogTableReady;
 }
 
@@ -127,12 +131,24 @@ function parseCatalogBody(body: unknown) {
   return { products, categories };
 }
 
+type HomePageSettings = { categoryIds: number[]; obsessionIds: number[]; momentIds: number[] };
+function parseHomePageSettings(body: unknown): HomePageSettings | null {
+  if (!isRecord(body)) return null;
+  const fields = ["categoryIds", "obsessionIds", "momentIds"] as const;
+  for (const field of fields) {
+    const ids = body[field];
+    if (!Array.isArray(ids) || ids.length > 50 || ids.some((id) => !Number.isSafeInteger(id) || id <= 0 || new Set(ids).size !== ids.length)) return null;
+  }
+  if ((body.momentIds as number[]).length > 4) return null;
+  return { categoryIds: body.categoryIds as number[], obsessionIds: body.obsessionIds as number[], momentIds: body.momentIds as number[] };
+}
+
 async function getCatalogRecord() {
   await ensureCatalogTable();
   const [record] = await db.select().from(storeCatalogTable).where(eq(storeCatalogTable.id, catalogId)).limit(1);
   return record
-    ? { products: record.products as JsonRecord[], categories: record.categories as JsonRecord[], initialized: true, updatedAt: record.updatedAt }
-    : { products: [], categories: [], initialized: false, updatedAt: null };
+    ? { products: record.products as JsonRecord[], categories: record.categories as JsonRecord[], homePage: record.homePage as HomePageSettings | null, initialized: true, updatedAt: record.updatedAt }
+    : { products: [], categories: [], homePage: null, initialized: false, updatedAt: null };
 }
 
 async function setCatalogMediaVisibility(products: JsonRecord[], categories: JsonRecord[], owner: string) {
@@ -170,6 +186,7 @@ router.get("/catalog", async (request, response) => {
     response.set("Cache-Control", "no-store").json({
       products: catalog.products.filter((product) => product.status === "Published"),
       categories: catalog.categories,
+      homePage: catalog.homePage,
       initialized: catalog.initialized,
       updatedAt: catalog.updatedAt,
     });
@@ -185,6 +202,33 @@ router.get("/admin/catalog", requireAdmin, async (request, response) => {
   } catch (error) {
     request.log.error({ error }, "Admin catalog could not be loaded");
     response.status(503).json({ error: "The catalog could not be loaded right now." });
+  }
+});
+
+router.put("/admin/catalog/home-page", requireAdmin, async (request, response) => {
+  const settings = parseHomePageSettings(request.body);
+  if (!settings) {
+    response.status(400).json({ error: "Select valid categories and products (up to four outfits)." });
+    return;
+  }
+  try {
+    const catalog = await getCatalogRecord();
+    if (!catalog.initialized) {
+      response.status(409).json({ error: "Set up the catalog before editing the home page." });
+      return;
+    }
+    const categoryIds = new Set(catalog.categories.map((item) => item.id));
+    const productIds = new Set(catalog.products.filter((item) => item.status === "Published").map((item) => item.id));
+    if (settings.categoryIds.some((id) => !categoryIds.has(id))
+      || [...settings.obsessionIds, ...settings.momentIds].some((id) => !productIds.has(id))) {
+      response.status(400).json({ error: "A selected category or product no longer exists or is unpublished. Refresh and choose again." });
+      return;
+    }
+    await db.update(storeCatalogTable).set({ homePage: settings }).where(eq(storeCatalogTable.id, catalogId));
+    response.set("Cache-Control", "no-store").json({ homePage: settings });
+  } catch (error) {
+    request.log.error({ error }, "Home page settings could not be saved");
+    response.status(503).json({ error: "Home page settings could not be saved right now." });
   }
 });
 

@@ -7,6 +7,7 @@ import aboutHeroImage from '@assets/about_banner_1789035643721.webp';
 import aboutStudioImage from '@assets/glam-me-5_1787653559643.webp';
 import aboutStoryImage from '@assets/glam-me-12_1787653559644.webp';
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogMediaSource, getCatalogProductImages, hydrateCatalogProductMedia, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
+import { defaultHomePageSettings, type HomePageSettings } from '@/data/home-page';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
@@ -80,7 +81,7 @@ const wishlistStorageKey = 'glam-me-wishlist-v1';
 const standardDeliveryAmount = 3.95;
 const expressDeliveryAmount = 6.95;
 const freeStandardDeliveryThreshold = 75;
-let sharedCatalog: { products: CatalogProduct[]; categories: CatalogCategory[] } | null = null;
+let sharedCatalog: { products: CatalogProduct[]; categories: CatalogCategory[]; homePage: HomePageSettings | null } | null = null;
 
 type CartItem = {
   productId: number;
@@ -999,7 +1000,12 @@ function Home() {
   useLiveInventory();
   const products = getStorefrontProducts();
   const categories = getStorefrontCategories();
-  const featuredCategories = categories.filter((category) => category.parentId == null);
+  const settings = sharedCatalog?.homePage ?? defaultHomePageSettings(categories, products);
+  const categoryById = new Map(categories.map((category) => [category.id, category]));
+  const productById = new Map(products.map((product) => [product.id, product]));
+  const featuredCategories = settings.categoryIds.map((id) => categoryById.get(id)).filter((category): category is CatalogCategory => Boolean(category));
+  const obsessionProducts = settings.obsessionIds.map((id) => productById.get(id)).filter((product): product is CatalogProduct => Boolean(product));
+  const momentProducts = settings.momentIds.map((id) => productById.get(id)).filter((product): product is CatalogProduct => Boolean(product));
   const momentPlans = [
     { name: "Day Out", copy: "Bright looks for sunny plans." },
     { name: "Date Night", copy: "Turn heads from six to midnight." },
@@ -1017,7 +1023,7 @@ function Home() {
         </div>
       </section>
       {featuredCategories.length > 0 && (
-        <section className="collection-collage container" aria-labelledby="collection-heading">
+        <section className={`collection-collage container${featuredCategories.length >= 5 ? " is-five-or-more" : ""}`} aria-labelledby="collection-heading">
           <h2 id="collection-heading" className="sr-only">Shop the collection</h2>
           {featuredCategories.map((category) => (
             <a className="collection-tile" key={category.id} href={`/category/${slugify(category.name)}`} aria-label={`Shop ${category.name}`}>
@@ -1031,20 +1037,19 @@ function Home() {
           ))}
         </section>
       )}
-      <section className="products-section container home-obsessions" aria-labelledby="obsessions-heading">
+      {obsessionProducts.length > 0 && <section className="products-section container home-obsessions" aria-labelledby="obsessions-heading">
         <div className="home-obsessions-heading">
           <div className="eyebrow">The Glam Edit</div>
           <h2 id="obsessions-heading">Our Current Obsessions</h2>
         </div>
-        <div className="product-grid">{products.slice(0, 3).map((product) => <ProductCard key={product.id} product={product} showShopNow />)}</div>
-      </section>
-      <section className="moments" aria-labelledby="moments-heading">
+        <div className="product-grid">{obsessionProducts.map((product) => <ProductCard key={product.id} product={product} showShopNow />)}</div>
+      </section>}
+      {momentProducts.length > 0 && <section className="moments" aria-labelledby="moments-heading">
         <div className="container">
           <div className="moments-heading"><div className="eyebrow">Shop by moment</div><h2 id="moments-heading">Outfits for Every Plan</h2></div>
           <div className="moment-grid">
-            {momentPlans.map((moment, index) => {
-              const product = products[index + 3] ?? products[index] ?? products[0];
-              if (!product) return null;
+            {momentProducts.map((product, index) => {
+              const moment = momentPlans[index] ?? { name: product.name, copy: product.category };
               return <article className="moment-card" key={moment.name} data-testid={`card-moment-${index}`}>
                 <a className="moment-card-link" href={`/product/${product.slug}`} data-testid={`link-moment-${index}`}>
                   <img src={product.image} alt={`${product.name}, ${moment.name} fashion edit`} style={{ objectPosition: product.position }} />
@@ -1055,7 +1060,7 @@ function Home() {
             })}
           </div>
         </div>
-      </section>
+      </section>}
     </Shell>
   );
 }
@@ -3843,9 +3848,9 @@ function CatalogMediaHydrator({ children }: { children: ReactNode }) {
         hydrateCatalogProductMedia(getStoredCatalogMediaRecords()),
         fetch("/api/catalog")
           .then(async (response) => {
-            const payload = await response.json() as { products?: CatalogProduct[]; categories?: CatalogCategory[]; initialized?: boolean };
+            const payload = await response.json() as { products?: CatalogProduct[]; categories?: CatalogCategory[]; homePage?: HomePageSettings | null; initialized?: boolean };
             if (!response.ok || !Array.isArray(payload.products) || !Array.isArray(payload.categories)) throw new Error("Catalog unavailable");
-            sharedCatalog = payload.initialized ? { products: payload.products, categories: payload.categories } : null;
+            sharedCatalog = payload.initialized ? { products: payload.products, categories: payload.categories, homePage: payload.homePage ?? null } : null;
           })
           .catch(() => undefined),
       ]);

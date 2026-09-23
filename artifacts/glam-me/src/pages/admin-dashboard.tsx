@@ -14,6 +14,7 @@ import {
   type CatalogVariation,
 } from "@/data/catalog";
 import { sanitizeRichTextHtml } from "@/utils/rich-text";
+import AdminHomePage from "./admin-home-page";
 
 type RichTextEditorProps = {
   value: string;
@@ -85,6 +86,7 @@ function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
 
 type AdminSection =
   | "overview"
+  | "home-page"
   | "products"
   | "categories"
   | "orders"
@@ -330,6 +332,7 @@ const blankSizeGuideRow = (): SizeGuideRow => ({
 
 const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "home-page", label: "Home Page", icon: FolderOpen },
   { id: "products", label: "Products", icon: Package },
   { id: "categories", label: "Categories", icon: Tags },
   { id: "orders", label: "Orders", icon: ShoppingBag },
@@ -3323,6 +3326,8 @@ export default function AdminDashboard({
             </div>
           </div>
         )}
+
+        {section === "home-page" && <AdminHomePage categories={categories} products={products} />}
 
         {section === "products" && editorProductId !== null && <ProductEditor product={editorProduct} categories={categoryNames} availableImages={catalogImages} onCancel={() => setEditorProductId(null)} onSave={saveProduct} />}
 
