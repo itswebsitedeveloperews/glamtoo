@@ -1116,7 +1116,6 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .admin-brand { display: grid; gap: 1px; padding: 0 13px 38px; }
 .admin-brand-mark { display: block; position: relative; width: 176px; }
 .admin-brand-mark img { display: block; width: 100%; height: auto; }
-.admin-brand-mark-light { position: absolute; inset: 0; filter: brightness(0) invert(1); clip-path: inset(0 0 47% 0); pointer-events: none; }
 .admin-brand small { color: #cfc4bd; font-size: 14px; letter-spacing: .16em; text-transform: uppercase; }
 .admin-nav-overlay { display: none; }
 .admin-menu-toggle { display: none; width: 44px; height: 44px; place-items: center; border: 1px solid #4b4541; background: transparent; color: #fffdfb; cursor: pointer; }

@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
-import logoImage from '@assets/final_1790166635332.svg';
+import logoImage from '@assets/logo-soft-options/glam-too-selected.svg';
 import heroImage from '@assets/glam-me-home-banner_1787651354578.webp';
 import aboutHeroImage from '@assets/about_banner_1789035643721.webp';
 import aboutStudioImage from '@assets/glam-me-5_1787653559643.webp';

@@ -14,7 +14,7 @@ import {
   type CatalogVariation,
 } from "@/data/catalog";
 import { sanitizeRichTextHtml } from "@/utils/rich-text";
-import logoImage from "@assets/final_1790166635332.svg";
+import logoImage from "@assets/logo-soft-options/glam-too-selected-dark.svg";
 import AdminHomePage from "./admin-home-page";
 
 type RichTextEditorProps = {
@@ -3230,7 +3230,6 @@ export default function AdminDashboard({
         <a className="admin-brand" href="/" aria-label="Return to Glam Too storefront">
           <span className="admin-brand-mark">
             <img src={logoImage} alt="Glam Too logo" />
-            <img className="admin-brand-mark-light" src={logoImage} alt="" aria-hidden="true" />
           </span>
           <small>Commerce Studio</small>
         </a>
