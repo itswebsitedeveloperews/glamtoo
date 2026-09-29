@@ -813,6 +813,7 @@ function WishlistButton({ product, detail = false }: { product: CatalogProduct; 
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(() => window.scrollY > 0);
   const [cartCount, setCartCount] = useState(getCartCount);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
@@ -823,6 +824,13 @@ function Header() {
   const navLinkProps = (path: string) => currentPath === path
     ? { className: "is-active", "aria-current": "page" as const }
     : {};
+
+  useEffect(() => {
+    const updateScrollState = () => setIsScrolled(window.scrollY > 0);
+    updateScrollState();
+    window.addEventListener('scroll', updateScrollState, { passive: true });
+    return () => window.removeEventListener('scroll', updateScrollState);
+  }, []);
 
   useEffect(() => {
     const updateCartCount = () => setCartCount(getCartCount());
@@ -852,7 +860,7 @@ function Header() {
   }, [searchOpen]);
 
   return (
-    <header className="site-header" data-testid="site-header">
+    <header className={`site-header${isScrolled ? " is-scrolled" : ""}`} data-testid="site-header">
       <div className="header-inner">
         <button
           className="menu-toggle"

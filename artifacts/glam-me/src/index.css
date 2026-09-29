@@ -48,6 +48,11 @@ img { display: block; max-width: 100%; }
   background: rgba(245,241,237,.96);
   border-bottom: 1px solid var(--line);
   backdrop-filter: blur(12px);
+  transition: box-shadow .2s ease;
+}
+.site-header.is-scrolled { box-shadow: 0 5px 14px -5px rgba(23, 22, 21, .18); }
+@media (prefers-reduced-motion: reduce) {
+  .site-header { transition: none; }
 }
 .header-inner {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
