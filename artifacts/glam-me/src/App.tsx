@@ -885,21 +885,6 @@ function Header() {
         >
           <span className="menu-toggle-icon" aria-hidden="true"><span></span><span></span><span></span></span>
         </button>
-        <button
-          ref={searchButtonRef}
-          className="tool-label search-link"
-          type="button"
-          aria-label="Search"
-          aria-expanded={searchOpen}
-          aria-controls="header-search-form"
-          data-testid="button-search"
-          onClick={() => { setMenuOpen(false); setSearchOpen((open) => !open); }}
-        >
-          <span className="tool-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
-          </span>
-          <span>Search</span>
-        </button>
         {searchOpen && (
           <form
             ref={searchFormRef}
@@ -933,6 +918,20 @@ function Header() {
         )}
         <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Glam Too Boutique" /></a>
         <div className="header-tools">
+          <button
+            ref={searchButtonRef}
+            className="tool-label search-link"
+            type="button"
+            aria-label="Search"
+            aria-expanded={searchOpen}
+            aria-controls="header-search-form"
+            data-testid="button-search"
+            onClick={() => { setMenuOpen(false); setSearchOpen((open) => !open); }}
+          >
+            <span className="tool-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
+            </span>
+          </button>
           <a href="/account" className="tool-label icon-link" aria-label="Account" data-testid="link-account">
             <span className="tool-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" role="img"><circle cx="12" cy="8" r="3.2" /><path d="M5.8 20c.6-3.3 2.7-5.1 6.2-5.1s5.6 1.8 6.2 5.1" /></svg>
