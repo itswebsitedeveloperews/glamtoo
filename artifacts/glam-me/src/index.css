@@ -320,6 +320,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .filter a.is-active { color: var(--ink); font-weight: 600; }
 .filter a:hover { color: var(--pink-deep); }
 .shop-main .product-grid { grid-template-columns: repeat(3, 1fr); }
+.shop-main .product-meta { display: none; }
 .shop-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); padding-bottom: 16px; margin-bottom: 23px; color: var(--muted); font-size: 14px; }
 .shop-toolbar > div:first-child { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .product-sort-control { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; color: var(--ink); font-size: 14px; font-weight: 600; }
