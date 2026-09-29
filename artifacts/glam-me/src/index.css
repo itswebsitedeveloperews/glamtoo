@@ -82,6 +82,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .header-inline-search button { display: inline-grid; flex: 0 0 auto; place-items: center; border: 0; background: transparent; padding: 4px 6px 4px 0; color: inherit; cursor: pointer; }
 .header-inline-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; padding: 6px 0; color: var(--ink); font-size: 16px; }
 .header-inline-search input::placeholder { color: var(--muted); }
+.search-link, .header-inline-search input { font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 20px; }
 .icon-link { gap: 0; }
 .bag-count, .wishlist-count { position: absolute; top: -8px; right: -10px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--pink-deep); color: var(--white); font-size: 14px; line-height: 1; }
 .nav { display: flex; justify-content: center; gap: clamp(20px, 3vw, 45px); padding: 0 20px 17px; font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: 20px; text-transform: none; letter-spacing: .015em; }
