@@ -8,3 +8,7 @@ Use the approved soft-serif option 1 (Cormorant Garamond) as the website logo, w
 **Why:** The user selected option 1 from five softer-font variations, superseding the previously uploaded logo.
 
 **How to apply:** Keep storefront, sign-in, footer, and Admin branding aligned to this selection. Keep dark-surface treatments transparent, without a white rectangle.
+
+Keep the main desktop and mobile navigation typographically aligned with the logo, without extending this change to body copy or forms.
+
+**Why:** The user found the DM Sans menu clashed with the softer logo and approved Cormorant Garamond Medium for navigation only.
