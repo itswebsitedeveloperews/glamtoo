@@ -6,7 +6,8 @@ import heroImage from '@assets/glam-me-home-banner_1787651354578.webp';
 import aboutHeroImage from '@assets/about_banner_1789035643721.webp';
 import aboutStudioImage from '@assets/glam-me-5_1787653559643.webp';
 import aboutStoryImage from '@assets/glam-me-12_1787653559644.webp';
-import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogMediaSource, getCatalogProductImages, hydrateCatalogProductMedia, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
+import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogMediaSource, getCatalogProductImages, getCategorySlug, getProductCategorySlug, hydrateCatalogProductMedia, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
+import RouteSeo from '@/components/RouteSeo';
 import { defaultHomePageSettings, type HomePageSettings } from '@/data/home-page';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
@@ -497,8 +498,9 @@ function normalizeStorefrontProducts(products: Array<Partial<CatalogProduct>>): 
       const matchingCatalogProduct = catalogProducts.find((candidate) =>
         candidate.id === Number(product.id) || candidate.name.toLowerCase() === String(product.name ?? "").toLowerCase(),
       );
-      const matchingCategory = (sharedCatalog?.categories ?? catalogCategories).find((category) =>
-        slugify(category.name) === slugify(String(product.category ?? "")),
+      const categories = sharedCatalog?.categories ?? catalogCategories;
+      const matchingCategory = categories.find((category) =>
+        getCategorySlug(category) === getProductCategorySlug(String(product.category ?? ""), categories),
       );
       const productId = Number(product.id);
       const savedPrimaryImage = typeof product.image === "string" ? product.image : "";
@@ -569,6 +571,7 @@ function getStorefrontCategories(): CatalogCategory[] {
       .map((category, index) => ({
         id: typeof category.id === 'number' ? category.id : index + 1,
         name: category.name!.trim(),
+        slug: typeof category.slug === 'string' ? category.slug : undefined,
         image: typeof category.image === 'string' ? category.image : '',
         description: typeof category.description === 'string' ? category.description : '',
         parentId: typeof category.parentId === 'number' ? category.parentId : null,
@@ -576,6 +579,10 @@ function getStorefrontCategories(): CatalogCategory[] {
   } catch {
     return catalogCategories;
   }
+}
+
+function categoryUrlForName(name: string) {
+  return `/category/${getProductCategorySlug(name, getStorefrontCategories())}`;
 }
 
 function uniqueWishlistIds(productIds: number[]) {
@@ -943,14 +950,13 @@ function Header() {
       {menuOpen && <button className="nav-overlay" type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
       <nav id="primary-navigation" className={menuOpen ? 'nav nav-open' : 'nav'} aria-label="Primary navigation">
         <div className="mobile-nav-head">
-          <img src={logoImage} alt="Glam Too Boutique" />
           <button className="mobile-nav-close" type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>×</button>
         </div>
-        <a href="/category/new-in" {...navLinkProps("/category/new-in")} data-testid="link-nav-new-in" onClick={() => setMenuOpen(false)}>New In</a>
-        <a href="/category/clothes" {...navLinkProps("/category/clothes")} data-testid="link-nav-clothes" onClick={() => setMenuOpen(false)}>Clothes</a>
-        <a href="/category/handbags" {...navLinkProps("/category/handbags")} data-testid="link-nav-handbags" onClick={() => setMenuOpen(false)}>Handbags</a>
-        <a href="/category/purses" {...navLinkProps("/category/purses")} data-testid="link-nav-purses" onClick={() => setMenuOpen(false)}>Purses</a>
-        <a href="/category/jewellery" {...navLinkProps("/category/jewellery")} data-testid="link-nav-jewellery" onClick={() => setMenuOpen(false)}>Jewellery</a>
+        <a href={categoryUrlForName("New In")} {...navLinkProps(categoryUrlForName("New In"))} data-testid="link-nav-new-in" onClick={() => setMenuOpen(false)}>New In</a>
+        <a href={categoryUrlForName("Clothes")} {...navLinkProps(categoryUrlForName("Clothes"))} data-testid="link-nav-clothes" onClick={() => setMenuOpen(false)}>Clothes</a>
+        <a href={categoryUrlForName("Handbags")} {...navLinkProps(categoryUrlForName("Handbags"))} data-testid="link-nav-handbags" onClick={() => setMenuOpen(false)}>Handbags</a>
+        <a href={categoryUrlForName("Purses")} {...navLinkProps(categoryUrlForName("Purses"))} data-testid="link-nav-purses" onClick={() => setMenuOpen(false)}>Purses</a>
+        <a href={categoryUrlForName("Jewellery")} {...navLinkProps(categoryUrlForName("Jewellery"))} data-testid="link-nav-jewellery" onClick={() => setMenuOpen(false)}>Jewellery</a>
         <a href="/shop" data-testid="link-nav-sale" onClick={() => setMenuOpen(false)}>Sale</a>
       </nav>
     </header>
@@ -989,7 +995,7 @@ function Footer() {
                 </a>
               </div>
             </div>
-            <div><h4>Shop</h4><ul><li><a href="/category/new-in" data-testid="link-footer-new-in">New In</a></li><li><a href="/category/clothes" data-testid="link-footer-clothes">Clothes</a></li><li><a href="/category/handbags" data-testid="link-footer-handbags">Handbags</a></li><li><a href="/category/purses" data-testid="link-footer-purses">Purses</a></li><li><a href="/category/jewellery" data-testid="link-footer-jewellery">Jewellery</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
+            <div><h4>Shop</h4><ul><li><a href={categoryUrlForName("New In")} data-testid="link-footer-new-in">New In</a></li><li><a href={categoryUrlForName("Clothes")} data-testid="link-footer-clothes">Clothes</a></li><li><a href={categoryUrlForName("Handbags")} data-testid="link-footer-handbags">Handbags</a></li><li><a href={categoryUrlForName("Purses")} data-testid="link-footer-purses">Purses</a></li><li><a href={categoryUrlForName("Jewellery")} data-testid="link-footer-jewellery">Jewellery</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
             <div><h4>Help</h4><ul><li><a href="/returns" data-testid="link-footer-delivery">Returns</a></li><li><a href="/faq" data-testid="link-footer-size-guide">Size Guide</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
             <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">About</a></li><li><a href="/about" data-testid="link-footer-style-journal">Style Journal</a></li></ul></div>
             <div className="footer-knowledge"><h4>Stay in the know</h4><p>Sign up for new arrivals<br />and exclusive offers.</p><form className="footer-newsletter-form" action="/" method="get"><label className="sr-only" htmlFor="footer-newsletter-email">Email address</label><input id="footer-newsletter-email" name="email" type="email" placeholder="Enter your email" required data-testid="input-footer-newsletter-email" /><button type="submit" aria-label="Sign me up" data-testid="button-footer-newsletter-submit">→</button></form></div>
@@ -1052,7 +1058,7 @@ function Home() {
         <section className={`collection-collage container${featuredCategories.length >= 5 ? " is-five-or-more" : ""}`} aria-labelledby="collection-heading">
           <h2 id="collection-heading" className="sr-only">Shop the collection</h2>
           {featuredCategories.map((category) => (
-            <a className="collection-tile" key={category.id} href={`/category/${slugify(category.name)}`} aria-label={`Shop ${category.name}`}>
+            <a className="collection-tile" key={category.id} href={`/category/${getCategorySlug(category)}`} aria-label={`Shop ${category.name}`}>
               {category.image && <img src={category.image} alt="" />}
               <div>
                 <h3>{category.name}</h3>
@@ -1152,9 +1158,10 @@ function Shop() {
   const sortFilter = searchParams.get("sort")?.trim().toLowerCase() ?? "";
   const requestedPage = Number(searchParams.get("page"));
   const productCategories = new Map<string, string>();
+  const storefrontCategories = getStorefrontCategories();
   products.forEach((product) => {
     const label = product.category.trim();
-    const value = slugify(label);
+    const value = getProductCategorySlug(label, storefrontCategories);
     if (label && value && !productCategories.has(value)) productCategories.set(value, label);
   });
   const categoryOptions = [
@@ -1176,7 +1183,7 @@ function Shop() {
   };
   const visibleProducts = sortProducts(products.filter((product) => {
     const matchesSearch = !normalizedQuery || [product.name, product.category, product.slug].some((value) => value.toLowerCase().includes(normalizedQuery));
-    const matchesCategory = !selectedCategory.value || selectedCategory.matches.includes(slugify(product.category));
+    const matchesCategory = !selectedCategory.value || selectedCategory.matches.includes(getProductCategorySlug(product.category, storefrontCategories));
     return matchesSearch && matchesCategory;
   }), activeSort.value, salesByProduct);
   const toolbarDescription = searchQuery
@@ -1281,7 +1288,7 @@ function Shop() {
 }
 
 function CategoryCard({ category }: { category: CatalogCategory }) {
-  const categorySlug = slugify(category.name);
+  const categorySlug = getCategorySlug(category);
   return (
     <a className="category-directory-card" href={`/category/${categorySlug}`} data-testid={`link-category-${categorySlug}`}>
       <div className="category-directory-image">
@@ -1333,23 +1340,23 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
     return () => { active = false; };
   }, []);
   const categories = getStorefrontCategories();
-  const category = categories.find((item) => slugify(item.name) === params.slug);
+  const category = categories.find((item) => getCategorySlug(item) === params.slug);
   if (!category) return <NotFoundRoute />;
   const childCategoryNames = categories
     .filter((item) => item.parentId === category.id)
-    .map((item) => slugify(item.name));
-  const matchingCategorySlugs = new Set([params.slug, ...childCategoryNames]);
+    .map((item) => getCategorySlug(item));
+  const matchingCategorySlugs = new Set([getCategorySlug(category), ...childCategoryNames]);
   const sortFilter = new URLSearchParams(search).get("sort")?.trim().toLowerCase() ?? "new";
   const activeSort = productSortOptions.some((option) => option.value === sortFilter) ? sortFilter : "new";
   const products = sortProducts(
-    getStorefrontProducts().filter((product) => matchingCategorySlugs.has(slugify(product.category))),
+    getStorefrontProducts().filter((product) => matchingCategorySlugs.has(getProductCategorySlug(product.category, categories))),
     activeSort,
     salesByProduct,
   );
   const updateSort = (value: string) => {
     const query = new URLSearchParams(search);
     query.set("sort", value);
-    navigate(`${basePath}/category/${params.slug}?${query.toString()}`);
+    navigate(`${basePath}/category/${getCategorySlug(category)}?${query.toString()}`);
   };
 
   return (
@@ -1507,11 +1514,12 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const selectedProduct = product;
   const isSoldOut = product.type === 'Simple' ? product.stock <= 0 : availableVariations.length === 0;
   const displayedGalleryIndex = Math.min(activeGalleryIndex, Math.max(galleryImages.length - 1, 0));
+  const relatedCategories = getStorefrontCategories();
   const relatedProducts = getStorefrontProducts()
     .filter((candidate) => candidate.id !== product.id)
     .sort((first, second) => {
-      const firstIsSameCategory = slugify(first.category) === slugify(product.category);
-      const secondIsSameCategory = slugify(second.category) === slugify(product.category);
+      const firstIsSameCategory = getProductCategorySlug(first.category, relatedCategories) === getProductCategorySlug(product.category, relatedCategories);
+      const secondIsSameCategory = getProductCategorySlug(second.category, relatedCategories) === getProductCategorySlug(product.category, relatedCategories);
       return Number(secondIsSameCategory) - Number(firstIsSameCategory);
     })
     .slice(0, 4);
@@ -1800,12 +1808,12 @@ function ProductDetail({ params }: { params: { slug: string } }) {
               <div className="eyebrow">Keep exploring</div>
               <h2 id="related-products-heading">Related products</h2>
             </div>
-            <a className="text-link" href={`/category/${slugify(product.category)}`}>Shop {product.category.toLowerCase()} <span aria-hidden="true">&rarr;</span></a>
+            <a className="text-link" href={categoryUrlForName(product.category)}>Shop {product.category.toLowerCase()} <span aria-hidden="true">&rarr;</span></a>
           </div>
           <div className="product-grid">
             {relatedProducts.map((relatedProduct) => <ProductCard key={relatedProduct.id} product={relatedProduct} />)}
           </div>
-          <a className="text-link related-products-mobile-link" href={`/category/${slugify(product.category)}`}>Shop {product.category.toLowerCase()} <span aria-hidden="true">&rarr;</span></a>
+          <a className="text-link related-products-mobile-link" href={categoryUrlForName(product.category)}>Shop {product.category.toLowerCase()} <span aria-hidden="true">&rarr;</span></a>
         </section>
       )}
     </Shell>
@@ -3893,7 +3901,7 @@ function CatalogMediaHydrator({ children }: { children: ReactNode }) {
 }
 function App() {
   if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY');
-  return <WouterRouter base={basePath}><ClerkProviderWithRoutes /></WouterRouter>;
+  return <WouterRouter base={basePath}><RouteSeo /><ClerkProviderWithRoutes /></WouterRouter>;
 }
 
 export default App;

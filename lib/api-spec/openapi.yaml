@@ -14,7 +14,78 @@ tags:
     description: Object storage upload and serving operations
   - name: contact
     description: Customer contact enquiries
+  - name: seo
+    description: Public search metadata and crawler files
 paths:
+  /seo/resolve:
+    get:
+      tags: [seo]
+      operationId: resolveSeo
+      summary: Resolve a storefront pathname to canonical SEO metadata
+      description: Returns status 200, 301 or 404 inside the JSON body. Redirect locations are local absolute paths. A catalog outage returns HTTP 503, not a fabricated 404.
+      parameters:
+        - in: query
+          name: path
+          required: true
+          description: Relative storefront pathname, optionally including query parameters.
+          schema:
+            type: string
+            example: /product/sienna-slip-dress?utm_source=email
+      responses:
+        "200":
+          description: Resolved SEO metadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeoResolution"
+        "400":
+          description: Missing or invalid path
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Catalog or SEO configuration unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /seo/sitemap.xml:
+    get:
+      tags: [seo]
+      operationId: getSeoSitemap
+      summary: Dynamic XML sitemap of indexable storefront pages
+      responses:
+        "200":
+          description: XML sitemap
+          content:
+            application/xml:
+              schema:
+                type: string
+        "503":
+          description: Sitemap unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /seo/robots.txt:
+    get:
+      tags: [seo]
+      operationId: getSeoRobots
+      summary: Crawler policy with absolute public sitemap URL
+      responses:
+        "200":
+          description: Text crawler policy
+          content:
+            text/plain:
+              schema:
+                type: string
+        "503":
+          description: SEO configuration unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
   /healthz:
     get:
       operationId: healthCheck
@@ -96,6 +167,32 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
+    SeoResolution:
+      type: object
+      required: [status, title, description, canonicalUrl, robots, type]
+      properties:
+        status:
+          type: integer
+          enum: [200, 301, 404]
+        location:
+          type: string
+          description: Local absolute redirect pathname (for status 301 only)
+        title:
+          type: string
+        description:
+          type: string
+        canonicalUrl:
+          type: string
+          description: Absolute HTTPS URL at the configured SEO_SITE_ORIGIN
+        robots:
+          type: string
+          enum: ["index, follow", "noindex, follow"]
+        type:
+          type: string
+          enum: [website, product]
+        image:
+          type: string
+          description: Absolute product or category image URL when available
     HealthStatus:
       type: object
       properties:

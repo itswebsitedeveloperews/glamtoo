@@ -9,6 +9,38 @@ import * as zod from 'zod';
 
 
 /**
+ * Returns status 200, 301 or 404 inside the JSON body. Redirect locations are local absolute paths. A catalog outage returns HTTP 503, not a fabricated 404.
+ * @summary Resolve a storefront pathname to canonical SEO metadata
+ */
+export const ResolveSeoQueryParams = zod.object({
+  "path": zod.coerce.string().describe('Relative storefront pathname, optionally including query parameters.')
+})
+
+export const ResolveSeoResponse = zod.object({
+  "status": zod.union([zod.literal(200),zod.literal(301),zod.literal(404)]),
+  "location": zod.string().optional().describe('Local absolute redirect pathname (for status 301 only)'),
+  "title": zod.string(),
+  "description": zod.string(),
+  "canonicalUrl": zod.string().describe('Absolute HTTPS URL at the configured SEO_SITE_ORIGIN'),
+  "robots": zod.enum(['index, follow', 'noindex, follow']),
+  "type": zod.enum(['website', 'product']),
+  "image": zod.string().optional().describe('Absolute product or category image URL when available')
+})
+
+
+/**
+ * @summary Dynamic XML sitemap of indexable storefront pages
+ */
+export const GetSeoSitemapResponse = zod.unknown()
+
+
+/**
+ * @summary Crawler policy with absolute public sitemap URL
+ */
+export const GetSeoRobotsResponse = zod.string()
+
+
+/**
  * Returns server health status
  * @summary Health check
  */

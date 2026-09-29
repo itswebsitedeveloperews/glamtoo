@@ -7,6 +7,7 @@ export const storeCatalogTable = pgTable("store_catalog", {
   products: jsonb("products").notNull(),
   categories: jsonb("categories").notNull(),
   homePage: jsonb("home_page"),
+  slugReservations: jsonb("slug_reservations").notNull().default({ products: [], categories: [] }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 

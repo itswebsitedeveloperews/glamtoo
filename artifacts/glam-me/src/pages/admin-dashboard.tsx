@@ -8,8 +8,10 @@ import {
   formatCatalogPrice,
   getCatalogMediaSource,
   getCatalogPriceInput,
+  getCategorySlug,
   hydrateCatalogProductMedia,
   isCatalogMediaReference,
+  type CatalogCategory,
   type CatalogProduct,
   type CatalogVariation,
 } from "@/data/catalog";
@@ -108,13 +110,7 @@ type VariationAttribute = string;
 
 type ProductDraft = Omit<Product, "id">;
 
-type Category = {
-  id: number;
-  name: string;
-  image: string;
-  description: string;
-  parentId?: number | null;
-};
+type Category = CatalogCategory;
 
 function resolveBuiltInCatalogAssets(products: Product[], categories: Category[]) {
   const resolvedProducts = products.map((product) => {
@@ -124,7 +120,7 @@ function resolveBuiltInCatalogAssets(products: Product[], categories: Category[]
     const resolvedProduct = fallback && product.image.startsWith("/assets/")
       ? { ...product, image: fallback.image }
       : product;
-    return { ...resolvedProduct, deliveryAndReturns: defaultDeliveryAndReturns };
+    return { ...resolvedProduct, deliveryAndReturns: resolvedProduct.deliveryAndReturns ?? defaultDeliveryAndReturns };
   });
   const resolvedCategories = categories.map((category) => {
     const fallback = catalogCategories.find((candidate) =>
@@ -399,7 +395,10 @@ function getStoredProducts() {
     if (!storedProducts) return getInitialProducts();
     const parsed = JSON.parse(storedProducts) as Product[];
     return Array.isArray(parsed)
-      ? parsed.map((product) => withoutProductDetail({ ...product, deliveryAndReturns: defaultDeliveryAndReturns }))
+      ? parsed.map((product) => withoutProductDetail({
+        ...product,
+        deliveryAndReturns: product.deliveryAndReturns ?? defaultDeliveryAndReturns,
+      }))
       : getInitialProducts();
   } catch {
     return getInitialProducts();
@@ -412,7 +411,10 @@ function getStoredCategories() {
   try {
     const storedCategories = window.localStorage.getItem(categoriesStorageKey);
     const categories = storedCategories ? JSON.parse(storedCategories) : initialCategories;
-    return Array.isArray(categories) ? categories as Category[] : initialCategories;
+    return Array.isArray(categories) ? (categories as Category[]).map((category) => ({
+      ...category,
+      slug: getCategorySlug(category),
+    })) : initialCategories;
   } catch {
     return initialCategories;
   }
@@ -761,7 +763,7 @@ function blankProduct(category: string): ProductDraft {
 }
 
 function blankCategory(): CategoryDraft {
-  return { name: "", image: "", description: "", parentId: null };
+  return { name: "", slug: "", image: "", description: "", parentId: null };
 }
 
 function blankCoupon(): CouponDraft {
@@ -2249,11 +2251,11 @@ export default function AdminDashboard({
             );
           }
         }
-        if ((nextCatalog.products ?? []).some((product) => product.deliveryAndReturns !== defaultDeliveryAndReturns)) {
+        if ((nextCatalog.products ?? []).some((product) => product.deliveryAndReturns === undefined)) {
           nextCatalog = await publishCatalog(
             (nextCatalog.products ?? []).map((product) => ({
               ...product,
-              deliveryAndReturns: defaultDeliveryAndReturns,
+              deliveryAndReturns: product.deliveryAndReturns ?? defaultDeliveryAndReturns,
             })),
             nextCatalog.categories ?? [],
           );
@@ -2349,17 +2351,6 @@ export default function AdminDashboard({
     setNotice("");
   }
 
-  function getUniqueProductSlug(requestedSlug: string, productId?: number) {
-    const baseSlug = createProductSlug(requestedSlug) || "glam-too-piece";
-    let candidate = baseSlug;
-    let suffix = 2;
-    while (products.some((product) => product.id !== productId && product.slug === candidate)) {
-      candidate = `${baseSlug}-${suffix}`;
-      suffix += 1;
-    }
-    return candidate;
-  }
-
   async function uploadCatalogImage(value: string, name: string) {
     const source = value.trim();
     if (!source || (!source.startsWith("data:image/") && !isCatalogMediaReference(source))) return source;
@@ -2402,11 +2393,16 @@ export default function AdminDashboard({
 
   async function publishCatalog(nextProducts: Product[], nextCategories: Category[], mode: "save" | "migrate" = "save") {
     const catalogWithUploadedMedia = await uploadCatalogMedia(nextProducts, nextCategories);
+    // Redirect history belongs to the server, never to a locally cached catalog.
+    const requestCatalog = {
+      products: catalogWithUploadedMedia.products.map(({ slugHistory: _history, ...product }) => product),
+      categories: catalogWithUploadedMedia.categories.map(({ slugHistory: _history, ...category }) => category),
+    };
     const response = await fetch(`/api/admin/catalog${mode === "migrate" ? "/migrate" : ""}`, {
       method: mode === "migrate" ? "POST" : "PUT",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(catalogWithUploadedMedia),
+      body: JSON.stringify(requestCatalog),
     });
     const catalog = await response.json() as { products?: Product[]; categories?: Category[]; error?: string };
     if (!response.ok || !Array.isArray(catalog.products) || !Array.isArray(catalog.categories)) {
@@ -2417,8 +2413,7 @@ export default function AdminDashboard({
   }
 
   async function saveProduct(draft: ProductDraft) {
-    const productId = typeof editorProductId === "number" ? editorProductId : undefined;
-    const slug = getUniqueProductSlug(draft.slug || draft.name, productId);
+    const slug = createProductSlug(draft.slug || draft.name);
     const savedDraft = { ...draft, slug };
     const product: Product | null = editorProductId === "new"
       ? { id: Date.now(), ...savedDraft }
@@ -2432,7 +2427,8 @@ export default function AdminDashboard({
         ? [product, ...products]
         : products.map((currentProduct) => currentProduct.id === product.id ? product : currentProduct);
       const catalog = await publishCatalog(nextProducts, categories);
-      const savedProduct = catalog.products!.find((currentProduct) => currentProduct.id === product.id) ?? product;
+      const savedProduct = catalog.products!.find((currentProduct) => currentProduct.id === product.id);
+      if (!savedProduct) throw new Error("The server did not return the saved product. Refresh the catalog before editing again.");
       commitProducts(catalog.products!);
       commitCategories(catalog.categories!);
 
@@ -2452,10 +2448,11 @@ export default function AdminDashboard({
   }
 
   function syncProductInventory(product: Product) {
+    const { slugHistory: _history, ...productPayload } = product;
     return fetch(`/api/admin/catalog/products/${product.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(product),
+      body: JSON.stringify(productPayload),
     })
       .then(async (response) => {
         const result = await response.json().catch(() => ({})) as { inventory?: Record<string, unknown>; error?: string };
@@ -2498,6 +2495,7 @@ export default function AdminDashboard({
     event.preventDefault();
     const name = categoryDraft.name.trim();
     const description = categoryDraft.description.trim();
+    const slug = createProductSlug(categoryDraft.slug || name);
     if (!name) return;
     if (categories.some((category) => category.name.toLowerCase() === name.toLowerCase() && category.id !== editingCategoryId)) {
       setNotice(`${name} already exists.`);
@@ -2505,10 +2503,19 @@ export default function AdminDashboard({
     }
     setCategorySaving(true);
     try {
+      const previousName = categories.find((category) => category.id === editingCategoryId)?.name;
+      const nextProducts = previousName && previousName !== name
+        ? products.map((product) => createProductSlug(product.category) === createProductSlug(previousName)
+          ? { ...product, category: name }
+          : product)
+        : products;
       const nextCategories = editingCategoryId !== null
-        ? categories.map((category) => category.id === editingCategoryId ? { ...category, name, image: categoryDraft.image.trim(), description, parentId: categoryDraft.parentId ?? null } : category)
-        : [...categories, { id: Date.now(), name, image: categoryDraft.image.trim(), description, parentId: categoryDraft.parentId ?? null }];
-      const catalog = await publishCatalog(products, nextCategories);
+        ? categories.map((category) => category.id === editingCategoryId ? { ...category, name, slug, image: categoryDraft.image.trim(), description, parentId: categoryDraft.parentId ?? null } : category)
+        : [...categories, { id: Date.now(), name, slug, image: categoryDraft.image.trim(), description, parentId: categoryDraft.parentId ?? null }];
+      const catalog = await publishCatalog(nextProducts, nextCategories);
+      if (!catalog.categories!.some((category) => category.id === (editingCategoryId ?? nextCategories[nextCategories.length - 1].id))) {
+        throw new Error("The server did not return the saved category. Refresh the catalog before editing again.");
+      }
       commitProducts(catalog.products!);
       commitCategories(catalog.categories!);
       setNotice(`${name} category ${editingCategoryId !== null ? "updated" : "created"}.`);
@@ -2523,7 +2530,7 @@ export default function AdminDashboard({
 
   function editCategory(category: Category) {
     setEditingCategoryId(category.id);
-    setCategoryDraft({ name: category.name, image: category.image, description: category.description, parentId: category.parentId ?? null });
+    setCategoryDraft({ name: category.name, slug: getCategorySlug(category), image: category.image, description: category.description, parentId: category.parentId ?? null });
     setCategoryImageFileName("");
     setNotice("");
     setSection("categories");
@@ -3394,7 +3401,19 @@ export default function AdminDashboard({
               <form className="admin-panel admin-simple-form admin-category-form" onSubmit={submitCategory}>
                 <p className="admin-eyebrow">{editingCategoryId !== null ? "Edit category" : "New category"}</p>
                 <h2>{editingCategoryId !== null ? "Update collection" : "Add a collection"}</h2>
-                <label>Category title<input value={categoryDraft.name} onChange={(event) => setCategoryDraft((current) => ({ ...current, name: event.target.value }))} required placeholder="e.g. Weekend plans" /></label>
+                <label>Category title<input value={categoryDraft.name} onChange={(event) => setCategoryDraft((current) => ({
+                  ...current,
+                  name: event.target.value,
+                  slug: editingCategoryId === null && (!current.slug || current.slug === createProductSlug(current.name))
+                    ? createProductSlug(event.target.value)
+                    : current.slug,
+                }))} required placeholder="e.g. Weekend plans" /></label>
+                <label>Category slug
+                  <span className="admin-slug-input">
+                    <input value={categoryDraft.slug ?? ""} onChange={(event) => setCategoryDraft((current) => ({ ...current, slug: event.target.value }))} placeholder="weekend-plans" />
+                    <small><Check aria-hidden="true" />{editingCategoryId === null ? "Auto-generated from title" : "Existing URL stays until changed"}</small>
+                  </span>
+                </label>
                  <label>Parent category
                    <select value={categoryDraft.parentId ?? ""} onChange={(event) => setCategoryDraft((current) => ({ ...current, parentId: event.target.value ? Number(event.target.value) : null }))}>
                      <option value="">None — top-level category</option>

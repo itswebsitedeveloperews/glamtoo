@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "Glam Too"
-description = "A static editorial fashion storefront for Glam Too, featuring a cinematic home page, shoppable collections, product details, cart, checkout, order confirmation, and customer care pages."
+description = "Glam Too Boutique storefront with server-resolved SEO metadata, stable catalog URLs, redirects, and a dynamic sitemap."
 version = "1.0.0"
 id = "artifacts/glam-me"
 router = "path"
@@ -16,12 +16,16 @@ run = "pnpm --filter @workspace/glam-me run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/glam-me", "run", "build" ]
-serve = "static"
-publicDir = "artifacts/glam-me/dist/public"
 
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+[services.production.run]
+args = [ "node", "artifacts/glam-me/server/index.mjs" ]
+
+[services.production.run.env]
+PORT = "18781"
+NODE_ENV = "production"
+
+[services.production.health.startup]
+path = "/__health"
 
 [services.env]
 PORT = "18781"

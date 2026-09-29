@@ -24,6 +24,8 @@ import type {
   ContactEnquiryResponse,
   ErrorEnvelope,
   HealthStatus,
+  ResolveSeoParams,
+  SeoResolution,
   UploadUrlRequest,
   UploadUrlResponse
 } from './api.schemas';
@@ -54,6 +56,245 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getResolveSeoUrl = (params: ResolveSeoParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/seo/resolve?${stringifiedParams}` : `/api/seo/resolve`
+}
+
+/**
+ * Returns status 200, 301 or 404 inside the JSON body. Redirect locations are local absolute paths. A catalog outage returns HTTP 503, not a fabricated 404.
+ * @summary Resolve a storefront pathname to canonical SEO metadata
+ */
+export const resolveSeo = async (params: ResolveSeoParams, options?: Parameters<typeof customFetch>[1]): Promise<SeoResolution> => {
+
+  return customFetch<SeoResolution>(getResolveSeoUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getResolveSeoQueryKey = (params?: ResolveSeoParams,) => {
+    return [
+    `/api/seo/resolve`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getResolveSeoQueryOptions = <TData = Awaited<ReturnType<typeof resolveSeo>>, TError = ErrorType<ErrorEnvelope>>(params: ResolveSeoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof resolveSeo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getResolveSeoQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof resolveSeo>>> = ({ signal }) => resolveSeo(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof resolveSeo>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ResolveSeoQueryResult = NonNullable<Awaited<ReturnType<typeof resolveSeo>>>
+export type ResolveSeoQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Resolve a storefront pathname to canonical SEO metadata
+ */
+
+export function useResolveSeo<TData = Awaited<ReturnType<typeof resolveSeo>>, TError = ErrorType<ErrorEnvelope>>(
+ params: ResolveSeoParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof resolveSeo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getResolveSeoQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSeoSitemapUrl = () => {
+
+
+
+
+  return `/api/seo/sitemap.xml`
+}
+
+/**
+ * @summary Dynamic XML sitemap of indexable storefront pages
+ */
+export const getSeoSitemap = async ( options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getGetSeoSitemapUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSeoSitemapQueryKey = () => {
+    return [
+    `/api/seo/sitemap.xml`
+    ] as const;
+    }
+
+
+export const getGetSeoSitemapQueryOptions = <TData = Awaited<ReturnType<typeof getSeoSitemap>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSeoSitemap>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSeoSitemapQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSeoSitemap>>> = ({ signal }) => getSeoSitemap({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSeoSitemap>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSeoSitemapQueryResult = NonNullable<Awaited<ReturnType<typeof getSeoSitemap>>>
+export type GetSeoSitemapQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Dynamic XML sitemap of indexable storefront pages
+ */
+
+export function useGetSeoSitemap<TData = Awaited<ReturnType<typeof getSeoSitemap>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSeoSitemap>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSeoSitemapQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetSeoRobotsUrl = () => {
+
+
+
+
+  return `/api/seo/robots.txt`
+}
+
+/**
+ * @summary Crawler policy with absolute public sitemap URL
+ */
+export const getSeoRobots = async ( options?: Parameters<typeof customFetch>[1]): Promise<string> => {
+
+  return customFetch<string>(getGetSeoRobotsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetSeoRobotsQueryKey = () => {
+    return [
+    `/api/seo/robots.txt`
+    ] as const;
+    }
+
+
+export const getGetSeoRobotsQueryOptions = <TData = Awaited<ReturnType<typeof getSeoRobots>>, TError = ErrorType<ErrorEnvelope>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSeoRobots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetSeoRobotsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getSeoRobots>>> = ({ signal }) => getSeoRobots({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSeoRobots>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetSeoRobotsQueryResult = NonNullable<Awaited<ReturnType<typeof getSeoRobots>>>
+export type GetSeoRobotsQueryError = ErrorType<ErrorEnvelope>
+
+
+/**
+ * @summary Crawler policy with absolute public sitemap URL
+ */
+
+export function useGetSeoRobots<TData = Awaited<ReturnType<typeof getSeoRobots>>, TError = ErrorType<ErrorEnvelope>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getSeoRobots>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetSeoRobotsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getHealthCheckUrl = () => {
 

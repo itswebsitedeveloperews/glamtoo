@@ -5,6 +5,45 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type SeoResolutionStatus = typeof SeoResolutionStatus[keyof typeof SeoResolutionStatus];
+
+
+export const SeoResolutionStatus = {
+  NUMBER_200: 200,
+  NUMBER_301: 301,
+  NUMBER_404: 404,
+} as const;
+
+export type SeoResolutionRobots = typeof SeoResolutionRobots[keyof typeof SeoResolutionRobots];
+
+
+export const SeoResolutionRobots = {
+  'index,_follow': 'index, follow',
+  'noindex,_follow': 'noindex, follow',
+} as const;
+
+export type SeoResolutionType = typeof SeoResolutionType[keyof typeof SeoResolutionType];
+
+
+export const SeoResolutionType = {
+  website: 'website',
+  product: 'product',
+} as const;
+
+export interface SeoResolution {
+  status: SeoResolutionStatus;
+  /** Local absolute redirect pathname (for status 301 only) */
+  location?: string;
+  title: string;
+  description: string;
+  /** Absolute HTTPS URL at the configured SEO_SITE_ORIGIN */
+  canonicalUrl: string;
+  robots: SeoResolutionRobots;
+  type: SeoResolutionType;
+  /** Absolute product or category image URL when available */
+  image?: string;
+}
+
 export interface HealthStatus {
   status: string;
 }
@@ -58,4 +97,11 @@ export interface ContactEnquiryResponse {
 export interface ErrorEnvelope {
   error: string;
 }
+
+export type ResolveSeoParams = {
+/**
+ * Relative storefront pathname, optionally including query parameters.
+ */
+path: string;
+};
 

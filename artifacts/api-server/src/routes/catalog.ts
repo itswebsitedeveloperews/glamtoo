@@ -1,9 +1,9 @@
-import { eq } from "drizzle-orm";
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
-import { db, pool, storeCatalogTable } from "@workspace/db";
+import { pool } from "@workspace/db";
 import { requireAdmin } from "../adminAuth";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { backfillCatalog, CatalogValidationError, prepareCatalog, type Catalog } from "../catalogSlugs";
 
 const router: IRouter = Router();
 const catalogId = 1;
@@ -19,9 +19,12 @@ function ensureCatalogTable() {
       products jsonb NOT NULL,
       categories jsonb NOT NULL,
       home_page jsonb,
+      slug_reservations jsonb NOT NULL DEFAULT '{"products":[],"categories":[]}'::jsonb,
       updated_at timestamp with time zone NOT NULL DEFAULT NOW()
     )
-  `).then(() => pool.query("ALTER TABLE store_catalog ADD COLUMN IF NOT EXISTS home_page jsonb")).then(() => undefined).catch((error) => {
+  `).then(() => pool.query("ALTER TABLE store_catalog ADD COLUMN IF NOT EXISTS home_page jsonb"))
+    .then(() => pool.query(`ALTER TABLE store_catalog ADD COLUMN IF NOT EXISTS slug_reservations jsonb NOT NULL DEFAULT '{"products":[],"categories":[]}'::jsonb`))
+    .then(() => undefined).catch((error) => {
     catalogTableReady = undefined;
     throw error;
   });
@@ -114,6 +117,7 @@ function normalizeCategory(value: unknown, index: number): JsonRecord {
     image: asText(category.image, "", 2000),
     description: asText(category.description, "", 1000),
     parentId,
+    ...(typeof category.slug === "string" ? { slug: category.slug } : {}),
   };
 }
 
@@ -126,6 +130,13 @@ function parseCatalogBody(body: unknown) {
     const id = product.id as number;
     if (productIds.has(id)) return true;
     productIds.add(id);
+    return false;
+  })) return null;
+  const categoryIds = new Set<number>();
+  if (categories.some((category) => {
+    const id = category.id as number;
+    if (categoryIds.has(id)) return true;
+    categoryIds.add(id);
     return false;
   })) return null;
   return { products, categories };
@@ -143,12 +154,36 @@ function parseHomePageSettings(body: unknown): HomePageSettings | null {
   return { categoryIds: body.categoryIds as number[], obsessionIds: body.obsessionIds as number[], momentIds: body.momentIds as number[] };
 }
 
-async function getCatalogRecord() {
+type CatalogRecord = Catalog & { homePage: HomePageSettings | null; initialized: boolean; updatedAt: Date | null; reservations: Catalog };
+async function withCatalogLock<T>(action: (record: CatalogRecord, query: (sql: string, values?: unknown[]) => Promise<void>) => Promise<T>): Promise<T> {
   await ensureCatalogTable();
-  const [record] = await db.select().from(storeCatalogTable).where(eq(storeCatalogTable.id, catalogId)).limit(1);
-  return record
-    ? { products: record.products as JsonRecord[], categories: record.categories as JsonRecord[], homePage: record.homePage as HomePageSettings | null, initialized: true, updatedAt: record.updatedAt }
-    : { products: [], categories: [], homePage: null, initialized: false, updatedAt: null };
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    // The advisory lock also serializes first-time creation when there is no row to lock yet.
+    await client.query("SELECT pg_advisory_xact_lock(782616310, 1)");
+    const { rows } = await client.query("SELECT products, categories, home_page, slug_reservations, updated_at FROM store_catalog WHERE id = $1 FOR UPDATE", [catalogId]);
+    const row = rows[0];
+    const old: CatalogRecord = row
+      ? { products: row.products, categories: row.categories, homePage: row.home_page, reservations: row.slug_reservations, initialized: true, updatedAt: row.updated_at }
+      : { products: [], categories: [], homePage: null, reservations: { products: [], categories: [] }, initialized: false, updatedAt: null };
+    const filled = backfillCatalog(old);
+    if (row && JSON.stringify(filled) !== JSON.stringify({ products: old.products, categories: old.categories })) {
+      await client.query("UPDATE store_catalog SET products = $1, categories = $2, updated_at = NOW() WHERE id = $3", [JSON.stringify(filled.products), JSON.stringify(filled.categories), catalogId]);
+      old.updatedAt = new Date();
+    }
+    const result = await action({ ...old, ...filled }, async (sql, values) => { await client.query(sql, values); });
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+async function getCatalogRecord() {
+  return withCatalogLock(async (record) => record);
 }
 
 async function setCatalogMediaVisibility(products: JsonRecord[], categories: JsonRecord[], owner: string) {
@@ -168,16 +203,46 @@ async function setCatalogMediaVisibility(products: JsonRecord[], categories: Jso
   ));
 }
 
-async function saveCatalog(products: JsonRecord[], categories: JsonRecord[], owner: string) {
-  await setCatalogMediaVisibility(products, categories, owner);
-  await ensureCatalogTable();
-  await db.insert(storeCatalogTable)
-    .values({ id: catalogId, products, categories })
-    .onConflictDoUpdate({
-      target: storeCatalogTable.id,
-      set: { products, categories, updatedAt: new Date() },
-    });
-  return getCatalogRecord();
+async function saveCatalog(parsed: Catalog, raw: Catalog, owner: string, migrate = false) {
+  const saved = await withCatalogLock(async (record, query) => {
+    let next = parsed;
+    let rawNext = raw;
+    if (migrate) {
+      const products = new Map(record.products.map((item) => [item.id, item]));
+      parsed.products.forEach((item) => products.set(item.id, item));
+      const categories = new Map(record.categories.map((item) => [item.id, item]));
+      parsed.categories.forEach((item) => categories.set(item.id, item));
+      const rawProducts = new Map(record.products.map((item) => [item.id, item]));
+      raw.products.forEach((item) => rawProducts.set(item.id, item));
+      const rawCategories = new Map(record.categories.map((item) => [item.id, item]));
+      raw.categories.forEach((item) => rawCategories.set(item.id, item));
+      next = { products: [...products.values()], categories: [...categories.values()] };
+      rawNext = { products: [...rawProducts.values()], categories: [...rawCategories.values()] };
+    }
+    for (const kind of ["products", "categories"] as const) {
+      const retiredIds = new Set(record.reservations[kind].map((item) => item.id));
+      if (next[kind].some((item) => retiredIds.has(item.id))) {
+        throw new CatalogValidationError("A deleted catalog ID cannot be reused.");
+      }
+    }
+    const prepared = prepareCatalog(next, {
+      products: [...record.products, ...record.reservations.products],
+      categories: [...record.categories, ...record.reservations.categories],
+    }, rawNext);
+    const reservations: Catalog = { products: [...record.reservations.products], categories: [...record.reservations.categories] };
+    for (const kind of ["products", "categories"] as const) {
+      const active = new Set(prepared[kind].map((item) => item.id));
+      reservations[kind].push(...record[kind].filter((item) => !active.has(item.id)));
+    }
+    // Match the previous save semantics: an ACL failure must not report a
+    // failed request after a durable catalog commit.
+    await setCatalogMediaVisibility(prepared.products, prepared.categories, owner);
+    await query(`INSERT INTO store_catalog (id, products, categories, slug_reservations) VALUES ($1, $2, $3, $4)
+      ON CONFLICT (id) DO UPDATE SET products = EXCLUDED.products, categories = EXCLUDED.categories, slug_reservations = EXCLUDED.slug_reservations, updated_at = NOW()`,
+    [catalogId, JSON.stringify(prepared.products), JSON.stringify(prepared.categories), JSON.stringify(reservations)]);
+    return { ...record, ...prepared, initialized: true, updatedAt: new Date() };
+  });
+  return saved;
 }
 
 router.get("/catalog", async (request, response) => {
@@ -212,21 +277,19 @@ router.put("/admin/catalog/home-page", requireAdmin, async (request, response) =
     return;
   }
   try {
-    const catalog = await getCatalogRecord();
-    if (!catalog.initialized) {
-      response.status(409).json({ error: "Set up the catalog before editing the home page." });
-      return;
-    }
-    const categoryIds = new Set(catalog.categories.map((item) => item.id));
-    const productIds = new Set(catalog.products.filter((item) => item.status === "Published").map((item) => item.id));
-    if (settings.categoryIds.some((id) => !categoryIds.has(id))
-      || [...settings.obsessionIds, ...settings.momentIds].some((id) => !productIds.has(id))) {
-      response.status(400).json({ error: "A selected category or product no longer exists or is unpublished. Refresh and choose again." });
-      return;
-    }
-    await db.update(storeCatalogTable).set({ homePage: settings }).where(eq(storeCatalogTable.id, catalogId));
+    await withCatalogLock(async (catalog, query) => {
+      if (!catalog.initialized) throw new CatalogValidationError("Set up the catalog before editing the home page.");
+      const categoryIds = new Set(catalog.categories.map((item) => item.id));
+      const productIds = new Set(catalog.products.filter((item) => item.status === "Published").map((item) => item.id));
+      if (settings.categoryIds.some((id) => !categoryIds.has(id))
+        || [...settings.obsessionIds, ...settings.momentIds].some((id) => !productIds.has(id))) {
+        throw new CatalogValidationError("A selected category or product no longer exists or is unpublished. Refresh and choose again.");
+      }
+      await query("UPDATE store_catalog SET home_page = $1, updated_at = NOW() WHERE id = $2", [JSON.stringify(settings), catalogId]);
+    });
     response.set("Cache-Control", "no-store").json({ homePage: settings });
   } catch (error) {
+    if (error instanceof CatalogValidationError) { response.status(400).json({ error: error.message }); return; }
     request.log.error({ error }, "Home page settings could not be saved");
     response.status(503).json({ error: "Home page settings could not be saved right now." });
   }
@@ -244,8 +307,9 @@ router.put("/admin/catalog", requireAdmin, async (request, response) => {
       response.status(401).json({ error: "Sign in to continue." });
       return;
     }
-    response.json(await saveCatalog(parsed.products, parsed.categories, userId));
+    response.json(await saveCatalog(parsed, request.body as Catalog, userId));
   } catch (error) {
+    if (error instanceof CatalogValidationError) { response.status(400).json({ error: error.message }); return; }
     request.log.error({ error }, "Admin catalog could not be saved");
     response.status(503).json({ error: "The catalog could not be saved right now." });
   }
@@ -263,16 +327,13 @@ router.post("/admin/catalog/migrate", requireAdmin, async (request, response) =>
       response.status(401).json({ error: "Sign in to continue." });
       return;
     }
-    const existing = await getCatalogRecord();
-    const productsById = new Map(existing.products.map((product) => [product.id as number, product]));
-    parsed.products.forEach((product) => productsById.set(product.id as number, { ...productsById.get(product.id as number), ...product }));
-    const categoriesById = new Map(existing.categories.map((category) => [category.id as number, category]));
-    parsed.categories.forEach((category) => categoriesById.set(category.id as number, { ...categoriesById.get(category.id as number), ...category }));
-    response.json(await saveCatalog([...productsById.values()], [...categoriesById.values()], userId));
+    response.json(await saveCatalog(parsed, request.body as Catalog, userId, true));
   } catch (error) {
+    if (error instanceof CatalogValidationError) { response.status(400).json({ error: error.message }); return; }
     request.log.error({ error }, "Catalog migration could not be completed");
     response.status(503).json({ error: "The existing catalog could not be migrated right now." });
   }
 });
 
+export { getCatalogRecord };
 export default router;

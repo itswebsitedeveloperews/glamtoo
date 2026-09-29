@@ -26,3 +26,4 @@ channel = "stable-25_05"
 
 [userenv.shared]
 ADMIN_EMAILS = "itswebsitedeveloper.ews@gmail.com"
+SEO_SITE_ORIGIN = "https://glamtoo.webdesignessex.io"

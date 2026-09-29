@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./seo.test";
 import http from "node:http";
 import { after, test } from "node:test";
 import express from "express";

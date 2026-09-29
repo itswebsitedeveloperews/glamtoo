@@ -799,8 +799,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
   .nav { display: none; }
   .nav-overlay { display: block; position: fixed; inset: 0; z-index: 1; padding: 0; border: 0; background: rgba(23, 22, 21, .28); cursor: pointer; }
   .nav.nav-open { display: flex; position: fixed; z-index: 2; top: 0; right: 0; flex-direction: column; box-sizing: border-box; justify-content: flex-start; width: 80vw; max-width: 600px; height: 100dvh; overflow-x: hidden; overflow-y: auto; gap: 0; padding: 0 24px 28px; border: 0; background: var(--paper); box-shadow: -16px 0 35px rgba(23, 22, 21, .12); text-align: left; }
-  .mobile-nav-head { display: flex; align-items: center; justify-content: space-between; min-height: 78px; border-bottom: 1px solid var(--line); }
-  .mobile-nav-head img { width: 145px; height: auto; }
+  .mobile-nav-head { display: flex; align-items: center; justify-content: flex-end; min-height: 78px; border-bottom: 1px solid var(--line); }
   .nav.nav-open a { padding: 14px 0; border-bottom: 1px solid var(--line); }
   .container, .hero-copy { width: min(100% - 34px, 720px); }
   .hero { min-height: 570px; }

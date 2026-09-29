@@ -25,6 +25,8 @@ import buttonUpShortSleeveBlazerImage from "@assets/button-up-short-sleeve-blaze
 import fauxLeatherThreeCompartmentToteBagImage from "@assets/faux-leather-three-compartment-tote-bag.jpeg";
 import fauxLeatherMediumToteBagImage from "@assets/faux-leather-medium-tote-bag.jpeg";
 import miniToteBagImage from "@assets/mini-tote-bag.webp";
+import { slugifyCatalogName } from "./category-slug";
+export { getCategorySlug, getProductCategorySlug } from "./category-slug";
 
 export type CatalogVariation = {
   id: number;
@@ -40,6 +42,8 @@ export type CatalogVariation = {
 export type CatalogProduct = {
   id: number;
   slug: string;
+  /** Read-only on the client; the server maintains redirect aliases. */
+  slugHistory?: string[];
   name: string;
   category: string;
   eyebrow?: string;
@@ -65,6 +69,10 @@ export type CatalogProduct = {
 export type CatalogCategory = {
   id: number;
   name: string;
+  /** Canonical URL slug; absent only in legacy browser catalog records. */
+  slug?: string;
+  /** Read-only on the client; the server maintains redirect aliases. */
+  slugHistory?: string[];
   image: string;
   description: string;
   parentId?: number | null;
@@ -230,12 +238,7 @@ export function getCatalogPriceInput(value: string | number) {
 }
 
 export function createProductSlug(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/&/g, "and")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  return slugifyCatalogName(value);
 }
 
 export function getCatalogProductImages(product: Pick<CatalogProduct, "image" | "galleryImages">) {

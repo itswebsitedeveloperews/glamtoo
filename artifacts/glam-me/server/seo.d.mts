@@ -1,0 +1,19 @@
+export type SeoData = {
+  status?: 200 | 301 | 404;
+  location?: string;
+  title?: string;
+  description?: string;
+  canonicalUrl?: string;
+  robots?: string;
+  type?: 'website' | 'product';
+  image?: string;
+};
+export const SEO_SITE_ORIGIN: string;
+export const API_ORIGIN: string;
+export const FALLBACK: SeoData;
+export function escapeHtml(value: unknown): string;
+export function parseRequestUrl(raw: string | undefined): { pathname: string; search: string };
+export function isDocumentPath(pathname: string): boolean;
+export function resolveSeo(path: string, fetcher?: typeof fetch): Promise<SeoData & { status: 200 | 301 | 404 }>;
+export function injectSeo(html: string, data?: SeoData): string;
+export function proxySeoFile(pathname: string, fetcher?: typeof fetch): Promise<{ status: number; body: ArrayBuffer; contentType: string }>;
