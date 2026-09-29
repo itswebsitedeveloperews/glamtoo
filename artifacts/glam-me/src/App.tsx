@@ -821,6 +821,7 @@ function WishlistButton({ product, detail = false }: { product: CatalogProduct; 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(() => window.scrollY > 0);
+  const [isCompact, setIsCompact] = useState(() => window.scrollY > 100);
   const [cartCount, setCartCount] = useState(getCartCount);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
@@ -833,7 +834,11 @@ function Header() {
     : {};
 
   useEffect(() => {
-    const updateScrollState = () => setIsScrolled(window.scrollY > 0);
+    const updateScrollState = () => {
+      setIsScrolled(window.scrollY > 0);
+      // Separate thresholds prevent the changing header height from toggling it repeatedly.
+      setIsCompact((compact) => compact ? window.scrollY > 20 : window.scrollY > 100);
+    };
     updateScrollState();
     window.addEventListener('scroll', updateScrollState, { passive: true });
     return () => window.removeEventListener('scroll', updateScrollState);
@@ -867,7 +872,7 @@ function Header() {
   }, [searchOpen]);
 
   return (
-    <header className={`site-header${isScrolled ? " is-scrolled" : ""}`} data-testid="site-header">
+    <header className={`site-header${isScrolled ? " is-scrolled" : ""}${isCompact ? " is-compact" : ""}`} data-testid="site-header">
       <div className="header-inner">
         <button
           className="menu-toggle"
