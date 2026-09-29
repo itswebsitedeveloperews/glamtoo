@@ -42,3 +42,31 @@ mtime_ms = 1790165939370
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/e9dd1de8-b292-4c30-b170-2331776b9226/ca24f445-5cc0-44e4-9094-9a229410fe46"
 storage_version_token = "1790165958269630"
 content_type = "image/svg+xml"
+
+[[outputs]]
+id = "qJGaxxHhykwU-qWKvj8uA"
+uri = "file://attached_assets/logo-soft-options/glam-too-logo-comparison-sheet.png"
+type = "image"
+title = "Five softer logo variations"
+description = "Compare soft serif, rounded, flowing italic, handwritten and light modern styles."
+logical_id = "196a9901-c155-47c1-9b1c-495769880a01"
+content_hash = "sha256:2752e0aedb46f632800550f434600f12effdb2897c27b35f80e6a6d4601a1b4d"
+size = 216136
+mtime_ms = 1790711860340
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/196a9901-c155-47c1-9b1c-495769880a01/a2d618a0-10a0-4ce4-a894-9f93a7f5de1a"
+storage_version_token = "1790711883786787"
+content_type = "image/png"
+
+[[outputs]]
+id = "SY78_Ptr3lFPfoTQQ0MsF"
+uri = "file://attached_assets/logo-soft-options/glam-too-soft-logo-options.zip"
+type = "unspecified"
+title = "Download all five logos"
+description = "Transparent PNGs and scalable SVGs, plus the comparison sheet."
+logical_id = "cc820e00-be48-4e3d-a47c-f749b62aa93a"
+content_hash = "sha256:9f26903121a50d4cd441965ed30b6d05d4b170f302a579e3a8b88aeb273cf8f8"
+size = 801183
+mtime_ms = 1790711860382
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/cc820e00-be48-4e3d-a47c-f749b62aa93a/7ca6318c-cbba-46a6-9b05-1412cfcf090b"
+storage_version_token = "1790711884382284"
+content_type = "application/octet-stream"
