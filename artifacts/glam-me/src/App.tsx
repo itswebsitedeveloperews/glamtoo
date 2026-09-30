@@ -2107,7 +2107,7 @@ function FAQ() {
         >
           <div className="eyebrow">Help centre</div>
           <h1 id="faq-heading">Frequently asked questions</h1>
-          <p>Find quick answers to our most common questions.<span>Can&apos;t find what you&apos;re looking for? We&apos;re here to help.</span></p>
+          <p>Find quick answers to our most common questions.{' '}<span>Can&apos;t find what you&apos;re looking for? We&apos;re here to help.</span></p>
           <div className="faq-search-wrap">
             <Search aria-hidden="true" />
             <label className="sr-only" htmlFor="faq-search">Search for an answer</label>
@@ -3153,7 +3153,22 @@ function CustomerSignInPage() {
 }
 
 function CustomerSignInContent() {
-  return <Shell><div className="customer-auth-page"><div className="customer-auth-copy"><div className="eyebrow">Your Glam Too account</div><h1>Welcome back.</h1><p>Sign in to manage your details and make shopping your next plan even easier.</p></div><div className="customer-auth-card"><SignIn signUpUrl={`${basePath}/register`} fallbackRedirectUrl={basePath || '/'} /><a className="customer-recovery-link" href={`${basePath}/account/recovery`}>Forgot your password?</a></div></div></Shell>;
+  return (
+    <Shell>
+      <div className="customer-auth-page">
+        <div className="customer-auth-copy">
+          <div className="eyebrow">Your Glam Too account</div>
+          <h1>Welcome back.</h1>
+          <p>Sign in to manage your details and make shopping your next plan even easier.</p>
+        </div>
+        <div className="customer-auth-card">
+          <h2 className="customer-signin-title">Sign in to Glam Too Boutique</h2>
+          <SignIn signUpUrl={`${basePath}/register`} fallbackRedirectUrl={basePath || '/'} />
+          <a className="customer-recovery-link" href={`${basePath}/account/recovery`}>Forgot your password?</a>
+        </div>
+      </div>
+    </Shell>
+  );
 }
 
 function formatCustomerOrderDate(value: string | null) {
