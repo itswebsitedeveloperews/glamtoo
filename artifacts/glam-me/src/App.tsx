@@ -2311,19 +2311,19 @@ function Contact() {
         <div className="contact-details">
           <div className="contact-detail">
             <div className="contact-detail-icon"><Mail /></div>
-            <h4>Email us</h4>
+            <h4>Email Us</h4>
             <p>hello@glamtoo.co.uk</p>
             <a href="mailto:hello@glamtoo.co.uk" className="text-link">SEND EMAIL <span>&#8594;</span></a>
           </div>
           <div className="contact-detail">
             <div className="contact-detail-icon"><Phone /></div>
-            <h4>Call us</h4>
+            <h4>Call Us</h4>
             <p>+44 20 7123 4567</p>
             <a href="tel:+442071234567" className="text-link">CALL NOW <span>&#8594;</span></a>
           </div>
           <div className="contact-detail">
             <div className="contact-detail-icon"><Clock /></div>
-            <h4>Opening hours</h4>
+            <h4>Opening Hours</h4>
             <div className="hours">
               <span>Mon - Fri</span><span>9am - 6pm</span>
               <span>Sat</span><span>10am - 4pm</span>
@@ -2332,7 +2332,7 @@ function Contact() {
           </div>
           <div className="contact-detail">
             <div className="contact-detail-icon"><MessageSquare /></div>
-            <h4>Response time</h4>
+            <h4>Response Time</h4>
             <p>We aim to respond to all enquiries within 24 hours.</p>
           </div>
         </div>

@@ -835,7 +835,12 @@ h2 { text-transform: capitalize !important; }
 .checkout-order-heading span { color: var(--muted); font-size: 14px; }
 .checkout-order-items { display: grid; }
 .checkout-order-item { display: grid; grid-template-columns: 67px minmax(0, 1fr) auto; gap: 13px; align-items: start; padding: 18px 0; border-bottom: 1px solid #dfd5cf; }
-.checkout-order-item img { width: 67px; aspect-ratio: .77; object-fit: cover; }
+.checkout-order-item img {
+  width: 67px;
+  aspect-ratio: .77;
+  object-fit: cover;
+  object-position: top !important;
+}
 .checkout-order-item h3 { margin: 1px 0 5px; font: 400 21px/.92 var(--display); letter-spacing: -.025em; }
 .checkout-order-item p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.4; }
 .checkout-order-item > strong { font-size: 14px; white-space: nowrap; }
@@ -939,7 +944,8 @@ h2 { text-transform: capitalize !important; }
   .newsletter-form { width: 100%; max-width: 520px; margin: 0 auto; flex: 0 0 auto; }
   .form-layout, .cart-layout { grid-template-columns: 1fr; gap: 38px; }
   .checkout-page { padding-top: 48px; }
-  .checkout-heading { display: grid; align-items: start; gap: 18px; }
+  .checkout-heading { position: relative; display: grid; align-items: start; gap: 18px; }
+  .checkout-heading > .text-link { position: absolute; top: 0; right: 0; font-size: 12px; letter-spacing: .08em; white-space: nowrap; }
   .checkout-layout { grid-template-columns: 1fr; gap: 32px; }
   .checkout-field-grid { grid-template-columns: minmax(0, 1fr); }
   .checkout-order-review { position: static; }
@@ -1627,7 +1633,12 @@ article.admin-shipping-method h2 {
 .admin-payment-how ol { display: grid; gap: 11px; margin: 0; padding-left: 22px; color: var(--muted); font-size: 14px; line-height: 1.55; }
 .checkout-payment-error { margin: 0; color: #b42342; font-size: 14px; }
 .checkout-account-notice { display: grid; gap: 8px; border-left: 3px solid var(--pink); background: #f9e7ed; padding: 14px 16px; color: var(--ink); font-size: 16px; line-height: 1.45; }
-.checkout-account-notice .text-link { width: fit-content; font-size: 14px; }
+.checkout-account-notice .text-link {
+  width: fit-content;
+  font-size: 14px;
+  text-transform: capitalize;
+  letter-spacing: 0;
+}
 
 .admin-users-header { display: flex; flex-direction: column; justify-content: flex-start; align-items: flex-end; gap: 24px; margin-bottom: 38px; }
 .admin-users-header-copy h1 { margin: 0; font: 400 60px/.88 var(--display); }
