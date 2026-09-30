@@ -848,8 +848,8 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
   .collection-collage:not(.is-five-or-more) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .collection-tile > div { left: 17px; bottom: 17px; max-width: 125px; }
   .collection-tile h3 { font-size: 24px; }
-  .collection-tile p { margin-bottom: 10px; font-size: 14px; }
-  .collection-tile a { font-size: 14px; }
+  .collection-tile p { margin-bottom: 10px; font-size: 12px; }
+  .collection-tile .collection-tile-cta { font-size: 12px; }
   .home-obsessions { padding-top: 30px; padding-bottom: 50px; }
   .home-obsessions .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .category-directory { padding: 58px 0 82px; }
