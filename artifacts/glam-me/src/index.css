@@ -759,14 +759,14 @@ h2 { text-transform: capitalize !important; }
 .summary-row.total { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 18px; font-size: 14px; font-weight: 600; }
 .cart-summary .button { width: 100%; margin-top: 22px; }
 .wishlist-hero { border-bottom: 1px solid var(--line); padding: 82px 0 72px; background: #f0e4df; }
-.wishlist-hero h1 { margin: 12px 0 14px; font: 400 clamp(52px, 7vw, 82px)/.88 var(--display); }
+.wishlist-hero h1 { margin: 12px 0 14px; font: 400 clamp(52px, 7vw, 82px) / .88 var(--display); text-transform: capitalize; }
 .wishlist-hero p { margin: 0; color: var(--muted); font-size: 16px; line-height: 1.5; }
 .wishlist-page { padding: 58px 0 112px; }
 .wishlist-message { margin: 0 0 20px; border: 1px solid #cc899c; background: #fff4f6; padding: 13px 15px; color: #8d2344; font-size: 16px; }
 .wishlist-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
 .wishlist-item { display: grid; grid-template-columns: minmax(150px, .76fr) minmax(0, 1fr); min-width: 0; border: 1px solid var(--line); background: var(--white); }
 .wishlist-item-image { position: relative; min-height: 290px; overflow: hidden; background: var(--paper-deep); }
-.wishlist-item-image img { width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform .45s ease; }
+.wishlist-item-image img { width: 100%; height: 100%; object-fit: cover; object-position: top !important; transition: transform .45s ease; }
 .wishlist-item:hover .wishlist-item-image img { transform: scale(1.035); }
 .wishlist-item-content { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; gap: 24px; padding: 23px 21px 21px; }
 .wishlist-item-category { margin: 0 0 7px; color: var(--muted); font-size: 14px; letter-spacing: .09em; text-transform: uppercase; }
@@ -1014,7 +1014,11 @@ h2 { text-transform: capitalize !important; }
 }
 @media (max-width: 767px) {
   .cart-page h1 { font-size: 36px; }
+  .wishlist-hero h1 { font: 400 clamp(36px, 7vw, 82px) / .88 var(--display); }
   .checkout-heading h1 { font-size: 36px; }
+  .checkout-section-heading h2 { font: 400 26px / 1 var(--display) !important; }
+  .checkout-order-heading h2 { font: 400 26px / 1 var(--display) !important; }
+  .checkout-order-item h3 { font: 400 17px / 1.15 var(--display); }
   .returns-page { padding-bottom: 70px; }
   .returns-page-inner { width: min(100% - 30px, 980px); }
   .returns-breadcrumb { padding-top: 20px; }
