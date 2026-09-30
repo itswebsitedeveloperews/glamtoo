@@ -314,7 +314,7 @@ h2 { text-transform: capitalize !important; }
 .page-hero { padding: 92px 0 82px; border-bottom: 1px solid var(--line); }
 .page-hero h1 {
   margin: 16px 0 0;
-  font: 400 62px/.86 var(--display);
+  font: 400 60px / 1 var(--display);
   text-transform: capitalize;
 }
 .page-hero p { color: var(--muted); margin: 23px 0 0; }
@@ -936,6 +936,7 @@ h2 { text-transform: capitalize !important; }
   .footer-bottom > span > a { display: inline-block; }
   .footer-legal-links { order: -1; flex-wrap: wrap; gap: 6px 16px; }
   .page-hero { padding: 65px 0 55px; }
+  .page-hero h1 { font: 400 40px / 1 var(--display); }
   .legal h1 { font-size: 40px; }
   .legal h2 { font-size: 24px !important; }
   .legal .text-link { padding-bottom: 0; }
@@ -2351,6 +2352,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .about-intro-media { aspect-ratio: 1.15 / 1; }
   .about-values-grid { grid-template-columns: 1fr; }
   .about-value { min-height: 0; padding: 50px 30px; }
+  .about-value h3 { font: 400 24px / 1 var(--display); }
   .about-value + .about-value { border-top: 1px solid var(--line); border-left: 0; }
   .about-story { grid-template-columns: 1fr; gap: 47px; padding-top: 50px; padding-bottom: 50px; }
   .about-story-media { aspect-ratio: 1.1 / 1; max-width: 620px; }
@@ -3257,7 +3259,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 
 @media (max-width: 800px) {
-  #root h2 { font-size: 28px; }
+  #root h2 { font-size: 34px; }
   h3 { font-size: 22px; }
   :is(h4, h5, h6) { font-size: 18px; }
   #root .product-name { font-size: 16px; }
