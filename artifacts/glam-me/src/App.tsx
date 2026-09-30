@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
 import logoImage from '@assets/logo-soft-options/glam-too-selected.svg';
@@ -3943,6 +3943,12 @@ function AdminRoute() {
 function AppRoutes() {
   const mediaVersion = useContext(CatalogMediaContext);
   const [location] = useLocation();
+  const previousLocation = useRef(location);
+  useLayoutEffect(() => {
+    if (previousLocation.current === location) return;
+    previousLocation.current = location;
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location]);
   const routeKey = location === "/admin" ? "admin" : mediaVersion;
   return <Switch key={routeKey}>
     <Route path="/" component={Home} />
