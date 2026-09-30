@@ -873,7 +873,7 @@ function Header() {
   }, [searchOpen]);
 
   return (
-    <header className={`site-header${isScrolled ? " is-scrolled" : ""}${isCompact ? " is-compact" : ""}`} data-testid="site-header">
+    <header className={`site-header${isScrolled ? " is-scrolled" : ""}${isCompact ? " is-compact" : ""}${menuOpen ? " is-menu-open" : ""}`} data-testid="site-header">
       <div className="header-inner">
         <button
           className="menu-toggle"
