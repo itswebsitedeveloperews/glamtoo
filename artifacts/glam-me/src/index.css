@@ -931,6 +931,7 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 }
 @media (max-width: 767px) {
   .cart-page h1 { font-size: 36px; }
+  .checkout-heading h1 { font-size: 36px; }
   .returns-page { padding-bottom: 70px; }
   .returns-page-inner { width: min(100% - 30px, 980px); }
   .returns-breadcrumb { padding-top: 20px; }
