@@ -255,7 +255,7 @@ export function getCatalogProductImages(product: Pick<CatalogProduct, "image" | 
 export const catalogCategories: CatalogCategory[] = [
   { id: 1, name: "New In", image: dressesImage, description: "The latest arrivals at Glam Too Boutique.", parentId: null },
   { id: 2, name: "Clothes", image: coOrdsImage, description: "Outfits for every plan.", parentId: null },
-  { id: 3, name: "Handbags", image: accessoriesImage, description: "Stunning handbags for every occasion.", parentId: null },
+  { id: 3, name: "Handbags", image: miniToteBagImage, description: "Stunning handbags for every occasion.", parentId: null },
   { id: 4, name: "Purses", image: accessoriesImage, description: "Chic purses and everyday essentials.", parentId: null },
   { id: 5, name: "Jewellery", image: occasionImage, description: "Finishing touches for every look.", parentId: null },
   { id: 201, name: "Dresses", image: dressesImage, description: "From day dates to after dark.", parentId: 2 },
