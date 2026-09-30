@@ -3318,7 +3318,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 @media (max-width: 800px) {
   .product-detail { padding: 40px 0 40px; }
   .related-products-heading { padding-top: 40px; }
-  .footer { padding-top: 28px; }
+  .footer { padding-top: 40px; }
   .related-products,
   .category-directory,
   .home-obsessions,
