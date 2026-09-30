@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
 import logoImage from '@assets/logo-soft-options/glam-too-selected.svg';
@@ -826,6 +826,14 @@ function Header() {
   const [cartCount, setCartCount] = useState(getCartCount);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
+  const catalogVersion = useContext(CatalogMediaContext);
+  const searchTerm = searchQuery.trim().toLowerCase();
+  const suggestions = useMemo(() => {
+    if (!searchTerm) return [];
+    return getStorefrontProducts()
+      .filter((product) => [product.name, product.category, product.slug].some((value) => value.toLowerCase().includes(searchTerm)))
+      .slice(0, 5);
+  }, [searchTerm, catalogVersion]);
   const searchButtonRef = useRef<HTMLButtonElement>(null);
   const searchFormRef = useRef<HTMLFormElement>(null);
   const { count: wishlistCount } = useWishlist();
@@ -904,6 +912,7 @@ function Header() {
               name="search"
               type="search"
               aria-label="Search products"
+              aria-controls={searchTerm ? "header-search-suggestions" : undefined}
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search Products..."
@@ -915,6 +924,28 @@ function Header() {
                 <svg viewBox="0 0 24 24" role="img"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m16 16 4.3 4.3" /></svg>
               </span>
             </button>
+            {searchTerm && (
+              <div className="header-search-results" id="header-search-suggestions" aria-label="Product suggestions">
+                <p className="header-search-results-title">Suggested products</p>
+                {suggestions.length > 0 ? suggestions.map((product) => (
+                  <a
+                    className="header-search-result"
+                    href={`${basePath}/product/${product.slug}`}
+                    key={product.id}
+                    onClick={() => setSearchOpen(false)}
+                  >
+                    {product.image ? <img src={product.image} alt="" style={{ objectPosition: product.position }} /> : <span className="header-search-result-placeholder">Glam Too</span>}
+                    <span className="header-search-result-details">
+                      <strong>{product.name}</strong>
+                      <small>{product.category} · {product.price}</small>
+                    </span>
+                  </a>
+                )) : <p className="header-search-no-results" role="status">No products found for “{searchQuery.trim()}”.</p>}
+                <a className="header-search-view-all" href={`${basePath}/shop?search=${encodeURIComponent(searchQuery.trim())}`} onClick={() => setSearchOpen(false)}>
+                  View all results <span aria-hidden="true">→</span>
+                </a>
+              </div>
+            )}
           </form>
         )}
         <a href="/" data-testid="link-home-logo"><img className="logo" src={logoImage} alt="Glam Too Boutique" /></a>
