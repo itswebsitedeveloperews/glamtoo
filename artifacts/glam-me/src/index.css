@@ -846,9 +846,9 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
   .collection-tile { min-height: 0; }
   .collection-collage.is-five-or-more .collection-tile:nth-child(3) { grid-column: 2; grid-row: 1 / span 2; }
   .collection-collage:not(.is-five-or-more) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .collection-tile > div { left: 17px; bottom: 17px; max-width: 125px; }
+  .collection-tile > div { left: 12px; bottom: 12px; max-width: 143px; }
   .collection-tile h3 { font-size: 24px; }
-  .collection-tile p { margin-bottom: 10px; font-size: 12px; }
+  .collection-tile p { margin-bottom: 4px; font-size: 12px; }
   .collection-tile .collection-tile-cta { font-size: 12px; }
   .home-obsessions { padding-top: 30px; padding-bottom: 50px; }
   .home-obsessions .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -3158,4 +3158,8 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 .admin-modal-actions button {
   min-width: 100px;
+}
+
+@media (max-width: 800px) {
+  #root h2 { font-size: 34px !important; }
 }
