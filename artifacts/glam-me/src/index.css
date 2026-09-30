@@ -290,6 +290,9 @@ h2 { font-size: 48px !important; letter-spacing: -.02em !important; text-transfo
 .footer-grid > * { min-width: 0; }
 .footer-logo { width: 205px; margin-bottom: 15px; }
 .footer-intro { max-width: 220px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.45; }
+@media (min-width: 768px) and (max-width: 1024px) {
+  .footer-intro { max-width: 310px; }
+}
 .footer-socials { display: flex; align-items: center; gap: 16px; margin-top: 18px; }
 .footer-socials a { display: inline-grid; width: 18px; height: 18px; place-items: center; }
 .footer-socials svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
