@@ -143,7 +143,7 @@ h2 { text-transform: capitalize !important; }
 .hero:after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(17,12,12,.56), rgba(17,12,12,.05) 68%), linear-gradient(0deg, rgba(17,12,12,.3), transparent 35%); }
 .hero-copy { position: relative; z-index: 1; color: var(--white); width: min(1240px, calc(100% - 48px)); margin: auto; padding: 72px 0; }
 .hero-copy .eyebrow { color: #f4cad5; }
-.hero-copy h1 { max-width: 570px; margin: 13px 0 32px; font: 400 100px/1 var(--hero-display); }
+.hero-copy h1 { max-width: 570px; margin: 13px 0 32px; font: 400 100px / 1 var(--hero-display); text-transform: capitalize; }
 .hero-copy p { margin: 0 0 27px; color: #fff; font-size: 18px; }
 .button {
   display: inline-flex; align-items: center; justify-content: center; min-height: 43px;
