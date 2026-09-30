@@ -2781,6 +2781,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
     min-height: 0;
     padding: 56px 0 72px;
   }
+  .customer-auth-copy h1 { font-size: 42px !important; }
   .customer-auth-copy p { max-width: 520px; }
   .customer-auth-card, .customer-recovery-card {
     width: 100%;
