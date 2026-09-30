@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
 import logoImage from '@assets/logo-soft-options/glam-too-selected.svg';
@@ -1147,6 +1147,7 @@ function Shop() {
   const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
   const [mobileView, setMobileView] = useState<'cards' | 'list'>('cards');
   const browseTabsRef = useRef<HTMLElement>(null);
+  const listingStartRef = useRef<HTMLElement>(null);
   useEffect(() => {
     let active = true;
     fetch("/api/stripe/product-sales")
@@ -1243,11 +1244,24 @@ function Shop() {
     : 1;
   const pageStart = (currentPage - 1) * productsPerPage;
   const paginatedProducts = visibleProducts.slice(pageStart, pageStart + productsPerPage);
+  const handlePageClick = (event: MouseEvent<HTMLAnchorElement>, nextPage: number) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (nextPage < 1 || nextPage > totalPages) return;
+    if (nextPage !== currentPage) navigate(buildShopUrl(selectedCategory.value, activeSort.value, nextPage));
+    requestAnimationFrame(() => {
+      const listing = listingStartRef.current;
+      if (!listing) return;
+      const headerHeight = document.querySelector<HTMLElement>('.site-header')?.getBoundingClientRect().height ?? 0;
+      const top = window.scrollY + listing.getBoundingClientRect().top - headerHeight - 16;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'instant' });
+    });
+  };
   return (
     <Shell>
       <PageHero eyebrow="The shop" title="Pieces with presence." copy="A considered wardrobe of colour, texture and easy confidence. Find something for the plan you have, and the one you haven't made yet." />
       <div className="container shop-layout">
-        <aside className="filter">
+        <aside className="filter" ref={listingStartRef}>
           <h3>Browse</h3>
           <nav className="filter-tabs" ref={browseTabsRef} aria-label="Browse categories">
             {categoryOptions.map((option) => (
@@ -1288,10 +1302,7 @@ function Shop() {
                   <a
                     className={currentPage === 1 ? "is-disabled" : ""}
                     href={buildShopUrl(selectedCategory.value, activeSort.value, Math.max(1, currentPage - 1))}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      if (currentPage > 1) navigate(buildShopUrl(selectedCategory.value, activeSort.value, currentPage - 1));
-                    }}
+                    onClick={(event) => handlePageClick(event, currentPage - 1)}
                     aria-disabled={currentPage === 1}
                     tabIndex={currentPage === 1 ? -1 : undefined}
                   >
@@ -1302,10 +1313,7 @@ function Shop() {
                       <a
                         key={page}
                         href={buildShopUrl(selectedCategory.value, activeSort.value, page)}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          navigate(buildShopUrl(selectedCategory.value, activeSort.value, page));
-                        }}
+                        onClick={(event) => handlePageClick(event, page)}
                         className={page === currentPage ? "is-active" : ""}
                         aria-current={page === currentPage ? "page" : undefined}
                       >
@@ -1316,10 +1324,7 @@ function Shop() {
                   <a
                     className={currentPage === totalPages ? "is-disabled" : ""}
                     href={buildShopUrl(selectedCategory.value, activeSort.value, Math.min(totalPages, currentPage + 1))}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      if (currentPage < totalPages) navigate(buildShopUrl(selectedCategory.value, activeSort.value, currentPage + 1));
-                    }}
+                    onClick={(event) => handlePageClick(event, currentPage + 1)}
                     aria-disabled={currentPage === totalPages}
                     tabIndex={currentPage === totalPages ? -1 : undefined}
                   >
@@ -2200,7 +2205,7 @@ function Contact() {
         <div className="contact-care-head">
           <div className="eyebrow">Customer Care</div>
           <h1>Contact us</h1>
-          <p>We&apos;re here to make every experience effortless.<br />Tell us what you need and we&apos;ll take care of the rest.</p>
+          <p>We&apos;re here to make every experience effortless.<br className="contact-care-desktop-break" />{' '}Tell us what you need and we&apos;ll take care of the rest.</p>
         </div>
 
         <div className="contact-cards">
