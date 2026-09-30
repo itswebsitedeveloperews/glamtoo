@@ -1015,6 +1015,7 @@ h2 { text-transform: capitalize !important; }
 @media (max-width: 767px) {
   .cart-page h1 { font-size: 36px; }
   .wishlist-hero h1 { font: 400 clamp(36px, 7vw, 82px) / .88 var(--display); }
+  .wishlist-item h2 { font: 400 24px / 1 var(--display) !important; }
   .checkout-heading h1 { font-size: 36px; }
   .checkout-section-heading h2 { font: 400 26px / 1 var(--display) !important; }
   .checkout-order-heading h2 { font: 400 26px / 1 var(--display) !important; }
