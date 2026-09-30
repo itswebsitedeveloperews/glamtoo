@@ -3163,7 +3163,7 @@ function CustomerSignInContent() {
         </div>
         <div className="customer-auth-card">
           <h2 className="customer-signin-title">Sign in to Glam Too Boutique</h2>
-          <SignIn signUpUrl={`${basePath}/register`} fallbackRedirectUrl={basePath || '/'} />
+          <SignIn appearance={{ elements: { cardBox: { boxShadow: 'none' } } }} signUpUrl={`${basePath}/register`} fallbackRedirectUrl={basePath || '/'} />
           <a className="customer-recovery-link" href={`${basePath}/account/recovery`}>Forgot your password?</a>
         </div>
       </div>
