@@ -931,6 +931,8 @@ h2 { letter-spacing: -.02em !important; text-transform: capitalize !important; }
   .footer-bottom > span > a { display: inline-block; }
   .footer-legal-links { order: -1; flex-wrap: wrap; gap: 6px 16px; }
   .page-hero { padding: 65px 0 55px; }
+  .legal h1 { font-size: 40px; }
+  .legal h2 { font-size: 24px !important; }
   .legal .text-link { padding-bottom: 0; }
   .shop-layout { grid-template-columns: 1fr; gap: 30px; padding-top: 42px; }
   .filter { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
