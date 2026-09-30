@@ -2490,7 +2490,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .faq-support .button { min-height: 34px; padding: 0 14px; font-size: 14px; }
 .faq-page .button { font-family: var(--display); }
 .faq-support-image { height: 100%; overflow: hidden; }
-.faq-support-image img { width: 100%; height: 100%; object-fit: cover; object-position: 72% center; }
+.faq-support-image img { width: 100%; height: 100%; object-fit: cover; object-position: top center; }
 
 @media (max-width: 800px) {
   .faq-page { padding-bottom: 18px; }
