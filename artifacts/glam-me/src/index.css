@@ -3161,7 +3161,10 @@ input:focus, select:focus, textarea:focus { outline: none; }
 }
 
 @media (max-width: 800px) {
-  #root h2 { font-size: 34px !important; }
+  #root h1 { font-size: 36px !important; }
+  #root h2 { font-size: 28px !important; }
+  #root h3 { font-size: 22px !important; }
+  #root :is(h4, h5, h6) { font-size: 18px !important; }
   #root .product-name { font-size: 16px; }
   #root .price { font-size: 14px; }
   #root .product-shop-now { min-height: 38px; font-size: 14px; }
