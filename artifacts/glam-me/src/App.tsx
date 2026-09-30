@@ -8,6 +8,7 @@ import aboutStudioImage from '@assets/glam-me-5_1787653559643.webp';
 import aboutStoryImage from '@assets/glam-me-12_1787653559644.webp';
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogMediaSource, getCatalogProductImages, getCategorySlug, getProductCategorySlug, hydrateCatalogProductMedia, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import RouteSeo from '@/components/RouteSeo';
+import ShopMobileFilters, { type ShopFilterValues } from '@/components/ShopMobileFilters';
 import { defaultHomePageSettings, type HomePageSettings } from '@/data/home-page';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
@@ -53,7 +54,7 @@ const clerkAppearance = {
     borderRadius: '0px',
   },
   elements: {
-    rootBox: { width: '100%', display: 'flex', justifyContent: 'center' },
+    rootBox: { width: '100%', minWidth: '0', maxWidth: '100%', display: 'flex', justifyContent: 'center' },
     cardBox: { width: '440px', maxWidth: '100%', overflow: 'hidden', background: '#fffdfb', border: '1px solid #d8d0ca', borderRadius: '0px', boxShadow: '12px 12px 0 rgba(23, 22, 21, .08)' },
     card: { border: '0', background: 'transparent', borderRadius: '0px', boxShadow: 'none' },
     footer: { border: '0', background: 'transparent', borderRadius: '0px', boxShadow: 'none' },
@@ -63,7 +64,7 @@ const clerkAppearance = {
     footerActionLink: { color: '#e23d6f' },
     footerActionText: { color: '#716a67' },
     dividerText: { color: '#716a67' },
-    formButtonPrimary: { background: '#e23d6f', borderRadius: '0px' },
+    formButtonPrimary: { background: '#e23d6f', color: '#fff', borderRadius: '0px' },
     formFieldInput: { background: '#f5f1ed', color: '#171615', borderRadius: '0px' },
     socialButtonsBlockButton: { borderRadius: '0px' },
     socialButtonsBlockButtonText: { color: '#171615' },
@@ -905,7 +906,7 @@ function Header() {
               aria-label="Search products"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Search products..."
+              placeholder="Search Products..."
               autoFocus
               data-testid="input-header-search"
             />
@@ -1002,7 +1003,7 @@ function Footer() {
             <div><h4>Shop</h4><ul><li><a href={categoryUrlForName("New In")} data-testid="link-footer-new-in">New In</a></li><li><a href={categoryUrlForName("Clothes")} data-testid="link-footer-clothes">Clothes</a></li><li><a href={categoryUrlForName("Handbags")} data-testid="link-footer-handbags">Handbags</a></li><li><a href={categoryUrlForName("Purses")} data-testid="link-footer-purses">Purses</a></li><li><a href={categoryUrlForName("Jewellery")} data-testid="link-footer-jewellery">Jewellery</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
             <div><h4>Help</h4><ul><li><a href="/returns" data-testid="link-footer-delivery">Returns</a></li><li><a href="/faq" data-testid="link-footer-size-guide">Size Guide</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
             <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">About</a></li><li><a href="/about" data-testid="link-footer-style-journal">Style Journal</a></li></ul></div>
-            <div className="footer-knowledge"><h4>Stay in the know</h4><p>Sign up for new arrivals<br />and exclusive offers.</p><form className="footer-newsletter-form" action="/" method="get"><label className="sr-only" htmlFor="footer-newsletter-email">Email address</label><input id="footer-newsletter-email" name="email" type="email" placeholder="Enter your email" required data-testid="input-footer-newsletter-email" /><button type="submit" aria-label="Sign me up" data-testid="button-footer-newsletter-submit">→</button></form></div>
+            <div className="footer-knowledge"><h4>Stay in the know</h4><p>Sign up for new arrivals<br /> and exclusive offers.</p><form className="footer-newsletter-form" action="/" method="get"><label className="sr-only" htmlFor="footer-newsletter-email">Email address</label><input id="footer-newsletter-email" name="email" type="email" placeholder="Enter your email" required data-testid="input-footer-newsletter-email" /><button type="submit" aria-label="Sign me up" data-testid="button-footer-newsletter-submit">→</button></form></div>
           </div>
           <div className="footer-bottom"><span>© 2026 Glam Too. All rights reserved. <span aria-hidden="true">|</span> <a href="https://webdesignessex.io/" target="_blank" rel="noreferrer" data-testid="link-footer-web-design-essex">Web Design Essex</a></span><div className="footer-legal-links"><a href="/privacy" data-testid="link-footer-privacy">Privacy Policy</a><span aria-hidden="true">|</span><a href="/terms" data-testid="link-footer-terms">Terms &amp; Conditions</a></div></div>
         </div>
@@ -1133,11 +1134,19 @@ function sortProducts(products: CatalogProduct[], sort: string, salesByProduct: 
   return sorted;
 }
 
+function isProductInStock(product: CatalogProduct) {
+  return product.type === 'Simple'
+    ? product.stock > 0
+    : product.variations.some((variation) => variation.stock > 0);
+}
+
 function Shop() {
   useLiveInventory();
   const [, navigate] = useLocation();
   const search = useSearch();
   const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
+  const [mobileView, setMobileView] = useState<'cards' | 'list'>('cards');
+  const browseTabsRef = useRef<HTMLElement>(null);
   useEffect(() => {
     let active = true;
     fetch("/api/stripe/product-sales")
@@ -1160,6 +1169,14 @@ function Shop() {
   const searchQuery = searchParams.get("search")?.trim() ?? "";
   const categoryFilter = searchParams.get("category")?.trim().toLowerCase() ?? "";
   const sortFilter = searchParams.get("sort")?.trim().toLowerCase() ?? "";
+  const stockFilter = searchParams.get("stock") === "in" || searchParams.get("stock") === "out"
+    ? searchParams.get("stock") as 'in' | 'out'
+    : '';
+  const priceCeiling = Math.max(1, Math.ceil(Math.max(0, ...products.map((product) => parsePounds(product.price)))));
+  const requestedMin = Number(searchParams.get('min'));
+  const requestedMax = Number(searchParams.get('max'));
+  const minPrice = Math.min(priceCeiling, Math.max(0, Number.isFinite(requestedMin) ? requestedMin : 0));
+  const maxPrice = Math.max(minPrice, Math.min(priceCeiling, searchParams.has('max') && Number.isFinite(requestedMax) ? requestedMax : priceCeiling));
   const requestedPage = Number(searchParams.get("page"));
   const productCategories = new Map<string, string>();
   const storefrontCategories = getStorefrontCategories();
@@ -1175,20 +1192,43 @@ function Shop() {
   ];
   const selectedCategory = categoryOptions.find((option) => option.value === categoryFilter) ?? categoryOptions[0];
   const activeSort = productSortOptions.find((option) => option.value === sortFilter) ?? productSortOptions[0];
+  useEffect(() => {
+    const row = browseTabsRef.current;
+    const active = row?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!row || !active) return;
+    const left = active.getBoundingClientRect().left - row.getBoundingClientRect().left + row.scrollLeft;
+    row.scrollLeft = Math.max(0, left - (row.clientWidth - active.offsetWidth) / 2);
+  }, [selectedCategory.value, categoryOptions.length]);
   const normalizedQuery = searchQuery.toLowerCase();
-  const buildShopUrl = (nextCategory = selectedCategory.value, nextSort = activeSort?.value ?? "", nextPage = 1) => {
+  const buildShopUrl = (nextCategory = selectedCategory.value, nextSort = activeSort?.value ?? "", nextPage = 1, filters: Pick<ShopFilterValues, 'stock' | 'min' | 'max'> = { stock: stockFilter, min: minPrice, max: maxPrice }) => {
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
     if (nextCategory) params.set("category", nextCategory);
     if (nextSort) params.set("sort", nextSort);
+    if (filters.stock) params.set("stock", filters.stock);
+    if (filters.min > 0) params.set("min", String(filters.min));
+    if (filters.max < priceCeiling) params.set("max", String(filters.max));
     if (nextPage > 1) params.set("page", String(nextPage));
     const query = params.toString();
     return `${basePath}/shop${query ? `?${query}` : ""}`;
   };
-  const visibleProducts = sortProducts(products.filter((product) => {
-    const matchesSearch = !normalizedQuery || [product.name, product.category, product.slug].some((value) => value.toLowerCase().includes(normalizedQuery));
+  const searchProducts = products.filter((product) =>
+    !normalizedQuery || [product.name, product.category, product.slug].some((value) => value.toLowerCase().includes(normalizedQuery))
+  );
+  const stockCounts = Object.fromEntries(categoryOptions.map((option) => {
+    const matches = searchProducts.filter((product) =>
+      !option.value || option.matches.includes(getProductCategorySlug(product.category, storefrontCategories))
+    );
+    return [option.value, {
+      inStock: matches.filter(isProductInStock).length,
+      outOfStock: matches.filter((product) => !isProductInStock(product)).length,
+    }];
+  }));
+  const visibleProducts = sortProducts(searchProducts.filter((product) => {
     const matchesCategory = !selectedCategory.value || selectedCategory.matches.includes(getProductCategorySlug(product.category, storefrontCategories));
-    return matchesSearch && matchesCategory;
+    const matchesStock = !stockFilter || (isProductInStock(product) ? stockFilter === 'in' : stockFilter === 'out');
+    const price = parsePounds(product.price);
+    return matchesCategory && matchesStock && price >= minPrice && price <= maxPrice;
   }), activeSort.value, salesByProduct);
   const toolbarDescription = searchQuery
     ? `Search results for “${searchQuery}”`
@@ -1209,30 +1249,40 @@ function Shop() {
       <div className="container shop-layout">
         <aside className="filter">
           <h3>Browse</h3>
-          {categoryOptions.map((option) => (
-            <a
-              key={option.value || "all"}
-              href={buildShopUrl(option.value, activeSort?.value)}
-              onClick={(event) => {
-                event.preventDefault();
-                navigate(buildShopUrl(option.value, activeSort?.value));
-              }}
-              className={selectedCategory.value === option.value ? "is-active" : ""}
-              aria-current={selectedCategory.value === option.value ? "page" : undefined}
-              data-testid={`filter-category-${option.value || "all"}`}
-            >
-              {option.label}
-            </a>
-          ))}
+          <nav className="filter-tabs" ref={browseTabsRef} aria-label="Browse categories">
+            {categoryOptions.map((option) => (
+              <a
+                key={option.value || "all"}
+                href={buildShopUrl(option.value, activeSort?.value)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigate(buildShopUrl(option.value, activeSort?.value));
+                }}
+                className={selectedCategory.value === option.value ? "is-active" : ""}
+                aria-current={selectedCategory.value === option.value ? "page" : undefined}
+                data-testid={`filter-category-${option.value || "all"}`}
+              >
+                {option.label}
+              </a>
+            ))}
+          </nav>
         </aside>
         <section className="shop-main">
+          <ShopMobileFilters
+            applied={{ category: selectedCategory.value, sort: activeSort.value, stock: stockFilter, min: minPrice, max: maxPrice }}
+            counts={stockCounts}
+            priceCeiling={priceCeiling}
+            view={mobileView}
+            onViewChange={setMobileView}
+            onApply={(filters) => navigate(buildShopUrl(filters.category, filters.sort, 1, filters))}
+          />
           <div className="shop-toolbar">
             <div><span>{visibleProducts.length} {visibleProducts.length === 1 ? "piece" : "pieces"}</span><span>{toolbarDescription}{toolbarSort}</span></div>
             <ProductSortControl value={activeSort.value} onChange={(value) => navigate(buildShopUrl(selectedCategory.value, value))} />
           </div>
           {visibleProducts.length > 0 ? (
             <>
-              <div className="product-grid">{paginatedProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={currentPage === 1 && index < 2} />)}</div>
+              <div className={`product-grid${mobileView === 'list' ? ' is-list' : ''}`}>{paginatedProducts.map((product, index) => <ProductCard key={product.id} product={product} featured={currentPage === 1 && index < 2} />)}</div>
               {totalPages > 1 && (
                 <nav className="shop-pagination" aria-label="Shop pages">
                   <a
@@ -1421,6 +1471,13 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     setGalleryZoomOpen(false);
     setQuantity(1);
   }, [product?.id, params.slug]);
+
+  useEffect(() => {
+    if (!galleryZoomOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, [galleryZoomOpen]);
 
   useEffect(() => {
     let active = true;
@@ -2532,44 +2589,49 @@ function Cart() {
         <div className="eyebrow">Your edit</div>
         <h1>Your bag.</h1>
         {cartLines.length === 0 ? (
-          <p>Your bag is empty. <a className="text-link" href="/shop">Continue shopping</a></p>
+          <div className="cart-empty">
+            <p>Your bag is empty. Find a piece you love and add it to your edit.</p>
+            <a className="button button-pink" href="/shop">Continue shopping</a>
+          </div>
         ) : (
           <div className="cart-layout">
-            <div>
+            <div className="cart-items">
               {cartLines.map(({ item, product, variation }) => (
-                <div className="cart-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ''}`}>
+                <article className="cart-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ''}`}>
                   <img src={product.image} alt={product.name} style={{ objectPosition: product.position }} />
-                  <div>
+                  <div className="cart-item-details">
                     <h3>{product.name}</h3>
                     <p>{[item.size !== 'One size' ? item.size : '', item.colour ?? '', ...Object.values(item.options ?? {})].filter(Boolean).join(' · ')}</p>
-                    <div className="cart-quantity" aria-label={`Quantity for ${product.name}`}>
-                      <button
-                        className="cart-quantity-button"
-                        type="button"
-                        aria-label={`Decrease quantity of ${product.name}`}
-                        data-testid={`button-decrease-cart-${item.productId}-${item.variationId ?? item.size.replace(/\s+/g, '-').toLowerCase()}`}
-                        disabled={item.quantity <= 1}
-                        onClick={() => updateCartItemQuantity(item, item.quantity - 1)}
-                      >
-                        −
-                      </button>
-                      <span className="cart-quantity-value" aria-live="polite">{item.quantity}</span>
-                      <button
-                        className="cart-quantity-button"
-                        type="button"
-                        aria-label={`Increase quantity of ${product.name}`}
-                        data-testid={`button-increase-cart-${item.productId}-${item.variationId ?? item.size.replace(/\s+/g, '-').toLowerCase()}`}
-                        disabled={item.quantity >= (variation?.stock ?? product.stock)}
-                        onClick={() => updateCartItemQuantity(item, item.quantity + 1)}
-                      >
-                        +
-                      </button>
+                    <div className="cart-item-actions">
+                      <div className="cart-quantity" aria-label={`Quantity for ${product.name}`}>
+                        <button
+                          className="cart-quantity-button"
+                          type="button"
+                          aria-label={`Decrease quantity of ${product.name}`}
+                          data-testid={`button-decrease-cart-${item.productId}-${item.variationId ?? item.size.replace(/\s+/g, '-').toLowerCase()}`}
+                          disabled={item.quantity <= 1}
+                          onClick={() => updateCartItemQuantity(item, item.quantity - 1)}
+                        >
+                          −
+                        </button>
+                        <span className="cart-quantity-value" aria-live="polite">{item.quantity}</span>
+                        <button
+                          className="cart-quantity-button"
+                          type="button"
+                          aria-label={`Increase quantity of ${product.name}`}
+                          data-testid={`button-increase-cart-${item.productId}-${item.variationId ?? item.size.replace(/\s+/g, '-').toLowerCase()}`}
+                          disabled={item.quantity >= (variation?.stock ?? product.stock)}
+                          onClick={() => updateCartItemQuantity(item, item.quantity + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <strong className="cart-item-price">{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong>
                     </div>
                     <a className="text-link" href={`/product/${product.slug}`}>Edit item</a>
                   </div>
-                  <strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong>
-                  <button className="cart-remove" type="button" aria-label={`Remove ${product.name}`} data-testid={`button-remove-cart-${item.productId}-${item.variationId ?? item.size.replace(/\s+/g, '-').toLowerCase()}`} onClick={() => removeCartItem(item)}>×</button>
-                </div>
+                  <button className="cart-remove" type="button" aria-label={`Remove ${product.name}`} data-testid={`button-remove-cart-${item.productId}-${item.variationId ?? item.size.replace(/\s+/g, '-').toLowerCase()}`} onClick={() => removeCartItem(item)}><X size={18} aria-hidden="true" /></button>
+                </article>
               ))}
               <a className="text-link" href="/shop" data-testid="link-cart-continue">Continue shopping</a>
             </div>
@@ -3696,7 +3758,7 @@ function CustomerAccountPage() {
 }
 
 function CustomerSignUpPage() {
-  return <Shell><div className="customer-auth-page"><div className="customer-auth-copy"><div className="eyebrow">New here?</div><h1>Create your account.</h1><p>Register to keep your Glam Too details ready for every checkout.</p></div><SignUp signInUrl={`${basePath}/account`} fallbackRedirectUrl={basePath || '/'} /></div></Shell>;
+  return <Shell><div className="customer-auth-page customer-signup-page"><div className="customer-auth-copy"><div className="eyebrow">New here?</div><h1>Create your account.</h1><p>Register to keep your Glam Too details ready for every checkout.</p></div><SignUp appearance={{ elements: { headerTitle: { display: 'none' }, headerSubtitle: { display: 'none' } } }} signInUrl={`${basePath}/account`} fallbackRedirectUrl={basePath || '/'} /></div></Shell>;
 }
 
 function PasswordRecoveryPage() {
