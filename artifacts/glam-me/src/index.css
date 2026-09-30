@@ -451,9 +451,15 @@ h2 { letter-spacing: -.02em !important; text-transform: capitalize !important; }
 .field textarea { min-height: 145px; resize: vertical; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--ink); }
 .legal { max-width: 780px; padding: 72px 0 110px; }
-.legal h1 { margin: 8px 0 42px; font: 400 clamp(52px, 7vw, 90px)/.88 var(--display); }
+.legal h1 {
+  margin: 8px 0 42px;
+  font-weight: 400;
+  font-size: 60px;
+  text-transform: capitalize;
+}
 .legal h2 { margin: 35px 0 10px; font-size: 30px !important; font-weight: 400; }
 .legal p, .legal li { color: var(--muted); font-size: 14px; }
+.legal p a { color: var(--muted); font-size: 14px; letter-spacing: 0; text-transform: capitalize; }
 .legal ul { padding-left: 20px; }
 
 /* Delivery & Returns */
@@ -925,7 +931,7 @@ h2 { letter-spacing: -.02em !important; text-transform: capitalize !important; }
   .footer-bottom > span > a { display: inline-block; }
   .footer-legal-links { order: -1; flex-wrap: wrap; gap: 6px 16px; }
   .page-hero { padding: 65px 0 55px; }
-  .legal .text-link { font-size: inherit; letter-spacing: normal; text-transform: none; padding-bottom: 0; }
+  .legal .text-link { padding-bottom: 0; }
   .shop-layout { grid-template-columns: 1fr; gap: 30px; padding-top: 42px; }
   .filter { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
   .filter h3 { width: 100%; margin-bottom: 0; }
@@ -1080,6 +1086,7 @@ h2 { letter-spacing: -.02em !important; text-transform: capitalize !important; }
 }
 .customer-auth-copy p { max-width: 330px; color: var(--muted); font-size: 16px; line-height: 1.6; }
 .customer-auth-card { display: grid; justify-items: center; gap: 14px; }
+.glam-signup-card { border: 0; background: transparent; border-radius: 0; box-shadow: none; }
 .customer-recovery-link, .customer-recovery-card > a { color: var(--ink); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
 .customer-recovery-card { width: min(440px, 100%); border: 1px solid var(--line); background: #fffdfb; padding: 34px; box-shadow: 12px 12px 0 rgba(23, 22, 21, .08); }
 .customer-recovery-card form { display: grid; gap: 21px; }
@@ -2783,6 +2790,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   }
   .customer-auth-copy h1 { font-size: 42px !important; }
   .customer-auth-copy p { max-width: 520px; }
+  .glam-signup-card { padding: 20px; }
   .customer-auth-card, .customer-recovery-card {
     width: 100%;
     min-width: 0;

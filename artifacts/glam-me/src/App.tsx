@@ -3758,7 +3758,7 @@ function CustomerAccountPage() {
 }
 
 function CustomerSignUpPage() {
-  return <Shell><div className="customer-auth-page customer-signup-page"><div className="customer-auth-copy"><div className="eyebrow">New here?</div><h1>Create your account.</h1><p>Register to keep your Glam Too details ready for every checkout.</p></div><SignUp appearance={{ elements: { headerTitle: { display: 'none' }, headerSubtitle: { display: 'none' } } }} signInUrl={`${basePath}/account`} fallbackRedirectUrl={basePath || '/'} /></div></Shell>;
+  return <Shell><div className="customer-auth-page customer-signup-page"><div className="customer-auth-copy"><div className="eyebrow">New here?</div><h1>Create your account.</h1><p>Register to keep your Glam Too details ready for every checkout.</p></div><SignUp appearance={{ elements: { card: 'glam-signup-card', headerTitle: { display: 'none' }, headerSubtitle: { display: 'none' } } }} signInUrl={`${basePath}/account`} fallbackRedirectUrl={basePath || '/'} /></div></Shell>;
 }
 
 function PasswordRecoveryPage() {
