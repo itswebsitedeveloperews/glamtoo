@@ -166,7 +166,7 @@ function serializeOrder(row: OrderRow, items: OrderItemRow[]): StoredOrder {
     couponCode: row.coupon_code,
     discountAmount: row.discount_amount,
     delivery: {
-      method: row.delivery_method === "express" ? "Express delivery" : "Standard delivery",
+      method: row.delivery_method === "express" ? "Express delivery" : row.delivery_method === "standard" ? "Standard delivery" : row.delivery_method,
       name: row.customer_name,
       address: {
         line1: row.address_line_1,

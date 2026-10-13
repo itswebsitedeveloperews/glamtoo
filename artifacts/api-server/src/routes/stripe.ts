@@ -46,6 +46,7 @@ import {
 import { attemptPaymentRefund } from "../paymentResolution";
 import { calculateIncludedVat, VAT_RATE_PERCENT } from "../taxService";
 import { resolveShippingMethod } from "../shippingMethods";
+import { checkoutOriginAllowed, createGuestCheckoutOwner, ownsCheckoutPayment, readGuestCheckoutOwner } from "../checkoutIdentity";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -554,9 +555,8 @@ router.post("/stripe/payment-intent", async (request, response) => {
   let pendingPaymentReference: string | undefined;
   try {
     const { userId } = getAuth(request);
-    if (!userId) {
-      return response.status(401).json({ error: "Sign in before checkout so your order can be saved." });
-    }
+    if (!checkoutOriginAllowed(request)) return response.status(403).json({ error: "Start checkout from the shop website." });
+    const ownerId = userId || createGuestCheckoutOwner(request, response);
 
     const submittedLines: SubmittedCheckoutLine[] = Array.isArray(request.body?.lines)
       ? (request.body.lines as unknown[])
@@ -568,6 +568,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
     const customerName = safeText(request.body?.customerName, 120);
     const phone = safeText(request.body?.phone, 40);
     const paymentMethodId = safeText(request.body?.paymentMethodId, 120);
+    if (!userId && paymentMethodId) return response.status(403).json({ error: "Sign in to use a saved payment method, or enter a new card for guest checkout." });
     const address = asRecord(request.body?.address);
     const addressLine1 = safeText(address.line1, 200);
     const addressLine2 = safeText(address.line2, 200);
@@ -601,7 +602,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
       return response.status(400).json({ error: "This coupon makes the order too small for card payment. Add another item or use a different coupon." });
     }
     const order = await createPendingOrder(orderInput(
-      userId,
+      ownerId,
       email,
       customerName,
       phone,
@@ -625,10 +626,10 @@ router.post("/stripe/payment-intent", async (request, response) => {
 
     const stripe = await getUncachableStripeClient();
     await recoverExpiredPendingOrders(stripe);
-    const customer = await getOrCreateStripeCustomer(stripe, userId, email, customerName);
+    const customer = userId ? await getOrCreateStripeCustomer(stripe, userId, email, customerName) : undefined;
     if (paymentMethodId) {
       const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-      if (paymentMethod.customer !== customer.id) {
+      if (paymentMethod.customer !== customer?.id) {
         return response.status(403).json({ error: "That saved payment method does not belong to your account." });
       }
     }
@@ -636,9 +637,9 @@ router.post("/stripe/payment-intent", async (request, response) => {
       amount,
       currency: "gbp",
       payment_method_types: ["card"],
-      customer: customer.id,
+      customer: customer?.id,
       payment_method: paymentMethodId || undefined,
-      setup_future_usage: "off_session",
+      setup_future_usage: userId ? "off_session" : undefined,
       receipt_email: email,
       description: `Glam Too order for ${customerName}`,
       shipping: {
@@ -655,7 +656,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
       metadata: {
         store: "Glam Too",
         glam_too_order_id: order.id,
-        clerk_user_id: userId,
+        ...(userId ? { clerk_user_id: userId } : { guest_checkout_id: ownerId }),
         customer_name: customerName,
         customer_email: email,
         delivery,
@@ -677,7 +678,7 @@ router.post("/stripe/payment-intent", async (request, response) => {
         await reserveCouponRedemption(
           pricing.coupon,
           paymentIntent.id,
-          userId,
+          ownerId,
           new Date(Date.now() + 30 * 60 * 1000),
         );
       }
@@ -702,9 +703,8 @@ router.post("/stripe/checkout", async (request, response) => {
   let pendingPaymentReference: string | undefined;
   try {
     const { userId } = getAuth(request);
-    if (!userId) {
-      return response.status(401).json({ error: "Sign in before checkout so your order can be saved." });
-    }
+    if (!checkoutOriginAllowed(request)) return response.status(403).json({ error: "Start checkout from the shop website." });
+    const ownerId = userId || createGuestCheckoutOwner(request, response);
 
     const submittedLines: SubmittedCheckoutLine[] = Array.isArray(request.body?.lines)
       ? (request.body.lines as unknown[])
@@ -728,6 +728,9 @@ router.post("/stripe/checkout", async (request, response) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return response.status(400).json({ error: "Enter a valid email address to continue." });
     }
+    if (!customerName || !addressLine1 || !city || !postcode || country !== "GB") {
+      return response.status(400).json({ error: "Complete your billing and UK delivery address before paying." });
+    }
 
     const lines = [...checkoutLines] as CheckoutLine[];
     const inventoryLines = [...lines];
@@ -743,7 +746,7 @@ router.post("/stripe/checkout", async (request, response) => {
       return response.status(400).json({ error: "This coupon makes the order too small for card payment. Add another item or use a different coupon." });
     }
     const order = await createPendingOrder(orderInput(
-      userId,
+      ownerId,
       email,
       customerName,
       phone,
@@ -811,7 +814,7 @@ router.post("/stripe/checkout", async (request, response) => {
         glam_too_order_id: order.id,
         customer_name: customerName,
         delivery,
-        clerk_user_id: userId,
+        ...(userId ? { clerk_user_id: userId } : { guest_checkout_id: ownerId }),
         vat_rate_percent: String(VAT_RATE_PERCENT),
         vat_amount: String(vatAmount),
          ...couponMetadata(pricing),
@@ -833,7 +836,7 @@ router.post("/stripe/checkout", async (request, response) => {
         await reserveCouponRedemption(
           pricing.coupon,
           session.id,
-          userId,
+          ownerId,
           new Date((session.expires_at ?? Math.floor(Date.now() / 1000) + 30 * 60) * 1000),
         );
       }
@@ -891,7 +894,9 @@ router.post("/stripe/coupon/validate", async (request, response) => {
 
 router.post("/stripe/finalize-payment", async (request, response) => {
   const { userId } = getAuth(request);
-  if (!userId) return response.status(401).json({ error: "Sign in to finalise this order." });
+  if (!checkoutOriginAllowed(request)) return response.status(403).json({ error: "Confirm your order from the shop website." });
+  const guestOwner = readGuestCheckoutOwner(request);
+  if (!userId && !guestOwner) return response.status(401).json({ error: "Your checkout session is missing or expired. Open this page in the browser you used to pay, or contact us for help." });
   const paymentIntentId = safeText(request.body?.paymentIntentId, 120);
   const checkoutSessionId = safeText(request.body?.checkoutSessionId, 120);
   if ((!paymentIntentId && !checkoutSessionId) || (paymentIntentId && checkoutSessionId)
@@ -909,7 +914,7 @@ router.post("/stripe/finalize-payment", async (request, response) => {
     const paid = paymentIntentId
       ? (payment as Stripe.PaymentIntent).status === "succeeded"
       : (payment as Stripe.Checkout.Session).payment_status === "paid";
-    if (!paid || metadata.store !== "Glam Too" || metadata.clerk_user_id !== userId) {
+    if (!paid || !ownsCheckoutPayment(metadata, userId, guestOwner)) {
       return response.status(400).json({ error: "This payment is not ready to finalise." });
     }
     const orderId = safeText(metadata.glam_too_order_id, 80);
@@ -934,8 +939,10 @@ router.post("/stripe/finalize-payment", async (request, response) => {
 
 router.post("/stripe/abandon-payment", async (request, response) => {
   const { userId } = getAuth(request);
+  if (!checkoutOriginAllowed(request)) return response.status(403).json({ error: "Manage your payment from the shop website." });
   const paymentIntentId = safeText(request.body?.paymentIntentId, 120);
-  if (!userId) return response.status(401).json({ error: "Sign in to manage this payment." });
+  const guestOwner = readGuestCheckoutOwner(request);
+  if (!userId && !guestOwner) return response.status(401).json({ error: "Your checkout session is missing or expired. Please use the browser where you started this payment." });
   if (!/^pi_[A-Za-z0-9_]+$/.test(paymentIntentId)) {
     return response.status(400).json({ error: "Choose a valid Stripe payment." });
   }
@@ -944,8 +951,7 @@ router.post("/stripe/abandon-payment", async (request, response) => {
     const stripe = await getUncachableStripeClient();
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
     if (
-      paymentIntent.metadata.store !== "Glam Too"
-      || paymentIntent.metadata.clerk_user_id !== userId
+      !ownsCheckoutPayment(paymentIntent.metadata, userId, guestOwner)
     ) {
       return response.status(400).json({ error: "This payment cannot be cancelled." });
     }

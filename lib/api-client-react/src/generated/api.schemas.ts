@@ -5,6 +5,65 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export interface CheckoutPaymentLine {
+  productId: string;
+  variationId?: string;
+  /** @minimum 1 */
+  quantity: number;
+}
+
+export type CheckoutPaymentAddressCountry = typeof CheckoutPaymentAddressCountry[keyof typeof CheckoutPaymentAddressCountry];
+
+
+export const CheckoutPaymentAddressCountry = {
+  GB: 'GB',
+} as const;
+
+export interface CheckoutPaymentAddress {
+  line1: string;
+  line2?: string;
+  city: string;
+  postcode: string;
+  country: CheckoutPaymentAddressCountry;
+}
+
+export interface CheckoutPaymentInput {
+  email: string;
+  customerName: string;
+  phone?: string;
+  /** @minItems 1 */
+  lines: CheckoutPaymentLine[];
+  delivery: string;
+  couponCode?: string;
+  paymentMethodId?: string;
+  address: CheckoutPaymentAddress;
+}
+
+export interface CheckoutPaymentIntentResult {
+  clientSecret: string;
+  paymentIntentId: string;
+}
+
+export interface HostedCheckoutResult {
+  url: string;
+}
+
+export interface CheckoutPaymentReference {
+  paymentIntentId?: string;
+  checkoutSessionId?: string;
+}
+
+/**
+ * @nullable
+ */
+export type CheckoutFinalizationResultOrder = { [key: string]: unknown } | null;
+
+export interface CheckoutFinalizationResult {
+  finalised: boolean;
+  /** @nullable */
+  order: CheckoutFinalizationResultOrder;
+}
+
 export type SeoResolutionStatus = typeof SeoResolutionStatus[keyof typeof SeoResolutionStatus];
 
 
@@ -97,6 +156,10 @@ export interface ContactEnquiryResponse {
 export interface ErrorEnvelope {
   error: string;
 }
+
+export type AbandonCheckoutPayment200 = {
+  abandoned: boolean;
+};
 
 export type ResolveSeoParams = {
 /**

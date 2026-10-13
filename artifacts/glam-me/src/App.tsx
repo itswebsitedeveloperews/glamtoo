@@ -16,6 +16,7 @@ import { shadcn } from '@clerk/themes';
 import { ChevronDown, ZoomIn, Clock, CreditCard, Headphones, HelpCircle, LayoutDashboard, LogOut, Mail, MapPin, MessageSquare, Phone, RefreshCcw, Ruler, Search, ShoppingBag, Sparkles, Truck, UserRound, X, type LucideIcon } from 'lucide-react';
 import { Link, Route, Router as WouterRouter, Switch, useLocation, useSearch } from 'wouter';
 import { useSubmitContactEnquiry } from '@workspace/api-client-react';
+import type { CheckoutPaymentInput, CheckoutPaymentIntentResult } from '@workspace/api-client-react';
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin-dashboard';
 import { hasRichTextContent, sanitizeRichTextHtml } from '@/utils/rich-text';
@@ -193,6 +194,23 @@ const emptyCustomerProfile: CustomerProfile = {
   postcode: "",
   country: "GB",
 };
+
+const checkoutAccountDraftKey = "glam-too-checkout-account-draft";
+function readCheckoutAccountDraft(): CustomerProfile | undefined {
+  try {
+    const raw = sessionStorage.getItem(checkoutAccountDraftKey);
+    if (!raw) return undefined;
+    const draft = JSON.parse(raw) as { expiresAt: number; profile: CustomerProfile };
+    if (!Number.isFinite(draft.expiresAt) || draft.expiresAt <= Date.now() || !draft.profile
+      || !Object.keys(emptyCustomerProfile).every((key) => typeof draft.profile[key as keyof CustomerProfile] === "string")) {
+      sessionStorage.removeItem(checkoutAccountDraftKey);
+      return undefined;
+    }
+    return draft.profile;
+  } catch {
+    return undefined;
+  }
+}
 
 type StripeCardElement = {
   mount: (target: HTMLElement) => void;
@@ -2665,7 +2683,12 @@ function Cart() {
 function Checkout() {
   useLiveInventory();
   const { isLoaded, isSignedIn } = useAuth();
+  const { openSignUp, openSignIn } = useClerk();
   const [, setLocation] = useLocation();
+  const [accountDraft] = useState(readCheckoutAccountDraft);
+  const hasEnteredBillingDetails = useRef(Boolean(accountDraft));
+  const shouldPreserveAccountDraft = useRef(Boolean(accountDraft));
+  const [createAccount, setCreateAccount] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [cardError, setCardError] = useState("");
@@ -2673,7 +2696,7 @@ function Checkout() {
   const { shippingMethods, shippingMethodsLoading, shippingMethodsError } = useShippingMethods();
   const [publishableKey, setPublishableKey] = useState("");
   const [paymentSetupError, setPaymentSetupError] = useState("");
-  const [checkoutProfile, setCheckoutProfile] = useState<CustomerProfile>(emptyCustomerProfile);
+  const [checkoutProfile, setCheckoutProfile] = useState<CustomerProfile>(accountDraft ?? emptyCustomerProfile);
   const [savedPaymentMethods, setSavedPaymentMethods] = useState<SavedPaymentMethod[]>([]);
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("");
   const [couponCode, setCouponCode] = useState(() => getCheckoutPreferences().couponCode ?? "");
@@ -2701,6 +2724,42 @@ function Checkout() {
     return product ? [{ item, product, variation }] : [];
   });
   const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
+
+  useEffect(() => {
+    if (!shouldPreserveAccountDraft.current) return;
+    try {
+      sessionStorage.setItem(checkoutAccountDraftKey, JSON.stringify({
+        profile: checkoutProfile,
+        expiresAt: Date.now() + 30 * 60 * 1000,
+      }));
+    } catch { /* Guest checkout itself does not require an account draft. */ }
+  }, [checkoutProfile]);
+
+  function startCheckoutAccount(mode: "sign-up" | "sign-in") {
+    try {
+      sessionStorage.setItem(checkoutAccountDraftKey, JSON.stringify({
+        profile: checkoutProfile,
+        expiresAt: Date.now() + 30 * 60 * 1000,
+      }));
+      shouldPreserveAccountDraft.current = true;
+    } catch {
+      setPaymentError("Your browser could not preserve your billing details for sign-in. Allow session storage, or leave Create an account unchecked to continue as a guest.");
+      return;
+    }
+    const options = { forceRedirectUrl: window.location.href };
+    if (mode === "sign-up") {
+      openSignUp({
+        ...options,
+        initialValues: {
+          emailAddress: checkoutProfile.email || undefined,
+          firstName: checkoutProfile.firstName || undefined,
+          lastName: checkoutProfile.lastName || undefined,
+        },
+      });
+    } else {
+      openSignIn({ ...options, initialValues: { emailAddress: checkoutProfile.email || undefined } });
+    }
+  }
 
   useEffect(() => {
     const method = selectShippingMethod(shippingMethods, delivery);
@@ -2779,7 +2838,12 @@ function Checkout() {
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) return;
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setSavedPaymentMethods([]);
+      setSelectedPaymentMethodId("");
+      return;
+    }
     let cancelled = false;
     Promise.all([
       fetch("/api/account/profile", { credentials: "include" }).then(async (response) => {
@@ -2793,7 +2857,7 @@ function Checkout() {
     ])
       .then(([profile, paymentMethods]) => {
         if (cancelled) return;
-        if (profile) setCheckoutProfile(profile);
+        if (profile && !hasEnteredBillingDetails.current) setCheckoutProfile(profile);
         setSavedPaymentMethods(paymentMethods);
         if (paymentMethods[0]) setSelectedPaymentMethodId(paymentMethods[0].id);
       })
@@ -2859,8 +2923,12 @@ function Checkout() {
 
   async function beginStripeCheckout(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!isSignedIn) {
-      setPaymentError("Sign in before checkout so this order is saved to your account.");
+    if (!isLoaded) {
+      setPaymentError("Checkout is still loading. Please try again in a moment.");
+      return;
+    }
+    if (createAccount && !isSignedIn) {
+      startCheckoutAccount("sign-up");
       return;
     }
     if (shippingMethodsLoading || !selectedShipping) {
@@ -2902,28 +2970,29 @@ function Checkout() {
         localStorage.removeItem(pendingCouponPaymentStorageKey);
       }
       const customerName = [formData.get("firstName"), formData.get("lastName")].filter(Boolean).join(" ");
+      const paymentInput: CheckoutPaymentInput = {
+        email: String(formData.get("email") ?? ""),
+        customerName,
+        phone: String(formData.get("phone") ?? ""),
+        lines,
+        delivery,
+        couponCode: appliedCoupon?.coupon.code,
+        paymentMethodId: isSignedIn ? selectedPaymentMethodId || undefined : undefined,
+        address: {
+          line1: String(formData.get("address") ?? ""),
+          line2: String(formData.get("addressTwo") ?? ""),
+          city: String(formData.get("city") ?? ""),
+          postcode: String(formData.get("postcode") ?? ""),
+          country: "GB",
+        },
+      };
       const response = await fetch("/api/stripe/payment-intent", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: formData.get("email"),
-          customerName,
-          phone: formData.get("phone"),
-          lines,
-          delivery,
-          couponCode: appliedCoupon?.coupon.code,
-          paymentMethodId: selectedPaymentMethodId || undefined,
-          address: {
-            line1: formData.get("address"),
-            line2: formData.get("addressTwo"),
-            city: formData.get("city"),
-            postcode: formData.get("postcode"),
-            country: formData.get("country"),
-          },
-        }),
+        body: JSON.stringify(paymentInput),
       });
-      const result = await response.json() as { clientSecret?: string; paymentIntentId?: string; error?: string };
+      const result = await response.json() as Partial<CheckoutPaymentIntentResult> & { error?: string };
       if (!response.ok || !result.clientSecret) throw new Error(result.error || "Stripe checkout is not available right now.");
       if (result.paymentIntentId) {
         localStorage.setItem(pendingCouponPaymentStorageKey, result.paymentIntentId);
@@ -2989,6 +3058,7 @@ function Checkout() {
       }
       localStorage.removeItem(pendingCouponPaymentStorageKey);
       clearCart();
+      try { sessionStorage.removeItem(checkoutAccountDraftKey); } catch { /* The draft also expires automatically. */ }
       window.location.assign(`${basePath}/order-confirmation?payment_intent=${encodeURIComponent(confirmation.paymentIntent.id)}`);
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : "Unable to start Stripe checkout.");
@@ -3005,6 +3075,7 @@ function Checkout() {
   const total = Math.max(0, subtotal + deliveryAmount - discountAmount);
   const vatAmount = appliedCoupon ? appliedCoupon.vatAmount / 100 : Math.round(total * 100 / 6) / 100;
   const updateCheckoutProfile = (field: keyof CustomerProfile, value: string) => {
+    hasEnteredBillingDetails.current = true;
     setCheckoutProfile((current) => ({ ...current, [field]: value }));
   };
 
@@ -3023,7 +3094,7 @@ function Checkout() {
         </header>
         <form className="checkout-layout" onSubmit={beginStripeCheckout}>
           <div className="checkout-details">
-            {!isSignedIn && <div className="checkout-account-notice"><strong>Sign in to save this order to your account.</strong><a className="text-link" href="/account">Sign in or create an account</a></div>}
+            {!isSignedIn && <div className="checkout-account-notice"><strong>You can checkout as a guest. No account is required.</strong><a className="text-link" href="/account" onClick={(event) => { event.preventDefault(); startCheckoutAccount("sign-in"); }}>Already have an account? Sign in</a></div>}
             <section className="checkout-section">
               <div className="checkout-section-heading"><span>01</span><div><h2>Billing details</h2><p>We&apos;ll use these details for your payment confirmation.</p></div></div>
               <div className="checkout-field-grid">
@@ -3037,6 +3108,10 @@ function Checkout() {
                 <div className="field"><label htmlFor="checkout-postcode">Postcode</label><input id="checkout-postcode" name="postcode" type="text" required autoComplete="postal-code" data-testid="input-checkout-postcode" value={checkoutProfile.postcode} onChange={(event) => updateCheckoutProfile("postcode", event.target.value)} /></div>
                 <div className="field checkout-field-wide"><label htmlFor="checkout-phone">Phone <span>Optional</span></label><input id="checkout-phone" name="phone" type="tel" autoComplete="tel" placeholder="For delivery updates only" value={checkoutProfile.phone} onChange={(event) => updateCheckoutProfile("phone", event.target.value)} /></div>
               </div>
+            {!isSignedIn && <div className="checkout-account-option">
+              <label htmlFor="checkout-create-account"><input id="checkout-create-account" type="checkbox" checked={createAccount} onChange={(event) => setCreateAccount(event.target.checked)} data-testid="checkbox-checkout-create-account" /> Create an account?</label>
+              {createAccount && <div><p>Create your account securely, then return here to pay. Your billing details and bag will be kept.</p><button className="text-link" type="button" onClick={() => startCheckoutAccount("sign-up")} data-testid="button-checkout-create-account">Create account</button></div>}
+            </div>}
             </section>
             <section className="checkout-section">
               <div className="checkout-section-heading"><span>02</span><div><h2>Shipping</h2><p>Choose how quickly you&apos;d like your order to arrive.</p></div></div>
@@ -3077,7 +3152,7 @@ function Checkout() {
               {couponMessage && <p className="checkout-coupon-success" role="status">{couponMessage}</p>}
             </div>
             <div className="checkout-totals"><div><span>Subtotal</span><strong>{formatPounds(subtotal)}</strong></div><div><span>Delivery</span><strong>{!selectedShipping ? shippingMethodsLoading ? "Loading…" : "Unavailable" : deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</strong></div>{appliedCoupon && <div className="checkout-discount-row"><span>Discount · {appliedCoupon.coupon.code}</span><strong>−{formatPounds(discountAmount)}</strong></div>}<div><span>VAT included (20%)</span><strong>{selectedShipping ? formatPounds(vatAmount) : "—"}</strong></div><div className="checkout-total"><span>Total</span><strong>{selectedShipping ? formatPounds(total) : "—"}</strong></div></div>
-             <button className="button checkout-pay-button" type="submit" disabled={!isLoaded || !isSignedIn || isPaying || !publishableKey || Boolean(paymentSetupError) || cartLines.length === 0 || shippingMethodsLoading || shippingMethods.length === 0 || !selectedShipping} data-testid="button-place-order">{isPaying ? "Processing secure payment…" : shippingMethodsLoading ? "Loading delivery options…" : shippingMethods.length === 0 ? "Delivery unavailable" : !isLoaded ? "Checking account…" : !isSignedIn ? "Sign in to checkout" : !publishableKey ? "Loading secure payment…" : `Pay securely · ${formatPounds(total)}`}</button>
+             <button className="button checkout-pay-button" type="submit" disabled={!isLoaded || isPaying || !publishableKey || Boolean(paymentSetupError) || cartLines.length === 0 || shippingMethodsLoading || shippingMethods.length === 0 || !selectedShipping} data-testid="button-place-order">{isPaying ? "Processing secure payment…" : shippingMethodsLoading ? "Loading delivery options…" : shippingMethods.length === 0 ? "Delivery unavailable" : !isLoaded ? "Loading checkout…" : !publishableKey ? "Loading secure payment…" : createAccount && !isSignedIn ? "Create account & continue" : `Pay securely · ${formatPounds(total)}`}</button>
             <p className="checkout-security-copy">Your card details never touch Glam Too&apos;s servers. Stripe processes your payment securely.</p>
           </aside>
         </form>
@@ -3087,8 +3162,10 @@ function Checkout() {
 }
 
 function Confirmation() {
+  const { isSignedIn } = useAuth();
   const [state, setState] = useState<"confirming" | "confirmed" | "error" | "missing">("confirming");
   const [order, setOrder] = useState<CustomerOrder | null>(null);
+  const [confirmationError, setConfirmationError] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -3114,10 +3191,14 @@ function Confirmation() {
           localStorage.removeItem(pendingCouponPaymentStorageKey);
         }
         clearCart();
+        try { sessionStorage.removeItem(checkoutAccountDraftKey); } catch { /* The draft also expires automatically. */ }
         setOrder(result.order);
         setState("confirmed");
-      } catch {
-        if (active) setState("error");
+      } catch (error) {
+        if (active) {
+          setConfirmationError(error instanceof Error ? error.message : "Unable to confirm your order yet.");
+          setState("error");
+        }
       }
     }
     void confirmOrder();
@@ -3128,14 +3209,14 @@ function Confirmation() {
     return <Shell><div className="container confirmation"><div className="confirmation-mark">…</div><div className="eyebrow">Confirming payment</div><h1>One moment.</h1><p>We&apos;re saving your paid order securely. Please keep this page open.</p></div></Shell>;
   }
   if (state === "error") {
-    return <Shell><div className="container confirmation"><div className="confirmation-mark">!</div><div className="eyebrow">Payment received</div><h1>We&apos;re confirming your order.</h1><p>Your card payment may have succeeded, but we have not yet received a saved order confirmation. Your bag has been kept safe. Refresh this page in a moment to check again.</p><button className="button button-pink" type="button" onClick={() => window.location.reload()}>Check my order</button></div></Shell>;
+    return <Shell><div className="container confirmation"><div className="confirmation-mark">!</div><div className="eyebrow">Order confirmation</div><h1>We&apos;re confirming your order.</h1><p>Your card payment may have succeeded, but we have not yet received a saved order confirmation. Your bag has been kept safe. Refresh this page in a moment to check again.</p><p role="alert">{confirmationError}</p><button className="button button-pink" type="button" onClick={() => window.location.reload()}>Check my order</button><p><a className="text-link" href="/contact">Contact us for help</a></p></div></Shell>;
   }
   if (state === "missing") {
-    return <Shell><div className="container confirmation"><div className="eyebrow">Order confirmation</div><h1>We need your payment reference.</h1><p>Return to your account to view confirmed orders, or contact us if you have been charged.</p><a className="button button-pink" href="/account">View my orders</a></div></Shell>;
+    return <Shell><div className="container confirmation"><div className="eyebrow">Order confirmation</div><h1>We need your payment reference.</h1><p>{isSignedIn ? "Return to your account to view confirmed orders, or contact us if you have been charged." : "Contact us with your payment receipt if you have been charged. You do not need an account to get help with a guest order."}</p><a className="button button-pink" href={isSignedIn ? "/account" : "/contact"}>{isSignedIn ? "View my orders" : "Contact us"}</a></div></Shell>;
   }
   if (order?.paymentResolution && order.paymentResolution !== "none") {
     const copy = paymentResolutionCopy(order);
-    return <Shell><div className="container confirmation"><div className="confirmation-mark">!</div><div className="eyebrow">Payment received</div><h1>{copy.title}</h1><p>{copy.detail}</p><p>Your reference is {order.id}. You can check this update any time in your account.</p><a className="button button-pink" href="/account">View my orders</a></div></Shell>;
+    return <Shell><div className="container confirmation"><div className="confirmation-mark">!</div><div className="eyebrow">Payment received</div><h1>{copy.title}</h1><p>{copy.detail}</p><p>Your reference is {order.id}. {isSignedIn ? "You can check this update any time in your account." : "Keep this reference and contact us for help with your guest order."}</p><a className="button button-pink" href={isSignedIn ? "/account" : "/contact"}>{isSignedIn ? "View my orders" : "Contact us"}</a></div></Shell>;
   }
   return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order {order?.id} is being wrapped with care.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
 }

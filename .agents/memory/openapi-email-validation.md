@@ -1,10 +1,10 @@
 ---
-name: OpenAPI email validation compatibility
-description: Avoid a code-generation mismatch between OpenAPI email formats and the workspace Zod runtime.
+name: OpenAPI Zod generation compatibility
+description: Avoid mismatches between the API generator and the workspace Zod runtime.
 ---
 
-Do not use `format: email` in this workspace’s OpenAPI schemas until its generator and Zod runtime are compatible; enforce email syntax at the server boundary instead.
+Keep the API generator's target Zod major explicitly aligned with the installed runtime rather than relying on automatic detection.
 
-**Why:** The current generator emits `zod.email()`, while the installed Zod version does not provide that API, causing generated-library typechecking to fail.
+**Why:** Automatic detection emitted Zod 4 helpers such as `zod.email()` and `zod.int()` against this workspace’s Zod 3 runtime, breaking generated-library typechecking. Explicitly selecting the compatible major fixed generation without changing dependencies.
 
-**How to apply:** Keep length constraints in the OpenAPI schema and add explicit email validation in the route before accepting the request.
+**How to apply:** Preserve the explicit generation target unless upgrading the runtime deliberately, and check generated libraries after schema changes. Continue validating checkout email and quantity at the server boundary.

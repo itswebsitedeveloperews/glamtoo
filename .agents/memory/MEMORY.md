@@ -14,12 +14,13 @@
 - [Stripe regional Search API](stripe-regional-search-api.md) — Use Stripe list APIs, not Search API, for customer and product lookup in this account region.
 - [Coupon payment allocations](coupon-payment-allocations.md) — Keep each coupon allocation until Stripe reports a verified terminal outcome; do not free it on retryable card failures.
 - [Application order finalization](application-order-finalization.md) — Store an order before payment and use one idempotent finalizer for browser callbacks and Stripe webhooks.
+- [Guest checkout](guest-checkout-policy.md) — Merchant approved guest payment with optional registration; preserve browser ownership and billing drafts through registration.
 - [VAT-inclusive pricing](vat-inclusive-pricing.md) — Glam Too displays 20% UK VAT as included in existing GBP prices; it never increases the checkout total.
 - [UK shipping defaults](uk-shipping-rules.md) — Original £3.95/£75 rates are historical defaults; preserve admin-configured rates when fixing shipping inconsistencies.
 - [Legacy payment reconciliation](legacy-payment-reconciliation.md) — Use stable cursors when importing historical Stripe payments; synced records can arrive while paging.
 - [Bestseller ranking](bestseller-ranking.md) — Rank products by paid units sold; never use current stock as a bestseller proxy.
 - [Catalog refresh routing](catalog-refresh-routing.md) — Catalog refreshes must not remount the admin route, or active admin workspace state resets to Overview.
-- [OpenAPI email validation](openapi-email-validation.md) — This workspace’s generator emits a Zod API unsupported by its installed Zod version for format: email.
+- [OpenAPI/Zod compatibility](openapi-email-validation.md) — Generator auto-detection emitted unsupported helpers; explicitly match the installed Zod major.
 - [Contact spam protection](contact-spam-protection.md) — Do not use a hidden honeypot field; browser autofill caused valid enquiries to fail validation.
 - [Contact submission semantics](contact-submission-semantics.md) — Success means the enquiry is durably received; email delivery is best-effort and must not block customers.
 - [Flexible variation attributes](flexible-variation-attributes.md) — Products define ordered attributes first; combinations and storefront selectors must render only those definitions.

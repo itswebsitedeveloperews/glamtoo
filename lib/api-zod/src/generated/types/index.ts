@@ -6,11 +6,21 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './abandonCheckoutPayment200';
+export * from './checkoutFinalizationResult';
+export * from './checkoutFinalizationResultOrder';
+export * from './checkoutPaymentAddress';
+export * from './checkoutPaymentAddressCountry';
+export * from './checkoutPaymentInput';
+export * from './checkoutPaymentIntentResult';
+export * from './checkoutPaymentLine';
+export * from './checkoutPaymentReference';
 export * from './contactEnquiryInput';
 export * from './contactEnquiryInputTopic';
 export * from './contactEnquiryResponse';
 export * from './errorEnvelope';
 export * from './healthStatus';
+export * from './hostedCheckoutResult';
 export * from './resolveSeoParams';
 export * from './seoResolution';
 export * from './seoResolutionRobots';

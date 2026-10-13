@@ -9,6 +9,102 @@ import * as zod from 'zod';
 
 
 /**
+ * Guest payments are owned by an opaque HttpOnly browser cookie, not by the supplied email. Saved payment methods are available only to signed-in customers.
+ * @summary Start an authenticated or guest card payment
+ */
+
+
+
+
+export const CreateCheckoutPaymentIntentBody = zod.object({
+  "email": zod.string(),
+  "customerName": zod.string(),
+  "phone": zod.string().optional(),
+  "lines": zod.array(zod.object({
+  "productId": zod.string(),
+  "variationId": zod.string().optional(),
+  "quantity": zod.number().int().min(1)
+})).min(1),
+  "delivery": zod.string(),
+  "couponCode": zod.string().optional(),
+  "paymentMethodId": zod.string().optional(),
+  "address": zod.object({
+  "line1": zod.string(),
+  "line2": zod.string().optional(),
+  "city": zod.string(),
+  "postcode": zod.string(),
+  "country": zod.enum(['GB'])
+})
+})
+
+export const CreateCheckoutPaymentIntentResponse = zod.object({
+  "clientSecret": zod.string(),
+  "paymentIntentId": zod.string()
+})
+
+
+/**
+ * Requires the same guest cookie or authenticated owner that created the payment. Knowing a payment ID or matching an email does not grant access.
+ * @summary Confirm a paid order owned by the signed-in customer or guest browser
+ */
+export const FinalizeCheckoutPaymentBody = zod.object({
+  "paymentIntentId": zod.string().optional(),
+  "checkoutSessionId": zod.string().optional()
+})
+
+export const FinalizeCheckoutPaymentResponse = zod.object({
+  "finalised": zod.boolean(),
+  "order": zod.record(zod.string(), zod.unknown()).nullable()
+})
+
+
+/**
+ * @summary Start authenticated or guest hosted Stripe checkout
+ */
+
+
+
+
+export const CreateHostedCheckoutBody = zod.object({
+  "email": zod.string(),
+  "customerName": zod.string(),
+  "phone": zod.string().optional(),
+  "lines": zod.array(zod.object({
+  "productId": zod.string(),
+  "variationId": zod.string().optional(),
+  "quantity": zod.number().int().min(1)
+})).min(1),
+  "delivery": zod.string(),
+  "couponCode": zod.string().optional(),
+  "paymentMethodId": zod.string().optional(),
+  "address": zod.object({
+  "line1": zod.string(),
+  "line2": zod.string().optional(),
+  "city": zod.string(),
+  "postcode": zod.string(),
+  "country": zod.enum(['GB'])
+})
+})
+
+export const CreateHostedCheckoutResponse = zod.object({
+  "url": zod.string()
+})
+
+
+/**
+ * @summary Cancel an owned pending card payment before retrying
+ */
+export const AbandonCheckoutPaymentBody = zod.object({
+  "paymentIntentId": zod.string().optional(),
+  "checkoutSessionId": zod.string().optional()
+})
+
+export const AbandonCheckoutPaymentResponse = zod.object({
+  "abandoned": zod.boolean()
+})
+
+
+/**
  * Returns status 200, 301 or 404 inside the JSON body. Redirect locations are local absolute paths. A catalog outage returns HTTP 503, not a fabricated 404.
  * @summary Resolve a storefront pathname to canonical SEO metadata
  */

@@ -20,10 +20,16 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AbandonCheckoutPayment200,
+  CheckoutFinalizationResult,
+  CheckoutPaymentInput,
+  CheckoutPaymentIntentResult,
+  CheckoutPaymentReference,
   ContactEnquiryInput,
   ContactEnquiryResponse,
   ErrorEnvelope,
   HealthStatus,
+  HostedCheckoutResult,
   ResolveSeoParams,
   SeoResolution,
   UploadUrlRequest,
@@ -56,6 +62,292 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getCreateCheckoutPaymentIntentUrl = () => {
+
+
+
+
+  return `/api/stripe/payment-intent`
+}
+
+/**
+ * Guest payments are owned by an opaque HttpOnly browser cookie, not by the supplied email. Saved payment methods are available only to signed-in customers.
+ * @summary Start an authenticated or guest card payment
+ */
+export const createCheckoutPaymentIntent = async (checkoutPaymentInput: CheckoutPaymentInput, options?: Parameters<typeof customFetch>[1]): Promise<CheckoutPaymentIntentResult> => {
+
+  return customFetch<CheckoutPaymentIntentResult>(getCreateCheckoutPaymentIntentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(checkoutPaymentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCheckoutPaymentIntentMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCheckoutPaymentIntent>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCheckoutPaymentIntent>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext> => {
+
+const mutationKey = ['createCheckoutPaymentIntent'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCheckoutPaymentIntent>>, {data: BodyType<CheckoutPaymentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCheckoutPaymentIntent(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCheckoutPaymentIntentMutationResult = NonNullable<Awaited<ReturnType<typeof createCheckoutPaymentIntent>>>
+    export type CreateCheckoutPaymentIntentMutationBody = BodyType<CheckoutPaymentInput>
+    export type CreateCheckoutPaymentIntentMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Start an authenticated or guest card payment
+ */
+export const useCreateCheckoutPaymentIntent = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCheckoutPaymentIntent>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCheckoutPaymentIntent>>,
+        TError,
+        {data: BodyType<CheckoutPaymentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCheckoutPaymentIntentMutationOptions(options));
+    }
+
+export const getFinalizeCheckoutPaymentUrl = () => {
+
+
+
+
+  return `/api/stripe/finalize-payment`
+}
+
+/**
+ * Requires the same guest cookie or authenticated owner that created the payment. Knowing a payment ID or matching an email does not grant access.
+ * @summary Confirm a paid order owned by the signed-in customer or guest browser
+ */
+export const finalizeCheckoutPayment = async (checkoutPaymentReference: CheckoutPaymentReference, options?: Parameters<typeof customFetch>[1]): Promise<CheckoutFinalizationResult> => {
+
+  return customFetch<CheckoutFinalizationResult>(getFinalizeCheckoutPaymentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(checkoutPaymentReference)
+  }
+);}
+
+
+
+
+
+export const getFinalizeCheckoutPaymentMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof finalizeCheckoutPayment>>, TError,{data: BodyType<CheckoutPaymentReference>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof finalizeCheckoutPayment>>, TError,{data: BodyType<CheckoutPaymentReference>}, TContext> => {
+
+const mutationKey = ['finalizeCheckoutPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof finalizeCheckoutPayment>>, {data: BodyType<CheckoutPaymentReference>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  finalizeCheckoutPayment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FinalizeCheckoutPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof finalizeCheckoutPayment>>>
+    export type FinalizeCheckoutPaymentMutationBody = BodyType<CheckoutPaymentReference>
+    export type FinalizeCheckoutPaymentMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Confirm a paid order owned by the signed-in customer or guest browser
+ */
+export const useFinalizeCheckoutPayment = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof finalizeCheckoutPayment>>, TError,{data: BodyType<CheckoutPaymentReference>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof finalizeCheckoutPayment>>,
+        TError,
+        {data: BodyType<CheckoutPaymentReference>},
+        TContext
+      > => {
+      return useMutation(getFinalizeCheckoutPaymentMutationOptions(options));
+    }
+
+export const getCreateHostedCheckoutUrl = () => {
+
+
+
+
+  return `/api/stripe/checkout`
+}
+
+/**
+ * @summary Start authenticated or guest hosted Stripe checkout
+ */
+export const createHostedCheckout = async (checkoutPaymentInput: CheckoutPaymentInput, options?: Parameters<typeof customFetch>[1]): Promise<HostedCheckoutResult> => {
+
+  return customFetch<HostedCheckoutResult>(getCreateHostedCheckoutUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(checkoutPaymentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateHostedCheckoutMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHostedCheckout>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createHostedCheckout>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext> => {
+
+const mutationKey = ['createHostedCheckout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createHostedCheckout>>, {data: BodyType<CheckoutPaymentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createHostedCheckout(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateHostedCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createHostedCheckout>>>
+    export type CreateHostedCheckoutMutationBody = BodyType<CheckoutPaymentInput>
+    export type CreateHostedCheckoutMutationError = ErrorType<ErrorEnvelope>
+
+    /**
+ * @summary Start authenticated or guest hosted Stripe checkout
+ */
+export const useCreateHostedCheckout = <TError = ErrorType<ErrorEnvelope>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHostedCheckout>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createHostedCheckout>>,
+        TError,
+        {data: BodyType<CheckoutPaymentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateHostedCheckoutMutationOptions(options));
+    }
+
+export const getAbandonCheckoutPaymentUrl = () => {
+
+
+
+
+  return `/api/stripe/abandon-payment`
+}
+
+/**
+ * @summary Cancel an owned pending card payment before retrying
+ */
+export const abandonCheckoutPayment = async (checkoutPaymentReference: CheckoutPaymentReference, options?: Parameters<typeof customFetch>[1]): Promise<AbandonCheckoutPayment200> => {
+
+  return customFetch<AbandonCheckoutPayment200>(getAbandonCheckoutPaymentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(checkoutPaymentReference)
+  }
+);}
+
+
+
+
+
+export const getAbandonCheckoutPaymentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof abandonCheckoutPayment>>, TError,{data: BodyType<CheckoutPaymentReference>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof abandonCheckoutPayment>>, TError,{data: BodyType<CheckoutPaymentReference>}, TContext> => {
+
+const mutationKey = ['abandonCheckoutPayment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof abandonCheckoutPayment>>, {data: BodyType<CheckoutPaymentReference>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  abandonCheckoutPayment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AbandonCheckoutPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof abandonCheckoutPayment>>>
+    export type AbandonCheckoutPaymentMutationBody = BodyType<CheckoutPaymentReference>
+    export type AbandonCheckoutPaymentMutationError = ErrorType<void>
+
+    /**
+ * @summary Cancel an owned pending card payment before retrying
+ */
+export const useAbandonCheckoutPayment = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof abandonCheckoutPayment>>, TError,{data: BodyType<CheckoutPaymentReference>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof abandonCheckoutPayment>>,
+        TError,
+        {data: BodyType<CheckoutPaymentReference>},
+        TContext
+      > => {
+      return useMutation(getAbandonCheckoutPaymentMutationOptions(options));
+    }
 
 export const getResolveSeoUrl = (params: ResolveSeoParams,) => {
   const normalizedParams = new URLSearchParams();
