@@ -21,6 +21,7 @@ import AdminDashboard from '@/pages/admin-dashboard';
 import { hasRichTextContent, sanitizeRichTextHtml } from '@/utils/rich-text';
 import { calculateShippingAmount, selectShippingMethod } from '@workspace/shipping';
 import { useShippingMethods } from '@/hooks/use-shipping-methods';
+import { getProductPricing } from '@/utils/product-pricing';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const clerkPubKey = publishableKeyFromHost(
@@ -930,7 +931,7 @@ function Header() {
                     {product.image ? <img src={product.image} alt="" style={{ objectPosition: product.position }} /> : <span className="header-search-result-placeholder">Glam Too</span>}
                     <span className="header-search-result-details">
                       <strong>{product.name}</strong>
-                      <small>{product.category} · {product.price}</small>
+                      <small>{product.category} · {getProductPricing(product).label}</small>
                     </span>
                   </a>
                 )) : <p className="header-search-no-results" role="status">No products found for “{searchQuery.trim()}”.</p>}
@@ -1056,7 +1057,7 @@ function ProductCard({ product, featured = false, showShopNow = false }: { produ
       </div>
       <a className="product-info product-info-link" href={`/product/${product.slug}`} aria-label={`View ${product.name}`}>
         <div><div className="product-name">{product.name}</div><div className="product-meta">{product.category}</div></div>
-        <div className="price">{product.price}</div>
+        <div className="price">{getProductPricing(product).label}</div>
         {showShopNow && <span className="product-shop-now">Shop now</span>}
       </a>
     </article>
@@ -1148,7 +1149,7 @@ function ProductSortControl({ value, onChange }: { value: string; onChange: (val
 
 function sortProducts(products: CatalogProduct[], sort: string, salesByProduct: Record<string, number>) {
   const sorted = [...products];
-  if (sort === "price-asc") sorted.sort((a, b) => parsePounds(a.price) - parsePounds(b.price));
+  if (sort === "price-asc") sorted.sort((a, b) => (getProductPricing(a).min ?? Infinity) - (getProductPricing(b).min ?? Infinity));
   if (sort === "bestsellers") {
     sorted.sort((a, b) =>
       (salesByProduct[String(b.id)] ?? 0) - (salesByProduct[String(a.id)] ?? 0)
@@ -1197,7 +1198,7 @@ function Shop() {
   const stockFilter = searchParams.get("stock") === "in" || searchParams.get("stock") === "out"
     ? searchParams.get("stock") as 'in' | 'out'
     : '';
-  const priceCeiling = Math.max(1, Math.ceil(Math.max(0, ...products.map((product) => parsePounds(product.price)))));
+  const priceCeiling = Math.max(1, Math.ceil(Math.max(0, ...products.map((product) => getProductPricing(product).max ?? 0))));
   const requestedMin = Number(searchParams.get('min'));
   const requestedMax = Number(searchParams.get('max'));
   const minPrice = Math.min(priceCeiling, Math.max(0, Number.isFinite(requestedMin) ? requestedMin : 0));
@@ -1252,8 +1253,10 @@ function Shop() {
   const visibleProducts = sortProducts(searchProducts.filter((product) => {
     const matchesCategory = !selectedCategory.value || selectedCategory.matches.includes(getProductCategorySlug(product.category, storefrontCategories));
     const matchesStock = !stockFilter || (isProductInStock(product) ? stockFilter === 'in' : stockFilter === 'out');
-    const price = parsePounds(product.price);
-    return matchesCategory && matchesStock && price >= minPrice && price <= maxPrice;
+    const pricing = getProductPricing(product);
+    const matchesPrice = pricing.amounts.some((price) => price >= minPrice && price <= maxPrice)
+      || (pricing.min === null && minPrice === 0 && maxPrice >= priceCeiling);
+    return matchesCategory && matchesStock && matchesPrice;
   }), activeSort.value, salesByProduct);
   const toolbarDescription = searchQuery
     ? `Search results for “${searchQuery}”`
@@ -1583,7 +1586,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     )
     : undefined;
 
-  const displayedPrice = selectedVariation?.price ?? product?.price ?? '';
+  const displayedPrice = selectedVariation?.price ?? (product ? getProductPricing(product).label : '');
   const availableQuantity = product?.type === 'Variable' ? selectedVariation?.stock ?? 0 : product?.stock ?? 0;
   
   const productInformation = [
@@ -1958,7 +1961,7 @@ function WishlistPage() {
             {wishlistProducts.map((product) => {
               const available = isAvailable(product);
               const salePrice = product.salePrice;
-              const hasSalePrice = Boolean(salePrice && parsePounds(salePrice) < parsePounds(product.price));
+              const hasSalePrice = product.type === "Simple" && Boolean(salePrice && parsePounds(salePrice) < parsePounds(product.price));
               return (
                 <article className="wishlist-item" key={product.id}>
                   <a className="wishlist-item-image" href={`/product/${product.slug}`} aria-label={`View ${product.name}`}>
@@ -1971,7 +1974,7 @@ function WishlistPage() {
                       <h2><a href={`/product/${product.slug}`}>{product.name}</a></h2>
                       <div className={`wishlist-item-price${hasSalePrice ? " is-on-sale" : ""}`}>
                         {hasSalePrice && <del>{product.price}</del>}
-                        <strong>{hasSalePrice ? salePrice : product.price}</strong>
+                        <strong>{hasSalePrice ? salePrice : getProductPricing(product).label}</strong>
                       </div>
                       <p className={`wishlist-stock${available ? " is-in-stock" : ""}`}>{available ? "In stock" : "Out of stock"}</p>
                     </div>
