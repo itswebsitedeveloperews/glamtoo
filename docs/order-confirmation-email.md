@@ -7,7 +7,7 @@
 - None has an email-outbox record. The existing payment finalizer did not queue a purchase confirmation.
 - The existing MailerSend worker only handled refund notifications. Clerk authentication emails use a separate service; delivery of Clerk codes does not establish order-email delivery.
 - `MAILERSEND_API_TOKEN` and `MAILERSEND_FROM_EMAIL` are absent from the checked development/shared and production environment settings.
-- Provider-account logs, verified domains, suppression lists and a controlled inbox are not connected. No actual order-email delivery has been proved.
+- The merchant subsequently approved switching order confirmations to Gmail SMTP. Gmail SMTP credentials and a controlled inbox have not been supplied, so no actual order-email delivery has been proved.
 
 No historical order was resent. Production database inspection was read-only. Tests created and removed only isolated development fixtures, used simulated Stripe/provider responses, and sent no external email.
 
@@ -16,19 +16,20 @@ No historical order was resent. Production database inspection was read-only. Te
 1. The existing Stripe verification and ownership checks remain in place.
 2. A new transition to paid queues `order_confirmation` in the same transaction as the saved order, inventory settlement and coupon redemption.
 3. The existing unique order/type constraint and row-locking claims prevent repeated callbacks, confirmation refreshes and concurrent workers from sending another confirmation.
-4. A separate worker sends MailerSend requests using persisted order/item snapshots, not current catalog prices.
-5. HTTP acceptance records the provider message ID and `accepted` state. It does **not** record delivery.
-6. Read-only MailerSend message/email lookups validate the message ID and recipient before recording delivery, rejection or hard bounce. Their results never initiate another send.
+4. A separate worker sends Gmail SMTP messages using persisted order/item snapshots, not current catalog prices.
+5. The authenticated mailbox is the sender, over certificate-verified TLS on `smtp.gmail.com:465`. A deterministic RFC Message-ID is saved before sending for reconciliation.
+6. A successful SMTP transaction and matching accepted recipient record `accepted`, **not** inbox delivery. Gmail SMTP supplies no delivery callback in this implementation; controlled-inbox evidence is still needed.
+7. A provider marker keeps previous MailerSend records separate. Only those records can use its read-only delivery polling. New confirmations default to Gmail and never fall back automatically.
 
 ### States and retries
 
 `pending` means queued; `sending` means claimed; `accepted` means MailerSend accepted a message; `delivered`, `bounced` and `failed` describe recorded outcomes.
 
-Explicit rate-limit/service-unavailable rejections retry at 1, 2, 4 and 8 minutes, with at most five send attempts. Permanent errors and a 202 response without a message ID stop as failed. Provider responses may contain recipient data, so their bodies are not logged.
+Explicit temporary SMTP 4xx rejections and connection failures known to happen before sending retry at 1, 2, 4 and 8 minutes, with at most five send attempts. Authentication errors and permanent SMTP rejections stop as failed. Raw SMTP errors/responses and credentials are not logged.
 
-`uncertain` means a network timeout, ambiguous server error or interrupted sender may have followed acceptance. MailerSend's consulted send API does not document an idempotency key. These jobs are frozen rather than automatically resent. Reconcile the `glam-too-<order-id>` provider tag first. Never claim globally exactly-once HTTP delivery merely because an outbox row is unique.
+`uncertain` means a disconnect during/after SMTP DATA or an interrupted sender may have followed acceptance. These jobs are frozen rather than automatically resent. Reconcile the saved RFC Message-ID in Gmail first. SMTP has no idempotency key; never claim globally exactly-once delivery merely because an outbox row is unique.
 
-Delivery lookups run independently, initially after two minutes and subsequently every thirty minutes. Read-permission failures leave the message accepted, with a diagnostic error; they never mark it delivered or cause another send.
+Legacy MailerSend delivery lookups remain independent and cannot consume Gmail records. Gmail records stay accepted until separately proven delivered; a Gmail Sent-folder entry alone is not recipient-inbox proof.
 
 ## Configuration
 
@@ -36,26 +37,27 @@ Runtime configuration names:
 
 | Name | Purpose |
 | --- | --- |
-| `MAILERSEND_API_TOKEN` | Secret with email sending and message/email read permissions |
-| `MAILERSEND_FROM_EMAIL` | Sender identity on a MailerSend-verified domain |
-| `MAILERSEND_FROM_NAME` | Optional; defaults to Glam Too Boutique |
-| `MAILERSEND_REPLY_TO_EMAIL` | Optional monitored reply-to; defaults to sender email |
+| `GMAIL_SMTP_USER` | Gmail or Google Workspace mailbox used to authenticate and send |
+| `GMAIL_SMTP_APP_PASSWORD` | Secret Google App Password, not the normal account password |
+| `GMAIL_SMTP_FROM_NAME` | Optional; defaults to Glam Too Boutique |
+| `GMAIL_SMTP_REPLY_TO_EMAIL` | Optional monitored reply-to; defaults to authenticated mailbox |
+| `ORDER_EMAIL_TRANSPORT` | `gmail_smtp` (default); `mailersend` is retained only as an explicit legacy choice |
 | `ORDER_EMAIL_PUBLIC_URL` | HTTPS shop origin verified for the environment |
 | `ORDER_EMAIL_ALLOWED_RECIPIENTS` | Comma-separated dedicated test-recipient allowlist |
 | `ORDER_EMAIL_SEND_TO_ALL` | Explicit unrestricted-recipient rollout flag; leave absent or false during testing |
 
 The currently verified published shop origin is `https://glamtoo.webdesignessex.io`. Use the appropriate verified origin when testing another environment.
 
-Adding credentials alone does not enable unrestricted sending. Both purchase and refund workers require a safe recipient policy, preventing old refund jobs from unexpectedly reaching real customers during provider setup. New purchase confirmations are queued only on a new paid transition; existing paid records and historical imports are not backfilled.
+Adding Gmail credentials alone does not enable unrestricted sending. Purchase confirmations require the existing safe recipient policy. Refund emails retain their existing MailerSend configuration and policy; this switch does not migrate or activate them. New confirmations are queued only on a new paid transition; existing paid records and historical imports are not backfilled.
 
-### Sender and DNS steps still requiring access
+### Gmail setup and verification
 
-1. Connect the existing MailerSend account so domain verification, sender settings, pauses, trial restrictions, bounces and suppression lists can be inspected.
-2. Select a sender/reply-to mailbox controlled by the merchant.
-3. Add the exact SPF/DKIM records supplied by that account to the sending domain's DNS, and confirm verification in MailerSend. Configure DMARC as appropriate. Do not invent DNS record values or assume the website's domain is also a verified sending domain.
-4. Provide the runtime token securely through Secrets. A MailerSend MCP connection is for agent diagnostics, not an application runtime transport.
-5. Set the shop URL and dedicated recipient allowlist before testing. Keep unrestricted sending off.
-6. After publishing the implementation/schema, make a **new** sandbox purchase, check its provider message/email IDs, and obtain a provider-delivered record or controlled-inbox evidence. Do not replay the reported historical orders.
+1. Use a merchant-controlled Gmail or Google Workspace mailbox with 2-Step Verification. Generate a dedicated Google App Password where account policy allows it. Accounts that prohibit App Passwords need a separately approved OAuth/Workspace relay setup.
+2. Provide the mailbox and App Password through the secure Secrets flow; never paste credentials into chat. The available Gmail connector is API-based, not this SMTP authentication method.
+3. Set the shop URL and dedicated recipient allowlist before testing. Keep unrestricted sending off.
+4. Run `pnpm --filter @workspace/api-server run verify:gmail-smtp` to verify TLS/authentication without sending any email. A successful result proves authentication only.
+5. After the implementation/schema is published to the intended environment, make a **new** sandbox purchase. Match the saved Message-ID and order reference with controlled recipient-inbox evidence. Do not replay historical orders.
+6. For an `@gmail.com` sender Google manages its domain authentication. For a Google Workspace custom domain, check its Google-provided SPF/DKIM setup and DMARC policy. This implementation does not spoof an unrelated sender address.
 
 ## Verification
 
@@ -64,9 +66,10 @@ Commands:
 ```sh
 pnpm --filter @workspace/api-server test
 pnpm --filter @workspace/api-server run typecheck
+pnpm --filter @workspace/api-server run test:gmail-smtp
 ```
 
-Verified suites: 25 existing regressions, 11 checkout/account tests and 12 email-confirmation tests. They cover authenticated/guest success, declined/incomplete payment, cancelled authentication, successful retry, duplicate finalization/refresh, concurrent email workers, retry backoff/exhaustion, permanent rejection, suppression/no message ID, ambiguous send outcomes, bounce/rejection, recipient mismatches, safe routing, old paid records, and snapshot/VAT/link correctness.
+The existing regression, checkout/account and legacy email suites are supplemented by isolated Gmail SMTP tests for the default transport/no fallback, authenticated sender/TLS, registered/guest confirmations, SMTP acceptance versus delivery, bounded retry/recovery, authentication/permanent rejection, ambiguous DATA disconnects, recipient restrictions and no-send credential verification.
 
 Provider delivery responses in automated tests are **simulated**, not real delivery evidence.
 
@@ -75,11 +78,15 @@ Provider delivery responses in automated tests are **simulated**, not real deliv
 - `artifacts/api-server/src/orderService.ts`
 - `artifacts/api-server/src/orderConfirmationNotifications.ts`
 - `artifacts/api-server/src/orderConfirmationTemplate.ts`
+- `artifacts/api-server/src/gmailSmtp.ts`
 - `artifacts/api-server/src/emailRecipientPolicy.ts`
 - `artifacts/api-server/src/refundNotifications.ts`
 - `artifacts/api-server/src/index.ts`
 - `lib/db/src/schema/order-email-notifications.ts`
 - `artifacts/api-server/test/email-confirmations.test.ts`
+- `artifacts/api-server/test/gmail-smtp.test.ts`
+- `artifacts/api-server/test/fixtures/gmail-smtp.ts`
+- `artifacts/api-server/scripts/verify-gmail-smtp.mjs`
 - `artifacts/api-server/test/guest-checkout.test.ts`
 - `artifacts/api-server/test/build.mjs`
 - `artifacts/api-server/package.json`
@@ -88,4 +95,4 @@ Development schema additions are non-destructive. Production receives the schema
 
 ## Remaining blockers
 
-MailerSend account/runtime credentials, verified sender/DNS access, allowed controlled recipients and actual delivery evidence remain outstanding. The published site has not been updated by the agent. The application changes are verified independently; no end-to-end delivery claim is made.
+Gmail mailbox/App Password, allowed controlled recipients and actual inbox-delivery evidence remain outstanding. The published site has not been updated by the agent. Gmail SMTP acceptance cannot be automatically upgraded to delivered or used as inbox-delivery evidence.

@@ -10,6 +10,7 @@ export const orderEmailNotificationsTable = pgTable("store_order_email_notificat
   lastError: text("last_error"),
   sentAt: timestamp("sent_at", { withTimezone: true }),
   providerMessageId: text("provider_message_id"),
+  provider: text("provider").notNull().default("mailersend"),
   providerEmailId: text("provider_email_id"),
   nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
   acceptedAt: timestamp("accepted_at", { withTimezone: true }),

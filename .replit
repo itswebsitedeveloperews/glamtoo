@@ -27,3 +27,6 @@ channel = "stable-25_05"
 [userenv.shared]
 ADMIN_EMAILS = "itswebsitedeveloper.ews@gmail.com"
 SEO_SITE_ORIGIN = "https://glamtoo.webdesignessex.io"
+ORDER_EMAIL_PUBLIC_URL = "https://glamtoo.webdesignessex.io"
+ORDER_EMAIL_SEND_TO_ALL = "false"
+ORDER_EMAIL_TRANSPORT = "gmail_smtp"

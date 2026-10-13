@@ -2,6 +2,7 @@ import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { buildOrderConfirmation, type ConfirmationItem, type ConfirmationOrder } from "./orderConfirmationTemplate";
 import { emailRecipientPolicy } from "./emailRecipientPolicy";
+import { gmailOrderMessageId, gmailSmtpConfiguration, GmailSmtpError, sendGmailConfirmation } from "./gmailSmtp";
 
 const MAX_ATTEMPTS = 5;
 type Notification = {
@@ -13,20 +14,22 @@ type Notification = {
 };
 type EmailMessage = ReturnType<typeof buildOrderConfirmation>;
 
-function configuration() {
+function configuration(transport = process.env.ORDER_EMAIL_TRANSPORT === "mailersend" ? "mailersend" : "gmail_smtp") {
   const token = process.env.MAILERSEND_API_TOKEN?.trim();
   const fromEmail = process.env.MAILERSEND_FROM_EMAIL?.trim();
+  const smtp = gmailSmtpConfiguration();
   const publicUrl = process.env.ORDER_EMAIL_PUBLIC_URL?.trim();
   const policy = emailRecipientPolicy();
   // Sending to arbitrary customers is an explicit rollout decision, not an
-  // accidental consequence of adding a token to a staging environment.
-  if (!token || !fromEmail || !publicUrl || !policy) return null;
+  // accidental consequence of adding credentials to a staging environment.
+  if (!publicUrl || !policy) return null;
+  if (transport === "gmail_smtp" ? !smtp : !token || !fromEmail) return null;
   try {
     const url = new URL(publicUrl);
     if (url.protocol !== "https:" || url.username || url.password) return null;
   } catch { return null; }
   return {
-    token, fromEmail, publicUrl, ...policy,
+    token: token ?? "", fromEmail: fromEmail ?? "", publicUrl, ...policy, transport, smtp,
     fromName: process.env.MAILERSEND_FROM_NAME?.trim() || "Glam Too Boutique",
     replyTo: process.env.MAILERSEND_REPLY_TO_EMAIL?.trim() || fromEmail,
   };
@@ -39,6 +42,9 @@ class DeliveryError extends Error {
 }
 
 async function send(config: NonNullable<ReturnType<typeof configuration>>, order: ConfirmationOrder, message: EmailMessage) {
+  if (config.transport === "gmail_smtp") {
+    return sendGmailConfirmation(config.smtp!, order, message);
+  }
   let response: Response;
   try {
     response = await fetch("https://api.mailersend.com/v1/email", {
@@ -85,9 +91,9 @@ async function claim(config: NonNullable<ReturnType<typeof configuration>>) {
        ORDER BY n.created_at, n.id FOR UPDATE OF n SKIP LOCKED LIMIT 1
      )
      UPDATE store_order_email_notifications n
-     SET status = 'sending', attempts = n.attempts + 1, updated_at = NOW()
+     SET status = 'sending', attempts = n.attempts + 1, provider = $4, updated_at = NOW()
      FROM candidate WHERE n.id = candidate.id RETURNING n.*`,
-    [MAX_ATTEMPTS, config.allCustomers, config.recipients],
+    [MAX_ATTEMPTS, config.allCustomers, config.recipients, config.transport],
   );
   return result.rows[0] ?? null;
 }
@@ -109,6 +115,14 @@ async function sendNotification(notification: Notification, config: NonNullable<
     "SELECT name, quantity, unit_amount, total FROM store_order_items WHERE order_id = $1 ORDER BY id",
     [order.id],
   );
+  if (config.transport === "gmail_smtp") {
+    // Persist the deterministic RFC Message-ID before contacting SMTP, so an
+    // interrupted DATA transaction can be reconciled without a blind resend.
+    await pool.query(
+      "UPDATE store_order_email_notifications SET provider_message_id = $2 WHERE id = $1 AND status = 'sending'",
+      [notification.id, gmailOrderMessageId(config.smtp!, order.id)],
+    );
+  }
   const messageId = await send(config, order, buildOrderConfirmation(order, items.rows, config.publicUrl));
   // This is provider acceptance, not evidence of inbox delivery.
   await pool.query(
@@ -116,11 +130,11 @@ async function sendNotification(notification: Notification, config: NonNullable<
      accepted_at = NOW(), last_error = NULL, next_attempt_at = NOW() + INTERVAL '2 minutes', updated_at = NOW()
      WHERE id = $1 AND status = 'sending'`, [notification.id, messageId],
   );
-  logger.info({ notificationId: notification.id, orderId: order.id }, "Order email accepted by provider; delivery is not yet confirmed");
+  logger.info({ notificationId: notification.id, orderId: order.id, transport: config.transport }, "Order email accepted by provider; delivery is not yet confirmed");
 }
 
 async function retryOrFail(notification: Notification, error: unknown) {
-  const failure = error instanceof DeliveryError
+  const failure = error instanceof DeliveryError || error instanceof GmailSmtpError
     ? error : new DeliveryError("uncertain", "Email processing was interrupted; reconcile before resending.");
   const status = failure.kind === "retry" && notification.attempts < MAX_ATTEMPTS ? "pending"
     : failure.kind === "uncertain" ? "uncertain" : "failed";
@@ -148,14 +162,16 @@ async function getProviderData(config: NonNullable<ReturnType<typeof configurati
 }
 
 export async function refreshOrderEmailDelivery(limit = 2) {
-  const config = configuration();
+  // Only previously accepted MailerSend messages can use its delivery API.
+  // Gmail SMTP does not expose a delivery webhook or inbox receipt here.
+  const config = configuration("mailersend");
   if (!config) return;
   // Advance the lease atomically: multiple API instances must not hammer the
   // provider. Delivery lookups never cause another send.
   const result = await pool.query<Notification>(
     `WITH candidate AS (
        SELECT id FROM store_order_email_notifications
-       WHERE notification_type = 'order_confirmation' AND status = 'accepted'
+       WHERE notification_type = 'order_confirmation' AND status = 'accepted' AND provider = 'mailersend'
          AND provider_message_id IS NOT NULL AND next_attempt_at <= NOW()
        ORDER BY next_attempt_at FOR UPDATE SKIP LOCKED LIMIT $1
      )
@@ -210,7 +226,7 @@ export async function processOrderConfirmations(limit = 10) {
   // than resetting them to pending and creating duplicate confirmations.
   await pool.query(
     `UPDATE store_order_email_notifications SET status = 'uncertain',
-     last_error = 'Sender lease expired; reconcile the order tag in MailerSend before resending', updated_at = NOW()
+     last_error = 'Sender lease expired; reconcile the Message-ID or order tag with the recorded provider before resending', updated_at = NOW()
      WHERE notification_type = 'order_confirmation' AND status = 'sending'
        AND updated_at < NOW() - INTERVAL '15 minutes'`,
   );

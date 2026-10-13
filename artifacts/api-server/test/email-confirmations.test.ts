@@ -51,6 +51,7 @@ before(() => {
   // These are fake credentials in this test subprocess only. Every provider
   // request is intercepted; no Stripe payment or external email is made.
   Object.assign(process.env, {
+    ORDER_EMAIL_TRANSPORT: "mailersend",
     MAILERSEND_API_TOKEN: "unit-test-not-a-provider-token",
     MAILERSEND_FROM_EMAIL: "orders@example.test",
     MAILERSEND_FROM_NAME: "Glam Too Boutique",

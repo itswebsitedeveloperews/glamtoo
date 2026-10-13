@@ -8,3 +8,15 @@ Keep provider setup and unrestricted customer-email rollout separate. Do not aut
 **Why:** The merchant requested controlled staging verification only and prohibited emails to real customers or automatic historical resends. Connecting credentials can otherwise activate existing refund jobs as well as purchase emails.
 
 **How to apply:** Preserve recipient restrictions during setup and testing. Get explicit approval before enabling unrestricted customer delivery or a historical resend. Actual provider-delivery or controlled-inbox evidence is required before reporting end-to-end success; simulated responses and API acceptance are not that evidence.
+
+The merchant approved Gmail SMTP for order confirmations, replacing the proposed MailerSend setup for that purpose.
+
+**Why:** The user explicitly chose “Switch to Gmail SMTP.”
+
+**How to apply:** Keep order-confirmation work on Gmail SMTP unless the merchant changes that decision. Do not treat this approval as permission to migrate other email types or enable unrestricted sending.
+
+Prefer avoiding duplicate messages over automatically retrying ambiguous SMTP outcomes.
+
+**Why:** An SMTP server may accept DATA before its acknowledgement is lost. Nodemailer can label post-DATA socket errors as `CONN`, so that label alone does not establish a safe pre-send failure.
+
+**How to apply:** Retry explicit temporary rejections or failures proven to precede message submission. Reconcile uncertain sends with the recorded Message-ID before permitting another attempt.

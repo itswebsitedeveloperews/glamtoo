@@ -37,7 +37,7 @@ if (!isRefundEmailDeliveryConfigured()) {
 }
 startRefundNotificationWorker();
 if (!isOrderEmailConfigured()) {
-  logger.warn("Order confirmation email is queued but not being sent; configure MailerSend, a verified sender, the shop URL, and the recipient allowlist.");
+  logger.warn("Order confirmation email is queued but not being sent; configure Gmail SMTP credentials, the shop URL, and the recipient allowlist.");
 }
 startOrderConfirmationWorker();
 
