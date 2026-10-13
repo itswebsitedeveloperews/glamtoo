@@ -28,12 +28,15 @@ import type {
   ContactEnquiryInput,
   ContactEnquiryResponse,
   ErrorEnvelope,
+  GetAdminGmailSettings200,
   HealthStatus,
   HostedCheckoutResult,
   ResolveSeoParams,
   SeoResolution,
+  StartAdminGmailAuthorization200,
   UploadUrlRequest,
-  UploadUrlResponse
+  UploadUrlResponse,
+  VerifyAdminGmailAuthentication200
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -62,6 +65,226 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetAdminGmailSettingsUrl = () => {
+
+
+
+
+  return `/api/admin/gmail`
+}
+
+/**
+ * @summary Read Gmail OAuth setup status (administrators only)
+ */
+export const getAdminGmailSettings = async ( options?: Parameters<typeof customFetch>[1]): Promise<GetAdminGmailSettings200> => {
+
+  return customFetch<GetAdminGmailSettings200>(getGetAdminGmailSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminGmailSettingsQueryKey = () => {
+    return [
+    `/api/admin/gmail`
+    ] as const;
+    }
+
+
+export const getGetAdminGmailSettingsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminGmailSettings>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminGmailSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminGmailSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminGmailSettings>>> = ({ signal }) => getAdminGmailSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminGmailSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAdminGmailSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminGmailSettings>>>
+export type GetAdminGmailSettingsQueryError = ErrorType<void>
+
+
+/**
+ * @summary Read Gmail OAuth setup status (administrators only)
+ */
+
+export function useGetAdminGmailSettings<TData = Awaited<ReturnType<typeof getAdminGmailSettings>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAdminGmailSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAdminGmailSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getStartAdminGmailAuthorizationUrl = () => {
+
+
+
+
+  return `/api/admin/gmail/connect`
+}
+
+/**
+ * Requires same-origin admin access; sets a Secure HttpOnly SameSite cookie and one-use state. The returned URL includes public OAuth client identification, never the client secret.
+ * @summary Start an administrator-owned Google SMTP authorization
+ */
+export const startAdminGmailAuthorization = async ( options?: Parameters<typeof customFetch>[1]): Promise<StartAdminGmailAuthorization200> => {
+
+  return customFetch<StartAdminGmailAuthorization200>(getStartAdminGmailAuthorizationUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getStartAdminGmailAuthorizationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startAdminGmailAuthorization>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startAdminGmailAuthorization>>, TError,void, TContext> => {
+
+const mutationKey = ['startAdminGmailAuthorization'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startAdminGmailAuthorization>>, void> = () => {
+
+
+          return  startAdminGmailAuthorization(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartAdminGmailAuthorizationMutationResult = NonNullable<Awaited<ReturnType<typeof startAdminGmailAuthorization>>>
+
+    export type StartAdminGmailAuthorizationMutationError = ErrorType<void>
+
+    /**
+ * @summary Start an administrator-owned Google SMTP authorization
+ */
+export const useStartAdminGmailAuthorization = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startAdminGmailAuthorization>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startAdminGmailAuthorization>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getStartAdminGmailAuthorizationMutationOptions(options));
+    }
+
+export const getVerifyAdminGmailAuthenticationUrl = () => {
+
+
+
+
+  return `/api/admin/gmail/verify`
+}
+
+/**
+ * @summary Verify administrator-configured SMTP authentication without sending
+ */
+export const verifyAdminGmailAuthentication = async ( options?: Parameters<typeof customFetch>[1]): Promise<VerifyAdminGmailAuthentication200> => {
+
+  return customFetch<VerifyAdminGmailAuthentication200>(getVerifyAdminGmailAuthenticationUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getVerifyAdminGmailAuthenticationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyAdminGmailAuthentication>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyAdminGmailAuthentication>>, TError,void, TContext> => {
+
+const mutationKey = ['verifyAdminGmailAuthentication'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyAdminGmailAuthentication>>, void> = () => {
+
+
+          return  verifyAdminGmailAuthentication(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyAdminGmailAuthenticationMutationResult = NonNullable<Awaited<ReturnType<typeof verifyAdminGmailAuthentication>>>
+
+    export type VerifyAdminGmailAuthenticationMutationError = ErrorType<void>
+
+    /**
+ * @summary Verify administrator-configured SMTP authentication without sending
+ */
+export const useVerifyAdminGmailAuthentication = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyAdminGmailAuthentication>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyAdminGmailAuthentication>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getVerifyAdminGmailAuthenticationMutationOptions(options));
+    }
 
 export const getCreateCheckoutPaymentIntentUrl = () => {
 

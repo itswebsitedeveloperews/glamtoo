@@ -33,6 +33,7 @@ before(() => {
   // Bundled SMTP transport is replaced with the fixture. No external SMTP,
   // Gmail API, MailerSend request or Stripe payment is made by these tests.
   Object.assign(process.env, {
+    GMAIL_SMTP_AUTH_MODE: "app_password",
     GMAIL_SMTP_USER: "orders@example.test", GMAIL_SMTP_APP_PASSWORD: "fake test only pass",
     GMAIL_SMTP_REPLY_TO_EMAIL: "support@example.test",
     ORDER_EMAIL_PUBLIC_URL: "https://shop.example.test",
@@ -57,11 +58,11 @@ after(async () => { globalThis.fetch = originalFetch; await pool.end(); });
 test("Gmail is default; missing credentials or safe recipients cannot fall back to MailerSend", async () => {
   const id = await paid();
   delete process.env.GMAIL_SMTP_APP_PASSWORD;
-  assert.equal(isOrderEmailConfigured(), false);
+  assert.equal(await isOrderEmailConfigured(), false);
   await processOrderConfirmations();
   process.env.GMAIL_SMTP_APP_PASSWORD = "fake-test-only";
   process.env.ORDER_EMAIL_ALLOWED_RECIPIENTS = "";
-  assert.equal(isOrderEmailConfigured(), false);
+  assert.equal(await isOrderEmailConfigured(), false);
   await processOrderConfirmations();
   assert.equal(smtpCalls.length, 0);
   assert.equal((await notification(id)).status, "pending");

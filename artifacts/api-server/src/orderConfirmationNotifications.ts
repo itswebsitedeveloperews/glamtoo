@@ -14,10 +14,10 @@ type Notification = {
 };
 type EmailMessage = ReturnType<typeof buildOrderConfirmation>;
 
-function configuration(transport = process.env.ORDER_EMAIL_TRANSPORT === "mailersend" ? "mailersend" : "gmail_smtp") {
+async function configuration(transport = process.env.ORDER_EMAIL_TRANSPORT === "mailersend" ? "mailersend" : "gmail_smtp") {
   const token = process.env.MAILERSEND_API_TOKEN?.trim();
   const fromEmail = process.env.MAILERSEND_FROM_EMAIL?.trim();
-  const smtp = gmailSmtpConfiguration();
+  const smtp = transport === "gmail_smtp" ? await gmailSmtpConfiguration() : null;
   const publicUrl = process.env.ORDER_EMAIL_PUBLIC_URL?.trim();
   const policy = emailRecipientPolicy();
   // Sending to arbitrary customers is an explicit rollout decision, not an
@@ -35,13 +35,13 @@ function configuration(transport = process.env.ORDER_EMAIL_TRANSPORT === "mailer
   };
 }
 
-export function isOrderEmailConfigured() { return Boolean(configuration()); }
+export async function isOrderEmailConfigured() { return Boolean(await configuration()); }
 
 class DeliveryError extends Error {
   constructor(public readonly kind: "retry" | "failed" | "uncertain", message: string) { super(message); }
 }
 
-async function send(config: NonNullable<ReturnType<typeof configuration>>, order: ConfirmationOrder, message: EmailMessage) {
+async function send(config: NonNullable<Awaited<ReturnType<typeof configuration>>>, order: ConfirmationOrder, message: EmailMessage) {
   if (config.transport === "gmail_smtp") {
     return sendGmailConfirmation(config.smtp!, order, message);
   }
@@ -79,7 +79,7 @@ async function send(config: NonNullable<ReturnType<typeof configuration>>, order
   throw new DeliveryError("failed", `Provider rejected the request (HTTP ${response.status}); check credentials, sender and recipient restrictions.`);
 }
 
-async function claim(config: NonNullable<ReturnType<typeof configuration>>) {
+async function claim(config: NonNullable<Awaited<ReturnType<typeof configuration>>>) {
   const result = await pool.query<Notification>(
     `WITH candidate AS (
        SELECT n.id FROM store_order_email_notifications n
@@ -88,17 +88,18 @@ async function claim(config: NonNullable<ReturnType<typeof configuration>>) {
          AND n.next_attempt_at <= NOW() AND n.attempts < $1
          AND o.payment_status = 'paid' AND o.payment_resolution = 'none'
          AND ($2::boolean OR LOWER(o.email) = ANY($3::text[]))
+         AND ($5::timestamptz IS NULL OR n.created_at >= $5)
        ORDER BY n.created_at, n.id FOR UPDATE OF n SKIP LOCKED LIMIT 1
      )
      UPDATE store_order_email_notifications n
      SET status = 'sending', attempts = n.attempts + 1, provider = $4, updated_at = NOW()
      FROM candidate WHERE n.id = candidate.id RETURNING n.*`,
-    [MAX_ATTEMPTS, config.allCustomers, config.recipients, config.transport],
+    [MAX_ATTEMPTS, config.allCustomers, config.recipients, config.transport, config.smtp?.authorizedSince ?? null],
   );
   return result.rows[0] ?? null;
 }
 
-async function sendNotification(notification: Notification, config: NonNullable<ReturnType<typeof configuration>>) {
+async function sendNotification(notification: Notification, config: NonNullable<Awaited<ReturnType<typeof configuration>>>) {
   const result = await pool.query<ConfirmationOrder & { payment_status: string; payment_resolution: string }>(
     "SELECT * FROM store_orders WHERE id = $1", [notification.order_id],
   );
@@ -149,7 +150,7 @@ async function retryOrFail(notification: Notification, error: unknown) {
   logger.warn({ notificationId: notification.id, orderId: notification.order_id, status }, "Order email attempt needs attention");
 }
 
-async function getProviderData(config: NonNullable<ReturnType<typeof configuration>>, path: string) {
+async function getProviderData(config: NonNullable<Awaited<ReturnType<typeof configuration>>>, path: string) {
   const response = await fetch(`https://api.mailersend.com/v1/${path}`, {
     headers: { Authorization: `Bearer ${config.token}` }, signal: AbortSignal.timeout(10_000),
   });
@@ -164,7 +165,7 @@ async function getProviderData(config: NonNullable<ReturnType<typeof configurati
 export async function refreshOrderEmailDelivery(limit = 2) {
   // Only previously accepted MailerSend messages can use its delivery API.
   // Gmail SMTP does not expose a delivery webhook or inbox receipt here.
-  const config = configuration("mailersend");
+  const config = await configuration("mailersend");
   if (!config) return;
   // Advance the lease atomically: multiple API instances must not hammer the
   // provider. Delivery lookups never cause another send.
@@ -220,7 +221,7 @@ export async function refreshOrderEmailDelivery(limit = 2) {
 }
 
 export async function processOrderConfirmations(limit = 10) {
-  const config = configuration();
+  const config = await configuration();
   if (!config) return;
   // A crashed sender may already have been accepted. Freeze these rows rather
   // than resetting them to pending and creating duplicate confirmations.

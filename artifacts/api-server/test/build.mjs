@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const outputDir = resolve(testDir, ".compiled");
-const testName = ["shipping", "guest-checkout", "email-confirmations", "gmail-smtp"].includes(process.argv[2]) ? process.argv[2] : "regressions";
+const testName = ["shipping", "guest-checkout", "email-confirmations", "gmail-smtp", "gmail-oauth"].includes(process.argv[2]) ? process.argv[2] : "regressions";
 const outputFile = resolve(outputDir, `${testName}.test.cjs`);
 
 await rm(outputDir, { recursive: true, force: true });
@@ -34,10 +34,14 @@ await build({
         resolveDir: testDir,
       }));
     },
-  }] : testName === "gmail-smtp" ? [{
+  }] : ["gmail-smtp", "gmail-oauth"].includes(testName) ? [{
     name: "isolated-gmail-smtp",
     setup(builder) {
       builder.onResolve({ filter: /^nodemailer$/ }, () => ({ path: resolve(testDir, "fixtures/gmail-smtp.ts") }));
+      if (testName === "gmail-oauth") {
+        builder.onResolve({ filter: /^@workspace\/db$/ }, () => ({ path: resolve(testDir, "fixtures/gmail-oauth-db.ts") }));
+        builder.onResolve({ filter: /^@clerk\/express$/ }, () => ({ path: resolve(testDir, "fixtures/gmail-oauth-clerk.ts") }));
+      }
     },
   }] : [],
   external: [

@@ -18,6 +18,7 @@ import {
 import { sanitizeRichTextHtml } from "@/utils/rich-text";
 import logoImage from "@assets/logo-soft-options/glam-too-selected-dark.svg";
 import AdminHomePage from "./admin-home-page";
+import AdminGmailSettings from "@/components/admin-gmail-settings";
 
 type RichTextEditorProps = {
   value: string;
@@ -2084,7 +2085,7 @@ export default function AdminDashboard({
       return false;
     }
   })());
-  const [section, setSection] = useState<AdminSection>("overview");
+  const [section, setSection] = useState<AdminSection>(() => new URLSearchParams(window.location.search).has("gmail") ? "payments" : "overview");
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [products, setProducts, commitProducts] = useStoredState<Product[]>(productsStorageKey, getStoredProducts());
   const [categories, setCategories, commitCategories] = useStoredState<Category[]>(categoriesStorageKey, getStoredCategories());
@@ -3677,6 +3678,7 @@ export default function AdminDashboard({
         {section === "payments" && (
           <div className="admin-payments-page">
             <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Too." action={<button className="admin-payment-view-transactions" type="button" onClick={() => setSection("orders")}>View transactions</button>} />
+            <AdminGmailSettings />
             <section className={`admin-payment-card ${stripeStatus.configured ? "is-connected" : ""}`}>
               <div className="admin-payment-banner-copy">
                 <div className="admin-payment-provider-row">

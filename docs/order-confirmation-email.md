@@ -23,7 +23,7 @@ No historical order was resent. Production database inspection was read-only. Te
 
 ### States and retries
 
-`pending` means queued; `sending` means claimed; `accepted` means MailerSend accepted a message; `delivered`, `bounced` and `failed` describe recorded outcomes.
+`pending` means queued; `sending` means claimed; `accepted` means the configured provider accepted a message, not that it reached an inbox; `delivered`, `bounced` and `failed` describe recorded outcomes.
 
 Explicit temporary SMTP 4xx rejections and connection failures known to happen before sending retry at 1, 2, 4 and 8 minutes, with at most five send attempts. Authentication errors and permanent SMTP rejections stop as failed. Raw SMTP errors/responses and credentials are not logged.
 
@@ -38,7 +38,12 @@ Runtime configuration names:
 | Name | Purpose |
 | --- | --- |
 | `GMAIL_SMTP_USER` | Gmail or Google Workspace mailbox used to authenticate and send |
-| `GMAIL_SMTP_APP_PASSWORD` | Secret Google App Password, not the normal account password |
+| `GMAIL_SMTP_AUTH_MODE` | `oauth2` for the approved client-credential setup; `app_password` remains an explicit alternative only |
+| `GMAIL_SMTP_CLIENT_ID` | Secret-stored Google OAuth Web application client identifier |
+| `GMAIL_SMTP_CLIENT_SECRET` | Secret-stored Google OAuth application secret; never an SMTP password |
+| `GMAIL_SMTP_OAUTH_REDIRECT_URI` | Exact HTTPS callback URI registered in Google Cloud; development can derive it from the development domain |
+| `GMAIL_SMTP_APP_PASSWORD` | Used only when App Password authentication is explicitly selected |
+| `SESSION_SECRET` | Stable server encryption secret for saved Google authorization; rotating it requires reauthorization |
 | `GMAIL_SMTP_FROM_NAME` | Optional; defaults to Glam Too Boutique |
 | `GMAIL_SMTP_REPLY_TO_EMAIL` | Optional monitored reply-to; defaults to authenticated mailbox |
 | `ORDER_EMAIL_TRANSPORT` | `gmail_smtp` (default); `mailersend` is retained only as an explicit legacy choice |
@@ -52,12 +57,14 @@ Adding Gmail credentials alone does not enable unrestricted sending. Purchase co
 
 ### Gmail setup and verification
 
-1. Use a merchant-controlled Gmail or Google Workspace mailbox with 2-Step Verification. Generate a dedicated Google App Password where account policy allows it. Accounts that prohibit App Passwords need a separately approved OAuth/Workspace relay setup.
-2. Provide the mailbox and App Password through the secure Secrets flow; never paste credentials into chat. The available Gmail connector is API-based, not this SMTP authentication method.
-3. Set the shop URL and dedicated recipient allowlist before testing. Keep unrestricted sending off.
-4. Run `pnpm --filter @workspace/api-server run verify:gmail-smtp` to verify TLS/authentication without sending any email. A successful result proves authentication only.
-5. After the implementation/schema is published to the intended environment, make a **new** sandbox purchase. Match the saved Message-ID and order reference with controlled recipient-inbox evidence. Do not replay historical orders.
-6. For an `@gmail.com` sender Google manages its domain authentication. For a Google Workspace custom domain, check its Google-provided SPF/DKIM setup and DMARC policy. This implementation does not spoof an unrelated sender address.
+1. Use the merchant-controlled sending mailbox and Google OAuth **Web application** client. The merchant supplied the sender and Client ID/Secret through Secrets; these application credentials alone do not authorize mailbox access.
+2. Enable the Gmail API in that Google Cloud project for the sender-profile check. Register the exact callback URL shown under **Admin → Payments → Order confirmation emails**. If Google's consent app is in Testing, add the sender as a test user; Gmail authorizations for external Testing apps can expire after seven days.
+3. Click **Connect Gmail**, select the configured sender and approve the SMTP scope `https://mail.google.com/`. This broad Gmail scope is required by SMTP; the app uses it only for sender verification, authentication and order-confirmation sending, not reading messages. The available Replit Gmail connector is API-based and does not grant this SMTP scope.
+4. The one-time callback requires a secure browser cookie, persisted one-use state, PKCE and a current administrator role. It confirms the mailbox, authenticates SMTP without sending, then encrypts the refresh token server-side. No refresh token is pasted into chat or returned to the browser. Client/account changes invalidate the stored authorization; there is no App Password fallback while OAuth is selected.
+5. Only confirmations queued after the first authorization become eligible. Reconnecting the same configured client preserves that initial cutoff and does not replay old confirmations. Previously queued rows are retained, not deleted.
+6. Keep the verified shop URL, dedicated recipient allowlist and unrestricted-sending switch off during setup. Use **Check authentication** or `pnpm --filter @workspace/api-server run verify:gmail-smtp`; neither sends a message or proves inbox delivery.
+7. After authorization and the implementation/schema are available in the intended environment, make a **new** sandbox purchase. Match the saved Message-ID and order reference with controlled recipient-inbox evidence. Do not replay historical orders. Production uses its own configured callback URL and may require separate authorization when its database is separate.
+8. For an `@gmail.com` sender Google manages its domain authentication. For a Google Workspace custom domain, check its Google-provided SPF/DKIM setup and DMARC policy. This implementation does not spoof an unrelated sender address.
 
 ## Verification
 
@@ -69,7 +76,7 @@ pnpm --filter @workspace/api-server run typecheck
 pnpm --filter @workspace/api-server run test:gmail-smtp
 ```
 
-The 57 automated checks comprise the existing regression, checkout/account and legacy email suites plus nine isolated Gmail SMTP tests for the default transport/no fallback, authenticated sender/TLS, registered/guest confirmations, SMTP acceptance versus delivery, bounded retry/recovery, authentication/permanent rejection, ambiguous DATA disconnects, recipient restrictions and no-send credential verification.
+The 68 automated checks comprise the existing regression, checkout/account and legacy email suites, nine isolated Gmail SMTP tests and eleven isolated OAuth tests. OAuth coverage includes admin/Origin restrictions, state expiry/replay, PKCE, secure cookies, mailbox/scope checks, encrypted persistence, no password fallback, sanitized errors and no-send verification. Provider responses are simulated and cannot prove real Google authorization or inbox delivery.
 
 Provider delivery responses in automated tests are **simulated**, not real delivery evidence.
 
@@ -95,4 +102,4 @@ Development schema additions are non-destructive. Production receives the schema
 
 ## Remaining blockers
 
-Google authentication remains blocked despite credentials being present. Supply a valid dedicated App Password for the configured Google mailbox and satisfy its account security policy before retrying. Actual inbox-delivery evidence remains outstanding. The published site has not been updated by the agent. Gmail SMTP acceptance cannot be automatically upgraded to delivered or used as inbox-delivery evidence.
+The previous App Password attempt was rejected by Google (EAUTH / SMTP 534). OAuth2 support is now implemented and the Client ID/Secret are supplied, but the merchant must register the callback URL and complete Google mailbox consent. Real OAuth authentication and controlled-inbox delivery are not yet verified; no email was sent by this work. Browser verification of the protected settings panel was blocked by the absence of an authorized admin session; anonymous access and forged callback rejection were confirmed. The published site's code/schema have not been updated by the agent. Gmail SMTP acceptance cannot be automatically upgraded to delivered or used as inbox-delivery evidence.

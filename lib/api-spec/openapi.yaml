@@ -17,6 +17,75 @@ tags:
   - name: seo
     description: Public search metadata and crawler files
 paths:
+  /admin/gmail:
+    get:
+      operationId: getAdminGmailSettings
+      summary: Read Gmail OAuth setup status (administrators only)
+      responses:
+        "200":
+          description: Setup metadata without mailbox, client credentials or tokens
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [configured, connected, authMode, callbackUrl, scope, recipientRestricted]
+                properties:
+                  configured: { type: boolean }
+                  connected: { type: boolean }
+                  authMode: { type: string, enum: [oauth2] }
+                  callbackUrl: { type: [string, "null"] }
+                  scope: { type: string }
+                  recipientRestricted: { type: boolean }
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
+        "503":
+          description: Authorization storage unavailable
+  /admin/gmail/connect:
+    post:
+      operationId: startAdminGmailAuthorization
+      summary: Start an administrator-owned Google SMTP authorization
+      description: Requires same-origin admin access; sets a Secure HttpOnly SameSite cookie and one-use state. The returned URL includes public OAuth client identification, never the client secret.
+      responses:
+        "200":
+          description: Google consent URL for SMTP scope and offline authorization
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authorizationUrl]
+                properties:
+                  authorizationUrl: { type: string }
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator or same-origin access required
+        "429":
+          description: Too many pending authorizations
+        "503":
+          description: OAuth setup unavailable
+  /admin/gmail/verify:
+    post:
+      operationId: verifyAdminGmailAuthentication
+      summary: Verify administrator-configured SMTP authentication without sending
+      responses:
+        "200":
+          description: SMTP authenticated; inbox delivery is not verified
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [verified, noEmailSent]
+                properties:
+                  verified: { type: boolean }
+                  noEmailSent: { type: boolean }
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator or same-origin access required
+        "503":
+          description: Authentication did not pass
   /stripe/payment-intent:
     post:
       operationId: createCheckoutPaymentIntent

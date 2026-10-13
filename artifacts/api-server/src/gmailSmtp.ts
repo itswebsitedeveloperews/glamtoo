@@ -1,11 +1,31 @@
 import nodemailer from "nodemailer";
+import { gmailOAuthClient, gmailUsesOAuth, getGmailRefreshToken } from "./gmailOAuthCredentials";
 
-export function gmailSmtpConfiguration() {
+export type GmailSmtpConfig = {
+  user: string; fromName: string; replyTo: string; mode: "app_password" | "oauth2";
+  password?: string; clientId?: string; clientSecret?: string; refreshToken?: string;
+  authorizedSince?: Date;
+};
+
+export async function gmailSmtpConfiguration(): Promise<GmailSmtpConfig | null> {
   const user = process.env.GMAIL_SMTP_USER?.trim();
   const password = process.env.GMAIL_SMTP_APP_PASSWORD?.replace(/\s/g, "");
-  if (!user || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user) || !password) return null;
+  if (!user || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(user)) return null;
+  if (gmailUsesOAuth()) {
+    const client = gmailOAuthClient();
+    if (!client) return null;
+    const refreshToken = await getGmailRefreshToken(client);
+    if (!refreshToken) return null;
+    return {
+      user, mode: "oauth2", clientId: client.clientId, clientSecret: client.clientSecret,
+      refreshToken: refreshToken.token, authorizedSince: refreshToken.enabledAt,
+      fromName: process.env.GMAIL_SMTP_FROM_NAME?.trim() || "Glam Too Boutique",
+      replyTo: process.env.GMAIL_SMTP_REPLY_TO_EMAIL?.trim() || user,
+    };
+  }
+  if (!password) return null;
   return {
-    user, password,
+    user, password, mode: "app_password",
     fromName: process.env.GMAIL_SMTP_FROM_NAME?.trim() || "Glam Too Boutique",
     replyTo: process.env.GMAIL_SMTP_REPLY_TO_EMAIL?.trim() || user,
   };
@@ -19,10 +39,12 @@ export function gmailOrderMessageId(config: { user: string }, orderId: string) {
   return `<glam-too-order-${orderId.replace(/[^a-zA-Z0-9_-]/g, "")}@${config.user.split("@")[1]}>`;
 }
 
-function transport(config: NonNullable<ReturnType<typeof gmailSmtpConfiguration>>) {
+function transport(config: GmailSmtpConfig) {
   return nodemailer.createTransport({
     host: "smtp.gmail.com", port: 465, secure: true,
-    auth: { user: config.user, pass: config.password },
+    auth: config.mode === "oauth2"
+      ? { type: "OAuth2", user: config.user, clientId: config.clientId, clientSecret: config.clientSecret, refreshToken: config.refreshToken }
+      : { user: config.user, pass: config.password },
     tls: { rejectUnauthorized: true, minVersion: "TLSv1.2" },
     connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 20_000,
     logger: false, debug: false,
@@ -30,7 +52,7 @@ function transport(config: NonNullable<ReturnType<typeof gmailSmtpConfiguration>
 }
 
 export async function sendGmailConfirmation(
-  config: NonNullable<ReturnType<typeof gmailSmtpConfiguration>>,
+  config: GmailSmtpConfig,
   order: { id: string; email: string },
   message: { subject: string; html: string; text: string },
 ) {
@@ -61,7 +83,7 @@ export async function sendGmailConfirmation(
       throw new GmailSmtpError("retry", `Gmail temporarily rejected the message (SMTP ${failure.responseCode}).`);
     }
     if (failure.code === "EAUTH" || (failure.responseCode && failure.responseCode >= 500)) {
-      throw new GmailSmtpError("failed", "Gmail rejected authentication or the message; check the App Password and account restrictions.");
+      throw new GmailSmtpError("failed", "Gmail rejected authentication or the message; reconnect Google OAuth or check the App Password and account restrictions.");
     }
     // Nodemailer also reports post-DATA socket errors as command CONN. That
     // label is not evidence that a message was never sent.
@@ -76,9 +98,9 @@ export async function sendGmailConfirmation(
   } finally { client.close(); }
 }
 
-export async function verifyGmailSmtp() {
-  const config = gmailSmtpConfiguration();
-  if (!config) throw new GmailSmtpError("failed", "Gmail SMTP credentials are missing or the mailbox setting is not a valid email address.");
+export async function verifyGmailSmtp(override?: GmailSmtpConfig) {
+  const config = override ?? await gmailSmtpConfiguration();
+  if (!config) throw new GmailSmtpError("failed", "Gmail SMTP credentials or Google mailbox authorization are not configured.");
   const client = transport(config);
   try { return await client.verify(); }
   catch (error) {

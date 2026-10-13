@@ -7,11 +7,12 @@
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
-    "test": "node ./test/build.mjs && node ./test/build.mjs guest-checkout && node ./test/build.mjs email-confirmations && node ./test/build.mjs gmail-smtp",
+    "test": "node ./test/build.mjs && node ./test/build.mjs guest-checkout && node ./test/build.mjs email-confirmations && node ./test/build.mjs gmail-smtp && node ./test/build.mjs gmail-oauth",
     "test:guest-checkout": "node ./test/build.mjs guest-checkout",
     "test:shipping": "node ./test/build.mjs shipping",
     "test:email-confirmations": "node ./test/build.mjs email-confirmations",
     "test:gmail-smtp": "node ./test/build.mjs gmail-smtp",
+    "test:gmail-oauth": "node ./test/build.mjs gmail-oauth",
     "verify:gmail-smtp": "node ./scripts/verify-gmail-smtp.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

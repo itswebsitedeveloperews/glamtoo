@@ -30,3 +30,7 @@ SEO_SITE_ORIGIN = "https://glamtoo.webdesignessex.io"
 ORDER_EMAIL_PUBLIC_URL = "https://glamtoo.webdesignessex.io"
 ORDER_EMAIL_SEND_TO_ALL = "false"
 ORDER_EMAIL_TRANSPORT = "gmail_smtp"
+GMAIL_SMTP_AUTH_MODE = "oauth2"
+
+[userenv.production]
+GMAIL_SMTP_OAUTH_REDIRECT_URI = "https://glamtoo.webdesignessex.io/api/gmail/oauth/callback"

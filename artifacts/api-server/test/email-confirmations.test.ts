@@ -105,7 +105,7 @@ after(async () => { globalThis.fetch = originalFetch; await pool.end(); });
 test("missing safe routing leaves confirmations queued; refund worker cannot claim confirmation jobs", async () => {
   const id = await paid();
   process.env.ORDER_EMAIL_ALLOWED_RECIPIENTS = "";
-  assert.equal(isOrderEmailConfigured(), false);
+  assert.equal(await isOrderEmailConfigured(), false);
   await processOrderConfirmations();
   await processRefundNotifications();
   assert.equal(requests.length, 0);

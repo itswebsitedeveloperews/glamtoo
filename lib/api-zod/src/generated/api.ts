@@ -9,6 +9,37 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Read Gmail OAuth setup status (administrators only)
+ */
+export const GetAdminGmailSettingsResponse = zod.object({
+  "configured": zod.boolean(),
+  "connected": zod.boolean(),
+  "authMode": zod.enum(['oauth2']),
+  "callbackUrl": zod.string().nullable(),
+  "scope": zod.string(),
+  "recipientRestricted": zod.boolean()
+})
+
+
+/**
+ * Requires same-origin admin access; sets a Secure HttpOnly SameSite cookie and one-use state. The returned URL includes public OAuth client identification, never the client secret.
+ * @summary Start an administrator-owned Google SMTP authorization
+ */
+export const StartAdminGmailAuthorizationResponse = zod.object({
+  "authorizationUrl": zod.string()
+})
+
+
+/**
+ * @summary Verify administrator-configured SMTP authentication without sending
+ */
+export const VerifyAdminGmailAuthenticationResponse = zod.object({
+  "verified": zod.boolean(),
+  "noEmailSent": zod.boolean()
+})
+
+
+/**
  * Guest payments are owned by an opaque HttpOnly browser cookie, not by the supplied email. Saved payment methods are available only to signed-in customers.
  * @summary Start an authenticated or guest card payment
  */

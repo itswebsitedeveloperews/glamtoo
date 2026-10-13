@@ -161,6 +161,32 @@ export interface ErrorEnvelope {
   error: string;
 }
 
+export type GetAdminGmailSettings200AuthMode = typeof GetAdminGmailSettings200AuthMode[keyof typeof GetAdminGmailSettings200AuthMode];
+
+
+export const GetAdminGmailSettings200AuthMode = {
+  oauth2: 'oauth2',
+} as const;
+
+export type GetAdminGmailSettings200 = {
+  configured: boolean;
+  connected: boolean;
+  authMode: GetAdminGmailSettings200AuthMode;
+  /** @nullable */
+  callbackUrl: string | null;
+  scope: string;
+  recipientRestricted: boolean;
+};
+
+export type StartAdminGmailAuthorization200 = {
+  authorizationUrl: string;
+};
+
+export type VerifyAdminGmailAuthentication200 = {
+  verified: boolean;
+  noEmailSent: boolean;
+};
+
 export type AbandonCheckoutPayment200 = {
   abandoned: boolean;
 };
