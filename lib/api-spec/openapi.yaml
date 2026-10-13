@@ -91,6 +91,15 @@ paths:
       operationId: createCheckoutPaymentIntent
       summary: Start an authenticated or guest card payment
       description: Guest payments are owned by an opaque HttpOnly browser cookie, not by the supplied email. Saved payment methods are available only to signed-in customers.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          description: Required unless retryKey is provided in the body. Reuse for unchanged checkout attempts.
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 100
       requestBody:
         required: true
         content:
@@ -116,6 +125,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Retry key reused with changed details, completed checkout, or payment recovery required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Shared rate limit, concurrent preparation, or active-reservation limit. Retry the same attempt without requiring sign-in.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Temporary provider failure. Reuse the same retry key; existing allocations remain held until payment is resolved.
   /stripe/finalize-payment:
     post:
       operationId: finalizeCheckoutPayment
@@ -150,6 +177,15 @@ paths:
     post:
       operationId: createHostedCheckout
       summary: Start authenticated or guest hosted Stripe checkout
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          description: Required unless retryKey is supplied in the body. Unchanged retries reuse the owned session.
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 100
       requestBody:
         required: true
         content:
@@ -169,6 +205,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Checkout details conflict with the retry key or payment recovery is required
+        "429":
+          description: Shared checkout rate or pending-reservation limit; retry guidance is returned
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+        "503":
+          description: Temporary payment-provider failure; retry with the same key
   /stripe/abandon-payment:
     post:
       operationId: abandonCheckoutPayment
@@ -350,6 +396,12 @@ components:
       type: object
       required: [email, customerName, lines, delivery, address]
       properties:
+        retryKey:
+          type: string
+          minLength: 16
+          maxLength: 100
+          pattern: "^[A-Za-z0-9_-]+$"
+          description: Required for checkout creation unless supplied as the Idempotency-Key header. Reuse for unchanged retries; changed details return 409. Busy, rate, or reservation limits return 429 with Retry-After, without requiring sign-in.
         email:
           type: string
         customerName:
@@ -521,4 +573,7 @@ components:
       properties:
         error:
           type: string
+        code:
+          type: string
+          description: Optional stable error category; checkout distinguishes throttling, conflicts, cancellation, completion and retryable provider failures.
 

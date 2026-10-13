@@ -2,7 +2,7 @@ import { clerkClient, getAuth } from "@clerk/express";
 import type { NextFunction, Request, Response } from "express";
 
 export type AdminUser = {
-  emailAddresses: Array<{ emailAddress: string }>;
+  emailAddresses: Array<{ emailAddress: string; verification?: { status: string } | null }>;
   privateMetadata?: Record<string, unknown>;
 };
 
@@ -23,7 +23,9 @@ export function configuredAdminEmails(value = process.env.ADMIN_EMAILS) {
 }
 
 export function isBootstrapAdminUser(user: AdminUser, bootstrapEmails = configuredAdminEmails()) {
-  return user.emailAddresses.some((email) => bootstrapEmails.has(email.emailAddress.toLowerCase()));
+  return user.emailAddresses.some((email) =>
+    email.verification?.status === "verified"
+    && bootstrapEmails.has(email.emailAddress.trim().toLowerCase()));
 }
 
 export function isAdminUser(user: AdminUser, bootstrapEmails = configuredAdminEmails()) {

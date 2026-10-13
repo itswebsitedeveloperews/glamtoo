@@ -11,6 +11,10 @@ if (!process.env.DATABASE_URL) {
 }
 
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+// Session advisory locks must not occupy the query pool while their work waits
+// for another query connection. Customer locks are separate for nested checkout.
+export const checkoutLockPool = new Pool({ connectionString: process.env.DATABASE_URL, max: 4 });
+export const stripeCustomerLockPool = new Pool({ connectionString: process.env.DATABASE_URL, max: 3 });
 export const db = drizzle(pool, { schema });
 
 export * from "./schema";

@@ -34,3 +34,4 @@
 - [Chromium CDP preview checks](chromium-cdp-targets.md) — Select the actual page target and use instant scrolling for deterministic captures.
 - [Order email rollout safety](order-email-rollout-safety.md) — Provider setup must not silently send to real customers or replay historical orders; acceptance is not delivery proof.
 - [Workflow port ownership](workflow-port-ownership.md) — A failed workflow can still have a server listening; verify port ownership before restarting.
+- [Checkout creation uncertainty](checkout-creation-safety.md) — Lost provider responses retain allocations and retry identity; session locks must not exhaust the query pool.

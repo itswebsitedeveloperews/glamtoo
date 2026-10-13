@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { Request, Response } from "express";
+import { browserOriginAllowed } from "./browserSecurity";
 
 const cookieName = "glam_too_guest_checkout";
 const tokenPattern = /^[a-f0-9]{64}$/;
@@ -24,8 +25,7 @@ export function createGuestCheckoutOwner(request: Request, response: Response): 
   response.cookie(cookieName, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production" || request.secure
-      || request.get("x-forwarded-proto")?.split(",")[0].trim() === "https",
+    secure: process.env.NODE_ENV === "production" || request.secure,
     path: "/",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   });
@@ -45,14 +45,5 @@ export function ownsCheckoutPayment(
 }
 
 export function checkoutOriginAllowed(request: Request): boolean {
-  if (request.get("sec-fetch-site") === "cross-site") return false;
-  const origin = request.get("origin");
-  if (!origin) return true; // Non-browser API calls still require proof of payment ownership.
-  try {
-    const parsed = new URL(origin);
-    const hosts = [request.get("host"), request.get("x-forwarded-host")?.split(",")[0].trim()];
-    return ["http:", "https:"].includes(parsed.protocol) && hosts.includes(parsed.host);
-  } catch {
-    return false;
-  }
+  return browserOriginAllowed(request);
 }

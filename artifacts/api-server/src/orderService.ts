@@ -204,11 +204,19 @@ async function loadOrder(client: PoolClient, clause: string, value: string) {
   return serializeOrder(order, itemResult.rows);
 }
 
-export async function createPendingOrder(input: PendingOrderInput) {
-  const id = generatedOrderId();
+export async function createPendingOrder(input: PendingOrderInput, stableId?: string) {
+  const id = stableId ?? generatedOrderId();
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    if (stableId) {
+      const existing = await client.query("SELECT user_id FROM store_orders WHERE id=$1", [id]);
+      if (existing.rows[0]) {
+        if (existing.rows[0].user_id !== input.userId) throw new OrderFinalizationError("This checkout belongs to another owner.");
+        await client.query("COMMIT");
+        return { id };
+      }
+    }
     await client.query(
       `INSERT INTO store_orders (
         id, user_id, email, customer_name, phone, address_line_1, address_line_2,
@@ -268,11 +276,14 @@ export async function createPendingOrder(input: PendingOrderInput) {
 }
 
 export async function attachOrderPayment(orderId: string, paymentReference: string, paymentType: OrderPaymentType) {
-  const result = await pool.query<{ id: string }>(
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const result = await client.query<{ id: string }>(
     `UPDATE store_orders
      SET payment_reference = $2, payment_type = $3, updated_at = NOW()
      WHERE id = $1
-       AND payment_status = 'pending'
+        AND payment_status IN ('pending', 'paid')
        AND (payment_reference IS NULL OR payment_reference = $2)
      RETURNING id, refund_attempt, refund_idempotency_key`,
     [orderId, paymentReference, paymentType],
@@ -280,6 +291,15 @@ export async function attachOrderPayment(orderId: string, paymentReference: stri
   if (!result.rows[0]) {
     throw new OrderFinalizationError("This checkout could not be attached to its saved order.");
   }
+    await client.query("UPDATE inventory_reservations SET payment_reference=$2 WHERE payment_reference=$1", [orderId, paymentReference]);
+    await client.query("UPDATE coupon_reservations SET payment_reference=$2 WHERE payment_reference=$1", [orderId, paymentReference]);
+    await client.query("DELETE FROM inventory_reservations WHERE payment_reference=$1 AND EXISTS (SELECT 1 FROM store_orders WHERE id=$2 AND payment_status='paid')", [paymentReference, orderId]);
+    await client.query("DELETE FROM coupon_reservations WHERE payment_reference=$1 AND EXISTS (SELECT 1 FROM store_orders WHERE id=$2 AND payment_status='paid')", [paymentReference, orderId]);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally { client.release(); }
 }
 
 export async function setOrderExpiration(orderId: string, expiresAt: Date) {
@@ -297,6 +317,7 @@ export async function listExpiredPendingPayments() {
      FROM store_orders
      WHERE payment_status = 'pending'
        AND expires_at <= NOW()
+        AND NOT EXISTS (SELECT 1 FROM checkout_attempts a WHERE a.order_id=store_orders.id AND store_orders.payment_reference IS NULL)
      ORDER BY expires_at
      LIMIT 25`,
   );
@@ -350,7 +371,7 @@ async function markCouponRedeemed(client: PoolClient, order: OrderRow, paymentRe
       [order.coupon_id],
     );
   }
-  await client.query("DELETE FROM coupon_reservations WHERE payment_reference = $1", [paymentReference]);
+  await client.query("DELETE FROM coupon_reservations WHERE payment_reference = ANY($1::text[])", [[order.id, paymentReference]]);
 }
 
 async function cancelledOrderCapacityIssue(client: PoolClient, order: OrderRow): Promise<PaymentResolutionReason | null> {
@@ -503,7 +524,7 @@ async function finalizeSavedOrder(
       if (wasCancelled) {
         await settleCancelledOrderInventory(client, order.id);
       }
-      await client.query("DELETE FROM inventory_reservations WHERE payment_reference = $1", [paymentReference]);
+      await client.query("DELETE FROM inventory_reservations WHERE payment_reference = ANY($1::text[])", [[order.id, paymentReference]]);
       await markCouponRedeemed(client, order, paymentReference);
       await client.query(
         `INSERT INTO store_order_email_notifications (order_id, notification_type)
@@ -555,7 +576,7 @@ export async function cancelPendingOrder(orderId: string | undefined, paymentRef
         `DELETE FROM inventory_reservations
           WHERE payment_reference = ANY($1::text[])
          RETURNING product_id, quantity`,
-        [[...new Set([order.payment_reference, paymentReference].filter((reference): reference is string => Boolean(reference)))]],
+        [[...new Set([order.id, order.payment_reference, paymentReference].filter((reference): reference is string => Boolean(reference)))]],
       );
       for (const reservation of reservations.rows) {
         await client.query(
@@ -565,7 +586,7 @@ export async function cancelPendingOrder(orderId: string | undefined, paymentRef
       }
       await client.query(
         "DELETE FROM coupon_reservations WHERE payment_reference = ANY($1::text[])",
-        [[...new Set([order.payment_reference, paymentReference].filter((reference): reference is string => Boolean(reference)))]],
+        [[...new Set([order.id, order.payment_reference, paymentReference].filter((reference): reference is string => Boolean(reference)))]],
       );
     }
     await client.query("COMMIT");

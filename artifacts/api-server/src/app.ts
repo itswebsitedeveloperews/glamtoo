@@ -1,5 +1,6 @@
 import express, { type Express } from "express";
 import cors from "cors";
+import { baselineHeaders, enforceBrowserMutations, trustedOrigins } from "./browserSecurity";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
@@ -13,6 +14,10 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 
 const app: Express = express();
+app.disable("x-powered-by");
+// Only explicitly configured proxy IPs/CIDRs may supply the client address.
+if (process.env.TRUSTED_PROXY_CIDRS) app.set("trust proxy", process.env.TRUSTED_PROXY_CIDRS.split(",").map((value) => value.trim()));
+app.use(baselineHeaders);
 
 app.use(
   pinoHttp({
@@ -33,7 +38,7 @@ app.use(
     },
   }),
 );
-app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
+app.use(CLERK_PROXY_PATH, enforceBrowserMutations, clerkProxyMiddleware());
 
 app.post(
   "/api/stripe/webhook",
@@ -53,7 +58,8 @@ app.post(
   },
 );
 
-app.use(cors({ credentials: true, origin: true }));
+app.use(cors({ credentials: true, origin: (origin, callback) => callback(null, Boolean(origin && trustedOrigins().has(origin))) }));
+app.use(enforceBrowserMutations);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(

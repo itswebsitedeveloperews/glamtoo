@@ -43,11 +43,26 @@ export const VerifyAdminGmailAuthenticationResponse = zod.object({
  * Guest payments are owned by an opaque HttpOnly browser cookie, not by the supplied email. Saved payment methods are available only to signed-in customers.
  * @summary Start an authenticated or guest card payment
  */
+export const createCheckoutPaymentIntentHeaderIdempotencyKeyMin = 16;
+export const createCheckoutPaymentIntentHeaderIdempotencyKeyMax = 100;
+
+
+
+export const CreateCheckoutPaymentIntentHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createCheckoutPaymentIntentHeaderIdempotencyKeyMin).max(createCheckoutPaymentIntentHeaderIdempotencyKeyMax).optional().describe('Required unless retryKey is provided in the body. Reuse for unchanged checkout attempts.')
+})
+
+export const createCheckoutPaymentIntentBodyRetryKeyMin = 16;
+export const createCheckoutPaymentIntentBodyRetryKeyMax = 100;
+
+
+export const createCheckoutPaymentIntentBodyRetryKeyRegExp = new RegExp('^[A-Za-z0-9_-]+$');
 
 
 export const createCheckoutPaymentIntentBodyCreateAccountDefault = false;
 
 export const CreateCheckoutPaymentIntentBody = zod.object({
+  "retryKey": zod.string().min(createCheckoutPaymentIntentBodyRetryKeyMin).max(createCheckoutPaymentIntentBodyRetryKeyMax).regex(createCheckoutPaymentIntentBodyRetryKeyRegExp).optional().describe('Required for checkout creation unless supplied as the Idempotency-Key header. Reuse for unchanged retries; changed details return 409. Busy, rate, or reservation limits return 429 with Retry-After, without requiring sign-in.'),
   "email": zod.string(),
   "customerName": zod.string(),
   "phone": zod.string().optional(),
@@ -95,11 +110,26 @@ export const FinalizeCheckoutPaymentResponse = zod.object({
 /**
  * @summary Start authenticated or guest hosted Stripe checkout
  */
+export const createHostedCheckoutHeaderIdempotencyKeyMin = 16;
+export const createHostedCheckoutHeaderIdempotencyKeyMax = 100;
+
+
+
+export const CreateHostedCheckoutHeader = zod.object({
+  "Idempotency-Key": zod.string().min(createHostedCheckoutHeaderIdempotencyKeyMin).max(createHostedCheckoutHeaderIdempotencyKeyMax).optional().describe('Required unless retryKey is supplied in the body. Unchanged retries reuse the owned session.')
+})
+
+export const createHostedCheckoutBodyRetryKeyMin = 16;
+export const createHostedCheckoutBodyRetryKeyMax = 100;
+
+
+export const createHostedCheckoutBodyRetryKeyRegExp = new RegExp('^[A-Za-z0-9_-]+$');
 
 
 export const createHostedCheckoutBodyCreateAccountDefault = false;
 
 export const CreateHostedCheckoutBody = zod.object({
+  "retryKey": zod.string().min(createHostedCheckoutBodyRetryKeyMin).max(createHostedCheckoutBodyRetryKeyMax).regex(createHostedCheckoutBodyRetryKeyRegExp).optional().describe('Required for checkout creation unless supplied as the Idempotency-Key header. Reuse for unchanged retries; changed details return 409. Busy, rate, or reservation limits return 429 with Retry-After, without requiring sign-in.'),
   "email": zod.string(),
   "customerName": zod.string(),
   "phone": zod.string().optional(),

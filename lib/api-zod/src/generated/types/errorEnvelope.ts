@@ -8,4 +8,6 @@
 
 export interface ErrorEnvelope {
   error: string;
+  /** Optional stable error category; checkout distinguishes throttling, conflicts, cancellation, completion and retryable provider failures. */
+  code?: string;
 }

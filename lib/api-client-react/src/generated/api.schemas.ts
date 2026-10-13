@@ -28,6 +28,13 @@ export interface CheckoutPaymentAddress {
 }
 
 export interface CheckoutPaymentInput {
+  /**
+     * Required for checkout creation unless supplied as the Idempotency-Key header. Reuse for unchanged retries; changed details return 409. Busy, rate, or reservation limits return 429 with Retry-After, without requiring sign-in.
+     * @minLength 16
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  retryKey?: string;
   email: string;
   customerName: string;
   phone?: string;
@@ -159,6 +166,8 @@ export interface ContactEnquiryResponse {
 
 export interface ErrorEnvelope {
   error: string;
+  /** Optional stable error category; checkout distinguishes throttling, conflicts, cancellation, completion and retryable provider failures. */
+  code?: string;
 }
 
 export type GetAdminGmailSettings200AuthMode = typeof GetAdminGmailSettings200AuthMode[keyof typeof GetAdminGmailSettings200AuthMode];

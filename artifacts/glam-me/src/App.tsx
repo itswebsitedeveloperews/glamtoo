@@ -81,6 +81,24 @@ const adminProductsStorageKey = 'glam-me-admin-products-v4';
 const adminCategoriesStorageKey = 'glam-me-admin-categories-v2';
 const cartStorageKey = 'glam-me-cart-v1';
 const pendingCouponPaymentStorageKey = 'glam-me-pending-coupon-payment-v1';
+const checkoutAttemptStorageKey = 'glam-too-checkout-attempt-v1';
+let memoryCheckoutAttempt: { key: string; signature: string } | undefined;
+
+function checkoutAttemptFor(signature: string) {
+  let previous = memoryCheckoutAttempt;
+  try { previous = JSON.parse(localStorage.getItem(checkoutAttemptStorageKey) || 'null') ?? previous; } catch { /* In-memory retries still work. */ }
+  const attempt = previous?.signature === signature && typeof previous.key === "string"
+    ? previous : { key: crypto.randomUUID(), signature };
+  return { attempt, changed: Boolean(previous && previous.signature !== signature) };
+}
+
+function rememberCheckoutAttempt(attempt: { key: string; signature: string } | undefined) {
+  memoryCheckoutAttempt = attempt;
+  try {
+    if (attempt) localStorage.setItem(checkoutAttemptStorageKey, JSON.stringify(attempt));
+    else localStorage.removeItem(checkoutAttemptStorageKey);
+  } catch { /* Keep the same retry key in memory when browser storage is unavailable. */ }
+}
 const checkoutPreferencesStorageKey = 'glam-me-checkout-preferences-v1';
 const inventoryStorageKey = 'glam-me-live-inventory-v1';
 const wishlistStorageKey = 'glam-me-wishlist-v1';
@@ -2683,7 +2701,7 @@ function Cart() {
 
 function Checkout() {
   useLiveInventory();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const { openSignUp, openSignIn } = useClerk();
   const [, setLocation] = useLocation();
   const [accountDraft] = useState(readCheckoutAccountDraft);
@@ -2948,24 +2966,6 @@ function Checkout() {
     const lines = checkoutLinePayload();
 
     try {
-      const pendingPaymentIntentId = localStorage.getItem(pendingCouponPaymentStorageKey);
-      if (pendingPaymentIntentId) {
-        const abandonmentResponse = await fetch("/api/stripe/abandon-payment", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paymentIntentId: pendingPaymentIntentId }),
-        });
-        if (!abandonmentResponse.ok) {
-          const abandonmentResult = await abandonmentResponse.json() as { paymentSucceeded?: boolean };
-          if (abandonmentResult.paymentSucceeded) {
-            window.location.assign(`${basePath}/order-confirmation?payment_intent=${encodeURIComponent(pendingPaymentIntentId)}`);
-            return;
-          }
-          throw new Error("We still need to cancel your earlier payment attempt. Please try again in a moment.");
-        }
-        localStorage.removeItem(pendingCouponPaymentStorageKey);
-      }
       const customerName = [formData.get("firstName"), formData.get("lastName")].filter(Boolean).join(" ");
       const paymentInput: CheckoutPaymentInput = {
         createAccount: !isSignedIn && createAccount,
@@ -2986,13 +2986,47 @@ function Checkout() {
           country: "GB",
         },
       };
+      // Store a digest, not billing details, alongside the stable retry key.
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify({ owner: userId || "guest", paymentInput })));
+      const signature = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+      const { attempt, changed } = checkoutAttemptFor(signature);
+      const pendingPaymentIntentId = localStorage.getItem(pendingCouponPaymentStorageKey);
+      if (pendingPaymentIntentId && changed) {
+        const abandonmentResponse = await fetch("/api/stripe/abandon-payment", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paymentIntentId: pendingPaymentIntentId }),
+        });
+        if (!abandonmentResponse.ok) {
+          const abandonmentResult = await abandonmentResponse.json() as { paymentSucceeded?: boolean };
+          if (abandonmentResult.paymentSucceeded) {
+            window.location.assign(`${basePath}/order-confirmation?payment_intent=${encodeURIComponent(pendingPaymentIntentId)}`);
+            return;
+          }
+          throw new Error("We still need to resolve your earlier payment before changing checkout. Retry in a moment.");
+        }
+        localStorage.removeItem(pendingCouponPaymentStorageKey);
+      }
+      rememberCheckoutAttempt(attempt);
       const response = await fetch("/api/stripe/payment-intent", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": attempt.key },
         body: JSON.stringify(paymentInput),
       });
-      const result = await response.json() as Partial<CheckoutPaymentIntentResult> & { error?: string };
+      const result = await response.json() as Partial<CheckoutPaymentIntentResult> & { error?: string; code?: string };
+      if (response.status === 429) throw new Error(result.error || `Please retry the same checkout in ${response.headers.get("Retry-After") || "a few"} seconds. Sign-in is not required.`);
+      if (response.status === 409) {
+        if (result.code === "checkout_closed") {
+          // Cancellation is server-confirmed: the next click is a new attempt.
+          rememberCheckoutAttempt(undefined);
+          localStorage.removeItem(pendingCouponPaymentStorageKey);
+        } else if (result.code === "checkout_completed" && pendingPaymentIntentId) {
+          window.location.assign(`${basePath}/order-confirmation?payment_intent=${encodeURIComponent(pendingPaymentIntentId)}`);
+          return;
+        }
+        throw new Error(result.error || "Resolve the earlier payment before starting a new checkout.");
+      }
       if (!response.ok || !result.clientSecret) throw new Error(result.error || "Stripe checkout is not available right now.");
       if (result.paymentIntentId) {
         localStorage.setItem(pendingCouponPaymentStorageKey, result.paymentIntentId);
@@ -3031,18 +3065,8 @@ function Checkout() {
         return_url: `${window.location.origin}${basePath}/order-confirmation`,
       });
       if (confirmation.error) {
-        if (result.paymentIntentId) {
-          const abandonmentResponse = await fetch("/api/stripe/abandon-payment", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ paymentIntentId: result.paymentIntentId }),
-          }).catch(() => undefined);
-          if (!abandonmentResponse?.ok) {
-            throw new Error("Your card was not charged, but we still need to cancel this coupon payment attempt. Please try again in a moment.");
-          }
-          localStorage.removeItem(pendingCouponPaymentStorageKey);
-        }
+        // Card declines and transport failures can be retried on the same
+        // PaymentIntent; they do not release stock or the coupon allocation.
         throw new Error(confirmation.error.message || "Your card could not be confirmed.");
       }
       if (confirmation.paymentIntent?.status !== "succeeded") throw new Error("Your payment needs additional confirmation. Please try again.");
@@ -3057,6 +3081,7 @@ function Checkout() {
         return;
       }
       localStorage.removeItem(pendingCouponPaymentStorageKey);
+      rememberCheckoutAttempt(undefined);
       clearCart();
       try { sessionStorage.removeItem(checkoutAccountDraftKey); } catch { /* The draft also expires automatically. */ }
       window.location.assign(`${basePath}/order-confirmation?payment_intent=${encodeURIComponent(confirmation.paymentIntent.id)}`);

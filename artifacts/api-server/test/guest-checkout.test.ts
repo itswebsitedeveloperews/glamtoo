@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import express from "express";
 import { before, after, test } from "node:test";
-import { pool } from "@workspace/db";
+import { pool, checkoutLockPool, stripeCustomerLockPool } from "@workspace/db";
 import stripeRouter from "../src/routes/stripe";
 import { intents, sessions, customers } from "./fixtures/guest-stripe";
 import { accountUsers, setAccountCreationFails } from "./fixtures/guest-clerk";
@@ -32,6 +32,8 @@ before(async () => {
   server = app.listen(0);
   await new Promise<void>((resolve) => server.once("listening", resolve));
   origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  process.env.TRUSTED_BROWSER_ORIGINS = origin;
+  process.env.STOREFRONT_ORIGIN = origin;
 });
 
 after(async () => {
@@ -45,6 +47,8 @@ after(async () => {
   await pool.query("DELETE FROM customer_profiles WHERE user_id = ANY($1::text[])", [[...accountUsers.keys()]]);
   if (server) await new Promise<void>((resolve) => server.close(() => resolve()));
   await pool.end();
+  await checkoutLockPool.end();
+  await stripeCustomerLockPool.end();
 });
 
 const input = () => ({
@@ -53,7 +57,7 @@ const input = () => ({
   delivery: deliveryId, lines: [{ productId: runId, quantity: 1 }],
 });
 const post = (path: string, body: unknown, headers: Record<string, string> = {}) =>
-  fetch(`${origin}/api/stripe/${path}`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
+  fetch(`${origin}/api/stripe/${path}`, { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID(), ...headers }, body: JSON.stringify(body) });
 const stock = async () => Number((await pool.query("SELECT stock FROM product_inventory WHERE product_id=$1", [runId])).rows[0].stock);
 
 test("account opt-in creates nothing before payment, then saves billing details and the order exactly once", async () => {

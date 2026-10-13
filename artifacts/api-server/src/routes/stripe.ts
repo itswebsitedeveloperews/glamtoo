@@ -47,6 +47,10 @@ import { attemptPaymentRefund } from "../paymentResolution";
 import { calculateIncludedVat, VAT_RATE_PERCENT } from "../taxService";
 import { resolveShippingMethod } from "../shippingMethods";
 import { checkoutOriginAllowed, createGuestCheckoutOwner, ownsCheckoutPayment, readGuestCheckoutOwner } from "../checkoutIdentity";
+import { CheckoutSafetyError, withCheckoutAttempt } from "../checkoutSafety";
+import { resolveStripeCustomer, stripeCustomerScope } from "../stripeCustomers";
+import { recoverInterruptedCheckouts } from "../checkoutRecovery";
+import { checkoutReturnOrigin } from "../browserSecurity";
 
 type SubmittedCheckoutLine = {
   productId: string;
@@ -91,10 +95,6 @@ function parseCheckoutLine(value: unknown): SubmittedCheckoutLine | null {
 async function resolveCheckoutLine(line: SubmittedCheckoutLine): Promise<CheckoutLine | null> {
   const product = await getCheckoutCatalogLine(line.productId, line.variationId);
   return product ? { ...line, ...product } : null;
-}
-
-function getLineKey(line: CheckoutLine) {
-  return `${line.productId}${line.variationId ? `-${line.variationId}` : ""}`;
 }
 
 function couponMetadata(pricing: Awaited<ReturnType<typeof calculateCouponPricing>> | null): Record<string, string> {
@@ -181,6 +181,7 @@ export async function recoverExpiredPendingOrders(
   stripe: Stripe,
   orders?: Awaited<ReturnType<typeof listExpiredPendingPayments>>,
 ) {
+  if (!orders) await recoverInterruptedCheckouts(stripe);
   const expiredOrders = orders ?? await listExpiredPendingPayments();
   for (const order of expiredOrders) {
     try {
@@ -195,7 +196,8 @@ export async function recoverExpiredPendingOrders(
           if (finalOrder) await attemptPaymentRefund(stripe, order.id, finalOrder, paymentIntent, true);
         } else {
           if (paymentIntent.status !== "canceled") {
-            await stripe.paymentIntents.cancel(paymentIntent.id);
+            const cancelled = await stripe.paymentIntents.cancel(paymentIntent.id);
+            if (cancelled.status !== "canceled") continue;
           }
           await cancelPendingOrder(order.id, paymentIntent.id);
         }
@@ -206,8 +208,9 @@ export async function recoverExpiredPendingOrders(
           if (finalOrder) await attemptPaymentRefund(stripe, order.id, finalOrder, session, false);
         } else {
           if (session.status === "open") {
-            await stripe.checkout.sessions.expire(session.id);
-          }
+            const expired = await stripe.checkout.sessions.expire(session.id);
+            if (expired.status !== "expired" || expired.payment_status === "paid") continue;
+          } else if (session.status !== "expired" || session.payment_status !== "unpaid") continue;
           await cancelPendingOrder(order.id, session.id);
         }
       }
@@ -230,37 +233,11 @@ export function startExpiredOrderRecovery() {
 }
 
 function checkoutErrorStatus(error: unknown) {
-  return error instanceof CouponValidationError || error instanceof InventoryError ? error.statusCode : 500;
-}
-
-async function getOrCreatePrice(stripe: Stripe, line: CheckoutLine) {
-  const lineKey = getLineKey(line);
-  const existingProducts = await stripe.products.list({ active: true, limit: 100 });
-  const product = existingProducts.data.find((candidate) => candidate.metadata.glam_too_key === lineKey) ?? await stripe.products.create({
-    name: line.name,
-    description: line.description || undefined,
-    metadata: { glam_too_key: lineKey, glam_too_product_id: line.productId },
-  });
-
-  const prices = await stripe.prices.list({ product: product.id, active: true, limit: 100 });
-  const matchingPrice = prices.data.find((price) =>
-    price.unit_amount === line.unitAmount && price.currency === "gbp",
-  );
-
-  if (matchingPrice) return matchingPrice;
-
-  return stripe.prices.create({
-    product: product.id,
-    unit_amount: line.unitAmount,
-    currency: "gbp",
-    metadata: { glam_too_key: lineKey },
-  });
+  return error instanceof CheckoutSafetyError || error instanceof CouponValidationError || error instanceof InventoryError ? error.statusCode : 503;
 }
 
 function getRequestOrigin(request: Request) {
-  const origin = request.get("origin");
-  if (origin && /^https?:\/\//.test(origin)) return origin.replace(/\/$/, "");
-  return `${request.protocol}://${request.get("host")}`;
+  return checkoutReturnOrigin(request);
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -279,23 +256,13 @@ function credentialMode(value: string, prefix: "sk" | "pk") {
 }
 
 async function findStripeCustomer(stripe: Stripe, userId: string) {
-  const customers = await stripe.customers.list({ limit: 100 });
-  return customers.data.find((customer) => customer.metadata.clerk_user_id === userId) ?? null;
+  return resolveStripeCustomer(stripe, userId);
 }
 
 async function getOrCreateStripeCustomer(stripe: Stripe, userId: string, email: string, name: string) {
-  const existing = await findStripeCustomer(stripe, userId);
-  if (existing) {
-    if (existing.email !== email || existing.name !== name) {
-      return stripe.customers.update(existing.id, { email, name });
-    }
-    return existing;
-  }
-  return stripe.customers.create({
-    email,
-    name,
-    metadata: { clerk_user_id: userId, store: "Glam Too" },
-  });
+  const customer = await resolveStripeCustomer(stripe, userId, { email, name });
+  if (!customer) throw new Error("Stripe customer creation failed.");
+  return customer;
 }
 
 function serializePaymentMethod(paymentMethod: Stripe.PaymentMethod) {
@@ -336,7 +303,7 @@ router.get("/stripe/status", requireAdmin, async (_request, response) => {
   }
 });
 
-router.get("/stripe/payment-config", async (_request, response) => {
+router.get("/stripe/payment-config", async (request, response) => {
   try {
     const { connection } = await getStripeConnectionInfoWithSource();
     if (!connection.publishableKey) {
@@ -344,6 +311,8 @@ router.get("/stripe/payment-config", async (_request, response) => {
         error: "Stripe is connected, but a publishable key is needed to display card fields.",
       });
     }
+    // Establish guest ownership before any creation POST can lose its response.
+    createGuestCheckoutOwner(request, response);
     return response.set("Cache-Control", "no-store").json({
       publishableKey: connection.publishableKey,
     });
@@ -554,24 +523,27 @@ router.delete("/stripe/credentials", requireAdmin, async (_request, response) =>
 });
 
 router.post("/stripe/payment-intent", async (request, response) => {
-  let pendingOrderId: string | undefined;
-  let pendingPaymentReference: string | undefined;
   try {
     const { userId } = getAuth(request);
     if (!checkoutOriginAllowed(request)) return response.status(403).json({ error: "Start checkout from the shop website." });
     const ownerId = userId || createGuestCheckoutOwner(request, response);
+    const result = await withCheckoutAttempt(request, ownerId, "payment_intent", async (attempt, save) => {
+    const stripe = await getUncachableStripeClient();
+    const providerScope = await stripeCustomerScope(stripe);
+    if (attempt.plan?.providerScope && attempt.plan.providerScope !== providerScope) throw new CheckoutSafetyError("The payment provider has changed. Resolve the earlier payment with the shop before retrying.", 409, "provider_changed");
+    if (attempt.response) return attempt.response;
 
     const submittedLines: SubmittedCheckoutLine[] = Array.isArray(request.body?.lines)
       ? (request.body.lines as unknown[])
         .map(parseCheckoutLine)
         .filter((line: SubmittedCheckoutLine | null): line is SubmittedCheckoutLine => line !== null)
       : [];
-    const checkoutLines = await Promise.all(submittedLines.map(resolveCheckoutLine));
+    const checkoutLines: Array<CheckoutLine | null> = attempt.plan?.lines ?? await Promise.all(submittedLines.map(resolveCheckoutLine));
     const email = safeText(request.body?.email, 250);
     const customerName = safeText(request.body?.customerName, 120);
     const phone = safeText(request.body?.phone, 40);
     const paymentMethodId = safeText(request.body?.paymentMethodId, 120);
-    if (!userId && paymentMethodId) return response.status(403).json({ error: "Sign in to use a saved payment method, or enter a new card for guest checkout." });
+    if (!userId && paymentMethodId) throw new CheckoutSafetyError("Sign in to use a saved payment method, or enter a new card for guest checkout.", 403, "invalid_payment_method");
     const address = asRecord(request.body?.address);
     const addressLine1 = safeText(address.line1, 200);
     const addressLine2 = safeText(address.line2, 200);
@@ -579,31 +551,32 @@ router.post("/stripe/payment-intent", async (request, response) => {
     const postcode = safeText(address.postcode, 40);
     const country = safeText(address.country, 2).toUpperCase() || "GB";
 
-    if (submittedLines.length === 0 || checkoutLines.some((line) => line === null)) {
-      return response.status(400).json({ error: "Your bag is empty or contains an invalid item." });
+    if (submittedLines.length === 0 || submittedLines.length !== request.body.lines.length || submittedLines.length > 50 || checkoutLines.some((line) => line === null)) {
+      throw new CheckoutSafetyError("Your bag is empty or contains an invalid item.", 400, "invalid_checkout");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return response.status(400).json({ error: "Enter a valid email address to continue." });
+      throw new CheckoutSafetyError("Enter a valid email address to continue.", 400, "invalid_checkout");
     }
     if (!customerName || !addressLine1 || !city || !postcode || country !== "GB") {
-      return response.status(400).json({ error: "Complete your billing and UK delivery address before paying." });
+      throw new CheckoutSafetyError("Complete your billing and UK delivery address before paying.", 400, "invalid_checkout");
     }
     if (paymentMethodId && !/^pm_[A-Za-z0-9_]+$/.test(paymentMethodId)) {
-      return response.status(400).json({ error: "Choose a valid saved payment method." });
+      throw new CheckoutSafetyError("Choose a valid saved payment method.", 400, "invalid_payment_method");
     }
 
     const lines = checkoutLines as CheckoutLine[];
     const subtotal = lines.reduce((total, line) => total + line.unitAmount * line.quantity, 0);
-    const resolvedShipping = await resolveShippingMethod(request.body?.delivery, subtotal);
+    const resolvedShipping = attempt.plan?.resolvedShipping ?? await resolveShippingMethod(request.body?.delivery, subtotal);
     const delivery = resolvedShipping.method.name;
     const deliveryAmount = resolvedShipping.amount;
     const couponCode = safeText(request.body?.couponCode, 80);
-    const pricing = couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
+    const pricing: Awaited<ReturnType<typeof calculateCouponPricing>> | null = attempt.plan ? attempt.plan.pricing : couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
     const amount = pricing?.total ?? subtotal + deliveryAmount;
     const vatAmount = pricing?.vatAmount ?? calculateIncludedVat(amount);
     if (amount < 30) {
-      return response.status(400).json({ error: "This coupon makes the order too small for card payment. Add another item or use a different coupon." });
+      throw new CheckoutSafetyError("This coupon makes the order too small for card payment. Add another item or use a different coupon.", 400, "invalid_checkout");
     }
+    if (!attempt.plan) await save("plan", { lines, resolvedShipping, pricing, expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString() });
     const order = await createPendingOrder(orderInput(
       ownerId,
       email,
@@ -623,20 +596,21 @@ router.post("/stripe/payment-intent", async (request, response) => {
       vatAmount,
       pricing,
       lines,
-      new Date(Date.now() + 30 * 60 * 1000),
-    ));
-    pendingOrderId = order.id;
-
-    const stripe = await getUncachableStripeClient();
-    await recoverExpiredPendingOrders(stripe);
-    const customer = userId ? await getOrCreateStripeCustomer(stripe, userId, email, customerName) : undefined;
-    if (paymentMethodId) {
+      new Date(attempt.plan.expiresAt),
+    ), attempt.order_id);
+    if (!attempt.plan.providerScope) await save("plan", { ...attempt.plan, providerScope, kind: "payment_intent" });
+    const customer = userId && !attempt.provider_params ? await getOrCreateStripeCustomer(stripe, userId, email, customerName) : undefined;
+    if (paymentMethodId && !attempt.provider_params) {
       const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
       if (paymentMethod.customer !== customer?.id) {
-        return response.status(403).json({ error: "That saved payment method does not belong to your account." });
+        throw new CheckoutSafetyError("That saved payment method does not belong to your account.", 403, "invalid_payment_method");
       }
     }
-    const paymentIntent = await stripe.paymentIntents.create({
+    const savedOrder = await pool.query("SELECT payment_reference FROM store_orders WHERE id=$1", [order.id]);
+    const allocationReference = savedOrder.rows[0]?.payment_reference ?? order.id;
+    await reserveInventory(lines.filter((line): line is CheckoutLine & { inventoryKey: string } => Boolean(line.inventoryKey)), allocationReference);
+    if (pricing) await reserveCouponRedemption(pricing.coupon, allocationReference, ownerId, new Date(attempt.plan.expiresAt));
+    if (!attempt.provider_params) await save("provider_params", {
       amount,
       currency: "gbp",
       payment_method_types: ["card"],
@@ -673,46 +647,38 @@ router.post("/stripe/payment-intent", async (request, response) => {
          ...couponMetadata(pricing),
       },
     });
-    pendingPaymentReference = paymentIntent.id;
+    const paymentIntent = await stripe.paymentIntents.create(attempt.provider_params, { idempotencyKey: `checkout:${order.id}` });
     if (!paymentIntent.client_secret) {
-      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => undefined);
-      await cancelPendingOrder(order.id, paymentIntent.id).catch(() => undefined);
       throw new Error("Stripe did not return a payment secret.");
     }
     try {
       await attachOrderPayment(order.id, paymentIntent.id, "payment_intent");
-      await reserveInventory(lines.filter((line): line is CheckoutLine & { inventoryKey: string } => Boolean(line.inventoryKey)), paymentIntent.id);
-      if (pricing) {
-        await reserveCouponRedemption(
-          pricing.coupon,
-          paymentIntent.id,
-          ownerId,
-          new Date(Date.now() + 30 * 60 * 1000),
-        );
-      }
     } catch (error) {
-      await stripe.paymentIntents.cancel(paymentIntent.id).catch(() => undefined);
-      await cancelPendingOrder(order.id, paymentIntent.id).catch(() => undefined);
       throw error;
     }
-    return response.json({ clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id });
+    const payload = { clientSecret: paymentIntent.client_secret, paymentIntentId: paymentIntent.id };
+    await save("response", payload);
+    return payload;
+    });
+    return response.set("Cache-Control", "no-store").json(result);
   } catch (error) {
-    if (pendingOrderId) {
-      await cancelPendingOrder(pendingOrderId, pendingPaymentReference).catch(() => undefined);
-    }
     const message = error instanceof Error ? error.message : "Unable to prepare secure card payment.";
     request.log?.error({ error }, "Stripe payment intent could not be created");
-    return response.status(checkoutErrorStatus(error)).json({ error: message });
+    if (error instanceof CheckoutSafetyError) response.set("Retry-After", String(error.retryAfter));
+    return response.status(checkoutErrorStatus(error)).json({ error: message, code: error instanceof CheckoutSafetyError ? error.code : "checkout_retryable" });
   }
 });
 
 router.post("/stripe/checkout", async (request, response) => {
-  let pendingOrderId: string | undefined;
-  let pendingPaymentReference: string | undefined;
   try {
     const { userId } = getAuth(request);
     if (!checkoutOriginAllowed(request)) return response.status(403).json({ error: "Start checkout from the shop website." });
     const ownerId = userId || createGuestCheckoutOwner(request, response);
+    const result = await withCheckoutAttempt(request, ownerId, "checkout_session", async (attempt, save) => {
+    const stripe = await getUncachableStripeClient();
+    const providerScope = await stripeCustomerScope(stripe);
+    if (attempt.plan?.providerScope && attempt.plan.providerScope !== providerScope) throw new CheckoutSafetyError("The payment provider has changed. Resolve the earlier payment with the shop before retrying.", 409, "provider_changed");
+    if (attempt.response) return attempt.response;
 
     const submittedLines: SubmittedCheckoutLine[] = Array.isArray(request.body?.lines)
       ? (request.body.lines as unknown[])
@@ -728,31 +694,32 @@ router.post("/stripe/checkout", async (request, response) => {
     const city = safeText(address.city, 100);
     const postcode = safeText(address.postcode, 40);
     const country = safeText(address.country, 2).toUpperCase() || "GB";
-    const checkoutLines = await Promise.all(submittedLines.map(resolveCheckoutLine));
+    const checkoutLines: Array<CheckoutLine | null> = attempt.plan?.lines ?? await Promise.all(submittedLines.map(resolveCheckoutLine));
 
-    if (submittedLines.length === 0 || checkoutLines.some((line) => line === null)) {
-      return response.status(400).json({ error: "Your bag is empty or contains an invalid item." });
+    if (submittedLines.length === 0 || submittedLines.length !== request.body.lines.length || submittedLines.length > 50 || checkoutLines.some((line) => line === null)) {
+      throw new CheckoutSafetyError("Your bag is empty or contains an invalid item.", 400, "invalid_checkout");
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return response.status(400).json({ error: "Enter a valid email address to continue." });
+      throw new CheckoutSafetyError("Enter a valid email address to continue.", 400, "invalid_checkout");
     }
     if (!customerName || !addressLine1 || !city || !postcode || country !== "GB") {
-      return response.status(400).json({ error: "Complete your billing and UK delivery address before paying." });
+      throw new CheckoutSafetyError("Complete your billing and UK delivery address before paying.", 400, "invalid_checkout");
     }
 
     const lines = [...checkoutLines] as CheckoutLine[];
     const inventoryLines = [...lines];
     const subtotal = lines.reduce((total, line) => total + line.unitAmount * line.quantity, 0);
-    const resolvedShipping = await resolveShippingMethod(request.body?.delivery, subtotal);
+    const resolvedShipping = attempt.plan?.resolvedShipping ?? await resolveShippingMethod(request.body?.delivery, subtotal);
     const delivery = resolvedShipping.method.name;
     const deliveryAmount = resolvedShipping.amount;
     const couponCode = safeText(request.body?.couponCode, 80);
-    const pricing = couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
+    const pricing: Awaited<ReturnType<typeof calculateCouponPricing>> | null = attempt.plan ? attempt.plan.pricing : couponCode ? await calculateCouponPricing(couponCode, subtotal, deliveryAmount) : null;
     const amount = pricing?.total ?? subtotal + deliveryAmount;
     const vatAmount = pricing?.vatAmount ?? calculateIncludedVat(amount);
     if (amount < 30) {
-      return response.status(400).json({ error: "This coupon makes the order too small for card payment. Add another item or use a different coupon." });
+      throw new CheckoutSafetyError("This coupon makes the order too small for card payment. Add another item or use a different coupon.", 400, "invalid_checkout");
     }
+    if (!attempt.plan) await save("plan", { lines: inventoryLines, resolvedShipping, pricing, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() });
     const order = await createPendingOrder(orderInput(
       ownerId,
       email,
@@ -772,11 +739,9 @@ router.post("/stripe/checkout", async (request, response) => {
       vatAmount,
       pricing,
       inventoryLines,
-      new Date(Date.now() + 24 * 60 * 60 * 1000),
-    ));
-    pendingOrderId = order.id;
-    const stripe = await getUncachableStripeClient();
-    await recoverExpiredPendingOrders(stripe);
+      new Date(attempt.plan.expiresAt),
+    ), attempt.order_id);
+    if (!attempt.plan.providerScope) await save("plan", { ...attempt.plan, providerScope, kind: "checkout_session" });
     if (deliveryAmount > 0) {
       lines.push({
         productId: "delivery",
@@ -787,13 +752,17 @@ router.post("/stripe/checkout", async (request, response) => {
         quantity: 1,
       });
     }
-    const priceLines = await Promise.all(lines.map(async (line) => ({
-      price: (await getOrCreatePrice(stripe, line)).id,
+    const priceLines = lines.map((line) => ({
+      price_data: { currency: "gbp", unit_amount: line.unitAmount, product_data: { name: line.name } },
       quantity: line.quantity,
-    })));
+    }));
     const origin = getRequestOrigin(request);
 
-    const session = await stripe.checkout.sessions.create({
+    const savedOrder = await pool.query("SELECT payment_reference FROM store_orders WHERE id=$1", [order.id]);
+    const allocationReference = savedOrder.rows[0]?.payment_reference ?? order.id;
+    await reserveInventory(inventoryLines.filter((line): line is CheckoutLine & { inventoryKey: string } => Boolean(line.inventoryKey)), allocationReference);
+    if (pricing) await reserveCouponRedemption(pricing.coupon, allocationReference, ownerId, new Date(attempt.plan.expiresAt));
+    if (!attempt.provider_params) await save("provider_params", {
       mode: "payment",
       payment_method_types: ["card"],
       line_items: priceLines,
@@ -809,7 +778,7 @@ router.post("/stripe/checkout", async (request, response) => {
               glam_too_coupon_id: String(pricing.coupon.id),
               glam_too_coupon_code: pricing.coupon.code,
             },
-          })).id,
+          }, { idempotencyKey: `checkout-coupon:${order.id}` })).id,
         }],
       } : {}),
       customer_email: email,
@@ -833,41 +802,27 @@ router.post("/stripe/checkout", async (request, response) => {
          ...couponMetadata(pricing),
       },
     });
-    pendingPaymentReference = session.id;
+    const session = await stripe.checkout.sessions.create(attempt.provider_params, { idempotencyKey: `checkout:${order.id}` });
 
     if (!session.url) {
-      await attachOrderPayment(order.id, session.id, "checkout_session").catch(() => undefined);
-      await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
-      await cancelPendingOrder(order.id, session.id).catch(() => undefined);
       throw new Error("Stripe did not return a Checkout URL.");
     }
     try {
       await attachOrderPayment(order.id, session.id, "checkout_session");
       await setOrderExpiration(order.id, new Date((session.expires_at ?? Math.floor(Date.now() / 1000) + 24 * 60 * 60) * 1000));
-      await reserveInventory(inventoryLines.filter((line): line is CheckoutLine & { inventoryKey: string } => Boolean(line.inventoryKey)), session.id);
-      if (pricing) {
-        await reserveCouponRedemption(
-          pricing.coupon,
-          session.id,
-          ownerId,
-          new Date((session.expires_at ?? Math.floor(Date.now() / 1000) + 30 * 60) * 1000),
-        );
-      }
     } catch (error) {
-      if (session.status === "open") {
-        await stripe.checkout.sessions.expire(session.id).catch(() => undefined);
-      }
-      await cancelPendingOrder(order.id, session.id).catch(() => undefined);
       throw error;
     }
 
-    return response.json({ url: session.url });
+    const payload = { url: session.url };
+    await save("response", payload);
+    return payload;
+    });
+    return response.set("Cache-Control", "no-store").json(result);
   } catch (error) {
-    if (pendingOrderId) {
-      await cancelPendingOrder(pendingOrderId, pendingPaymentReference).catch(() => undefined);
-    }
     const message = error instanceof Error ? error.message : "Unable to start Stripe checkout.";
-    return response.status(checkoutErrorStatus(error)).json({ error: message });
+    if (error instanceof CheckoutSafetyError) response.set("Retry-After", String(error.retryAfter));
+    return response.status(checkoutErrorStatus(error)).json({ error: message, code: error instanceof CheckoutSafetyError ? error.code : "checkout_retryable" });
   }
 });
 
@@ -971,7 +926,10 @@ router.post("/stripe/abandon-payment", async (request, response) => {
     if (paymentIntent.status === "succeeded") {
       return response.status(409).json({ paymentSucceeded: true });
     }
-    await stripe.paymentIntents.cancel(paymentIntentId);
+    const cancelled = await stripe.paymentIntents.cancel(paymentIntentId);
+    if (cancelled.status !== "canceled") {
+      return response.status(409).json({ error: "Stripe has not confirmed cancellation. Retry after this payment has been resolved." });
+    }
     const result = await cancelPendingOrder(
       safeText(paymentIntent.metadata.glam_too_order_id, 80) || undefined,
       paymentIntentId,

@@ -180,7 +180,7 @@ function nextWishlistProductId() {
 
 function adminTestUser(email: string, role?: string) {
   return {
-    emailAddresses: [{ emailAddress: email }],
+    emailAddresses: [{ emailAddress: email, verification: { status: "verified" } }],
     privateMetadata: role === undefined ? {} : { role },
   };
 }

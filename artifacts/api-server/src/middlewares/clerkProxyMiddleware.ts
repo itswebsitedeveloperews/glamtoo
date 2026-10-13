@@ -1,5 +1,6 @@
 import type { IncomingHttpHeaders } from "http";
-import type { RequestHandler } from "express";
+import type { RequestHandler, Request } from "express";
+import { trustedOrigins, checkoutReturnOrigin } from "../browserSecurity";
 import { createProxyMiddleware } from "http-proxy-middleware";
 
 const CLERK_FAPI = "https://frontend-api.clerk.dev";
@@ -8,10 +9,15 @@ export const CLERK_PROXY_PATH = "/api/__clerk";
 export function getClerkProxyHost(req: {
   headers: IncomingHttpHeaders;
 }): string | undefined {
-  const forwarded = req.headers["x-forwarded-host"];
-  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
-  const firstHop = raw?.split(",")[0]?.trim();
-  return firstHop || req.headers.host?.trim() || undefined;
+  const configured = [...trustedOrigins()].map((origin) => new URL(origin).host);
+  const host = req.headers.host?.trim();
+  const canonical = process.env.STOREFRONT_ORIGIN ?? process.env.SEO_SITE_ORIGIN;
+  // Proxy host headers are not identity authority. Prefer canonical deployment
+  // configuration when an internal proxy has rewritten Host.
+  return host && configured.includes(host) ? host
+    : canonical && trustedOrigins().has(canonical)
+      ? new URL(canonical).host
+      : configured.length === 1 ? configured[0] : undefined;
 }
 
 export function clerkProxyMiddleware(): RequestHandler {
@@ -32,18 +38,13 @@ export function clerkProxyMiddleware(): RequestHandler {
       path.replace(new RegExp(`^${CLERK_PROXY_PATH}`), ""),
     on: {
       proxyReq: (proxyReq, req) => {
-        const protocol = req.headers["x-forwarded-proto"] || "https";
-        const host = getClerkProxyHost(req) || "";
+        const origin = checkoutReturnOrigin(req as Request);
         proxyReq.setHeader(
           "Clerk-Proxy-Url",
-          `${protocol}://${host}${CLERK_PROXY_PATH}`,
+          `${origin}${CLERK_PROXY_PATH}`,
         );
         proxyReq.setHeader("Clerk-Secret-Key", secretKey);
-        const xff = req.headers["x-forwarded-for"];
-        const clientIp =
-          (Array.isArray(xff) ? xff[0] : xff)?.split(",")[0]?.trim() ||
-          req.socket?.remoteAddress ||
-          "";
+        const clientIp = (req as Request).ip || req.socket?.remoteAddress || "";
         if (clientIp) proxyReq.setHeader("X-Forwarded-For", clientIp);
       },
       proxyRes: (proxyRes, req, res) => {

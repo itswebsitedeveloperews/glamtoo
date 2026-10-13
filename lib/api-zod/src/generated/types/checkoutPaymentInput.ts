@@ -9,6 +9,13 @@ import type { CheckoutPaymentAddress } from './checkoutPaymentAddress';
 import type { CheckoutPaymentLine } from './checkoutPaymentLine';
 
 export interface CheckoutPaymentInput {
+  /**
+     * Required for checkout creation unless supplied as the Idempotency-Key header. Reuse for unchanged retries; changed details return 409. Busy, rate, or reservation limits return 429 with Retry-After, without requiring sign-in.
+     * @minLength 16
+     * @maxLength 100
+     * @pattern ^[A-Za-z0-9_-]+$
+     */
+  retryKey?: string;
   email: string;
   customerName: string;
   phone?: string;

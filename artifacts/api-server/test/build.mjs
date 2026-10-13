@@ -6,7 +6,7 @@ import { spawn } from "node:child_process";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const outputDir = resolve(testDir, ".compiled");
-const testName = ["shipping", "guest-checkout", "email-confirmations", "gmail-smtp", "gmail-oauth"].includes(process.argv[2]) ? process.argv[2] : "regressions";
+const testName = ["shipping", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth"].includes(process.argv[2]) ? process.argv[2] : "regressions";
 const outputFile = resolve(outputDir, `${testName}.test.cjs`);
 
 await rm(outputDir, { recursive: true, force: true });
@@ -18,18 +18,21 @@ await build({
   format: "cjs",
   outfile: outputFile,
   sourcemap: "inline",
-  plugins: testName === "guest-checkout" ? [{
+  plugins: ["guest-checkout", "checkout-safety"].includes(testName) ? [{
     name: "isolated-guest-payment-provider",
     setup(builder) {
       builder.onResolve({ filter: /^@clerk\/express$/ }, () => ({ path: "clerk-test", namespace: "guest-checkout" }));
       builder.onResolve({ filter: /^\.\.\/stripeClient$/ }, () => ({ path: "stripe-test", namespace: "guest-checkout" }));
-      builder.onResolve({ filter: /^\.\.\/orderService$/ }, (args) => args.importer.endsWith("/routes/stripe.ts") ? ({ path: "order-test", namespace: "guest-checkout" }) : undefined);
+      builder.onResolve({ filter: /^\.\.\/orderService$/ }, (args) => testName === "guest-checkout" && args.importer.endsWith("/routes/stripe.ts") ? ({ path: "order-test", namespace: "guest-checkout" }) : undefined);
+      builder.onResolve({ filter: /^\.\/webhookHandlers$/ }, () => ({ path: "webhook-test", namespace: "guest-checkout" }));
       builder.onLoad({ filter: /.*/, namespace: "guest-checkout" }, (args) => ({
         contents: args.path === "clerk-test"
-          ? `import {fakeClerk} from ${JSON.stringify(resolve(testDir, "fixtures/guest-clerk.ts"))}; export const getAuth = req => ({userId: req.headers["x-test-user"] || null}); export const clerkClient = fakeClerk;`
+          ? `import {fakeClerk} from ${JSON.stringify(resolve(testDir, "fixtures/guest-clerk.ts"))}; export const getAuth = req => ({userId: req.headers["x-test-user"] || null}); export const clerkClient = fakeClerk; export const clerkMiddleware = ()=> (_req,_res,next)=>next();`
           : args.path === "stripe-test"
             ? `import {fakeStripe} from ${JSON.stringify(resolve(testDir, "fixtures/guest-stripe.ts"))}; export const getUncachableStripeClient = async()=>fakeStripe; export const getStripeConnectionInfoWithSource = async()=>{throw Error("Unused in isolated checkout tests")}; export const getStripeSync = async()=>{throw Error("Unused in isolated checkout tests")};`
-            : `export * from ${JSON.stringify(resolve(testDir, "../src/orderService.ts"))}; export const listExpiredPendingPayments = async()=>[];`,
+            : args.path === "webhook-test"
+              ? `export const WebhookHandlers={async processWebhook(body,signature){ if(!Buffer.isBuffer(body)||signature!=="isolated-signed") throw Error("invalid test webhook"); }};`
+              : `export * from ${JSON.stringify(resolve(testDir, "../src/orderService.ts"))}; export const listExpiredPendingPayments = async()=>[];`,
         loader: "ts",
         resolveDir: testDir,
       }));

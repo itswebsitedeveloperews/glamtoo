@@ -313,7 +313,7 @@ export const createCheckoutPaymentIntent = async (checkoutPaymentInput: Checkout
 
 
 
-export const getCreateCheckoutPaymentIntentMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+export const getCreateCheckoutPaymentIntentMutationOptions = <TError = ErrorType<ErrorEnvelope | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCheckoutPaymentIntent>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createCheckoutPaymentIntent>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext> => {
 
@@ -342,12 +342,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateCheckoutPaymentIntentMutationResult = NonNullable<Awaited<ReturnType<typeof createCheckoutPaymentIntent>>>
     export type CreateCheckoutPaymentIntentMutationBody = BodyType<CheckoutPaymentInput>
-    export type CreateCheckoutPaymentIntentMutationError = ErrorType<ErrorEnvelope>
+    export type CreateCheckoutPaymentIntentMutationError = ErrorType<ErrorEnvelope | void>
 
     /**
  * @summary Start an authenticated or guest card payment
  */
-export const useCreateCheckoutPaymentIntent = <TError = ErrorType<ErrorEnvelope>,
+export const useCreateCheckoutPaymentIntent = <TError = ErrorType<ErrorEnvelope | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCheckoutPaymentIntent>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createCheckoutPaymentIntent>>,
@@ -456,7 +456,7 @@ export const createHostedCheckout = async (checkoutPaymentInput: CheckoutPayment
 
 
 
-export const getCreateHostedCheckoutMutationOptions = <TError = ErrorType<ErrorEnvelope>,
+export const getCreateHostedCheckoutMutationOptions = <TError = ErrorType<ErrorEnvelope | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHostedCheckout>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createHostedCheckout>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext> => {
 
@@ -485,12 +485,12 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateHostedCheckoutMutationResult = NonNullable<Awaited<ReturnType<typeof createHostedCheckout>>>
     export type CreateHostedCheckoutMutationBody = BodyType<CheckoutPaymentInput>
-    export type CreateHostedCheckoutMutationError = ErrorType<ErrorEnvelope>
+    export type CreateHostedCheckoutMutationError = ErrorType<ErrorEnvelope | void>
 
     /**
  * @summary Start authenticated or guest hosted Stripe checkout
  */
-export const useCreateHostedCheckout = <TError = ErrorType<ErrorEnvelope>,
+export const useCreateHostedCheckout = <TError = ErrorType<ErrorEnvelope | void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHostedCheckout>>, TError,{data: BodyType<CheckoutPaymentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof createHostedCheckout>>,
