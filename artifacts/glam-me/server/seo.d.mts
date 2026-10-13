@@ -7,6 +7,7 @@ export type SeoData = {
   robots?: string;
   type?: 'website' | 'product';
   image?: string;
+  structuredData?: Record<string, unknown>;
 };
 export const SEO_SITE_ORIGIN: string;
 export const API_ORIGIN: string;
@@ -16,4 +17,5 @@ export function parseRequestUrl(raw: string | undefined): { pathname: string; se
 export function isDocumentPath(pathname: string): boolean;
 export function resolveSeo(path: string, fetcher?: typeof fetch): Promise<SeoData & { status: 200 | 301 | 404 }>;
 export function injectSeo(html: string, data?: SeoData): string;
+export function serializeStructuredData(data: Record<string, unknown>): string;
 export function proxySeoFile(pathname: string, fetcher?: typeof fetch): Promise<{ status: number; body: ArrayBuffer; contentType: string }>;

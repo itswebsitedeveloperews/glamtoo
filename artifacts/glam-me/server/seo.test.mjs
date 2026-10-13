@@ -4,13 +4,18 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createSeoServer } from './index.mjs';
-import { injectSeo, parseRequestUrl, isDocumentPath } from './seo.mjs';
+import { injectSeo, parseRequestUrl, isDocumentPath, proxySeoFile } from './seo.mjs';
+import { storefrontHeaders, FRAME_POLICY } from './security.mjs';
 
 test('Vite runtime modules bypass document SEO routing', () => {
   for (const pathname of ['/@react-refresh', '/@vite/client', '/@id/virtual-module', '/src/main.tsx']) {
     assert.equal(isDocumentPath(pathname), false);
   }
   assert.equal(isDocumentPath('/product/a-dress'), true);
+  assert.equal(isDocumentPath('/index.html'), true);
+  assert.equal(isDocumentPath('/missing.html'), true);
+  assert.equal(isDocumentPath('/api'), false);
+  assert.equal(isDocumentPath('/api/seo/resolve'), false);
 });
 
 test('HTML metadata is escaped and does not duplicate the static fallback', () => {
@@ -28,12 +33,48 @@ test('HTML metadata is escaped and does not duplicate the static fallback', () =
   assert.match(result, /a&quot; onload=&quot;evil &amp; &lt;b&gt;/);
   assert.match(result, /og:type" content="product"/);
   assert.equal((result.match(/name="robots"/g) || []).length, 1);
+  assert.match(result, /name="robots" content="noindex, follow"/);
+});
+
+test('structured JSON is safely serialized and removed along with stale social metadata', () => {
+  const data = { type: 'product', image: 'https://example.org/a.jpg',
+    structuredData: { '@type': 'Product', name: '</script><script>alert(1)</script>&\u2028' } };
+  const product = injectSeo('<head><title>Old</title></head>', data);
+  const json = product.match(/type="application\/ld\+json" data-route-seo>(.*?)<\/script>/s)[1];
+  assert.deepEqual(JSON.parse(json), data.structuredData);
+  assert.doesNotMatch(json, /<\/script>|&|\u2028/);
+  const next = injectSeo(product, { type: 'website' });
+  assert.doesNotMatch(next, /application\/ld\+json|og:image|twitter:image/);
+  assert.equal((injectSeo(product, data).match(/application\/ld\+json/g) || []).length, 1);
+});
+
+test('report-only integration policy is separate from enforced frame protection', () => {
+  const headers = storefrontHeaders({ html: '<script type="application/ld+json">{}</script>' });
+  assert.equal(headers['Content-Security-Policy'], FRAME_POLICY);
+  assert.equal(headers['Referrer-Policy'], 'strict-origin-when-cross-origin');
+  const policy = headers['Content-Security-Policy-Report-Only'];
+  for (const dependency of ['https://js.stripe.com', 'https://api.stripe.com', 'https://hooks.stripe.com',
+    'https://*.clerk.accounts.dev', 'https://*.clerk.com', 'https://challenges.cloudflare.com',
+    'https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://storage.googleapis.com',
+    "object-src 'none'", "'sha256-"]) assert.ok(policy.includes(dependency), dependency);
+  assert.ok(!policy.includes("'unsafe-eval'"));
+  assert.ok(storefrontHeaders({ development: true })['Content-Security-Policy-Report-Only'].includes('ws: wss:'));
 });
 
 test('malformed and traversal paths are rejected', () => {
   for (const url of ['/../secret', '/%2e%2e/secret', '/%2fetc', '/%5csecret', '/bad%', '/%E0%A4%A', '//evil', '/a\\b']) {
     assert.throws(() => parseRequestUrl(url), url);
   }
+});
+
+test('safe discovery does not depend on API availability or stale sitemap data', async () => {
+  const unavailable = () => { throw new Error('API must not be needed'); };
+  const xml = await proxySeoFile('/sitemap.xml', unavailable);
+  assert.equal(xml.status, 200);
+  assert.match(new TextDecoder().decode(xml.body), /<urlset xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9"><\/urlset>/);
+  assert.doesNotMatch(new TextDecoder().decode(xml.body), /<url>|<loc>/);
+  const robots = await proxySeoFile('/robots.txt', unavailable);
+  assert.equal(new TextDecoder().decode(robots.body), 'User-agent: *\nAllow: /\nDisallow: /api/\n');
 });
 
 test('HTTP status, HEAD, static files, error response and dynamic feeds', async (t) => {
@@ -65,11 +106,11 @@ test('HTTP status, HEAD, static files, error response and dynamic feeds', async 
   assert.equal(missing.status, 404);
   const missingHtml = await missing.text();
   assert.match(missingHtml, /App shell/);
-  assert.match(missingHtml, /noindex, nofollow/);
+   assert.match(missingHtml, /noindex, follow/);
   const broken = await fetch(`${base}/broken`);
   assert.equal(broken.status, 503);
   assert.equal(broken.headers.get('cache-control'), 'no-store');
-  assert.match(await broken.text(), /noindex, nofollow/);
+   assert.match(await broken.text(), /noindex, follow/);
   assert.equal((await fetch(`${base}/__health`)).status, 200);
   const head = await fetch(`${base}/icon.svg`, { method: 'HEAD' });
   assert.equal(head.status, 200);
@@ -79,6 +120,25 @@ test('HTTP status, HEAD, static files, error response and dynamic feeds', async 
   assert.equal((await fetch(`${base}/nonexistent.png`)).status, 404);
   const sitemap = await fetch(`${base}/sitemap.xml`);
   assert.equal(sitemap.headers.get('content-type'), 'application/xml; charset=utf-8');
-  assert.equal(await sitemap.text(), '<urlset/>');
+  const xml = await sitemap.text();
+  assert.match(xml, /<urlset xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9"><\/urlset>/);
+  assert.doesNotMatch(xml, /<url>|<loc>/);
   assert.match(await (await fetch(`${base}/robots.txt`)).text(), /Allow: \//);
+  for (const method of ['GET', 'HEAD']) {
+    for (const route of ['/shop?page=2', '/', '/index.html', '/missing.html', '/missing', '/old', '/broken',
+      '/robots.txt', '/sitemap.xml', '/nonexistent.png', '/bad%']) {
+      const response = await fetch(`${base}${route}`, { method, redirect: 'manual' });
+      assert.equal(response.headers.get('x-robots-tag'), 'noindex, follow', `${method} ${route}`);
+      assert.equal(response.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
+      assert.equal(response.headers.get('content-security-policy'), FRAME_POLICY);
+      assert.ok(response.headers.get('content-security-policy-report-only'));
+      const body = await response.text();
+      if (method === 'HEAD') assert.equal(body, '');
+      else if (response.headers.get('content-type')?.includes('text/html')) {
+        assert.match(body, /name="robots" content="noindex, follow"/);
+        assert.doesNotMatch(body, /content="index, follow"/);
+      }
+    }
+  }
+  assert.ok(resolvedPaths.includes('/'), 'direct index.html goes through the home resolver');
 });

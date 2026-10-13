@@ -104,13 +104,61 @@ test("SEO handles one-hop aliases, drafts, canonical queries and pagination", ()
   catalog.products[0].image = "";
   assert.equal(resolveSeo("/product/sienna-dress", catalog, origin).image, `${origin}/assets/detail.jpg`);
 });
-test("sitemap excludes drafts and private URLs; origin cannot follow hostile host", () => {
+test("discovery allows crawling noindex pages without advertising any sitemap URLs", () => {
   const xml = sitemapXml(backfillCatalog(fixture()), origin);
-  assert.match(xml, /\/product\/sienna-dress/);
-  assert.match(xml, /\/category\/new-arrivals/);
-  assert.doesNotMatch(xml, /private-piece|\/checkout|\/cart|\/admin/);
+  assert.match(xml, /<urlset xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9"><\/urlset>/);
+  assert.doesNotMatch(xml, /<url>|<loc>/);
   assert.throws(() => seoOrigin("https://evil.example/path"));
   assert.equal(seoOrigin(origin), origin);
   assert.match(robotsTxt(origin), /Disallow: \/api\//);
   assert.doesNotMatch(robotsTxt(origin), /Disallow: \/checkout/);
+  assert.doesNotMatch(robotsTxt(origin), /Sitemap:/);
+  assert.match(robotsTxt(origin), /Allow: \//);
+});
+
+test("all resolver outcomes remain noindex without losing pagination or aliases", () => {
+  const catalog = backfillCatalog(fixture());
+  for (const path of ["/", "/shop", "/category", "/about", "/faq", "/contact", "/privacy", "/terms",
+    "/returns", "/delivery-returns", "/account", "/register", "/sign-in", "/checkout", "/cart",
+    "/wishlist", "/admin/orders", "/missing", "/product/sienna-dress", "/product/7",
+    "/product/private-piece", "/category/new-arrivals", "/shop?page=1", "/shop?page=999",
+    "/shop?stock=in", "/bad%"]) {
+    assert.equal(resolveSeo(path, catalog, origin).robots, "noindex, follow", path);
+  }
+  assert.equal(resolveSeo("/", catalog, origin).image, `${origin}/social-home.webp`);
+});
+
+test("Product data uses real identity and verified simple/variable checkout offers only", () => {
+  const catalog = backfillCatalog(fixture());
+  const product = catalog.products[0];
+  Object.assign(product, { type: "Simple", price: "£49.99", stock: 99, sku: "SIENNA" });
+  const read = (inventory?: Parameters<typeof resolveSeo>[3]) =>
+    resolveSeo("/product/sienna-dress", catalog, origin, inventory).structuredData!;
+  assert.equal(read()["@type"], "Product");
+  assert.equal(read().description, "A lovely & bright dress.");
+  assert.equal(read().offers, undefined, "no unverified stock or prices");
+  assert.deepEqual(read({ "7": { unitAmount: 4999, stock: 0 } }).offers,
+    [{ "@type": "Offer", url: `${origin}/product/sienna-dress`, priceCurrency: "GBP", price: "49.99", availability: "https://schema.org/OutOfStock", sku: "SIENNA" }]);
+  product.salePrice = "£39.99";
+  assert.equal(read({ "7": { unitAmount: 4999, stock: 1 } }).offers, undefined, "conflicting display/checkout prices omitted");
+  assert.equal((read({ "7": { unitAmount: 3999, stock: 1 } }).offers as any[])[0].price, "39.99");
+  product.type = "Variable";
+  product.variations = [
+    { id: 1, price: "£20", stock: 0, sku: "S" },
+    { id: 2, price: "£25", stock: 1, sku: "L" },
+    { id: 3, price: "not a price", stock: 5 },
+  ];
+  const offers = read({ "7:1": { unitAmount: 2000, stock: 2 }, "7:2": { unitAmount: 2500, stock: 0 }, "7:3": { unitAmount: 999, stock: 5 } }).offers as any[];
+  assert.deepEqual(offers.map((offer) => [offer.price, offer.availability, offer.sku]),
+    [["20.00", "https://schema.org/InStock", "S"], ["25.00", "https://schema.org/OutOfStock", "L"]]);
+  assert.equal(read().offers, undefined);
+  for (const invented of ["aggregateRating", "review", "brand", "size", "seller", "shippingDetails"]) assert.equal(read()[invented], undefined);
+  product.image = "javascript:alert(1)";
+  product.galleryImages = ["//evil.test/image", "data:image/png;base64,AAA", "https://images.example/a.jpg"];
+  assert.deepEqual(read().image, ["https://images.example/a.jpg"]);
+  product.image = "/@fs/home/runner/workspace/attached_assets/photo.webp";
+  assert.deepEqual(read().image, ["https://images.example/a.jpg"], "Vite paths are never public production media");
+  assert.equal(resolveSeo("/product/sienna-dress", catalog, origin).image, "https://images.example/a.jpg");
+  assert.equal(resolveSeo("/about", catalog, origin).structuredData, undefined);
+  assert.equal(resolveSeo("/product/private-piece", catalog, origin).structuredData, undefined);
 });

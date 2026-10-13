@@ -1,11 +1,14 @@
 import { URL } from 'node:url';
+import { NOINDEX } from './security.mjs';
+import { serializeStructuredData } from './structured.mjs';
+export { serializeStructuredData } from './structured.mjs';
 
 export const SEO_SITE_ORIGIN = process.env.SEO_SITE_ORIGIN || 'https://glamtoo.webdesignessex.io';
 export const API_ORIGIN = 'http://127.0.0.1:8080';
 export const FALLBACK = {
   title: 'Glam Too Boutique',
   description: 'Affordable fashion, stunning handbags and chic jewellery at Glam Too Boutique.',
-  robots: 'noindex, nofollow',
+  robots: NOINDEX,
   type: 'website',
 };
 
@@ -28,7 +31,9 @@ export function parseRequestUrl(raw) {
 }
 
 export function isDocumentPath(pathname) {
+  if (pathname === '/index.html' || (/\.(?:html?|xhtml)$/i.test(pathname) && !/^\/(?:api|src|node_modules|assets)\//.test(pathname))) return true;
   return !(
+    pathname === '/api' ||
     pathname.startsWith('/api/') ||
     /^\/(?:@vite|@id|@fs|@react-refresh|__vite|__open-in-editor|src|node_modules|assets)(?:\/|$)/.test(pathname) ||
     /\/[^/]+\.[^/]+$/.test(pathname)
@@ -50,9 +55,11 @@ export async function resolveSeo(path, fetcher = fetch) {
 export function injectSeo(html, data = FALLBACK) {
   const title = escapeHtml(data.title || FALLBACK.title);
   const description = escapeHtml(data.description || FALLBACK.description);
-  const robots = escapeHtml(data.robots || FALLBACK.robots);
+  const robots = NOINDEX;
   const canonical = data.canonicalUrl ? `<link rel="canonical" href="${escapeHtml(data.canonicalUrl)}" data-route-seo>` : '';
   const image = data.image ? `<meta property="og:image" content="${escapeHtml(data.image)}" data-route-seo><meta name="twitter:image" content="${escapeHtml(data.image)}" data-route-seo>` : '';
+  const structured = data.type === 'product' && data.structuredData
+    ? `<script type="application/ld+json" data-route-seo>${serializeStructuredData(data.structuredData)}</script>` : '';
   const tags = `<title data-route-seo>${title}</title>
     <meta name="description" content="${description}" data-route-seo>
     <meta name="robots" content="${robots}" data-route-seo>
@@ -65,19 +72,24 @@ export function injectSeo(html, data = FALLBACK) {
     ${image}
     <meta name="twitter:card" content="${data.image ? 'summary_large_image' : 'summary'}" data-route-seo>
     <meta name="twitter:title" content="${title}" data-route-seo>
-    <meta name="twitter:description" content="${description}" data-route-seo>`;
+    <meta name="twitter:description" content="${description}" data-route-seo>
+    ${structured}`;
   // The static shell contains no route-specific metadata. Replace any older managed
   // tags as well, so repeated transforms cannot duplicate SEO tags.
-  return html.replace(/<title\b[^>]*>[\s\S]*?<\/title>|<(?:meta|link)\b[^>]*data-route-seo\b[^>]*>/gi, '')
+  return html.replace(/<script\b[^>]*data-route-seo\b[^>]*>[\s\S]*?<\/script>|<title\b[^>]*>[\s\S]*?<\/title>|<(?:meta|link)\b[^>]*data-route-seo\b[^>]*>/gi, '')
     .replace('</head>', `    ${tags}\n  </head>`);
 }
 
+
 export async function proxySeoFile(pathname, fetcher = fetch) {
-  const endpoint = pathname === '/robots.txt' ? '/api/seo/robots.txt' : '/api/seo/sitemap.xml';
-  const response = await fetcher(`${API_ORIGIN}${endpoint}`, { signal: AbortSignal.timeout(4000) });
+  // Discovery is deliberately static under the global noindex policy. It must
+  // remain safe even if the API is unavailable or running an older release.
+  const body = pathname === '/robots.txt'
+    ? 'User-agent: *\nAllow: /\nDisallow: /api/\n'
+    : '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>';
   return {
-    status: response.status,
-    body: await response.arrayBuffer(),
+    status: 200,
+    body: new TextEncoder().encode(body).buffer,
     contentType: pathname === '/robots.txt' ? 'text/plain; charset=utf-8' : 'application/xml; charset=utf-8',
   };
 }

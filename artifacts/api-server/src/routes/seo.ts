@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { getCatalogRecord } from "./catalog";
 import { resolveSeo, robotsTxt, seoOrigin, sitemapXml } from "../seo";
+import { getSeoInventory } from "../seoInventory";
 
 const router: IRouter = Router();
 router.get("/seo/resolve", async (request, response) => {
@@ -11,7 +12,16 @@ router.get("/seo/resolve", async (request, response) => {
   try {
     const origin = seoOrigin(process.env.SEO_SITE_ORIGIN);
     const catalog = await getCatalogRecord();
-    response.set("Cache-Control", "no-store").json(resolveSeo(request.query.path, catalog, origin));
+    let data = resolveSeo(request.query.path, catalog, origin);
+    if (data.type === "product") {
+      try {
+        data = resolveSeo(request.query.path, catalog, origin, await getSeoInventory());
+      } catch (error) {
+        // Product identity still works; unverified offers must not be advertised.
+        request.log.warn({ error }, "SEO offers unavailable; omitting offer metadata");
+      }
+    }
+    response.set("Cache-Control", "no-store").json(data);
   } catch (error) {
     request.log.error({ error }, "SEO resolution unavailable");
     response.status(503).json({ error: "SEO resolution is temporarily unavailable." });
@@ -19,9 +29,7 @@ router.get("/seo/resolve", async (request, response) => {
 });
 router.get("/seo/sitemap.xml", async (request, response) => {
   try {
-    const origin = seoOrigin(process.env.SEO_SITE_ORIGIN);
-    const catalog = await getCatalogRecord();
-    response.type("application/xml").set("Cache-Control", "no-store").send(sitemapXml(catalog, origin));
+    response.type("application/xml").set("Cache-Control", "no-store").send(sitemapXml({ products: [], categories: [] }, ""));
   } catch (error) {
     request.log.error({ error }, "Sitemap unavailable");
     response.status(503).json({ error: "Sitemap is temporarily unavailable." });
@@ -29,8 +37,7 @@ router.get("/seo/sitemap.xml", async (request, response) => {
 });
 router.get("/seo/robots.txt", (_request, response) => {
   try {
-    const origin = seoOrigin(process.env.SEO_SITE_ORIGIN);
-    response.type("text/plain").send(robotsTxt(origin));
+    response.type("text/plain").send(robotsTxt(""));
   } catch {
     response.status(503).json({ error: "Robots policy is temporarily unavailable." });
   }

@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import { readFile } from 'node:fs/promises';
 import { FALLBACK, injectSeo, isDocumentPath, parseRequestUrl, proxySeoFile, resolveSeo } from './server/seo.mjs';
+import { storefrontHeaders } from './server/security.mjs';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
@@ -37,14 +38,20 @@ export default defineConfig({
       apply: 'serve',
       configureServer(server) {
         server.middlewares.use(async (req, res, next) => {
-          if (req.method !== 'GET' && req.method !== 'HEAD') return next();
           let url;
           try { url = parseRequestUrl(req.url); } catch {
+            Object.entries(storefrontHeaders({ development: true })).forEach(([key, value]) => res.setHeader(key, value));
             res.statusCode = 400;
-            res.end('Bad Request');
+            res.end(req.method === 'HEAD' ? undefined : 'Bad Request');
             return;
           }
           const { pathname, search } = url;
+          // Do not interfere with API, Vite modules or assets. Documents, feeds,
+          // direct HTML and their redirects/errors get the same protections.
+          if (isDocumentPath(pathname) || pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+            Object.entries(storefrontHeaders({ development: true })).forEach(([key, value]) => res.setHeader(key, value));
+          }
+          if (req.method !== 'GET' && req.method !== 'HEAD') return next();
           if (pathname === '/__health') {
             res.statusCode = 200;
             res.setHeader('Content-Length', 2);
@@ -71,7 +78,7 @@ export default defineConfig({
           let data = FALLBACK;
           let status = 503;
           try {
-            const resolved = await resolveSeo(pathname + search);
+            const resolved = await resolveSeo((pathname === '/index.html' ? '/' : pathname) + search);
             if (resolved.status === 301) {
               res.statusCode = 301;
               res.setHeader('Location', resolved.location!);
@@ -94,7 +101,13 @@ export default defineConfig({
             res.setHeader('Content-Length', Buffer.byteLength(body));
             res.end(req.method === 'HEAD' ? undefined : body);
           } catch (error) {
-            next(error);
+            server.config.logger.error(error instanceof Error ? error.stack || error.message : String(error));
+            const body = injectSeo('<!doctype html><html lang="en"><head></head><body>Service unavailable</body></html>', FALLBACK);
+            res.statusCode = 503;
+            res.setHeader('Content-Type', 'text/html; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-store');
+            res.setHeader('Content-Length', Buffer.byteLength(body));
+            res.end(req.method === 'HEAD' ? undefined : body);
           }
         });
       },

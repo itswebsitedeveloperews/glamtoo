@@ -1,6 +1,8 @@
 import type { Catalog } from "./catalogSlugs";
 
-export type SeoResult = { status: 200 | 301 | 404; location?: string; title: string; description: string; canonicalUrl: string; robots: string; type: "website" | "product"; image?: string };
+export type SeoResult = { status: 200 | 301 | 404; location?: string; title: string; description: string; canonicalUrl: string; robots: string; type: "website" | "product"; image?: string; structuredData?: Record<string, unknown> };
+export type SeoInventory = Record<string, { unitAmount: number; stock: number }>;
+export const NOINDEX = "noindex, follow";
 const siteName = "Glam Too";
 const staticPages: Record<string, [string, string]> = {
   "/": ["Glam Too | Fashion with presence", "Discover considered fashion, colour and easy confidence at Glam Too."],
@@ -23,7 +25,56 @@ export function seoOrigin(value: string | undefined): string {
 }
 const history = (item: Record<string, unknown>) => Array.isArray(item.slugHistory) ? item.slugHistory.map((alias) => String(alias).toLowerCase()) : [];
 const encodedPath = (base: string, slug: string) => `${base}/${encodeURIComponent(slug)}`;
-export function resolveSeo(path: string, catalog: Catalog, origin: string): SeoResult {
+const publicImage = (value: unknown, origin: string): string | undefined => {
+  if (typeof value !== "string" || !value.trim() || /[\u0000-\u001f\\]/.test(value)) return;
+  const candidate = value.trim();
+  if (!candidate.startsWith("/") && !/^https:\/\//i.test(candidate)) return;
+  if (candidate.startsWith("//")) return;
+  try {
+    const url = new URL(candidate, origin);
+    // Catalogs seeded from Vite can contain development-only file/module URLs.
+    // These are not public production media and must never be advertised.
+    if (/^\/(?:@fs|@vite|@id|src|node_modules)(?:\/|$)/.test(url.pathname)) return;
+    if (url.protocol === "https:" && !url.username && !url.password) return url.href;
+  } catch { /* Omit invalid or browser-only media references. */ }
+  return undefined;
+};
+const pricePence = (value: unknown): number | undefined => {
+  if (typeof value !== "string") return;
+  const price = value.trim().replace(/^£\s*/, "").replace(/,/g, "");
+  if (!/^\d+(?:\.\d{1,2})?$/.test(price)) return;
+  const amount = Math.round(Number(price) * 100);
+  return Number.isSafeInteger(amount) && amount > 0 ? amount : undefined;
+};
+function productData(product: Record<string, unknown>, url: string, origin: string, inventory?: SeoInventory) {
+  const data: Record<string, unknown> = { "@context": "https://schema.org", "@type": "Product", name: clean(product.name), url };
+  const description = clean(product.description);
+  if (description) data.description = description;
+  if (typeof product.sku === "string" && product.sku.trim()) data.sku = product.sku.trim();
+  const images = [...new Set([product.image, ...(Array.isArray(product.galleryImages) ? product.galleryImages : [])]
+    .map((value) => publicImage(value, origin)).filter((value): value is string => Boolean(value)))];
+  if (images.length) data.image = images;
+  const variants = product.type === "Variable" && Array.isArray(product.variations)
+    ? product.variations.filter((value): value is Record<string, unknown> => Boolean(value) && typeof value === "object")
+    : product.type === "Simple" ? [product] : [];
+  const offers = variants.flatMap((variant) => {
+    const key = product.type === "Variable" ? `${product.id}:${variant.id}` : String(product.id);
+    const live = inventory?.[key];
+    const regular = pricePence(variant.price);
+    const sale = product.type === "Simple" ? pricePence(product.salePrice) : undefined;
+    const displayed = sale && regular && sale < regular ? sale : regular;
+    // Only emit offers confirmed by checkout inventory, matching the displayed price.
+    // Never substitute a variable parent's administrative price or stale catalog stock.
+    if (!live || displayed !== live.unitAmount || !Number.isSafeInteger(live.unitAmount) || live.unitAmount <= 0
+      || !Number.isInteger(live.stock) || live.stock < 0) return [];
+    return [{ "@type": "Offer", url, priceCurrency: "GBP", price: (live.unitAmount / 100).toFixed(2),
+      availability: `https://schema.org/${live.stock > 0 ? "InStock" : "OutOfStock"}`,
+      ...(typeof variant.sku === "string" && variant.sku.trim() ? { sku: variant.sku.trim() } : {}) }];
+  });
+  if (offers.length) data.offers = offers;
+  return data;
+}
+export function resolveSeo(path: string, catalog: Catalog, origin: string, inventory?: SeoInventory): SeoResult {
   const notFound = (): SeoResult => ({ status: 404, title: `Page not found | ${siteName}`, description: "This page could not be found. Explore the latest pieces at Glam Too.", canonicalUrl: `${origin}/`, robots: "noindex, follow", type: "website" });
   if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//") || path.includes("\\") || /[\u0000-\u001f]/.test(path)) return notFound();
   let url: URL;
@@ -38,6 +89,7 @@ export function resolveSeo(path: string, catalog: Catalog, origin: string): SeoR
   let description: string;
   let type: "website" | "product" = "website";
   let image: string | undefined;
+  let product: Record<string, unknown> | undefined;
   let noindex = false;
   if (normalized === "/delivery-returns") target = "/returns";
   const productMatch = /^\/product\/([^/]+)$/.exec(normalized);
@@ -51,10 +103,9 @@ export function resolveSeo(path: string, catalog: Catalog, origin: string): SeoR
     title = `${clean(match.name)} | ${siteName}`;
     description = clean(match.description) || `Shop ${clean(match.name)} at Glam Too. Discover expressive fashion for every occasion.`;
     type = "product";
-    const primaryImage = typeof match.image === "string" ? match.image.trim() : "";
-    const candidate = primaryImage || String((Array.isArray(match.galleryImages) ? match.galleryImages.find((entry) => typeof entry === "string" && entry.trim()) : "") || "").trim();
-    if (candidate.startsWith("/") && !candidate.startsWith("//")) image = `${origin}${candidate}`;
-    else if (/^https:\/\//i.test(candidate)) image = candidate;
+    product = match;
+    image = [match.image, ...(Array.isArray(match.galleryImages) ? match.galleryImages : [])]
+      .map((candidate) => publicImage(candidate, origin)).find(Boolean);
   } else if (categoryMatch) {
     const match = catalog.categories.find((item) => String(item.slug).toLowerCase() === categoryMatch[1])
       || catalog.categories.find((item) => history(item).includes(categoryMatch[1]));
@@ -63,10 +114,10 @@ export function resolveSeo(path: string, catalog: Catalog, origin: string): SeoR
     title = `${clean(match.name)} | Shop Categories | ${siteName}`;
     description = clean(match.description) || `Explore ${clean(match.name)} at Glam Too and find pieces made for your next moment.`;
     const candidate = String(match.image || "");
-    if (candidate.startsWith("/") && !candidate.startsWith("//")) image = `${origin}${candidate}`;
-    else if (/^https:\/\//i.test(candidate)) image = candidate;
+    image = publicImage(candidate, origin);
   } else if (staticPages[target]) {
     [title, description] = staticPages[target];
+    if (target === "/") image = `${origin}/social-home.webp`;
   } else if (privatePage.test(target)) {
     title = `Your account and shopping | ${siteName}`;
     description = "Your private Glam Too shopping page.";
@@ -84,8 +135,9 @@ export function resolveSeo(path: string, catalog: Catalog, origin: string): SeoR
     else noindex = true;
   } else if (pageValues.length && target !== "/shop") noindex = true;
   const canonicalUrl = `${origin}${target}`;
-  const result: SeoResult = { status: 200, title, description, canonicalUrl, robots: noindex ? "noindex, follow" : "index, follow", type };
+  const result: SeoResult = { status: 200, title, description, canonicalUrl, robots: NOINDEX, type };
   if (image) result.image = image;
+  if (product) result.structuredData = productData(product, canonicalUrl, origin, inventory);
   // Redirect only URL-path aliases and normalization, never untrusted query values.
   if (pathname !== target.split("?")[0] && !privatePage.test(target)) {
     return { ...result, status: 301, location: target };
@@ -94,14 +146,9 @@ export function resolveSeo(path: string, catalog: Catalog, origin: string): SeoR
 }
 
 export function sitemapXml(catalog: Catalog, origin: string): string {
-  const paths = [
-    ...Object.keys(staticPages),
-    ...catalog.categories.map((item) => encodedPath("/category", String(item.slug))),
-    ...catalog.products.filter((item) => item.status === "Published").map((item) => encodedPath("/product", String(item.slug))),
-  ];
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${paths.map((path) => `<url><loc>${`${origin}${path}`.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</loc></url>`).join("")}</urlset>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>`;
 }
 
 export function robotsTxt(origin: string): string {
-  return `User-agent: *\nAllow: /\nDisallow: /api/\nSitemap: ${origin}/sitemap.xml\n`;
+  return `User-agent: *\nAllow: /\nDisallow: /api/\n`;
 }

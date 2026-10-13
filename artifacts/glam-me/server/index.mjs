@@ -3,6 +3,7 @@ import { readFile, realpath, stat } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { FALLBACK, injectSeo, isDocumentPath, parseRequestUrl, proxySeoFile, resolveSeo } from './seo.mjs';
+import { storefrontHeaders } from './security.mjs';
 
 const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist/public');
 const mime = {
@@ -16,7 +17,9 @@ const mime = {
 
 function send(res, method, status, body, headers = {}) {
   const bytes = Buffer.isBuffer(body) ? body : Buffer.from(body);
-  res.writeHead(status, { 'Content-Length': bytes.length, 'X-Content-Type-Options': 'nosniff', ...headers });
+  res.writeHead(status, { 'Content-Length': bytes.length, ...storefrontHeaders({
+    html: headers['Content-Type']?.startsWith('text/html') ? bytes.toString() : '',
+  }), ...headers });
   res.end(method === 'HEAD' ? undefined : bytes);
 }
 
@@ -52,7 +55,7 @@ export function createSeoServer({ directory = dist, fetcher = fetch } = {}) {
     }
     if (isDocumentPath(pathname)) {
       try {
-        const data = await resolveSeo(pathname + search, fetcher);
+        const data = await resolveSeo((pathname === '/index.html' ? '/' : pathname) + search, fetcher);
         if (data.status === 301) {
           send(res, method, 301, '', { Location: data.location, 'Cache-Control': 'no-cache' });
           return;
