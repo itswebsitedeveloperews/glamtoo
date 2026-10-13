@@ -15,7 +15,7 @@
 - [Coupon payment allocations](coupon-payment-allocations.md) — Keep each coupon allocation until Stripe reports a verified terminal outcome; do not free it on retryable card failures.
 - [Application order finalization](application-order-finalization.md) — Store an order before payment and use one idempotent finalizer for browser callbacks and Stripe webhooks.
 - [VAT-inclusive pricing](vat-inclusive-pricing.md) — Glam Too displays 20% UK VAT as included in existing GBP prices; it never increases the checkout total.
-- [UK shipping rules](uk-shipping-rules.md) — Standard delivery is £3.95 below £75 and free from £75; express delivery is £6.95.
+- [UK shipping defaults](uk-shipping-rules.md) — Original £3.95/£75 rates are historical defaults; preserve admin-configured rates when fixing shipping inconsistencies.
 - [Legacy payment reconciliation](legacy-payment-reconciliation.md) — Use stable cursors when importing historical Stripe payments; synced records can arrive while paging.
 - [Bestseller ranking](bestseller-ranking.md) — Rank products by paid units sold; never use current stock as a bestseller proxy.
 - [Catalog refresh routing](catalog-refresh-routing.md) — Catalog refreshes must not remount the admin route, or active admin workspace state resets to Overview.

@@ -19,6 +19,8 @@ import { useSubmitContactEnquiry } from '@workspace/api-client-react';
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin-dashboard';
 import { hasRichTextContent, sanitizeRichTextHtml } from '@/utils/rich-text';
+import { calculateShippingAmount, selectShippingMethod } from '@workspace/shipping';
+import { useShippingMethods } from '@/hooks/use-shipping-methods';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const clerkPubKey = publishableKeyFromHost(
@@ -80,9 +82,6 @@ const pendingCouponPaymentStorageKey = 'glam-me-pending-coupon-payment-v1';
 const checkoutPreferencesStorageKey = 'glam-me-checkout-preferences-v1';
 const inventoryStorageKey = 'glam-me-live-inventory-v1';
 const wishlistStorageKey = 'glam-me-wishlist-v1';
-const standardDeliveryAmount = 3.95;
-const expressDeliveryAmount = 6.95;
-const freeStandardDeliveryThreshold = 75;
 let sharedCatalog: { products: CatalogProduct[]; categories: CatalogCategory[]; homePage: HomePageSettings | null } | null = null;
 
 type CartItem = {
@@ -373,12 +372,6 @@ function formatPounds(value: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
 }
 
-function calculateCheckoutDeliveryAmount(delivery: "standard" | "express", subtotal: number) {
-  if (delivery === "express") return expressDeliveryAmount;
-  return Math.round(subtotal * 100) >= freeStandardDeliveryThreshold * 100 ? 0 : standardDeliveryAmount;
-}
-
-type ShippingMethod = { id: string; name: string; description: string; price: number; freeOver: number | null; enabled: boolean };
 type DeliveryInformationRow = { id: string; option: string; information: string; cost: number; sortOrder: number };
 type SizeGuideRow = { id: string; size: string; ukSize: string; bust: string; waist: string; hips: string; sortOrder: number };
 
@@ -2551,6 +2544,7 @@ function LegalPage({ type }: { type: 'privacy' | 'terms' }) {
 
 function Cart() {
   useLiveInventory();
+  const { shippingMethods, shippingMethodsLoading, shippingMethodsError } = useShippingMethods();
   const [items, setItems] = useState<CartItem[]>(() => {
     const storedItems = getCartItems();
     const queryItem = getCartQueryItem();
@@ -2572,7 +2566,8 @@ function Cart() {
     return product ? [{ item, product, variation }] : [];
   });
   const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
-  const deliveryAmount = calculateCheckoutDeliveryAmount("standard", subtotal);
+  const selectedShipping = selectShippingMethod(shippingMethods, getCheckoutPreferences().delivery);
+  const deliveryAmount = selectedShipping ? calculateShippingAmount(selectedShipping, Math.round(subtotal * 100)) / 100 : null;
 
   function removeCartItem(itemToRemove: CartItem) {
     const nextItems = items.filter((item) =>
@@ -2674,8 +2669,9 @@ function Cart() {
             <aside className="cart-summary">
               <h2>Summary</h2>
               <div className="summary-row"><span>Subtotal</span><span>{formatPounds(subtotal)}</span></div>
-              <div className="summary-row"><span>Standard delivery</span><span>{deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</span></div>
-              <div className="summary-row total"><span>Total</span><span>{formatPounds(subtotal + deliveryAmount)}</span></div>
+              <div className="summary-row"><span>{selectedShipping?.name ?? "Delivery"}</span><span>{deliveryAmount === null ? shippingMethodsLoading ? "Loading…" : "Unavailable" : deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</span></div>
+              <div className="summary-row total"><span>Total</span><span>{deliveryAmount === null ? "—" : formatPounds(subtotal + deliveryAmount)}</span></div>
+              {!shippingMethodsLoading && !selectedShipping && <p className="checkout-payment-error" role="alert">{shippingMethodsError || "No delivery methods are currently available. Please try again later."}</p>}
               <a className="button button-pink" href="/checkout" data-testid="link-checkout">Go to checkout</a>
             </aside>
           </div>
@@ -2693,9 +2689,7 @@ function Checkout() {
   const [paymentError, setPaymentError] = useState("");
   const [cardError, setCardError] = useState("");
   const [delivery, setDelivery] = useState<string>(() => getCheckoutPreferences().delivery ?? "standard");
-  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
-  const [shippingMethodsLoading, setShippingMethodsLoading] = useState(true);
-  const [shippingMethodsError, setShippingMethodsError] = useState("");
+  const { shippingMethods, shippingMethodsLoading, shippingMethodsError } = useShippingMethods();
   const [publishableKey, setPublishableKey] = useState("");
   const [paymentSetupError, setPaymentSetupError] = useState("");
   const [checkoutProfile, setCheckoutProfile] = useState<CustomerProfile>(emptyCustomerProfile);
@@ -2728,24 +2722,12 @@ function Checkout() {
   const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
 
   useEffect(() => {
-    setShippingMethodsLoading(true);
-    setShippingMethodsError("");
-    fetch("/api/shipping-methods", { credentials: "include" })
-      .then((response) => response.ok ? response.json() : Promise.reject(new Error("Shipping methods unavailable")))
-      .then((result: { shippingMethods?: ShippingMethod[] }) => {
-        const methods = result.shippingMethods ?? [];
-        setShippingMethods(methods);
-        if (methods.length && !methods.some((method) => method.id === delivery)) {
-          setDelivery(methods[0].id);
-          saveCheckoutPreferences({ delivery: methods[0].id });
-        }
-      })
-      .catch((error: unknown) => {
-        setShippingMethods([]);
-        setShippingMethodsError(error instanceof Error ? error.message : "Shipping methods could not be loaded.");
-      })
-      .finally(() => setShippingMethodsLoading(false));
-  }, []);
+    const method = selectShippingMethod(shippingMethods, delivery);
+    if (method && method.id !== delivery) {
+      setDelivery(method.id);
+      saveCheckoutPreferences({ delivery: method.id });
+    }
+  }, [shippingMethods, delivery]);
 
   function checkoutLinePayload() {
     return cartLines.map(({ item, product, variation }) => ({
@@ -3033,10 +3015,10 @@ function Checkout() {
     }
   }
 
-  const selectedShipping = shippingMethods.find((method) => method.id === delivery);
+  const selectedShipping = selectShippingMethod(shippingMethods, delivery);
   const standardDeliveryCharge = selectedShipping
-    ? (selectedShipping.freeOver !== null && subtotal >= selectedShipping.freeOver / 100 ? 0 : selectedShipping.price / 100)
-    : calculateCheckoutDeliveryAmount("standard", subtotal);
+    ? calculateShippingAmount(selectedShipping, Math.round(subtotal * 100)) / 100
+    : 0;
   const deliveryAmount = appliedCoupon ? appliedCoupon.deliveryAmount / 100 : standardDeliveryCharge;
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount / 100 : 0;
   const total = Math.max(0, subtotal + deliveryAmount - discountAmount);
@@ -3079,7 +3061,7 @@ function Checkout() {
               <div className="checkout-section-heading"><span>02</span><div><h2>Shipping</h2><p>Choose how quickly you&apos;d like your order to arrive.</p></div></div>
               <div className="checkout-delivery-options">
                 {shippingMethods.map((method) => {
-                  const charge = method.freeOver !== null && subtotal >= method.freeOver / 100 ? 0 : method.price / 100;
+                  const charge = calculateShippingAmount(method, Math.round(subtotal * 100)) / 100;
                   return <label key={method.id} className={`checkout-delivery-option ${delivery === method.id ? "is-selected" : ""}`}><input type="radio" name="delivery" value={method.id} checked={delivery === method.id} onChange={() => { setDelivery(method.id); saveCheckoutPreferences({ delivery: method.id }); setAppliedCoupon(null); }} /><span><strong>{method.name}</strong><small>{method.description}</small></span><b>{charge === 0 ? "Free" : formatPounds(charge)}</b></label>;
                 })}
               </div>
@@ -3113,7 +3095,7 @@ function Checkout() {
               {couponError && <p className="checkout-coupon-error" role="alert">{couponError}</p>}
               {couponMessage && <p className="checkout-coupon-success" role="status">{couponMessage}</p>}
             </div>
-            <div className="checkout-totals"><div><span>Subtotal</span><strong>{formatPounds(subtotal)}</strong></div><div><span>Delivery</span><strong>{deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</strong></div>{appliedCoupon && <div className="checkout-discount-row"><span>Discount · {appliedCoupon.coupon.code}</span><strong>−{formatPounds(discountAmount)}</strong></div>}<div><span>VAT included (20%)</span><strong>{formatPounds(vatAmount)}</strong></div><div className="checkout-total"><span>Total</span><strong>{formatPounds(total)}</strong></div></div>
+            <div className="checkout-totals"><div><span>Subtotal</span><strong>{formatPounds(subtotal)}</strong></div><div><span>Delivery</span><strong>{!selectedShipping ? shippingMethodsLoading ? "Loading…" : "Unavailable" : deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</strong></div>{appliedCoupon && <div className="checkout-discount-row"><span>Discount · {appliedCoupon.coupon.code}</span><strong>−{formatPounds(discountAmount)}</strong></div>}<div><span>VAT included (20%)</span><strong>{selectedShipping ? formatPounds(vatAmount) : "—"}</strong></div><div className="checkout-total"><span>Total</span><strong>{selectedShipping ? formatPounds(total) : "—"}</strong></div></div>
              <button className="button checkout-pay-button" type="submit" disabled={!isLoaded || !isSignedIn || isPaying || !publishableKey || Boolean(paymentSetupError) || cartLines.length === 0 || shippingMethodsLoading || shippingMethods.length === 0 || !selectedShipping} data-testid="button-place-order">{isPaying ? "Processing secure payment…" : shippingMethodsLoading ? "Loading delivery options…" : shippingMethods.length === 0 ? "Delivery unavailable" : !isLoaded ? "Checking account…" : !isSignedIn ? "Sign in to checkout" : !publishableKey ? "Loading secure payment…" : `Pay securely · ${formatPounds(total)}`}</button>
             <p className="checkout-security-copy">Your card details never touch Glam Too&apos;s servers. Stripe processes your payment securely.</p>
           </aside>

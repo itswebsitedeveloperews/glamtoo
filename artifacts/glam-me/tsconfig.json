@@ -16,6 +16,9 @@
   },
   "references": [
     {
+      "path": "../../lib/shipping"
+    },
+    {
       "path": "../../lib/api-client-react"
     }
   ]

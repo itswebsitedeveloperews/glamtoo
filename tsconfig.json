@@ -4,6 +4,9 @@
   "files": [],
   "references": [
     {
+      "path": "./lib/shipping"
+    },
+    {
       "path": "./lib/db"
     },
     {

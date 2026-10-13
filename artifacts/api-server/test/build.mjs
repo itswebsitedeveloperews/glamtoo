@@ -6,12 +6,13 @@ import { spawn } from "node:child_process";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const outputDir = resolve(testDir, ".compiled");
-const outputFile = resolve(outputDir, "regressions.test.cjs");
+const testName = process.argv[2] === "shipping" ? "shipping" : "regressions";
+const outputFile = resolve(outputDir, `${testName}.test.cjs`);
 
 await rm(outputDir, { recursive: true, force: true });
 await mkdir(outputDir, { recursive: true });
 await build({
-  entryPoints: [resolve(testDir, "regressions.test.ts")],
+  entryPoints: [resolve(testDir, `${testName}.test.ts`)],
   bundle: true,
   platform: "node",
   format: "cjs",

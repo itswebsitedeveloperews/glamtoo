@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import { db, shippingMethodsTable, type ShippingMethod } from "@workspace/db";
+import { calculateShippingAmount } from "@workspace/shipping";
 
 export const LEGACY_STANDARD = { id: "standard", name: "Standard delivery", description: "2–4 working days", price: 395, freeOver: 7500 };
 export const LEGACY_EXPRESS = { id: "express", name: "Express delivery", description: "1–2 working days", price: 695, freeOver: null };
@@ -27,7 +28,7 @@ export async function resolveShippingMethod(value: unknown, subtotal: number) {
     ?? (requested === "standard" ? methods.find((item) => item.name.toLowerCase() === "standard") : undefined)
     ?? (requested === "express" ? methods.find((item) => item.name.toLowerCase() === "express") : undefined);
   if (!method) throw new Error("Choose an available delivery method.");
-  const amount = method.freeOver !== null && subtotal >= method.freeOver ? 0 : method.price;
+  const amount = calculateShippingAmount(method, subtotal);
   return { method, amount };
 }
 
