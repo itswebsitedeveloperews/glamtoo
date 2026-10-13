@@ -9,6 +9,13 @@ export const orderEmailNotificationsTable = pgTable("store_order_email_notificat
   attempts: integer("attempts").notNull().default(0),
   lastError: text("last_error"),
   sentAt: timestamp("sent_at", { withTimezone: true }),
+  providerMessageId: text("provider_message_id"),
+  providerEmailId: text("provider_email_id"),
+  nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  bouncedAt: timestamp("bounced_at", { withTimezone: true }),
+  failedAt: timestamp("failed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

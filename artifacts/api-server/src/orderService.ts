@@ -505,6 +505,12 @@ async function finalizeSavedOrder(
       }
       await client.query("DELETE FROM inventory_reservations WHERE payment_reference = $1", [paymentReference]);
       await markCouponRedeemed(client, order, paymentReference);
+      await client.query(
+        `INSERT INTO store_order_email_notifications (order_id, notification_type)
+         VALUES ($1, 'order_confirmation')
+         ON CONFLICT (order_id, notification_type) DO NOTHING`,
+        [order.id],
+      );
     }
     const finalOrder = await loadOrder(client, "id", order.id);
     await client.query("COMMIT");

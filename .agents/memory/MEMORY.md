@@ -32,3 +32,4 @@
 - [Glam Too Boutique wordmark](boutique-wordmark.md) — Keep Glam Too above Boutique, with the original serif and pink Boutique rules.
 - [Catalog URL policy](catalog-url-policy.md) — Preserve URL formats and stable slugs; SEO metadata and redirects require server document handling.
 - [Chromium CDP preview checks](chromium-cdp-targets.md) — Select the actual page target and use instant scrolling for deterministic captures.
+- [Order email rollout safety](order-email-rollout-safety.md) — Provider setup must not silently send to real customers or replay historical orders; acceptance is not delivery proof.

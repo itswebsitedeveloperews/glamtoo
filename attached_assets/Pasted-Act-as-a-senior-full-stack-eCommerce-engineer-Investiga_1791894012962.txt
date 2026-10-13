@@ -1,0 +1,88 @@
+Act as a senior full-stack eCommerce engineer. Investigate and fix missing transactional order-confirmation emails in this existing Glam Too application.
+
+Website: https://glamtoo.webdesignessex.io/
+
+Inspect the actual repository and integrations first. The storefront audit observed React, Clerk authentication, custom /api routes and Stripe. Do not assume WooCommerce is installed.
+
+CONFIRMED ISSUE
+Four sandbox orders were successfully created, but the test customer reported receiving no confirmation emails:
+
+- GM-AB3D8C06 — £43.98
+- GM-2868338F — £119.96
+- GM-00FCC552 — £38.98
+- GM-3ABD1160 — £28.98, guest checkout
+
+Test recipient: wamadi8117@calirona.com
+
+The first three orders showed Paid / Processing in customer order details. The guest order showed successful confirmation. Stock deductions matched ordered quantities.
+
+Registration and password-recovery verification codes reached this mailbox earlier. Those may use Clerk’s email service, so their success does not prove that order-email delivery is configured.
+
+The “Email receipt” address displayed in order details is not evidence that an email was sent.
+
+YOUR TASK
+Find the root cause, implement the fix and verify actual delivery. Do not stop at recommendations.
+
+1. Trace the complete payment-to-email flow:
+   - Stripe payment confirmation and webhooks
+   - Order creation/finalization
+   - Transactional email trigger, queue or background job
+   - Email provider request and delivery result
+
+2. Inspect existing email-provider configuration, environment variables, sender identity, domain verification and staging recipient restrictions.
+   - Identify whether emails are disabled, captured, misrouted, rejected or never triggered.
+   - Inspect provider logs, bounces and suppressions where access is available.
+   - Never expose API keys, signing secrets or customer data in logs.
+
+3. Send the confirmation only after server-verified successful payment and persisted order creation.
+   - Cover registered and guest checkout.
+   - Do not send success confirmations for declined, cancelled or incomplete payments.
+   - Use persisted order data for recipients, items, variants, quantities and totals.
+   - Keep inclusive VAT separate from additional charges: do not add it twice.
+
+4. Make email processing reliable:
+   - Use the application’s existing queue/outbox architecture where available.
+   - Prevent duplicate sends from repeated finalization, page refreshes and duplicate webhook events.
+   - Persist delivery-attempt state and provider message IDs.
+   - Add bounded retries for transient failures.
+   - Email failure must not undo a successful payment, duplicate an order or deduct stock again.
+   - Distinguish queued, provider-accepted, delivered, bounced and failed states.
+
+5. Verify the confirmation template includes:
+   - Glam Too branding and correct sender/reply-to
+   - Order reference
+   - Products, selected variants and quantities
+   - Subtotal, discounts, delivery, inclusive VAT and final total
+   - Delivery method and address
+   - Appropriate links for registered customers and guests
+   - No exposure of another customer’s order information
+
+SAFETY
+The user confirmed this environment is staging with Stripe test mode and safe email routing. Verify that the repository’s current configuration still matches before testing.
+
+Use dedicated test recipients and Stripe sandbox payments only. Do not alter live payment configuration or send emails to real customers. Do not automatically resend historical orders or change existing order/stock records.
+
+VALIDATION
+Run meaningful tests for:
+- Successful registered order
+- Successful guest order
+- Declined payment
+- Cancelled authentication
+- Retry after failure
+- Duplicate webhook/finalization
+- Confirmation-page refresh
+- Temporary email-provider failure and recovery
+
+Prove delivery through the controlled inbox or provider delivery events. An application log saying “email sent,” or a provider API accepting a request, is not proof of delivery.
+
+If inbox, provider or DNS access is missing, complete all independent implementation and tests, then state precisely what remains blocked. Do not claim end-to-end success without delivery evidence.
+
+DELIVER
+- Confirmed root cause, or clearly stated remaining uncertainty
+- Implemented changes and affected files
+- Environment-variable names required, without secret values
+- Any necessary sender/DNS configuration steps
+- Test results and actual delivery evidence
+- Remaining blockers
+
+Keep the change focused on transactional email reliability and preserve working checkout, payments, orders and inventory behaviour.

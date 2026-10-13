@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { startExpiredOrderRecovery } from "./routes/stripe";
 import { initializeStripe } from "./stripeBootstrap";
 import { isRefundEmailDeliveryConfigured, startRefundNotificationWorker } from "./refundNotifications";
+import { isOrderEmailConfigured, startOrderConfirmationWorker } from "./orderConfirmationNotifications";
 
 const rawPort = process.env["PORT"];
 
@@ -31,10 +32,14 @@ try {
 startExpiredOrderRecovery();
 if (!isRefundEmailDeliveryConfigured()) {
   logger.warn(
-    "Refund emails are queued but MailerSend is not configured; set MAILERSEND_API_TOKEN and MAILERSEND_FROM_EMAIL to deliver them.",
+    "Refund emails are queued; configure MailerSend and the safe recipient policy before sending.",
   );
 }
 startRefundNotificationWorker();
+if (!isOrderEmailConfigured()) {
+  logger.warn("Order confirmation email is queued but not being sent; configure MailerSend, a verified sender, the shop URL, and the recipient allowlist.");
+}
+startOrderConfirmationWorker();
 
 app.listen(port, (err) => {
   if (err) {

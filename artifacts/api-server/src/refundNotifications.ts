@@ -1,5 +1,6 @@
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
+import { emailRecipientPolicy } from "./emailRecipientPolicy";
 
 export type RefundNotificationType = "refund_processing" | "refunded" | "manual_resolution";
 
@@ -86,7 +87,8 @@ function mailerSendConfig() {
   const token = process.env.MAILERSEND_API_TOKEN?.trim();
   const fromEmail = process.env.MAILERSEND_FROM_EMAIL?.trim();
   const fromName = process.env.MAILERSEND_FROM_NAME?.trim() || "Glam Too";
-  return token && fromEmail ? { token, fromEmail, fromName } : null;
+  const policy = emailRecipientPolicy();
+  return token && fromEmail && policy ? { token, fromEmail, fromName, ...policy } : null;
 }
 
 async function sendWithMailerSend(
@@ -117,15 +119,18 @@ async function sendWithMailerSend(
   }
 }
 
-async function claimNextNotification() {
+async function claimNextNotification(config: NonNullable<ReturnType<typeof mailerSendConfig>>) {
   const result = await pool.query<RefundNotificationRow>(
     `WITH candidate AS (
-       SELECT id
-       FROM store_order_email_notifications
-       WHERE status = 'pending'
-          OR (status = 'sending' AND updated_at < NOW() - INTERVAL '15 minutes')
-       ORDER BY created_at, id
-       FOR UPDATE SKIP LOCKED
+       SELECT n.id
+       FROM store_order_email_notifications n
+       JOIN store_orders o ON o.id = n.order_id
+       WHERE n.notification_type IN ('refund_processing', 'refunded', 'manual_resolution')
+         AND (n.status = 'pending'
+           OR (n.status = 'sending' AND n.updated_at < NOW() - INTERVAL '15 minutes'))
+         AND ($1::boolean OR LOWER(o.email) = ANY($2::text[]))
+       ORDER BY n.created_at, n.id
+       FOR UPDATE OF n SKIP LOCKED
        LIMIT 1
      )
      UPDATE store_order_email_notifications AS notifications
@@ -137,6 +142,7 @@ async function claimNextNotification() {
        AND orders.id = notifications.order_id
      RETURNING notifications.id, notifications.order_id, notifications.notification_type,
        orders.email, orders.customer_name`,
+    [config.allCustomers, config.recipients],
   );
   return result.rows[0] ?? null;
 }
@@ -161,9 +167,10 @@ async function markRetryable(id: number, error: unknown) {
 }
 
 export async function processRefundNotifications(limit = 10) {
-  if (!mailerSendConfig()) return;
+  const config = mailerSendConfig();
+  if (!config) return;
   for (let index = 0; index < limit; index += 1) {
-    const notification = await claimNextNotification();
+    const notification = await claimNextNotification(config);
     if (!notification) return;
     try {
       await sendWithMailerSend(

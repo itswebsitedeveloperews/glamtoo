@@ -167,6 +167,8 @@ test("owned guest payment finalizes idempotently with stock and coupon settled e
   }
   assert.equal(await stock(), paidReservedStock);
   assert.equal(Number((await pool.query("SELECT usage_count FROM coupons WHERE id=$1", [couponId])).rows[0].usage_count), 1);
+  const emails = await pool.query("SELECT count(*) FROM store_order_email_notifications WHERE order_id = $1 AND notification_type = 'order_confirmation'", [paidIntent.metadata.glam_too_order_id]);
+  assert.equal(emails.rows[0].count, "1", "Confirmation refresh queues only one guest receipt");
 });
 
 test("guest retry cancellation releases its reservation; saved cards and cross-site origins remain forbidden", async () => {
@@ -180,6 +182,8 @@ test("guest retry cancellation releases its reservation; saved cards and cross-s
   assert.equal((await post("abandon-payment", { paymentIntentId: pending.paymentIntentId }, { Cookie: ownerCookie })).status, 200);
   assert.equal(intents.get(pending.paymentIntentId).status, "canceled");
   assert.equal((await pool.query("SELECT count(*) AS count FROM inventory_reservations WHERE payment_reference=$1", [pending.paymentIntentId])).rows[0].count, "0");
+  const intent = intents.get(pending.paymentIntentId);
+  assert.equal((await pool.query("SELECT count(*) FROM store_order_email_notifications WHERE order_id=$1", [intent.metadata.glam_too_order_id])).rows[0].count, "0");
 });
 
 test("signed-in payments still use the authenticated account, never the guest email or cookie as account ownership", async () => {
@@ -194,6 +198,7 @@ test("signed-in payments still use the authenticated account, never the guest em
   assert.equal(ownsCheckoutPayment(intent.metadata, null, guestCheckoutOwner(ownerCookie.split("=")[1])), false);
   intent.status = "succeeded";
   assert.equal((await post("finalize-payment", { paymentIntentId: intent.id }, { "x-test-user": "user_checkout_test" })).status, 200);
+  assert.equal((await pool.query("SELECT count(*) FROM store_order_email_notifications WHERE order_id=$1 AND notification_type='order_confirmation'", [intent.metadata.glam_too_order_id])).rows[0].count, "1");
 });
 
 test("hosted checkout also permits guests and verifies their browser on confirmation", async () => {
@@ -204,4 +209,32 @@ test("hosted checkout also permits guests and verifies their browser on confirma
   assert.equal(session.metadata.guest_checkout_id, guestCheckoutOwner(ownerCookie.split("=")[1]));
   session.payment_status = "paid";
   assert.equal((await post("finalize-payment", { checkoutSessionId: session.id }, { Cookie: ownerCookie })).status, 200);
+});
+
+test("declined/incomplete payment queues no success email; a successful retry queues exactly one", async () => {
+  const response = await post("payment-intent", input(), { Cookie: ownerCookie });
+  const result = await response.json() as { paymentIntentId: string };
+  const intent = intents.get(result.paymentIntentId);
+  intent.status = "requires_payment_method";
+  assert.equal((await post("finalize-payment", { paymentIntentId: intent.id }, { Cookie: ownerCookie })).status, 400);
+  assert.equal((await pool.query("SELECT count(*) FROM store_order_email_notifications WHERE order_id=$1", [intent.metadata.glam_too_order_id])).rows[0].count, "0");
+  const reservedStock = await stock();
+  intent.status = "succeeded";
+  for (let attempt = 0; attempt < 2; attempt++) {
+    assert.equal((await post("finalize-payment", { paymentIntentId: intent.id }, { Cookie: ownerCookie })).status, 200);
+  }
+  assert.equal(await stock(), reservedStock, "Email/finalization retries must not deduct stock twice");
+  assert.equal((await pool.query("SELECT count(*) FROM store_order_email_notifications WHERE order_id=$1 AND notification_type='order_confirmation'", [intent.metadata.glam_too_order_id])).rows[0].count, "1");
+});
+
+test("cancelled authentication queues no email and releases inventory", async () => {
+  const before = await stock();
+  const response = await post("payment-intent", input(), { Cookie: ownerCookie });
+  const result = await response.json() as { paymentIntentId: string };
+  const intent = intents.get(result.paymentIntentId);
+  intent.status = "requires_action";
+  assert.equal((await post("finalize-payment", { paymentIntentId: intent.id }, { Cookie: ownerCookie })).status, 400);
+  assert.equal((await post("abandon-payment", { paymentIntentId: intent.id }, { Cookie: ownerCookie })).status, 200);
+  assert.equal(await stock(), before);
+  assert.equal((await pool.query("SELECT count(*) FROM store_order_email_notifications WHERE order_id=$1", [intent.metadata.glam_too_order_id])).rows[0].count, "0");
 });
