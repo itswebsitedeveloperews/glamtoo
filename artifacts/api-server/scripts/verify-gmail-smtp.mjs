@@ -11,7 +11,12 @@ const child = spawn(process.execPath, ["-"], { stdio: ["pipe", "inherit", "inher
 child.stdin.end(`${built.outputFiles[0].text}
 module.exports.verifyGmailSmtp()
   .then(() => console.log("Gmail SMTP authentication verified. No email was sent; inbox delivery is not verified."))
-  .catch(() => { console.error("Gmail SMTP authentication was not verified. Check secure credentials and account settings."); process.exitCode = 1; });
+  .catch(error => {
+    console.error(error instanceof module.exports.GmailSmtpError
+      ? error.message
+      : "Gmail SMTP authentication was not verified due to a client initialization error.");
+    process.exitCode = 1;
+  });
 `);
 child.on("error", () => { console.error("Could not start Gmail SMTP verification."); process.exitCode = 1; });
 child.on("exit", (code) => { process.exitCode = code ?? 1; });

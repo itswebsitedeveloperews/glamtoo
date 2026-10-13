@@ -78,9 +78,17 @@ export async function sendGmailConfirmation(
 
 export async function verifyGmailSmtp() {
   const config = gmailSmtpConfiguration();
-  if (!config) throw new Error("Gmail SMTP credentials are not configured.");
+  if (!config) throw new GmailSmtpError("failed", "Gmail SMTP credentials are missing or the mailbox setting is not a valid email address.");
   const client = transport(config);
   try { return await client.verify(); }
-  catch { throw new Error("Gmail SMTP verification failed; check account settings and secure credentials."); }
+  catch (error) {
+    const failure = (error && typeof error === "object" ? error : {}) as { code?: string; responseCode?: number };
+    const knownCodes = ["EAUTH", "ETIMEDOUT", "EDNS", "ESOCKET", "ECONNECTION", "ETLS"];
+    const code = knownCodes.includes(failure.code ?? "") ? failure.code : "UNKNOWN";
+    const status = Number.isInteger(failure.responseCode) && failure.responseCode! >= 400 && failure.responseCode! <= 599
+      ? `, SMTP ${failure.responseCode}` : "";
+    // Diagnostic codes only: raw SMTP responses can include the mailbox.
+    throw new GmailSmtpError("failed", `Gmail SMTP verification failed (${code}${status}); check account settings and secure credentials.`);
+  }
   finally { client.close(); }
 }

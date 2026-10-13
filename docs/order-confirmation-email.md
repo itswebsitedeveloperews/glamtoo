@@ -7,7 +7,7 @@
 - None has an email-outbox record. The existing payment finalizer did not queue a purchase confirmation.
 - The existing MailerSend worker only handled refund notifications. Clerk authentication emails use a separate service; delivery of Clerk codes does not establish order-email delivery.
 - `MAILERSEND_API_TOKEN` and `MAILERSEND_FROM_EMAIL` are absent from the checked development/shared and production environment settings.
-- The merchant subsequently approved switching order confirmations to Gmail SMTP. Gmail SMTP credentials and a controlled inbox have not been supplied, so no actual order-email delivery has been proved.
+- The merchant subsequently approved switching order confirmations to Gmail SMTP and supplied credentials plus a restricted recipient list through Secrets. The actual SMTP connection reached Google, but authentication was rejected with `EAUTH / SMTP 534`. No email was sent by that authentication check and no inbox delivery has been proved.
 
 No historical order was resent. Production database inspection was read-only. Tests created and removed only isolated development fixtures, used simulated Stripe/provider responses, and sent no external email.
 
@@ -69,7 +69,7 @@ pnpm --filter @workspace/api-server run typecheck
 pnpm --filter @workspace/api-server run test:gmail-smtp
 ```
 
-The existing regression, checkout/account and legacy email suites are supplemented by isolated Gmail SMTP tests for the default transport/no fallback, authenticated sender/TLS, registered/guest confirmations, SMTP acceptance versus delivery, bounded retry/recovery, authentication/permanent rejection, ambiguous DATA disconnects, recipient restrictions and no-send credential verification.
+The 57 automated checks comprise the existing regression, checkout/account and legacy email suites plus nine isolated Gmail SMTP tests for the default transport/no fallback, authenticated sender/TLS, registered/guest confirmations, SMTP acceptance versus delivery, bounded retry/recovery, authentication/permanent rejection, ambiguous DATA disconnects, recipient restrictions and no-send credential verification.
 
 Provider delivery responses in automated tests are **simulated**, not real delivery evidence.
 
@@ -95,4 +95,4 @@ Development schema additions are non-destructive. Production receives the schema
 
 ## Remaining blockers
 
-Gmail mailbox/App Password, allowed controlled recipients and actual inbox-delivery evidence remain outstanding. The published site has not been updated by the agent. Gmail SMTP acceptance cannot be automatically upgraded to delivered or used as inbox-delivery evidence.
+Google authentication remains blocked despite credentials being present. Supply a valid dedicated App Password for the configured Google mailbox and satisfy its account security policy before retrying. Actual inbox-delivery evidence remains outstanding. The published site has not been updated by the agent. Gmail SMTP acceptance cannot be automatically upgraded to delivered or used as inbox-delivery evidence.
