@@ -17,5 +17,9 @@ export interface CheckoutPaymentInput {
   delivery: string;
   couponCode?: string;
   paymentMethodId?: string;
+  /** Create a customer account from billing details only after a successful guest purchase; does not sign the browser in. */
+  createAccount?: boolean;
+  firstName?: string;
+  lastName?: string;
   address: CheckoutPaymentAddress;
 }

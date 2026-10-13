@@ -14,7 +14,7 @@ import * as zod from 'zod';
  */
 
 
-
+export const createCheckoutPaymentIntentBodyCreateAccountDefault = false;
 
 export const CreateCheckoutPaymentIntentBody = zod.object({
   "email": zod.string(),
@@ -28,6 +28,9 @@ export const CreateCheckoutPaymentIntentBody = zod.object({
   "delivery": zod.string(),
   "couponCode": zod.string().optional(),
   "paymentMethodId": zod.string().optional(),
+  "createAccount": zod.boolean().default(createCheckoutPaymentIntentBodyCreateAccountDefault).describe('Create a customer account from billing details only after a successful guest purchase; does not sign the browser in.'),
+  "firstName": zod.string().optional(),
+  "lastName": zod.string().optional(),
   "address": zod.object({
   "line1": zod.string(),
   "line2": zod.string().optional(),
@@ -63,7 +66,7 @@ export const FinalizeCheckoutPaymentResponse = zod.object({
  */
 
 
-
+export const createHostedCheckoutBodyCreateAccountDefault = false;
 
 export const CreateHostedCheckoutBody = zod.object({
   "email": zod.string(),
@@ -77,6 +80,9 @@ export const CreateHostedCheckoutBody = zod.object({
   "delivery": zod.string(),
   "couponCode": zod.string().optional(),
   "paymentMethodId": zod.string().optional(),
+  "createAccount": zod.boolean().default(createHostedCheckoutBodyCreateAccountDefault).describe('Create a customer account from billing details only after a successful guest purchase; does not sign the browser in.'),
+  "firstName": zod.string().optional(),
+  "lastName": zod.string().optional(),
   "address": zod.object({
   "line1": zod.string(),
   "line2": zod.string().optional(),

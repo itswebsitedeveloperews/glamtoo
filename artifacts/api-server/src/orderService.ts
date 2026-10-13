@@ -1,4 +1,6 @@
 import { pool, type PoolClient } from "@workspace/db";
+import { provisionCheckoutAccount, type CheckoutAccountStatus } from "./checkoutAccount";
+import { logger } from "./lib/logger";
 
 export type FulfillmentStatus = "Processing" | "Shipped" | "Delivered";
 export type OrderPaymentType = "payment_intent" | "checkout_session";
@@ -43,6 +45,7 @@ export type PendingOrderInput = {
 };
 
 export type PaidOrderDetails = {
+  accountRequest?: { guestOwner: string; firstName: string; lastName: string };
   email?: string;
   customerName?: string;
   phone?: string;
@@ -103,6 +106,7 @@ type OrderItemRow = {
 };
 
 export type StoredOrder = {
+  accountCreation?: CheckoutAccountStatus;
   id: string;
   stripeSessionId: string;
   placedAt: string | null;
@@ -404,6 +408,25 @@ async function settleCancelledOrderInventory(client: PoolClient, orderId: string
   }
 }
 export async function finalizePaidOrder(
+  orderId: string,
+  paymentReference: string,
+  details: PaidOrderDetails = {},
+) {
+  const order = await finalizeSavedOrder(orderId, paymentReference, details);
+  if (!order || order.paymentStatus !== "paid" || order.paymentResolution !== "none" || !details.accountRequest) return order;
+  try {
+    const { guestOwner, firstName, lastName } = details.accountRequest;
+    order.accountCreation = await provisionCheckoutAccount(orderId, guestOwner, firstName, lastName);
+  } catch {
+    // The payment/order is already committed. Account service failure must never
+    // report a failed payment or cause the customer to pay again.
+    logger.warn({ orderId }, "Paid checkout account creation needs retry");
+    order.accountCreation = "pending";
+  }
+  return order;
+}
+
+async function finalizeSavedOrder(
   orderId: string,
   paymentReference: string,
   details: PaidOrderDetails = {},

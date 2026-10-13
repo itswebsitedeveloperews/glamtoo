@@ -159,6 +159,9 @@ function paymentDetails(payment: Stripe.PaymentIntent | Stripe.Checkout.Session,
   const address = asRecord(details.address);
   const customerDetails = isPaymentIntent ? {} : asRecord(paymentRecord.customer_details);
   return {
+    accountRequest: metadata.create_account === "true" && metadata.guest_checkout_id && !metadata.clerk_user_id
+      ? { guestOwner: metadata.guest_checkout_id, firstName: metadata.account_first_name || "", lastName: metadata.account_last_name || "" }
+      : undefined,
     email: isPaymentIntent
       ? (payment as Stripe.PaymentIntent).receipt_email || metadata.customer_email
       : safeText(customerDetails.email, 250) || metadata.customer_email,
@@ -657,6 +660,11 @@ router.post("/stripe/payment-intent", async (request, response) => {
         store: "Glam Too",
         glam_too_order_id: order.id,
         ...(userId ? { clerk_user_id: userId } : { guest_checkout_id: ownerId }),
+        ...(!userId && request.body?.createAccount === true ? {
+          create_account: "true",
+          account_first_name: safeText(request.body?.firstName, 80) || customerName.split(" ")[0],
+          account_last_name: safeText(request.body?.lastName, 80) || customerName.split(" ").slice(1).join(" "),
+        } : {}),
         customer_name: customerName,
         customer_email: email,
         delivery,
@@ -815,6 +823,11 @@ router.post("/stripe/checkout", async (request, response) => {
         customer_name: customerName,
         delivery,
         ...(userId ? { clerk_user_id: userId } : { guest_checkout_id: ownerId }),
+        ...(!userId && request.body?.createAccount === true ? {
+          create_account: "true",
+          account_first_name: safeText(request.body?.firstName, 80) || customerName.split(" ")[0],
+          account_last_name: safeText(request.body?.lastName, 80) || customerName.split(" ").slice(1).join(" "),
+        } : {}),
         vat_rate_percent: String(VAT_RATE_PERCENT),
         vat_amount: String(vatAmount),
          ...couponMetadata(pricing),

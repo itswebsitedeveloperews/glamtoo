@@ -5,6 +5,7 @@ import { before, after, test } from "node:test";
 import { pool } from "@workspace/db";
 import stripeRouter from "../src/routes/stripe";
 import { intents, sessions, customers } from "./fixtures/guest-stripe";
+import { accountUsers, setAccountCreationFails } from "./fixtures/guest-clerk";
 import { guestCheckoutOwner, ownsCheckoutPayment } from "../src/checkoutIdentity";
 import { listShippingMethods, resolveShippingMethod } from "../src/shippingMethods";
 
@@ -16,6 +17,7 @@ let deliveryAmount: number;
 let couponId: number;
 let ownerCookie: string;
 let paidIntent: any;
+let paidReservedStock: number;
 
 before(async () => {
   await pool.query(`INSERT INTO product_inventory (product_id,catalog_product_id,name,description,unit_amount,stock,active) VALUES ($1,$1,'Isolated guest checkout test','',1999,20,true)`, [runId]);
@@ -40,6 +42,7 @@ after(async () => {
   await pool.query("DELETE FROM coupon_redemptions WHERE coupon_id = $1", [couponId]);
   await pool.query("DELETE FROM coupons WHERE id = $1", [couponId]);
   await pool.query("DELETE FROM product_inventory WHERE product_id = $1", [runId]);
+  await pool.query("DELETE FROM customer_profiles WHERE user_id = ANY($1::text[])", [[...accountUsers.keys()]]);
   if (server) await new Promise<void>((resolve) => server.close(() => resolve()));
   await pool.end();
 });
@@ -53,7 +56,69 @@ const post = (path: string, body: unknown, headers: Record<string, string> = {})
   fetch(`${origin}/api/stripe/${path}`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
 const stock = async () => Number((await pool.query("SELECT stock FROM product_inventory WHERE product_id=$1", [runId])).rows[0].stock);
 
+test("account opt-in creates nothing before payment, then saves billing details and the order exactly once", async () => {
+  const response = await post("payment-intent", { ...input(), email: `create_${runId}@example.com`, createAccount: true, firstName: "First", lastName: "Last" });
+  assert.equal(response.status, 200);
+  const cookie = response.headers.get("set-cookie")!.split(";")[0];
+  const reference = (await response.json()).paymentIntentId;
+  const payment = intents.get(reference);
+  assert.equal(payment.metadata.create_account, "true");
+  assert.equal(accountUsers.size, 0);
+  assert.equal((await post("finalize-payment", { paymentIntentId: reference }, { Cookie: cookie })).status, 400);
+  assert.equal(accountUsers.size, 0);
+  payment.status = "succeeded";
+  for (let index = 0; index < 2; index++) {
+    const final = await post("finalize-payment", { paymentIntentId: reference }, { Cookie: cookie });
+    assert.equal(final.status, 200);
+    assert.equal((await final.json()).order.accountCreation, "created");
+  }
+  assert.equal(accountUsers.size, 1);
+  const user = [...accountUsers.values()][0];
+  assert.deepEqual(user.emailAddressIdentificationStatus, ["reserved"]);
+  assert.equal(user.firstName, "First");
+  assert.equal(user.lastName, "Last");
+  assert.equal(user.privateMetadata.role, null);
+  assert.equal((await pool.query("SELECT user_id FROM store_orders WHERE id=$1", [payment.metadata.glam_too_order_id])).rows[0].user_id, user.id);
+  const profile = (await pool.query("SELECT * FROM customer_profiles WHERE user_id=$1", [user.id])).rows[0];
+  assert.equal(profile.address_line_1, input().address.line1);
+  assert.equal(profile.city, input().address.city);
+  assert.equal(profile.first_name, "First");
+  // New account creation does not replace the guest's private payment ownership.
+  assert.equal((await post("finalize-payment", { paymentIntentId: reference })).status, 401);
+});
+
+test("account service failure does not fail a paid order, and retry creates just one account", async () => {
+  const response = await post("payment-intent", { ...input(), email: `retry_${runId}@example.com`, createAccount: true });
+  const cookie = response.headers.get("set-cookie")!.split(";")[0];
+  const reference = (await response.json()).paymentIntentId;
+  intents.get(reference).status = "succeeded";
+  setAccountCreationFails(true);
+  try {
+    const result = await (await post("finalize-payment", { paymentIntentId: reference }, { Cookie: cookie })).json();
+    assert.equal(result.order.paymentStatus, "paid");
+    assert.equal(result.order.accountCreation, "pending");
+  } finally { setAccountCreationFails(false); }
+  const result = await (await post("finalize-payment", { paymentIntentId: reference }, { Cookie: cookie })).json();
+  assert.equal(result.order.accountCreation, "created");
+});
+
+test("billing email matching an existing account never links the guest purchase or overwrites its profile", async () => {
+  const previous = [...accountUsers.values()][0];
+  const count = accountUsers.size;
+  const response = await post("payment-intent", { ...input(), email: previous.emailAddress[0], createAccount: true, firstName: "Imposter", lastName: "Changed" });
+  const cookie = response.headers.get("set-cookie")!.split(";")[0];
+  const reference = (await response.json()).paymentIntentId;
+  const payment = intents.get(reference);
+  payment.status = "succeeded";
+  const result = await (await post("finalize-payment", { paymentIntentId: reference }, { Cookie: cookie })).json();
+  assert.equal(result.order.accountCreation, "existing");
+  assert.equal(accountUsers.size, count);
+  assert.equal(previous.firstName, "First");
+  assert.equal((await pool.query("SELECT user_id FROM store_orders WHERE id=$1", [payment.metadata.glam_too_order_id])).rows[0].user_id, payment.metadata.guest_checkout_id);
+});
+
 test("anonymous checkout creates a real pending order with a hashed cookie owner and no saved-card consent", async () => {
+  const accountsBefore = accountUsers.size;
   const response = await post("payment-intent", { ...input(), couponCode: runId });
   assert.equal(response.status, 200, (await response.clone().json()).error);
   const cookie = response.headers.get("set-cookie")!;
@@ -65,6 +130,9 @@ test("anonymous checkout creates a real pending order with a hashed cookie owner
   assert.equal(paidIntent.amount, 1999 + deliveryAmount - 500);
   assert.equal(paidIntent.customer, undefined);
   assert.equal(paidIntent.setup_future_usage, undefined);
+  assert.equal(paidIntent.metadata.create_account, undefined);
+  assert.equal(accountUsers.size, accountsBefore);
+  paidReservedStock = await stock();
   assert.equal(paidIntent.metadata.clerk_user_id, undefined);
   assert.equal(customers.size, 0, "A guest must not create or reuse an account customer by email");
   const token = ownerCookie.split("=")[1];
@@ -97,7 +165,7 @@ test("owned guest payment finalizes idempotently with stock and coupon settled e
     assert.equal(result.order.total, paidIntent.amount);
     assert.equal(result.order.delivery.method, (await listShippingMethods(true))[0].name);
   }
-  assert.equal(await stock(), 19);
+  assert.equal(await stock(), paidReservedStock);
   assert.equal(Number((await pool.query("SELECT usage_count FROM coupons WHERE id=$1", [couponId])).rows[0].usage_count), 1);
 });
 

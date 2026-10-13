@@ -96,6 +96,7 @@ type CartItem = {
 };
 
 type CustomerOrder = {
+  accountCreation?: "created" | "existing" | "pending";
   id: string;
   placedAt: string | null;
   status: string;
@@ -2743,7 +2744,7 @@ function Checkout() {
       }));
       shouldPreserveAccountDraft.current = true;
     } catch {
-      setPaymentError("Your browser could not preserve your billing details for sign-in. Allow session storage, or leave Create an account unchecked to continue as a guest.");
+      setPaymentError("Your browser could not preserve your billing details for sign-in. Allow session storage, or continue checkout without signing in.");
       return;
     }
     const options = { forceRedirectUrl: window.location.href };
@@ -2927,10 +2928,6 @@ function Checkout() {
       setPaymentError("Checkout is still loading. Please try again in a moment.");
       return;
     }
-    if (createAccount && !isSignedIn) {
-      startCheckoutAccount("sign-up");
-      return;
-    }
     if (shippingMethodsLoading || !selectedShipping) {
       setPaymentError(shippingMethodsLoading ? "Delivery options are still loading. Please wait a moment." : shippingMethodsError || "Choose an available delivery method before paying.");
       return;
@@ -2971,6 +2968,9 @@ function Checkout() {
       }
       const customerName = [formData.get("firstName"), formData.get("lastName")].filter(Boolean).join(" ");
       const paymentInput: CheckoutPaymentInput = {
+        createAccount: !isSignedIn && createAccount,
+        firstName: String(formData.get("firstName") ?? ""),
+        lastName: String(formData.get("lastName") ?? ""),
         email: String(formData.get("email") ?? ""),
         customerName,
         phone: String(formData.get("phone") ?? ""),
@@ -3110,7 +3110,7 @@ function Checkout() {
               </div>
             {!isSignedIn && <div className="checkout-account-option">
               <label htmlFor="checkout-create-account"><input id="checkout-create-account" type="checkbox" checked={createAccount} onChange={(event) => setCreateAccount(event.target.checked)} data-testid="checkbox-checkout-create-account" /> Create an account?</label>
-              {createAccount && <div><p>Create your account securely, then return here to pay. Your billing details and bag will be kept.</p><button className="text-link" type="button" onClick={() => startCheckoutAccount("sign-up")} data-testid="button-checkout-create-account">Create account</button></div>}
+              {createAccount && <p>We’ll automatically create your account using your billing details after your purchase. You can then verify your email and set a password to sign in.</p>}
             </div>}
             </section>
             <section className="checkout-section">
@@ -3152,7 +3152,7 @@ function Checkout() {
               {couponMessage && <p className="checkout-coupon-success" role="status">{couponMessage}</p>}
             </div>
             <div className="checkout-totals"><div><span>Subtotal</span><strong>{formatPounds(subtotal)}</strong></div><div><span>Delivery</span><strong>{!selectedShipping ? shippingMethodsLoading ? "Loading…" : "Unavailable" : deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</strong></div>{appliedCoupon && <div className="checkout-discount-row"><span>Discount · {appliedCoupon.coupon.code}</span><strong>−{formatPounds(discountAmount)}</strong></div>}<div><span>VAT included (20%)</span><strong>{selectedShipping ? formatPounds(vatAmount) : "—"}</strong></div><div className="checkout-total"><span>Total</span><strong>{selectedShipping ? formatPounds(total) : "—"}</strong></div></div>
-             <button className="button checkout-pay-button" type="submit" disabled={!isLoaded || isPaying || !publishableKey || Boolean(paymentSetupError) || cartLines.length === 0 || shippingMethodsLoading || shippingMethods.length === 0 || !selectedShipping} data-testid="button-place-order">{isPaying ? "Processing secure payment…" : shippingMethodsLoading ? "Loading delivery options…" : shippingMethods.length === 0 ? "Delivery unavailable" : !isLoaded ? "Loading checkout…" : !publishableKey ? "Loading secure payment…" : createAccount && !isSignedIn ? "Create account & continue" : `Pay securely · ${formatPounds(total)}`}</button>
+             <button className="button checkout-pay-button" type="submit" disabled={!isLoaded || isPaying || !publishableKey || Boolean(paymentSetupError) || cartLines.length === 0 || shippingMethodsLoading || shippingMethods.length === 0 || !selectedShipping} data-testid="button-place-order">{isPaying ? "Processing secure payment…" : shippingMethodsLoading ? "Loading delivery options…" : shippingMethods.length === 0 ? "Delivery unavailable" : !isLoaded ? "Loading checkout…" : !publishableKey ? "Loading secure payment…" : `Pay securely · ${formatPounds(total)}`}</button>
             <p className="checkout-security-copy">Your card details never touch Glam Too&apos;s servers. Stripe processes your payment securely.</p>
           </aside>
         </form>
@@ -3218,7 +3218,14 @@ function Confirmation() {
     const copy = paymentResolutionCopy(order);
     return <Shell><div className="container confirmation"><div className="confirmation-mark">!</div><div className="eyebrow">Payment received</div><h1>{copy.title}</h1><p>{copy.detail}</p><p>Your reference is {order.id}. {isSignedIn ? "You can check this update any time in your account." : "Keep this reference and contact us for help with your guest order."}</p><a className="button button-pink" href={isSignedIn ? "/account" : "/contact"}>{isSignedIn ? "View my orders" : "Contact us"}</a></div></Shell>;
   }
-  return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order {order?.id} is being wrapped with care.</p><a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
+  return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order {order?.id} is being wrapped with care.</p>
+    {order?.accountCreation && <div role="status" data-testid="confirmation-account-status">
+      <p>{order.accountCreation === "created" ? "Your account has been created using your billing details. Verify your email and set a password to access your account and this order." : order.accountCreation === "existing" ? "An account already uses your billing email. Sign in with your existing details. For security, this guest purchase has not been linked to that account automatically." : "Your purchase is confirmed, but account creation is still pending. Refresh this page to retry account creation without paying again."}</p>
+      {order.accountCreation === "created" && <a className="text-link" href="/account/recovery">Set your password</a>}
+      {order.accountCreation === "existing" && <a className="text-link" href="/account">Sign in</a>}
+      {order.accountCreation === "pending" && <button className="text-link" type="button" onClick={() => window.location.reload()}>Retry account creation</button>}
+    </div>}
+    <a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
 }
 
 function CustomerSignInPage() {

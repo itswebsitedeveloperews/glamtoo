@@ -298,6 +298,14 @@ components:
           type: string
         paymentMethodId:
           type: string
+        createAccount:
+          type: boolean
+          default: false
+          description: Create a customer account from billing details only after a successful guest purchase; does not sign the browser in.
+        firstName:
+          type: string
+        lastName:
+          type: string
         address:
           $ref: "#/components/schemas/CheckoutPaymentAddress"
     CheckoutPaymentLine:

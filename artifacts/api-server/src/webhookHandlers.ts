@@ -64,6 +64,7 @@ export class WebhookHandlers {
           paymentDetails(payment, isSucceededPaymentIntent),
         );
         if (order) {
+          if (order.accountCreation === "pending") throw new Error("Paid checkout account creation needs retry");
           await attemptPaymentRefund(
             await getUncachableStripeClient(),
             orderId,
@@ -112,6 +113,9 @@ function paymentDetails(payment: Stripe.PaymentIntent | Stripe.Checkout.Session,
     : {};
   const text = (value: unknown, length: number) => typeof value === "string" ? value.trim().slice(0, length) : "";
   return {
+    accountRequest: metadata.create_account === "true" && metadata.guest_checkout_id && !metadata.clerk_user_id
+      ? { guestOwner: metadata.guest_checkout_id, firstName: metadata.account_first_name || "", lastName: metadata.account_last_name || "" }
+      : undefined,
     email: isPaymentIntent
       ? (payment as Stripe.PaymentIntent).receipt_email || metadata.customer_email
       : text(customerDetails.email, 250) || metadata.customer_email,

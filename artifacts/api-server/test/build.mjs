@@ -26,7 +26,7 @@ await build({
       builder.onResolve({ filter: /^\.\.\/orderService$/ }, (args) => args.importer.endsWith("/routes/stripe.ts") ? ({ path: "order-test", namespace: "guest-checkout" }) : undefined);
       builder.onLoad({ filter: /.*/, namespace: "guest-checkout" }, (args) => ({
         contents: args.path === "clerk-test"
-          ? `export const getAuth = req => ({userId: req.headers["x-test-user"] || null}); export const clerkClient = {};`
+          ? `import {fakeClerk} from ${JSON.stringify(resolve(testDir, "fixtures/guest-clerk.ts"))}; export const getAuth = req => ({userId: req.headers["x-test-user"] || null}); export const clerkClient = fakeClerk;`
           : args.path === "stripe-test"
             ? `import {fakeStripe} from ${JSON.stringify(resolve(testDir, "fixtures/guest-stripe.ts"))}; export const getUncachableStripeClient = async()=>fakeStripe; export const getStripeConnectionInfoWithSource = async()=>{throw Error("Unused in isolated checkout tests")}; export const getStripeSync = async()=>{throw Error("Unused in isolated checkout tests")};`
             : `export * from ${JSON.stringify(resolve(testDir, "../src/orderService.ts"))}; export const listExpiredPendingPayments = async()=>[];`,
