@@ -705,6 +705,16 @@ h2 { text-transform: capitalize !important; }
 .delivery-information-table th:nth-child(2), .delivery-information-table td:nth-child(2) { width: 53%; }
 .delivery-information-table th:last-child, .delivery-information-table td:last-child { width: 22%; text-align: center; white-space: nowrap; }
 .delivery-information-table td { color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.delivery-free-threshold { display: block; margin-top: 8px; font-size: 14px; white-space: normal; }
+@media (max-width: 800px) {
+  .delivery-information-table,
+  .delivery-information-table tbody { display: block; width: 100%; min-width: 0; }
+  .delivery-information-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .delivery-information-table tr { display: block; }
+  .delivery-information-table tr + tr { margin-top: 16px; }
+  .delivery-information-table td[data-label] { display: block; width: auto; text-align: left; white-space: normal; font-size: 16px; }
+  .delivery-information-table td[data-label]::before { content: attr(data-label); display: block; margin-bottom: 6px; font-size: 14px; font-weight: 700; }
+}
 .detail-size-guide-content { padding: 0 16px 16px; }
 .size-guide-table-wrap { width: 100%; overflow-x: auto; }
 .size-guide-table { width: 100%; min-width: 520px; border-collapse: collapse; background: var(--white); color: var(--ink); font-size: 14px; line-height: 1.45; }
@@ -1539,6 +1549,7 @@ h2 { text-transform: capitalize !important; }
 .admin-shipping-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
 .admin-shipping-form-grid label { display: grid; gap: 7px; color: var(--ink); font-size: 14px; font-weight: 600; }
 .admin-shipping-form-grid input:not([type="checkbox"]) { width: 100%; box-sizing: border-box; min-height: 40px; border: 1px solid #d8d0ca; background: #fffdfb; padding: 0 10px; color: var(--ink); }
+.admin-shipping-form-grid textarea { width: 100%; box-sizing: border-box; resize: vertical; border: 1px solid #d8d0ca; background: #fffdfb; padding: 10px; color: var(--ink); font: inherit; font-weight: 400; }
 .admin-shipping-form-grid small { color: var(--muted); font-size: 12px; font-weight: 400; }
 .admin-shipping-wide { grid-column: 1 / -1; }
 .admin-checkbox { display: flex !important; align-items: center; gap: 9px !important; align-self: end; min-height: 40px; }

@@ -300,14 +300,8 @@ type DeliveryInformationRow = {
   option: string;
   information: string;
   cost: string;
+  freeOver: number | null;
 };
-
-const blankDeliveryRow = (): DeliveryInformationRow => ({
-  id: `new-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-  option: "",
-  information: "",
-  cost: "",
-});
 
 type SizeGuideRow = {
   id: string;
@@ -2126,7 +2120,6 @@ export default function AdminDashboard({
   const [deletingShippingId, setDeletingShippingId] = useState<string | null>(null);
   const [deliveryInformation, setDeliveryInformation] = useState<DeliveryInformationRow[]>([]);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
-  const [deliverySaving, setDeliverySaving] = useState(false);
   const [deliveryError, setDeliveryError] = useState("");
   const [deliveryContentTab, setDeliveryContentTab] = useState<"delivery" | "return">("delivery");
   const [returnInformation, setReturnInformation] = useState("");
@@ -2850,63 +2843,6 @@ export default function AdminDashboard({
     }
   }
 
-  function updateDeliveryRow(id: string, updates: Partial<DeliveryInformationRow>) {
-    setDeliveryInformation((rows) => rows.map((row) => row.id === id ? { ...row, ...updates } : row));
-  }
-
-  function moveDeliveryRow(index: number, direction: -1 | 1) {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= deliveryInformation.length) return;
-    setDeliveryInformation((rows) => {
-      const next = [...rows];
-      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-      return next;
-    });
-  }
-
-  async function saveDeliveryInformation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const invalid = deliveryInformation.some((row) =>
-      !row.option.trim()
-      || !row.information.trim()
-      || row.cost === ""
-      || !Number.isFinite(Number(row.cost))
-      || Number(row.cost) < 0
-    );
-    if (invalid) {
-      setDeliveryError("Every row needs a delivery option, delivery information, and a valid non-negative cost.");
-      return;
-    }
-    setDeliverySaving(true);
-    setDeliveryError("");
-    try {
-      const response = await fetch("/api/admin/delivery-information", {
-        method: "PUT",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          deliveryInformation: deliveryInformation.map((row) => ({
-            id: row.id.startsWith("new-") ? undefined : row.id,
-            option: row.option,
-            information: row.information,
-            cost: Number(row.cost),
-          })),
-        }),
-      });
-      const payload = await response.json() as {
-        deliveryInformation?: Array<Omit<DeliveryInformationRow, "cost"> & { cost: number }>;
-        error?: string;
-      };
-      if (!response.ok || !payload.deliveryInformation) throw new Error(payload.error || "Delivery information could not be saved.");
-      setDeliveryInformation(payload.deliveryInformation.map((row) => ({ ...row, cost: (row.cost / 100).toFixed(2) })));
-      setNotice("Product delivery information was saved.");
-    } catch (error) {
-      setDeliveryError(error instanceof Error ? error.message : "Delivery information could not be saved.");
-    } finally {
-      setDeliverySaving(false);
-    }
-  }
-
   async function refreshReturnInformation() {
     setReturnLoading(true);
     setReturnError("");
@@ -3531,17 +3467,17 @@ export default function AdminDashboard({
 
         {section === "shipping" && (
           <>
-            <SectionTitle eyebrow="Store settings" title="Shipping" description="Set delivery methods, rates, and your free-shipping threshold." />
-            <div className="admin-shipping-toolbar"><p>Customers see every enabled method at checkout. Prices are in GBP; a zero price is shown as Free.</p><button className="admin-secondary" type="button" onClick={() => void refreshShipping()} disabled={shippingLoading}>{shippingLoading ? "Refreshing…" : "Refresh"}</button></div>
+            <SectionTitle eyebrow="Store settings" title="Shipping" description="Manage delivery rates and promises for both product pages and checkout." />
+            <div className="admin-shipping-toolbar"><p>Enabled methods appear on product pages and at checkout. Changes here update both. Prices are in GBP; a zero price is shown as Free.</p><button className="admin-secondary" type="button" onClick={() => void refreshShipping()} disabled={shippingLoading}>{shippingLoading ? "Refreshing…" : "Refresh"}</button></div>
             {shippingError && <p className="admin-form-error" role="alert">{shippingError}</p>}
             <form className="admin-panel admin-shipping-editor" onSubmit={saveShipping}>
               <div className="admin-panel-heading"><div><p className="admin-eyebrow">{editingShippingId ? "Edit method" : "New method"}</p><h2>{editingShippingId ? "Update delivery method" : "Add a delivery method"}</h2></div></div>
               <div className="admin-shipping-form-grid">
                 <label>Name<input required value={shippingDraft.name} onChange={(event) => setShippingDraft((draft) => ({ ...draft, name: event.target.value }))} placeholder="Standard" /></label>
                 <label>Price (GBP)<input required min="0" step="0.01" type="number" value={shippingDraft.price} onChange={(event) => setShippingDraft((draft) => ({ ...draft, price: event.target.value }))} /><small>Use 0 for a Free method.</small></label>
-                <label className="admin-shipping-wide">Checkout description<input value={shippingDraft.description} onChange={(event) => setShippingDraft((draft) => ({ ...draft, description: event.target.value }))} placeholder="2–4 working days" /></label>
+                <label className="admin-shipping-wide">Delivery promise and information<textarea rows={4} maxLength={2000} value={shippingDraft.description} onChange={(event) => setShippingDraft((draft) => ({ ...draft, description: event.target.value }))} placeholder="Include delivery times, order cutoffs, and postcode restrictions." /></label>
                 <label>Free over (GBP)<input min="0" step="0.01" type="number" value={shippingDraft.freeOver} onChange={(event) => setShippingDraft((draft) => ({ ...draft, freeOver: event.target.value }))} placeholder="Optional" /><small>Leave blank to never make this method free.</small></label>
-                <label className="admin-checkbox"><input type="checkbox" checked={shippingDraft.enabled} onChange={(event) => setShippingDraft((draft) => ({ ...draft, enabled: event.target.checked }))} /> Enabled at checkout</label>
+                <label className="admin-checkbox"><input type="checkbox" checked={shippingDraft.enabled} onChange={(event) => setShippingDraft((draft) => ({ ...draft, enabled: event.target.checked }))} /> Enabled on product pages and at checkout</label>
               </div>
               <div className="admin-form-actions"><button className="admin-primary" type="submit" disabled={shippingSaving}>{shippingSaving ? "Saving…" : editingShippingId ? "Save changes" : "Add method"}</button>{editingShippingId && <button className="admin-secondary" type="button" onClick={() => { setEditingShippingId(null); setShippingDraft(blankShipping); }}>Cancel</button>}</div>
             </form>
@@ -3564,24 +3500,22 @@ export default function AdminDashboard({
             {deliveryContentTab === "delivery" ? (
               <>
                 <div className="admin-delivery-toolbar">
-                  <p>Add, remove, and reorder delivery rows. Costs are entered in GBP and this table is informational; checkout rates remain managed under Shipping.</p>
-                  <button className="admin-secondary" type="button" onClick={() => setDeliveryInformation((rows) => [...rows, blankDeliveryRow()])}>Add delivery row</button>
+                  <p>This preview uses the same rates, delivery promises, and free-delivery thresholds as checkout. Edit them under Shipping to update both places.</p>
+                  <button className="admin-secondary" type="button" onClick={() => setSection("shipping")}>Manage delivery in Shipping</button>
                 </div>
                 {deliveryError && <p className="admin-form-error" role="alert">{deliveryError}</p>}
-                <form className="admin-panel admin-delivery-editor" onSubmit={saveDeliveryInformation}>
-                  {deliveryLoading && deliveryInformation.length === 0 ? <p className="admin-users-state">Loading delivery information…</p> : deliveryInformation.length === 0 ? <div className="admin-delivery-empty"><strong>No delivery information yet.</strong><span>Add your first row to create the product-page delivery table.</span><button className="admin-primary" type="button" onClick={() => setDeliveryInformation([blankDeliveryRow()])}>Add delivery row</button></div> : (
+                <div className="admin-panel admin-delivery-editor">
+                  {deliveryLoading && deliveryInformation.length === 0 ? <p className="admin-users-state">Loading delivery information…</p> : deliveryInformation.length === 0 ? <div className="admin-delivery-empty"><strong>No enabled delivery methods.</strong><span>Add or enable a method under Shipping to show it on product pages and at checkout.</span></div> : (
                     <div className="admin-delivery-repeater">{deliveryInformation.map((row, index) => (
                       <fieldset className="admin-delivery-row" key={row.id}>
                         <legend>Delivery row {index + 1}</legend>
-                        <label>Delivery option<input required maxLength={120} value={row.option} onChange={(event) => updateDeliveryRow(row.id, { option: event.target.value })} placeholder="UK Next Day" /></label>
-                        <label className="admin-delivery-information-field">Delivery information<textarea required maxLength={2000} rows={4} value={row.information} onChange={(event) => updateDeliveryRow(row.id, { information: event.target.value })} placeholder="Order before 8pm Mon–Thu. Delivered next working day." /></label>
-                        <label>Delivery cost (GBP)<input required type="number" min="0" step="0.01" value={row.cost} onChange={(event) => updateDeliveryRow(row.id, { cost: event.target.value })} placeholder="5.99" /></label>
-                        <div className="admin-delivery-row-actions"><button className="admin-secondary" type="button" onClick={() => moveDeliveryRow(index, -1)} disabled={index === 0}>Move up</button><button className="admin-secondary" type="button" onClick={() => moveDeliveryRow(index, 1)} disabled={index === deliveryInformation.length - 1}>Move down</button><button className="admin-danger" type="button" onClick={() => setDeliveryInformation((rows) => rows.filter((item) => item.id !== row.id))}>Remove</button></div>
+                        <label>Delivery option<input readOnly value={row.option} /></label>
+                        <label className="admin-delivery-information-field">Delivery information<textarea readOnly rows={4} value={row.information} /></label>
+                        <label>Delivery cost (GBP)<input readOnly value={row.cost} />{row.freeOver !== null && <small>Free on orders £{(row.freeOver / 100).toFixed(2)} or more.</small>}</label>
                       </fieldset>
                     ))}</div>
                   )}
-                  {deliveryInformation.length > 0 && <div className="admin-form-actions"><button className="admin-primary" type="submit" disabled={deliverySaving}>{deliverySaving ? "Saving…" : "Save delivery information"}</button><button className="admin-secondary" type="button" onClick={() => setDeliveryInformation((rows) => [...rows, blankDeliveryRow()])}>Add another row</button></div>}
-                </form>
+                </div>
               </>
             ) : (
               <>

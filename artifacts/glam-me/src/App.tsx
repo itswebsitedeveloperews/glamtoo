@@ -372,7 +372,7 @@ function formatPounds(value: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
 }
 
-type DeliveryInformationRow = { id: string; option: string; information: string; cost: number; sortOrder: number };
+type DeliveryInformationRow = { id: string; option: string; information: string; cost: number; freeOver: number | null; sortOrder: number };
 type SizeGuideRow = { id: string; size: string; ukSize: string; bust: string; waist: string; hips: string; sortOrder: number };
 
 function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'productId' | 'quantity'> = { size: 'One size' }, quantity = 1) {
@@ -1876,7 +1876,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                                  <tr key={row.id}>
                                    <td data-label="Delivery option">{row.option}</td>
                                    <td data-label="Delivery information">{row.information}</td>
-                                   <td data-label="Delivery cost">{row.cost === 0 ? "Free" : formatPounds(row.cost / 100)}</td>
+                                   <td data-label="Delivery cost">{row.cost === 0 ? "Free" : formatPounds(row.cost / 100)}{row.cost > 0 && row.freeOver !== null && <small className="delivery-free-threshold">Free on orders {formatPounds(row.freeOver / 100)} or more</small>}</td>
                                  </tr>
                                ))}
                              </tbody>

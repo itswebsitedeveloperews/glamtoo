@@ -26,7 +26,7 @@
 - [Configurable shipping methods](configurable-shipping-methods.md) — Checkout shipping comes from enabled database methods; the server resolves every selected rate and threshold.
 - [Reactive Wouter query state](reactive-wouter-query-state.md) — Subscribe to search changes when query parameters drive UI; pathname location alone can leave views stale.
 - [Catalog seed lifecycle](catalog-seed-lifecycle.md) — Seed built-in products only for an uninitialized catalog; never restore missing products after admins delete them.
-- [Delivery content and checkout shipping](delivery-content-vs-shipping.md) — Product-page delivery rows are global informational content; checkout Shipping remains the source of prices and totals.
+- [Unified delivery advice](delivery-content-vs-shipping.md) — Merchant approved product advice rates/promises; Shipping now feeds both product Delivery and checkout.
 - [Home page curation](home-page-curation.md) — An unset homepage uses defaults; intentionally empty saved selections must stay empty after refresh.
 - [Glam Too Boutique wordmark](boutique-wordmark.md) — Keep Glam Too above Boutique, with the original serif and pink Boutique rules.
 - [Catalog URL policy](catalog-url-policy.md) — Preserve URL formats and stable slugs; SEO metadata and redirects require server document handling.

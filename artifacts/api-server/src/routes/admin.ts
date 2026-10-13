@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { clerkClient } from "@clerk/express";
 import { asc, desc, eq, inArray } from "drizzle-orm";
-import { contactEnquiriesTable, couponsTable, customerProfilesTable, db, deliveryInformationTable, returnInformationTable, shippingMethodsTable, sizeGuideTable } from "@workspace/db";
+import { contactEnquiriesTable, couponsTable, customerProfilesTable, db, returnInformationTable, shippingMethodsTable, sizeGuideTable } from "@workspace/db";
 import { listDeliveryInformation, serializeDeliveryInformation } from "../deliveryInformation";
 import { listSizeGuide, serializeSizeGuideRow } from "../sizeGuide";
 import { getReturnInformation } from "../returnInformation";
@@ -21,13 +21,13 @@ router.get("/admin/shipping-methods", requireAdmin, async (_request, response) =
 });
 router.post("/admin/shipping-methods", requireAdmin, async (request, response) => {
   const name = textValue(request.body?.name, 100);
-  const description = textValue(request.body?.description, 500);
+  const description = textValue(request.body?.description, 2000);
   const price = Math.round(Number(request.body?.price) * 100);
   const rawFree = request.body?.freeOver;
   const freeOver = rawFree === null || rawFree === "" || rawFree === undefined ? null : Math.round(Number(rawFree) * 100);
   if (!name || !Number.isInteger(price) || price < 0 || (freeOver !== null && (!Number.isInteger(freeOver) || freeOver < 0))) return response.status(400).json({ error: "Enter a valid shipping name and non-negative prices." });
   try {
-    const [method] = await db.insert(shippingMethodsTable).values({ name, description, price, freeOver, enabled: request.body?.enabled !== false, sortOrder: Number.isInteger(request.body?.sortOrder) ? request.body.sortOrder : 0 }).returning();
+    const [method] = await db.insert(shippingMethodsTable).values({ name, description, price, freeOver, enabled: request.body?.enabled !== false, sortOrder: Number.isInteger(request.body?.sortOrder) ? request.body.sortOrder : 0, deliveryAdviceImported: true }).returning();
     return response.status(201).json({ shippingMethod: serializeShippingMethod(method) });
   } catch { return response.status(409).json({ error: "A shipping method with that name already exists." }); }
 });
@@ -40,7 +40,7 @@ router.patch("/admin/shipping-methods/:methodId", requireAdmin, async (request, 
     if (!name) return response.status(400).json({ error: "Shipping method name cannot be empty." });
     updates.name = name;
   }
-  if (request.body?.description !== undefined) updates.description = textValue(request.body.description, 500);
+  if (request.body?.description !== undefined) updates.description = textValue(request.body.description, 2000);
   if (request.body?.price !== undefined) {
     const price = Number(request.body.price);
     if (!Number.isFinite(price) || price < 0) return response.status(400).json({ error: "Shipping price must be a non-negative number." });
@@ -57,6 +57,7 @@ router.patch("/admin/shipping-methods/:methodId", requireAdmin, async (request, 
   if (typeof request.body?.enabled === "boolean") updates.enabled = request.body.enabled;
   if (Number.isInteger(request.body?.sortOrder)) updates.sortOrder = request.body.sortOrder;
   try {
+    await listShippingMethods();
     const [method] = await db.update(shippingMethodsTable).set(updates).where(eq(shippingMethodsTable.id, id)).returning();
     return method ? response.json({ shippingMethod: serializeShippingMethod(method) }) : response.status(404).json({ error: "Shipping method not found." });
   } catch { return response.status(409).json({ error: "Shipping method could not be updated." }); }
@@ -80,69 +81,7 @@ router.get("/admin/delivery-information", requireAdmin, async (request, response
 });
 
 router.put("/admin/delivery-information", requireAdmin, async (request, response) => {
-  const rows = Array.isArray(request.body?.deliveryInformation) ? request.body.deliveryInformation : null;
-  if (!rows || rows.length > 50) {
-    return response.status(400).json({ error: "Add no more than 50 delivery rows." });
-  }
-
-  const parsedRows: Array<{ id: number | null; option: string; information: string; cost: number; sortOrder: number }> = rows.map((value: unknown, index: number) => {
-    const row = value && typeof value === "object" ? value as Record<string, unknown> : {};
-    const id = Number(row.id);
-    const option = textValue(row.option, 120);
-    const information = textValue(row.information, 2000);
-    const cost = Math.round(Number(row.cost) * 100);
-    return {
-      id: Number.isInteger(id) && id > 0 ? id : null,
-      option,
-      information,
-      cost,
-      sortOrder: index,
-    };
-  });
-
-  if (parsedRows.some((row) => !row.option || !row.information || !Number.isInteger(row.cost) || row.cost < 0)) {
-    return response.status(400).json({ error: "Every delivery row needs an option, information, and a valid non-negative cost." });
-  }
-  const existingIds = parsedRows.flatMap((row) => row.id === null ? [] : [row.id]);
-  if (new Set(existingIds).size !== existingIds.length) {
-    return response.status(400).json({ error: "Delivery rows contain duplicate identifiers." });
-  }
-
-  try {
-    await db.transaction(async (transaction) => {
-      const currentRows = await transaction.select({ id: deliveryInformationTable.id }).from(deliveryInformationTable).orderBy(asc(deliveryInformationTable.id));
-      const currentIds = new Set(currentRows.map((row) => row.id));
-      if (existingIds.some((id) => !currentIds.has(id))) throw new Error("Delivery row not found.");
-
-      const removedIds = currentRows.map((row) => row.id).filter((id) => !existingIds.includes(id));
-      if (removedIds.length > 0) {
-        await transaction.delete(deliveryInformationTable).where(inArray(deliveryInformationTable.id, removedIds));
-      }
-      for (const row of parsedRows) {
-        if (row.id === null) {
-          await transaction.insert(deliveryInformationTable).values({
-            option: row.option,
-            information: row.information,
-            cost: row.cost,
-            sortOrder: row.sortOrder,
-          });
-        } else {
-          await transaction.update(deliveryInformationTable).set({
-            option: row.option,
-            information: row.information,
-            cost: row.cost,
-            sortOrder: row.sortOrder,
-          }).where(eq(deliveryInformationTable.id, row.id));
-        }
-      }
-    });
-    return response.json({
-      deliveryInformation: (await listDeliveryInformation()).map(serializeDeliveryInformation),
-    });
-  } catch (error) {
-    request.log?.error({ error }, "Delivery information could not be saved");
-    return response.status(503).json({ error: "Delivery information could not be saved right now." });
-  }
+  return response.status(409).json({ error: "Delivery rates and promises are now managed under Shipping, which updates both product pages and checkout." });
 });
 
 router.get("/admin/return-information", requireAdmin, async (request, response) => {

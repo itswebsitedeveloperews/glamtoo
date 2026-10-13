@@ -1,19 +1,17 @@
-import { asc } from "drizzle-orm";
-import { db, deliveryInformationTable, type DeliveryInformation } from "@workspace/db";
+import { listShippingMethods } from "./shippingMethods";
+import { deliveryInformationFromShipping } from "./deliveryAdvice";
 
 export async function listDeliveryInformation() {
-  return db
-    .select()
-    .from(deliveryInformationTable)
-    .orderBy(asc(deliveryInformationTable.sortOrder), asc(deliveryInformationTable.id));
+  return (await listShippingMethods(true)).map(deliveryInformationFromShipping);
 }
 
-export function serializeDeliveryInformation(item: DeliveryInformation) {
+export function serializeDeliveryInformation(item: ReturnType<typeof deliveryInformationFromShipping>) {
   return {
     id: String(item.id),
     option: item.option,
     information: item.information,
     cost: item.cost,
+    freeOver: item.freeOver,
     sortOrder: item.sortOrder,
   };
 }
