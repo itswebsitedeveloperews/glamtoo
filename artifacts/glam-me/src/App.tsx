@@ -1002,28 +1002,6 @@ function Footer() {
             <div className="footer-brand">
               <img className="footer-logo" src={logoImage} alt="Glam Too Boutique" />
               <p className="footer-intro">Outfits that make every moment yours. Expressive pieces for the beautifully busy life.</p>
-              <div className="footer-socials" aria-label="Social links">
-                <a href="#" aria-label="Linktr.ee" data-testid="link-footer-linktree">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M10.5 1h3v9h-3zM1 8.5h22v3H1zM4.2 3.3l2.1-2.1 13.5 13.5-2.1 2.1zM17.7 1.2l2.1 2.1L6.3 16.8l-2.1-2.1zM10.5 13.5h3V23h-3z" fill="currentColor" stroke="none"></path>
-                  </svg>
-                </a>
-                <a href="#" aria-label="Instagram" data-testid="link-footer-instagram">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"></rect><circle cx="12" cy="12" r="3.5"></circle><circle cx="17.3" cy="6.8" r=".8" fill="currentColor" stroke="none"></circle></svg>
-                </a>
-                <a href="#" aria-label="TikTok" data-testid="link-footer-tiktok">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4v10.2a3.7 3.7 0 1 1-3-3.6"></path><path d="M14 4c.5 2.5 2 4 4.5 4.3"></path></svg>
-                </a>
-                <a href="#" aria-label="Facebook" data-testid="link-footer-facebook">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 20v-7h2.4l.4-3H14V8.2c0-.9.3-1.5 1.6-1.5H17V4.1c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 4v2H8.5v3h2.4v7"></path></svg>
-                </a>
-                <a href="#" aria-label="YouTube" data-testid="link-footer-youtube">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="3"></rect><path d="m10 9 5 3-5 3Z"></path></svg>
-                </a>
-                <a href="#" aria-label="WhatsApp" data-testid="link-footer-whatsapp">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.7a8 8 0 0 1-11.8 7L4 20l1.3-4.1A8 8 0 1 1 20 11.7Z"></path><path d="M9 8.2c.3 2.7 2.1 4.6 4.8 5.6l1.3-1.3c.2-.2.4-.2.7-.1l2 .9"></path></svg>
-                </a>
-              </div>
             </div>
             <div><h4>Shop</h4><ul><li><a href={categoryUrlForName("New In")} data-testid="link-footer-new-in">New In</a></li><li><a href={categoryUrlForName("Clothes")} data-testid="link-footer-clothes">Clothes</a></li><li><a href={categoryUrlForName("Handbags")} data-testid="link-footer-handbags">Handbags</a></li><li><a href={categoryUrlForName("Purses")} data-testid="link-footer-purses">Purses</a></li><li><a href={categoryUrlForName("Jewellery")} data-testid="link-footer-jewellery">Jewellery</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
             <div><h4>Help</h4><ul><li><a href="/returns" data-testid="link-footer-delivery">Returns</a></li><li><a href="/faq" data-testid="link-footer-size-guide">Size Guide</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
