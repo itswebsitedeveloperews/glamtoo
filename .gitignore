@@ -48,6 +48,11 @@ Thumbs.db
 # Replit
 .cache/
 /generated-artifacts/
+/attached_assets/*.msg
+/attached_assets/*.mbox
+/attached_assets/order-email-receipts/
+/attached_assets/image_1791981809216.png
+/attached_assets/image_1791981892738.png
 .local/
 
 # Raw merchant email receipt evidence must remain local.
