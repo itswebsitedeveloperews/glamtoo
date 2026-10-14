@@ -7,6 +7,9 @@
  */
 
 export * from './abandonCheckoutPayment200';
+export * from './adminCatalogSaveInput';
+export * from './adminCatalogSaveInputCategoriesItem';
+export * from './adminCatalogSaveInputProductsItem';
 export * from './checkoutFinalizationResult';
 export * from './checkoutFinalizationResultOrder';
 export * from './checkoutPaymentAddress';
@@ -30,6 +33,9 @@ export * from './getAdminGmailSettings200AuthMode';
 export * from './healthStatus';
 export * from './hostedCheckoutResult';
 export * from './resolveSeoParams';
+export * from './saveAdminCatalog200';
+export * from './saveAdminCatalog200CategoriesItem';
+export * from './saveAdminCatalog200ProductsItem';
 export * from './saveAdminContactNotificationSettings200';
 export * from './seoResolution';
 export * from './seoResolutionRobots';

@@ -20,6 +20,7 @@ import logoImage from "@assets/logo-soft-options/glam-too-selected-dark.svg";
 import AdminHomePage from "./admin-home-page";
 import AdminGmailSettings from "@/components/admin-gmail-settings";
 import AdminContactEmailSettings from "@/components/admin-contact-email-settings";
+import type { AdminCatalogSaveInput } from "@workspace/api-client-react";
 
 type RichTextEditorProps = {
   value: string;
@@ -2380,10 +2381,11 @@ export default function AdminDashboard({
     return { products: productsWithUploadedMedia, categories: categoriesWithUploadedMedia };
   }
 
-  async function publishCatalog(nextProducts: Product[], nextCategories: Category[], mode: "save" | "migrate" = "save") {
+  async function publishCatalog(nextProducts: Product[], nextCategories: Category[], mode: "save" | "migrate" = "save", stockUpdates: string[] = []) {
     const catalogWithUploadedMedia = await uploadCatalogMedia(nextProducts, nextCategories);
     // Redirect history belongs to the server, never to a locally cached catalog.
-    const requestCatalog = {
+    const requestCatalog: AdminCatalogSaveInput = {
+      stockUpdates,
       products: catalogWithUploadedMedia.products.map(({ slugHistory: _history, ...product }) => product),
       categories: catalogWithUploadedMedia.categories.map(({ slugHistory: _history, ...category }) => category),
     };
@@ -2415,7 +2417,11 @@ export default function AdminDashboard({
       const nextProducts = editorProductId === "new"
         ? [product, ...products]
         : products.map((currentProduct) => currentProduct.id === product.id ? product : currentProduct);
-      const catalog = await publishCatalog(nextProducts, categories);
+      const previous = products.find((item) => item.id === product.id);
+      const stockUpdates = product.type === "Variable"
+        ? product.variations.filter((item) => previous?.variations.find((old) => old.id === item.id)?.stock !== item.stock).map((item) => `${product.id}:${item.id}`)
+        : previous?.stock !== product.stock ? [String(product.id)] : [];
+      const catalog = await publishCatalog(nextProducts, categories, "save", stockUpdates);
       const savedProduct = catalog.products!.find((currentProduct) => currentProduct.id === product.id);
       if (!savedProduct) throw new Error("The server did not return the saved product. Refresh the catalog before editing again.");
       commitProducts(catalog.products!);
@@ -2424,7 +2430,7 @@ export default function AdminDashboard({
       setNotice(`${product.name} was ${product.status === "Published"
         ? editorProductId === "new" ? "published" : "updated and published"
         : editorProductId === "new" ? "saved as a draft" : "moved to draft"}.`);
-      syncProductInventory(savedProduct);
+      // Publishing now commits catalog and sellable inventory together.
       setEditorProductId(null);
       setSection("products");
       return true;
@@ -2434,39 +2440,6 @@ export default function AdminDashboard({
         : "This product could not be saved. Your product details are still open; please try again.");
       return false;
     }
-  }
-
-  function syncProductInventory(product: Product) {
-    const { slugHistory: _history, ...productPayload } = product;
-    return fetch(`/api/admin/catalog/products/${product.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(productPayload),
-    })
-      .then(async (response) => {
-        const result = await response.json().catch(() => ({})) as { inventory?: Record<string, unknown>; error?: string };
-        if (!response.ok || !result.inventory) throw new Error(result.error || "The server catalog could not be updated.");
-        return result.inventory;
-      })
-      .then((inventory) => {
-        setProducts((current) => current.map((currentProduct) => {
-          if (currentProduct.id !== product.id) return currentProduct;
-          if (currentProduct.type === "Variable") {
-            return {
-              ...currentProduct,
-              variations: currentProduct.variations.map((variation) => {
-                const stock = inventory[`${currentProduct.id}:${variation.id}`];
-                return typeof stock === "number" ? { ...variation, stock } : variation;
-              }),
-            };
-          }
-          const stock = inventory[String(currentProduct.id)];
-          return typeof stock === "number" ? { ...currentProduct, stock } : currentProduct;
-        }));
-      })
-      .catch((error: unknown) => {
-        setNotice(`${product.name} is published, but checkout could not update its inventory: ${error instanceof Error ? error.message : "try again."}`);
-      });
   }
 
   async function removeProduct(product: Product) {

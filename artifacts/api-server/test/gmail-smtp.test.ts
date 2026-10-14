@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, afterEach, before, beforeEach, test } from "node:test";
 import { pool } from "@workspace/db";
+import { gmailOAuthClient, saveGmailRefreshToken } from "../src/gmailOAuthCredentials";
 import { createPendingOrder, finalizePaidOrder } from "../src/orderService";
 import { isOrderEmailConfigured, processOrderConfirmations, refreshOrderEmailDelivery } from "../src/orderConfirmationNotifications";
 import { verifyGmailSmtp } from "../src/gmailSmtp";
@@ -186,4 +187,32 @@ test("credential verification sends no message and sanitizes credential errors",
   await assert.rejects(verifyGmailSmtp, /verification failed/);
   assert.equal(smtpCalls.length, 0);
   assert.ok(smtpConnections.every((connection) => connection.closed));
+});
+
+test("OAuth activation cutoff retains pre-authorization confirmations but sends a fresh eligible order", async () => {
+  const old = await paid();
+  await pool.query("UPDATE store_order_email_notifications SET created_at=NOW()-INTERVAL '1 hour' WHERE order_id=$1", [old]);
+  Object.assign(process.env, {
+    GMAIL_SMTP_AUTH_MODE: "oauth2", GMAIL_SMTP_CLIENT_ID: "isolated-client",
+    GMAIL_SMTP_CLIENT_SECRET: "isolated-client-secret", SESSION_SECRET: "isolated-encryption-secret",
+    GMAIL_SMTP_OAUTH_REDIRECT_URI: "https://shop.example.test/api/gmail/oauth/callback",
+  });
+  try {
+    await saveGmailRefreshToken(gmailOAuthClient()!, "isolated-refresh-token", "isolated-admin");
+    await processOrderConfirmations();
+    assert.equal((await notification(old)).status, "pending");
+    assert.equal((await notification(old)).attempts, 0);
+    assert.equal(smtpCalls.length, 0);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    const fresh = await paid();
+    await processOrderConfirmations();
+    assert.equal((await notification(fresh)).status, "accepted");
+    assert.equal((await notification(fresh)).delivered_at, null);
+    assert.equal((await notification(old)).attempts, 0);
+    assert.equal(smtpCalls.length, 1);
+  } finally {
+    await pool.query("DELETE FROM store_gmail_oauth_credentials WHERE id=1");
+    for (const key of ["GMAIL_SMTP_CLIENT_ID", "GMAIL_SMTP_CLIENT_SECRET", "SESSION_SECRET", "GMAIL_SMTP_OAUTH_REDIRECT_URI"]) delete process.env[key];
+    process.env.GMAIL_SMTP_AUTH_MODE = "app_password";
+  }
 });

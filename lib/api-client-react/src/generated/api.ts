@@ -26,6 +26,7 @@ import type {
 
 import type {
   AbandonCheckoutPayment200,
+  AdminCatalogSaveInput,
   CheckoutFinalizationResult,
   CheckoutPaymentInput,
   CheckoutPaymentIntentResult,
@@ -40,6 +41,7 @@ import type {
   HealthStatus,
   HostedCheckoutResult,
   ResolveSeoParams,
+  SaveAdminCatalog200,
   SaveAdminContactNotificationSettings200,
   SeoResolution,
   StartAdminGmailAuthorization200,
@@ -74,6 +76,95 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getSaveAdminCatalogUrl = () => {
+
+
+
+
+  return `/api/admin/catalog`
+}
+
+/**
+ * Omitted products are retired. Existing inventory stock is preserved unless its exact product or product:variation key is listed in stockUpdates. This prevents live-stock browser overlays from resetting unrelated stock.
+ * @summary Save the full catalog and sellable inventory atomically (administrators only)
+ */
+export const saveAdminCatalog = async (adminCatalogSaveInput: AdminCatalogSaveInput, options?: Parameters<typeof customFetch>[1]): Promise<SaveAdminCatalog200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<SaveAdminCatalog200>(getSaveAdminCatalogUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminCatalogSaveInput)
+  }
+);}
+
+
+
+
+
+export const getSaveAdminCatalogMutationKey = () => ['saveAdminCatalog'] as const;
+
+export const getSaveAdminCatalogMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveAdminCatalog>>, TError,SaveAdminCatalogMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof saveAdminCatalog>>, TError,SaveAdminCatalogMutationVariables, TContext> => {
+
+const mutationKey = getSaveAdminCatalogMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveAdminCatalog>>, SaveAdminCatalogMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  saveAdminCatalog(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SaveAdminCatalogMutationResult = NonNullable<Awaited<ReturnType<typeof saveAdminCatalog>>>
+    export type SaveAdminCatalogMutationBody = BodyType<AdminCatalogSaveInput>
+    export type SaveAdminCatalogMutationError = ErrorType<void>
+    export type SaveAdminCatalogMutationVariables = {data: BodyType<AdminCatalogSaveInput>}
+
+    /**
+ * @summary Save the full catalog and sellable inventory atomically (administrators only)
+ */
+export const useSaveAdminCatalog = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof saveAdminCatalog>>, TError,SaveAdminCatalogMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof saveAdminCatalog>>,
+        TError,
+        SaveAdminCatalogMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSaveAdminCatalogMutationOptions(options), queryClient);
+    }
 
 export const getGetAdminContactEnquiriesUrl = () => {
 

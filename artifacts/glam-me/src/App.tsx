@@ -51,7 +51,7 @@ const clerkAppearance = {
     logoImageUrl: typeof window === 'undefined' ? logoImage : new URL(logoImage, window.location.origin).href,
   },
   variables: {
-    colorPrimary: '#e23d6f',
+    colorPrimary: '#bd2855',
     colorForeground: '#171615',
     colorMutedForeground: '#716a67',
     colorDanger: '#b42342',
@@ -72,10 +72,13 @@ const clerkAppearance = {
     headerTitle: { color: '#171615' },
     headerSubtitle: { color: '#716a67' },
     formFieldLabel: { color: '#171615' },
-    footerActionLink: { color: '#e23d6f' },
+    footerActionLink: { color: '#bd2855' },
     footerActionText: { color: '#716a67' },
     dividerText: { color: '#716a67' },
-    formButtonPrimary: { background: '#e23d6f', color: '#fff', borderRadius: '0px' },
+    formButtonPrimary: {
+      background: '#bd2855', color: '#fff', borderRadius: '0px',
+      '&:hover, &:focus, &:active': { background: '#a93458', color: '#fff' },
+    },
     formFieldInput: { background: '#f5f1ed', color: '#171615', borderRadius: '0px' },
     socialButtonsBlockButton: { borderRadius: '0px' },
     socialButtonsBlockButtonText: { color: '#171615' },
@@ -384,7 +387,7 @@ function getCartQueryItem(): CartItem | null {
   } catch {
     options = undefined;
   }
-  return Number.isInteger(productId) && productId > 0 && size
+  return Number.isInteger(productId) && productId > 0 && size !== null
     ? {
         productId,
         size,
@@ -2684,7 +2687,7 @@ function Checkout() {
               color: "#171615",
               fontFamily: "DM Sans Variable, sans-serif",
               fontSize: "16px",
-              "::placeholder": { color: "#827975" },
+              "::placeholder": { color: "#716a67" },
             },
             invalid: { color: "#b42342" },
           },
@@ -3790,6 +3793,18 @@ function AppRoutes() {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [location]);
   const needsCatalog = ["/", "/shop", "/category", "/cart", "/wishlist", "/checkout"].includes(location) || location.startsWith("/product/") || location.startsWith("/category/");
+  if (needsCatalog && !sharedCatalog && location.startsWith("/product/") && catalogStatus === "loading") return <Shell>
+    <section className="container product-detail product-loading" aria-busy="true" aria-live="polite">
+      <h1 className="sr-only">Loading the collection…</h1>
+      <div className="product-detail-layout" aria-hidden="true">
+        <div className="product-gallery"><div className="gallery-viewer"><div className="gallery-image" /></div></div>
+        <div className="detail-copy">
+          <div className="detail-intro product-loading-intro"><span /><span /><span /></div>
+          <div className="detail-form product-loading-form" />
+        </div>
+      </div>
+    </section>
+  </Shell>;
   if (needsCatalog && !sharedCatalog) return <Shell><section className="container catalog-status" aria-live="polite">
     <h1>{catalogStatus === "loading" ? "Loading the collection…" : catalogStatus === "uninitialized" ? "Collection unavailable" : "Unable to load the collection"}</h1>
     <p>{catalogStatus === "loading" ? "Please wait while we load current products and prices." : catalogStatus === "uninitialized" ? "The collection is not available yet. Please contact us for help." : "Current products and prices could not be loaded. Your saved bag has not been changed."}</p>
@@ -3852,10 +3867,14 @@ function CatalogMediaHydrator({ children }: { children: ReactNode }) {
         const response = await fetch(`${basePath}/api/catalog`, { cache: "no-store" });
         const payload = await response.json() as { products?: CatalogProduct[]; categories?: CatalogCategory[]; homePage?: HomePageSettings | null; initialized?: boolean };
         if (!response.ok || !Array.isArray(payload.products) || !Array.isArray(payload.categories) || typeof payload.initialized !== "boolean") throw new Error("Catalog unavailable");
-        await hydrateCatalogProductMedia(payload.products);
         if (!active || version !== requestVersion) return;
         sharedCatalog = payload.initialized ? { products: payload.products, categories: payload.categories, homePage: payload.homePage ?? null } : null;
         catalogStatus = payload.initialized ? "ready" : "uninitialized";
+        // Media is cosmetic: a blocked IndexedDB request must not block billing
+        // or make a newly published line appear empty.
+        void hydrateCatalogProductMedia(payload.products).then(() => {
+          if (active && version === requestVersion) setMediaVersion((value) => value + 1);
+        });
       } catch {
         if (!active || version !== requestVersion) return;
         catalogStatus = "error";

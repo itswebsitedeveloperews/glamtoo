@@ -1,5 +1,11 @@
 # Glam Too launch-readiness evidence
 
+For the seven findings in the 14 October fresh regression report, see
+[Fresh launch regressions](fresh-launch-regressions.md). That record separates
+source/build fixes from pending inbox receipt, screen-reader confirmation,
+merchant wording approval and authorized orphan cleanup. It does not authorize
+deployment or unrestricted email sending.
+
 Checked 2026-10-14 UTC (the supplied review is dated 2026-10-13).
 **Engineering checks are not store launch approval.** No production deployment,
 production migration, live charge, real provider account creation, outbound

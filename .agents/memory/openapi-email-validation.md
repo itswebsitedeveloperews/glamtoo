@@ -14,3 +14,13 @@ Use named component schemas referenced by `$ref` for request bodies rather than 
 **Why:** The current generator assigns inline request-body types the same name as exported Zod body constants, which conflicts when this workspace re-exports both modules. Named models avoid that collision.
 
 **How to apply:** When adding an endpoint, define its input in `components.schemas`, reference it from the request body, and regenerate/typecheck the shared libraries.
+
+Include DOM iterable declarations for generated browser clients, and explicitly
+target the installed React Query major in generator configuration.
+
+**Why:** Generator updates can use iterable Headers APIs or silently infer
+React Query v4 in a v5 workspace. These are generation compatibility issues,
+not reasons to weaken endpoint validation or change installed runtimes.
+
+**How to apply:** Keep generation targets explicit and check shared declarations
+after regeneration.

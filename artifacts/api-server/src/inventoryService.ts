@@ -65,6 +65,12 @@ function aggregateLines(lines: InventoryLine[]) {
 }
 
 async function seedInventory(client: PoolClient) {
+  // Bundled inventory is initialization-only, never a repair of a live catalog.
+  const table = await client.query("SELECT to_regclass('public.store_catalog') AS name");
+  if (table.rows[0]?.name) {
+    const catalog = await client.query("SELECT 1 FROM store_catalog WHERE id = 1");
+    if (catalog.rowCount) return;
+  }
   for (const product of Object.values(checkoutCatalog)) {
     await client.query(
       `INSERT INTO product_inventory (
@@ -141,7 +147,7 @@ export async function getCheckoutCatalogLine(productId: string, variationId?: st
   }
 }
 
-export async function syncCatalogProduct(input: CatalogProductInput) {
+export async function syncCatalogProduct(input: CatalogProductInput, transaction?: PoolClient, preserveStockKeys: string[] = []) {
   const saleItems = input.type === "Variable"
     ? input.variations.map((variation) => ({
       productId: input.id,
@@ -161,14 +167,36 @@ export async function syncCatalogProduct(input: CatalogProductInput) {
       stock: input.stock,
       active: input.status === "Published",
     }];
-  if (!saleItems.length || saleItems.some((item) => !item.unitAmount || !Number.isInteger(item.stock) || item.stock < 0)) {
+  if (!saleItems.length || new Set(saleItems.map((item) => inventoryKey(item.productId, item.variationId))).size !== saleItems.length
+    || saleItems.some((item) => !item.unitAmount || !Number.isInteger(item.stock) || item.stock < 0)) {
     throw new InventoryError("Every sellable product or variation needs a valid price and a whole stock quantity.");
   }
-  const client = await pool.connect();
+  const client = transaction ?? await pool.connect();
   try {
-    await client.query("BEGIN");
-    await seedInventory(client);
+    if (!transaction) {
+      await client.query("BEGIN");
+      // Same lock/order as catalog saves: a delayed legacy sync cannot revive
+      // inventory after removal or overwrite a newer catalog revision.
+      await client.query("SELECT pg_advisory_xact_lock(782616310, 1)");
+      const table = await client.query("SELECT to_regclass('public.store_catalog') AS name");
+      if (table.rows[0]?.name) {
+        const catalog = await client.query("SELECT products FROM store_catalog WHERE id = 1");
+        if (catalog.rowCount) {
+          const product = catalog.rows[0].products.find((item: { id: number }) => String(item.id) === input.id);
+          if (!product) throw new InventoryError("That product has been removed. Refresh the catalog.");
+          // Catalog saves now own synchronization atomically. Legacy clients
+          // must not replay stale stock or revive retired inventory.
+          await client.query("COMMIT");
+          return;
+        }
+      }
+      await seedInventory(client);
+    }
     const activeKeys = saleItems.map((item) => inventoryKey(item.productId, item.variationId));
+    await client.query(
+      "UPDATE product_inventory SET catalog_product_id = $1 WHERE product_id = $1 AND catalog_product_id = ''",
+      [input.id],
+    );
     await client.query(
       `UPDATE product_inventory
        SET active = false, updated_at = NOW()
@@ -188,18 +216,18 @@ export async function syncCatalogProduct(input: CatalogProductInput) {
             name = EXCLUDED.name,
             description = EXCLUDED.description,
             unit_amount = EXCLUDED.unit_amount,
-            stock = EXCLUDED.stock,
+            stock = CASE WHEN $9::boolean THEN product_inventory.stock ELSE EXCLUDED.stock END,
             active = EXCLUDED.active,
             updated_at = NOW()`,
-        [key, input.id, item.variationId ?? null, item.name, item.description, item.unitAmount, item.stock, item.active],
+        [key, input.id, item.variationId ?? null, item.name, item.description, item.unitAmount, item.stock, item.active, preserveStockKeys.includes(key)],
       );
     }
-    await client.query("COMMIT");
+    if (!transaction) await client.query("COMMIT");
   } catch (error) {
-    await client.query("ROLLBACK").catch(() => undefined);
+    if (!transaction) await client.query("ROLLBACK").catch(() => undefined);
     throw error;
   } finally {
-    client.release();
+    if (!transaction) client.release();
   }
 }
 
@@ -219,7 +247,7 @@ export async function reserveInventory(lines: InventoryLine[], paymentReference:
     }
     for (const line of requestedLines) {
       const current = await client.query<{ stock: number }>(
-        "SELECT stock FROM product_inventory WHERE product_id = $1 FOR UPDATE",
+        "SELECT stock FROM product_inventory WHERE product_id = $1 AND active = true FOR UPDATE",
         [line.inventoryKey],
       );
       const available = current.rows[0]?.stock;

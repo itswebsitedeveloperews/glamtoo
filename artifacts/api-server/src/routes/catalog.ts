@@ -1,9 +1,11 @@
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
-import { pool } from "@workspace/db";
+import { pool, type PoolClient } from "@workspace/db";
+import { SaveAdminCatalogBody } from "@workspace/api-zod";
 import { requireAdmin } from "../adminAuth";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { backfillCatalog, CatalogValidationError, prepareCatalog, type Catalog } from "../catalogSlugs";
+import { InventoryError, syncCatalogProduct, type CatalogProductInput } from "../inventoryService";
 
 const router: IRouter = Router();
 const catalogId = 1;
@@ -155,7 +157,7 @@ function parseHomePageSettings(body: unknown): HomePageSettings | null {
 }
 
 type CatalogRecord = Catalog & { homePage: HomePageSettings | null; initialized: boolean; updatedAt: Date | null; reservations: Catalog };
-async function withCatalogLock<T>(action: (record: CatalogRecord, query: (sql: string, values?: unknown[]) => Promise<void>) => Promise<T>): Promise<T> {
+async function withCatalogLock<T>(action: (record: CatalogRecord, query: (sql: string, values?: unknown[]) => Promise<void>, client: PoolClient) => Promise<T>): Promise<T> {
   await ensureCatalogTable();
   const client = await pool.connect();
   try {
@@ -172,7 +174,7 @@ async function withCatalogLock<T>(action: (record: CatalogRecord, query: (sql: s
       await client.query("UPDATE store_catalog SET products = $1, categories = $2, updated_at = NOW() WHERE id = $3", [JSON.stringify(filled.products), JSON.stringify(filled.categories), catalogId]);
       old.updatedAt = new Date();
     }
-    const result = await action({ ...old, ...filled }, async (sql, values) => { await client.query(sql, values); });
+    const result = await action({ ...old, ...filled }, async (sql, values) => { await client.query(sql, values); }, client);
     await client.query("COMMIT");
     return result;
   } catch (error) {
@@ -203,8 +205,11 @@ async function setCatalogMediaVisibility(products: JsonRecord[], categories: Jso
   ));
 }
 
-async function saveCatalog(parsed: Catalog, raw: Catalog, owner: string, migrate = false) {
-  const saved = await withCatalogLock(async (record, query) => {
+async function saveCatalog(parsed: Catalog, raw: Catalog, owner: string, migrate = false, stockUpdates: string[] = []) {
+  if (!Array.isArray(stockUpdates) || stockUpdates.length > 500 || stockUpdates.some((key) => typeof key !== "string" || !/^\d+(?::\d+)?$/.test(key))) {
+    throw new CatalogValidationError("Stock updates must identify the edited product or variation.");
+  }
+  const saved = await withCatalogLock(async (record, query, client) => {
     let next = parsed;
     let rawNext = raw;
     if (migrate) {
@@ -237,6 +242,35 @@ async function saveCatalog(parsed: Catalog, raw: Catalog, owner: string, migrate
     // Match the previous save semantics: an ACL failure must not report a
     // failed request after a durable catalog commit.
     await setCatalogMediaVisibility(prepared.products, prepared.categories, owner);
+    const activeIds = new Set(prepared.products.map((item) => item.id));
+    const removedIds = record.products.filter((item) => !activeIds.has(item.id)).map((item) => String(item.id));
+    if (removedIds.length) {
+      // Retain rows and reservation FKs for historical payments/refunds. Stock
+      // is unchanged; row locks serialize retirement with new reservations.
+      await query(`UPDATE product_inventory SET active = false, updated_at = NOW()
+        WHERE catalog_product_id = ANY($1::text[])
+          OR (catalog_product_id = '' AND product_id = ANY($1::text[]))`, [removedIds]);
+    }
+    for (const product of prepared.products) {
+      const previous = record.products.find((item) => item.id === product.id);
+      if (JSON.stringify(previous) === JSON.stringify(product)) continue;
+      // Unpriced draft content need not be sellable yet.
+      if (product.status !== "Published") {
+        await query("UPDATE product_inventory SET active = false, updated_at = NOW() WHERE catalog_product_id = $1", [String(product.id)]);
+        continue;
+      }
+      await syncCatalogProduct({
+        ...product, id: String(product.id),
+        variations: (product.variations as Array<Record<string, unknown>> ?? []).map((item) => ({ ...item, id: String(item.id) })),
+      } as CatalogProductInput, client, previous && previous.type === product.type
+        ? product.type === "Variable"
+          ? (product.variations as Array<Record<string, unknown>>).filter((item) =>
+            !stockUpdates.includes(`${product.id}:${item.id}`)
+              && (previous.variations as Array<Record<string, unknown>> ?? []).some((old) => old.id === item.id),
+          ).map((item) => `${product.id}:${item.id}`)
+          : !stockUpdates.includes(String(product.id)) ? [String(product.id)] : []
+        : []);
+    }
     await query(`INSERT INTO store_catalog (id, products, categories, slug_reservations) VALUES ($1, $2, $3, $4)
       ON CONFLICT (id) DO UPDATE SET products = EXCLUDED.products, categories = EXCLUDED.categories, slug_reservations = EXCLUDED.slug_reservations, updated_at = NOW()`,
     [catalogId, JSON.stringify(prepared.products), JSON.stringify(prepared.categories), JSON.stringify(reservations)]);
@@ -289,14 +323,15 @@ router.put("/admin/catalog/home-page", requireAdmin, async (request, response) =
     });
     response.set("Cache-Control", "no-store").json({ homePage: settings });
   } catch (error) {
-    if (error instanceof CatalogValidationError) { response.status(400).json({ error: error.message }); return; }
+    if (error instanceof CatalogValidationError || error instanceof InventoryError) { response.status(400).json({ error: error.message }); return; }
     request.log.error({ error }, "Home page settings could not be saved");
     response.status(503).json({ error: "Home page settings could not be saved right now." });
   }
 });
 
 router.put("/admin/catalog", requireAdmin, async (request, response) => {
-  const parsed = parseCatalogBody(request.body);
+  const input = SaveAdminCatalogBody.safeParse(request.body);
+  const parsed = input.success ? parseCatalogBody(input.data) : null;
   if (!parsed) {
     response.status(400).json({ error: "Products and categories must be valid arrays." });
     return;
@@ -307,9 +342,9 @@ router.put("/admin/catalog", requireAdmin, async (request, response) => {
       response.status(401).json({ error: "Sign in to continue." });
       return;
     }
-    response.json(await saveCatalog(parsed, request.body as Catalog, userId));
+    response.json(await saveCatalog(parsed, request.body as Catalog, userId, false, request.body.stockUpdates ?? []));
   } catch (error) {
-    if (error instanceof CatalogValidationError) { response.status(400).json({ error: error.message }); return; }
+    if (error instanceof CatalogValidationError || error instanceof InventoryError) { response.status(400).json({ error: error.message }); return; }
     request.log.error({ error }, "Admin catalog could not be saved");
     response.status(503).json({ error: "The catalog could not be saved right now." });
   }
@@ -329,11 +364,11 @@ router.post("/admin/catalog/migrate", requireAdmin, async (request, response) =>
     }
     response.json(await saveCatalog(parsed, request.body as Catalog, userId, true));
   } catch (error) {
-    if (error instanceof CatalogValidationError) { response.status(400).json({ error: error.message }); return; }
+    if (error instanceof CatalogValidationError || error instanceof InventoryError) { response.status(400).json({ error: error.message }); return; }
     request.log.error({ error }, "Catalog migration could not be completed");
     response.status(503).json({ error: "The existing catalog could not be migrated right now." });
   }
 });
 
-export { getCatalogRecord };
+export { getCatalogRecord, saveCatalog };
 export default router;

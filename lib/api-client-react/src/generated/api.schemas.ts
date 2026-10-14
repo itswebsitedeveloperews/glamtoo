@@ -5,6 +5,21 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type AdminCatalogSaveInputProductsItem = { [key: string]: unknown };
+
+export type AdminCatalogSaveInputCategoriesItem = { [key: string]: unknown };
+
+export interface AdminCatalogSaveInput {
+  products: AdminCatalogSaveInputProductsItem[];
+  categories: AdminCatalogSaveInputCategoriesItem[];
+  /**
+     * Exact inventory keys explicitly edited by the administrator; omitted means preserve existing stock.
+     * @maxItems 500
+     * @items.pattern ^\d+(?::\d+)?$
+     */
+  stockUpdates?: string[];
+}
+
 export interface ContactNotificationSettingsInput {
   /**
      * Legacy single contact recipient. Prefer adminEmails.
@@ -190,6 +205,15 @@ export interface ErrorEnvelope {
   /** Optional stable error category; checkout distinguishes throttling, conflicts, cancellation, completion and retryable provider failures. */
   code?: string;
 }
+
+export type SaveAdminCatalog200ProductsItem = { [key: string]: unknown };
+
+export type SaveAdminCatalog200CategoriesItem = { [key: string]: unknown };
+
+export type SaveAdminCatalog200 = {
+  products: SaveAdminCatalog200ProductsItem[];
+  categories: SaveAdminCatalog200CategoriesItem[];
+};
 
 export type GetAdminContactEnquiries200EnquiriesItemDeliveryStatus = typeof GetAdminContactEnquiries200EnquiriesItemDeliveryStatus[keyof typeof GetAdminContactEnquiries200EnquiriesItemDeliveryStatus];
 

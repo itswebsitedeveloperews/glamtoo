@@ -9,6 +9,27 @@ import * as zod from 'zod';
 
 
 /**
+ * Omitted products are retired. Existing inventory stock is preserved unless its exact product or product:variation key is listed in stockUpdates. This prevents live-stock browser overlays from resetting unrelated stock.
+ * @summary Save the full catalog and sellable inventory atomically (administrators only)
+ */
+export const saveAdminCatalogBodyStockUpdatesItemRegExp = new RegExp('^\\d+(?::\\d+)?$');
+export const saveAdminCatalogBodyStockUpdatesMax = 500;
+
+
+
+export const SaveAdminCatalogBody = zod.object({
+  "products": zod.array(zod.record(zod.string(), zod.unknown())),
+  "categories": zod.array(zod.record(zod.string(), zod.unknown())),
+  "stockUpdates": zod.array(zod.string().regex(saveAdminCatalogBodyStockUpdatesItemRegExp)).max(saveAdminCatalogBodyStockUpdatesMax).optional().describe('Exact inventory keys explicitly edited by the administrator; omitted means preserve existing stock.')
+})
+
+export const SaveAdminCatalogResponse = zod.object({
+  "products": zod.array(zod.record(zod.string(), zod.unknown())),
+  "categories": zod.array(zod.record(zod.string(), zod.unknown()))
+})
+
+
+/**
  * @summary List persisted customer enquiries (administrators only)
  */
 export const GetAdminContactEnquiriesResponse = zod.object({

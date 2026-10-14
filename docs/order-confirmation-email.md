@@ -102,6 +102,24 @@ Development schema additions are non-destructive. Production receives the schema
 
 ## Remaining blockers
 
+### Fresh regression order — 14 October 2026
+
+Read-only production inspection correlated **GM-03B7D305** with its paid
+GBP 23.98 order and a single pending confirmation entry, zero attempts and
+no provider message ID. It was paid/queued at 04:49:05.391322 UTC;
+initial Gmail authorization was saved at 05:43:33.722496 UTC. The current
+worker deliberately excludes messages queued before that authorization.
+The row's default `mailersend` marker does not establish that a provider
+was contacted. Required outbox/provider columns exist in production.
+
+This establishes a current-source eligibility blocker consistent with the
+nonreceipt, not proof of all deployed worker/configuration health. The order
+was not changed or resent. A new isolated regression preserves the cutoff and
+checks a fresh eligible order using mocked SMTP only. Separately authorized
+fresh sandbox-order receipt is still required; see
+[fresh-launch-regressions.md](fresh-launch-regressions.md) for the diagnosis
+and controlled-inbox protocol.
+
 The merchant confirmed completion on 2026-10-14 with an admin screenshot showing “Authorization saved” and “Gmail SMTP authentication passed. No email was sent; inbox delivery is not yet verified.” The production callback is registered and mailbox authorization is complete. This is merchant-provided evidence of authentication, not an independently observed recipient-inbox delivery.
 
 Sending remains restricted to the configured test recipients. Controlled-inbox delivery through a new approved sandbox order remains unverified; do not replay historical orders or enable unrestricted customer sending without approval. Gmail SMTP acceptance cannot be automatically upgraded to delivered or used as inbox-delivery evidence. If the Google consent app remains in Testing, account for its possible seven-day refresh-token expiry before production rollout.

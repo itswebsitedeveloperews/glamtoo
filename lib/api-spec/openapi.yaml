@@ -17,6 +17,47 @@ tags:
   - name: seo
     description: Public search metadata and crawler files
 paths:
+  /admin/catalog:
+    put:
+      operationId: saveAdminCatalog
+      summary: Save the full catalog and sellable inventory atomically (administrators only)
+      description: >
+        Omitted products are retired. Existing inventory stock is preserved unless
+        its exact product or product:variation key is listed in stockUpdates.
+        This prevents live-stock browser overlays from resetting unrelated stock.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminCatalogSaveInput"
+      responses:
+        "200":
+          description: Committed catalog; inventory is ready before this response.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [products, categories]
+                properties:
+                  products:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  categories:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "400":
+          description: Invalid catalog, reserved ID/URL or invalid stock update keys.
+        "401":
+          description: Sign-in required.
+        "403":
+          description: Administrator permission required.
+        "503":
+          description: Catalog and inventory could not be committed; database changes are rolled back.
   /admin/contact-enquiries:
     get:
       operationId: getAdminContactEnquiries
@@ -496,6 +537,27 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
+    AdminCatalogSaveInput:
+      type: object
+      required: [products, categories]
+      properties:
+        products:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        categories:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        stockUpdates:
+          type: array
+          maxItems: 500
+          items:
+            type: string
+            pattern: '^\d+(?::\d+)?$'
+          description: Exact inventory keys explicitly edited by the administrator; omitted means preserve existing stock.
     ContactNotificationSettingsInput:
       type: object
       additionalProperties: false
