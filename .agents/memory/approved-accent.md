@@ -9,6 +9,14 @@ Action buttons, including the product-card “Shop Now” buttons, must use `#e2
 
 The bag-count badge number must be `#fff`; keep its existing pink background. The merchant explicitly requested this exception to dark accent text.
 
+The homepage “Shop by moment” eyebrow and “Outfits for Every Plan” heading must
+be white on the existing pink background.
+
+**Why:** The merchant supplied a reference and explicitly requested this treatment.
+
+**How to apply:** Preserve this exception to dark accent text without changing
+the section background or other homepage styling.
+
 Exclude account dashboard shortcut cards and Google sign-in buttons from the pink action-button palette. Restore and preserve their original neutral styling.
 
 Google sign-in should match the merchant's reference: a white rectangular button with dark text, the standard Google logo, and a subtle neutral border/shadow. Preserve the provider's conditional “Last used” indicator rather than showing it for everyone.
@@ -35,3 +43,13 @@ under text even when the original image looks safe.
 **How to apply:** Preserve the merchant's images and palette. Use overlays or
 text backplates to protect copy, and verify the composited pixels behind text
 without counting text shadows as the contrast solution.
+
+On the homepage, preserve the original lighter banner overlay and unboxed
+collection and moment-card copy instead of the darker overlay/backplate treatment.
+
+**Why:** The merchant explicitly requested restoring those homepage color changes.
+
+**How to apply:** Do not silently reintroduce dark copy boxes or a blanket dark
+homepage banner for accessibility work. Keep contrast tests honest and report
+photo-dependent contrast limitations. This restoration does not apply to About
+or FAQ, nor to the approved button colors.

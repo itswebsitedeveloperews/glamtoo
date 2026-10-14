@@ -177,8 +177,7 @@ h2 { text-transform: capitalize !important; }
   background: #b86f7b;
 }
 .hero-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 50%; filter: saturate(.94); }
-/* Keep a contrast floor even where responsive crops put white fabric/sky behind copy. */
-.hero:after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(17,12,12,.76), rgba(17,12,12,.68) 68%); }
+.hero:after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(17,12,12,.56), rgba(17,12,12,.05) 68%), linear-gradient(0deg, rgba(17,12,12,.3), transparent 35%); }
 .hero-copy { position: relative; z-index: 1; color: var(--white); width: min(1240px, calc(100% - 48px)); margin: auto; padding: 72px 0; }
 .hero-copy .eyebrow { color: #f4cad5; }
 .hero-copy h1 { max-width: 570px; margin: 13px 0 32px; font: 400 100px / 1 var(--hero-display); text-transform: capitalize; }
@@ -202,7 +201,7 @@ h2 { text-transform: capitalize !important; }
 .collection-tile img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .7s cubic-bezier(.2,.65,.25,1); }
 .collection-tile:hover img { transform: scale(1.035); }
 .collection-tile:after { content: ''; position: absolute; z-index: 0; inset: 0; pointer-events: none; background: linear-gradient(0deg, rgba(23, 22, 21, .84), rgba(23, 22, 21, .5) 40%, rgba(23, 22, 21, 0) 80%); }
-.collection-tile > div { position: absolute; z-index: 1; left: 20px; bottom: 20px; max-width: min(320px, calc(100% - 40px)); padding: 14px; background: rgba(23, 22, 21, .8); }
+.collection-tile > div { position: absolute; z-index: 1; left: 28px; bottom: 28px; max-width: 190px; }
 .collection-tile h3 { margin: 0 0 6px; font: 500 clamp(23px, 2.1vw, 31px)/.98 var(--display); letter-spacing: -.035em; }
 .collection-tile p { margin: 0 0 18px; font-size: 14px; line-height: 1.38; }
 .collection-tile-cta { display: inline-block; padding-bottom: 4px; border-bottom: 1px solid currentColor; font-size: 14px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
@@ -302,7 +301,7 @@ h2 { text-transform: capitalize !important; }
 .price { font-size: 16px; white-space: nowrap; }
 
 .moments { padding: 84px 0 96px; background: var(--pink-deep); }
-.moments-heading { margin: 0 auto 34px; color: var(--ink); text-align: center; }
+.moments-heading { margin: 0 auto 34px; color: #fff; text-align: center; }
 .moments-heading .eyebrow { color: inherit; }
 .moments-heading h2 { margin: 10px 0 0; font: 400 clamp(44px, 5.2vw, 70px)/.94 var(--hero-display); }
 .moment-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
@@ -311,7 +310,7 @@ h2 { text-transform: capitalize !important; }
 .moment-card img { width: 100%; height: 100%; object-fit: cover; object-position: top center !important; filter: saturate(.92) contrast(.96); transition: transform .65s ease; }
 .moment-card:hover img { transform: scale(1.06); }
 .moment-card:after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(0deg, rgba(25,11,17,.72), rgba(25,11,17,.12) 54%, transparent 78%); }
-.moment-copy { position: absolute; bottom: 12px; left: 12px; z-index: 1; right: 12px; min-height: 160px; padding: 14px; background: rgba(23, 22, 21, .8); display: flex; flex-direction: column; }
+.moment-copy { position: absolute; bottom: 21px; left: 20px; z-index: 1; right: 12px; min-height: 160px; display: flex; flex-direction: column; }
 .moment-copy h3 { margin: 0 0 10px; font: 400 24px/1.2 var(--hero-display); overflow-wrap: anywhere; }
 .moment-copy p { display: -webkit-box; overflow: hidden; margin: 0 0 13px; font-size: 14px; line-height: 1.4; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .moment-shop-link { display: inline-block; align-self: flex-start; margin-top: auto; padding-bottom: 4px; border-bottom: 1px solid currentColor; color: var(--white); font-size: 14px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; }
@@ -959,7 +958,7 @@ h2 { text-transform: capitalize !important; }
   .collection-tile { min-height: 0; }
   .collection-collage.is-five-or-more .collection-tile:nth-child(3) { grid-column: auto; grid-row: auto; }
   .collection-collage:not(.is-five-or-more) { grid-template-columns: minmax(0, 1fr); }
-  .collection-tile > div { left: 12px; bottom: 12px; max-width: calc(100% - 24px); }
+  .collection-tile > div { left: 12px; bottom: 12px; max-width: 143px; }
   .collection-tile h3, .moment-copy h3 { font-size: 25px; }
   .collection-tile p { margin-bottom: 4px; font-size: 12px; }
   .collection-tile .collection-tile-cta { font-size: 12px; }
@@ -3490,8 +3489,8 @@ input:focus, select:focus, textarea:focus { outline: none; }
     .admin-media-library-item-check) {
   color: var(--accent-ink);
 }
-.moments-heading, .moments-heading .eyebrow { color: var(--accent-ink); }
-/* Moment cards retain white text protected by their dark copy backplate. */
+.moments-heading, .moments-heading .eyebrow { color: #fff; }
+/* Moment cards retain white text over their existing dark image overlay. */
 
 :is(.header-tools a:hover, .footer a:hover, .nav a:hover,
     .nav a:last-child, .nav a.is-active, .search-link[aria-expanded="true"],

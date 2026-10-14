@@ -65,11 +65,19 @@ reject clipped text boxes and text below 14px. Test attachments contain
 per-element contrast readings; screenshots go to the ignored test output
 directory. This is not a generic layout, hydration, or purchase-flow suite.
 
-Verified on 2026-10-14: all 18 cases passed against the development catalog;
-desktop hero and mobile photo crops were also visually inspected. The work
+Before the merchant's homepage styling restoration on 2026-10-14, all 18 cases
+passed against the development catalog; desktop hero and mobile photo crops
+were also visually inspected. The work
 keeps accent/button palettes and product/purchase behavior unchanged. This
 does not establish contrast for future new photo surfaces or altered overlays;
 include them in this suite when adding them.
+
+The homepage now deliberately uses its previous lighter banner overlay and
+unboxed collection/moment copy. The earlier all-pass result does not apply to
+these restored surfaces, particularly with bright replacement photos. Preserve
+the contrast assertions: report failures rather than lowering thresholds or
+silently reintroducing the darker homepage treatment. About and FAQ retain their
+contrast protections.
 
 Every test has a fresh browser context. Catalog, inventory, shipping, return policies and payment configuration are intercepted with explicit test fixtures; fixture text is not business-approved content and is never saved to the shop. The suite does not make payments or edit business data. Results go to ignored `generated-artifacts/storefront-tests`.
 
