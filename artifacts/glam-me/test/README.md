@@ -73,6 +73,20 @@ include them in this suite when adding them.
 
 Every test has a fresh browser context. Catalog, inventory, shipping, return policies and payment configuration are intercepted with explicit test fixtures; fixture text is not business-approved content and is never saved to the shop. The suite does not make payments or edit business data. Results go to ignored `generated-artifacts/storefront-tests`.
 
+### Real signed-out Clerk widgets
+
+```sh
+STOREFRONT_BASE_URL=https://your-development-preview pnpm --filter @workspace/glam-me exec playwright test test/clerk-ui.spec.ts
+```
+
+Unlike the catalog fixtures, `clerk-ui.spec.ts` loads the configured development
+Clerk widgets without mocking authentication. It checks account, registration
+and admin gates, heading semantics, the approved auth palette, keyboard focus,
+editable email fields and account/register navigation. It also rejects the
+structural-CSS warning and remote UI-script loading. It never submits credentials,
+creates users, sends emails or starts OAuth. Run this after deliberately updating
+the exact `@clerk/ui` version; do not replace its pin with a floating range.
+
 These fixture-based browser tests explicitly remove the document's initial public
 snapshot to exercise client-only loading and failure recovery. They do not test
 server rendering. Run `PORT=18781 BASE_PATH=/ pnpm --filter @workspace/glam-me test:ssr`

@@ -1,5 +1,6 @@
 - [Clerk embedded sign-in](clerk-embedded-sign-in.md) — In this Wouter/Vite app, use Clerk’s default embedded sign-in mode; path routing left the auth widget empty.
 - [Clerk heading semantics](clerk-heading-semantics.md) — Clerk owns the embedded title tag; appearance styling cannot turn its h1 into an h2.
+- [Clerk UI upgrade policy](clerk-ui-upgrades.md) — Upgrade bundled auth UI deliberately; verify the real signed-out widgets, not appearance fixtures alone.
 - [Private contrast fixtures](private-contrast-fixtures.md) — Mock Clerk’s full settings bootstrap; measure real, settled hover and keyboard-focus colors.
 - [Vite catalog state](vite-catalog-state.md) — Hot reload can preserve browser state when a localStorage-backed catalog changes; verify seeded data in a fresh context.
 - [Cart storage](cart-storage.md) — Persist only cart line identifiers, size, and quantity; derive product media from the catalog.
