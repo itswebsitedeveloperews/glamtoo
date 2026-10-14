@@ -5,6 +5,7 @@ import { getStripeConnectionInfoWithSource, getUncachableStripeClient } from "..
 import { clearSavedStripeCredentials, saveStripeCredentials } from "../stripeCredentials";
 import { initializeStripe } from "../stripeBootstrap";
 import { getAuth } from "@clerk/express";
+import { getOrderEmailStatus } from "../orderEmailStatus";
 import { pool, orderFulfillmentTable } from "@workspace/db";
 import {
   calculateCouponPricing,
@@ -1337,6 +1338,20 @@ router.get("/admin/orders", requireAdmin, async (request, response) => {
   } catch (error) {
     request.log?.error({ error }, "Admin orders could not be loaded");
     return response.status(503).json({ error: "Orders could not be loaded right now." });
+  }
+});
+
+router.get("/admin/orders/:orderId/email-status", requireAdmin, async (request, response) => {
+  const reference = request.params.orderId;
+  if (typeof reference !== "string" || !/^[a-zA-Z0-9_-]{1,120}$/.test(reference)) {
+    return response.status(400).json({ error: "A valid saved order reference is required." });
+  }
+  try {
+    const status = await getOrderEmailStatus(reference);
+    if (!status) return response.status(404).json({ error: "Order not found." });
+    return response.set("Cache-Control", "no-store").json(status);
+  } catch {
+    return response.status(503).json({ error: "Order email status could not be loaded. Please try again." });
   }
 });
 

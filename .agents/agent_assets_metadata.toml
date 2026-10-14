@@ -70,3 +70,17 @@ mtime_ms = 1790711860382
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/cc820e00-be48-4e3d-a47c-f749b62aa93a/7ca6318c-cbba-46a6-9b05-1412cfcf090b"
 storage_version_token = "1790711884382284"
 content_type = "application/octet-stream"
+
+[[outputs]]
+id = "yc3wyY6GHReB5HacPwJCj"
+uri = "file://generated-artifacts/contact-enquiry-email-preview.png"
+type = "image"
+title = "Branded contact enquiry email"
+description = "Preview of the new Glam Too admin email using sample enquiry details."
+logical_id = "bbe09732-d932-43fd-81fe-e373a1b428b1"
+content_hash = "sha256:cd47557235742b3d98e4f4769e262f5f5130bdebae5621ee4a29cc1f6b1e64ef"
+size = 71907
+mtime_ms = 1791976607856
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/bbe09732-d932-43fd-81fe-e373a1b428b1/422cc5c3-1987-49a5-be8b-493cb8fe1fc1"
+storage_version_token = "1791976666186597"
+content_type = "image/png"

@@ -16,6 +16,8 @@
     "test:gmail-smtp": "node ./test/isolated.mjs gmail-smtp",
     "test:gmail-oauth": "node ./test/isolated.mjs gmail-oauth",
     "test:contact-notifications": "node ./test/isolated.mjs contact-notifications",
+    "test:contact-email-template": "esbuild test/contact-email-template.test.ts --bundle --platform=node --format=cjs --loader:.png=base64 --outfile=../../generated-artifacts/contact-email-template.test.cjs && node --test ../../generated-artifacts/contact-email-template.test.cjs",
+    "test:order-email-status": "esbuild test/order-email-status.test.ts --bundle --platform=node --format=cjs --outfile=../../generated-artifacts/order-email-status.test.cjs && node --test ../../generated-artifacts/order-email-status.test.cjs",
     "verify:gmail-smtp": "node ./scripts/verify-gmail-smtp.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

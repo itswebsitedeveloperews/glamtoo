@@ -12,7 +12,7 @@ if (process.env.NODE_ENV !== "test" || !databaseUrl
     || !/^\/glam_checkout_test_[a-f0-9]{32}$/.test(databaseUrl.pathname)) {
   throw new Error("BLOCKED: backend test builds require the disposable local database runner. Use test:isolated or pnpm validate:linux.");
 }
-const testName = ["shipping", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth", "contact-notifications", "fresh-launch"].includes(process.argv[2]) ? process.argv[2] : "regressions";
+const testName = ["shipping", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth", "contact-notifications", "contact-email-template", "order-email-status", "fresh-launch"].includes(process.argv[2]) ? process.argv[2] : "regressions";
 const outputFile = resolve(outputDir, `${testName}.test.cjs`);
 
 await rm(outputDir, { recursive: true, force: true });
@@ -24,6 +24,7 @@ await build({
   format: "cjs",
   outfile: outputFile,
   sourcemap: "inline",
+  loader: { ".png": "base64" },
   plugins: ["guest-checkout", "checkout-safety"].includes(testName) ? [{
     name: "isolated-guest-payment-provider",
     setup(builder) {

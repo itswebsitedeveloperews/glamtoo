@@ -12,3 +12,20 @@ Use the approved soft-serif option 1 (Cormorant Garamond) as the website logo, w
 Keep the main desktop and mobile navigation typographically aligned with the logo, without extending this change to body copy or forms.
 
 **Why:** The user found the DM Sans menu clashed with the softer logo and approved Cormorant Garamond Medium for navigation only.
+
+Use an email-safe PNG derived from the approved vector wordmark for contact
+notifications, embedded with a CID rather than served from a new public URL.
+
+**Why:** Email clients commonly reject SVG images; embedding avoids broken logo
+links when preview emails use assets that have not yet been published.
+
+**How to apply:** When the approved logo changes, refresh its email raster as
+well. Do not recreate its lettering with a generic email-client font.
+
+Do not assume `Uint8Array.fromBase64` is available just because Node is recent.
+
+**Why:** Esbuild's default binary loader emitted that helper, but the workspace's
+Node 24 runtime did not implement it.
+
+**How to apply:** Decode embedded email rasters with Node's `Buffer` using a
+base64 asset loader, or explicitly target and verify a compatible runtime.

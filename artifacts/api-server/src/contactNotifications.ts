@@ -5,6 +5,7 @@ import { gmailSmtpConfiguration, sendGmailContactNotification, GmailSmtpError } 
 import { logger } from "./lib/logger";
 import { configuredAdminEmails } from "./adminAuth";
 import { changeContactJobs } from "./contactNotificationState";
+import { buildContactNotificationMessage } from "./contactNotificationEmail";
 
 const MAX_ATTEMPTS = 5;
 const UNCERTAIN = "SMTP outcome is unknown. Reconcile the saved Message-ID before resending.";
@@ -58,23 +59,6 @@ async function finish(job: Job, status: string, error: string | null, delay = 0,
   ));
 }
 
-function escapeHtml(value: string) {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-}
-function buildMessage(enquiry: ContactEnquiry) {
-  const fields = [
-    ["Enquiry", String(enquiry.id)], ["Name", enquiry.name], ["Email", enquiry.email],
-    ...(enquiry.orderNumber ? [["Order number", enquiry.orderNumber]] : []),
-    ["Topic", enquiry.topic], ["Message", enquiry.message],
-  ];
-  return {
-    subject: `Glam Too contact enquiry #${enquiry.id}`,
-    text: fields.map(([label, value]) => `${label}: ${value}`).join("\n"),
-    html: "<h1>New Glam Too customer enquiry</h1>" + fields.map(([label, value]) =>
-      `<p><strong>${label}:</strong> ${escapeHtml(value).replaceAll("\n", "<br>")}</p>`).join(""),
-  };
-}
-
 export async function processContactNotifications(limit = 10) {
   // Expired pre-send claims are safe to recover. Expired sending leases are
   // not: the process may have died after Gmail accepted DATA.
@@ -117,7 +101,7 @@ export async function processContactNotifications(limit = 10) {
     }
     const [enquiry] = await db.select().from(contactEnquiriesTable).where(eq(contactEnquiriesTable.id, job.enquiry_id));
     if (!enquiry) continue; // Cascade-deleted jobs cannot send.
-    const message = buildMessage(enquiry);
+    const message = buildContactNotificationMessage(enquiry);
     // Persist the ambiguity boundary BEFORE any SMTP activity. Token + expiry
     // fencing prevents a recovered pre-send lease's old owner from sending.
     const started = await changeContactJobs(job.enquiry_id, client => client.query(

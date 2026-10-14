@@ -43,6 +43,25 @@ async function configuration(transport = process.env.ORDER_EMAIL_TRANSPORT === "
 
 export async function isOrderEmailConfigured() { return Boolean(await configuration()); }
 
+// Read-only projection. Never return provider credentials or the customer
+// allowlist to an API caller, and never verify SMTP as a side effect of viewing.
+export async function getOrderEmailRuntimeStatus(customerEmail: string) {
+  const [customer, admin, settings] = await Promise.all([
+    configuration(), configuration("gmail_smtp", true), getContactNotificationSettings(),
+  ]);
+  const policy = emailRecipientPolicy();
+  return {
+    transport: process.env.ORDER_EMAIL_TRANSPORT === "mailersend" ? "mailersend" : "gmail_smtp",
+    customerConfigured: Boolean(customer),
+    customerRecipientAllowed: Boolean(policy && (policy.allCustomers || policy.recipients.includes(customerEmail.trim().toLowerCase()))),
+    customerAuthorizedSince: customer?.smtp?.authorizedSince ?? null,
+    adminConfigured: Boolean(admin),
+    adminEnabled: settings.orderEnabled,
+    adminRecipients: (settings.orderAdminEmails.length ? settings.orderAdminEmails : settings.fallbackAdminEmail ? [settings.fallbackAdminEmail] : [])
+      .map(email => email.trim().toLowerCase()),
+  };
+}
+
 class DeliveryError extends Error {
   constructor(public readonly kind: "retry" | "failed" | "uncertain", message: string) { super(message); }
 }

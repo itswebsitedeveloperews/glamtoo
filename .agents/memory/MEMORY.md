@@ -33,6 +33,9 @@
 - [Catalog seed lifecycle](catalog-seed-lifecycle.md) — Seed built-in products only for an uninitialized catalog; never restore missing products after admins delete them.
 - [Unified delivery advice](delivery-content-vs-shipping.md) — Merchant approved product advice rates/promises; Shipping now feeds both product Delivery and checkout.
 - [Home page curation](home-page-curation.md) — An unset homepage uses defaults; intentionally empty saved selections must stay empty after refresh.
+- [Tablet presentation](tablet-presentation.md) — Merchant wants two-column homepage/category grids and smaller category headings on iPad; keep phone/desktop unchanged.
+- [Mobile product tables](mobile-product-tables.md) — Merchant explicitly wants 12px Delivery and Size Guide table text on phones, without changing tablet/desktop.
+- [Mobile checkout note](mobile-checkout-presentation.md) — Stack the Stripe payment reassurance text at full width on phones; keep tablet/desktop unchanged.
 - [Storefront defaults](storefront-defaults.md) — Merchant wants original header/footer menus and homepage category presentation; do not hide empty links/tiles incidentally.
 - [Glam Too Boutique wordmark](boutique-wordmark.md) — Keep Glam Too above Boutique, with the original serif and pink Boutique rules.
 - [Approved accent](approved-accent.md) — Preserve requested button colors and white labels; keep account cards and Google sign-in neutral.

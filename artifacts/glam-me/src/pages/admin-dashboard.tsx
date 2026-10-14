@@ -19,6 +19,7 @@ import logoImage from "@assets/logo-soft-options/glam-too-selected-dark.svg";
 import AdminHomePage from "./admin-home-page";
 import AdminPromotionalPreview from "@/components/AdminPromotionalPreview";
 import { defaultHomePageSettings, type HomePageSettings } from "@/data/home-page";
+import AdminOrderEmailStatus from "@/components/admin-order-email-status";
 import AdminGmailSettings from "@/components/admin-gmail-settings";
 import AdminContactEmailSettings from "@/components/admin-contact-email-settings";
 import type { AdminCatalogSaveInput } from "@workspace/api-client-react";
@@ -490,7 +491,9 @@ function AdminOrderDetailPage({
   resolvingPayment,
   onPaymentResolution,
   onBack,
+  onOpenPayments,
 }: {
+  onOpenPayments?: () => void;
   order: Order;
   products: Product[];
   updating: boolean;
@@ -612,6 +615,8 @@ function AdminOrderDetailPage({
               <div className="admin-order-total-row"><span>Order total</span><strong>{order.total}</strong></div>
             </div>
           </section>
+
+          <AdminOrderEmailStatus orderId={order.stripeSessionId} onOpenPayments={onOpenPayments} />
 
           <section className="admin-order-card">
             <div className="admin-order-card-heading">
@@ -3389,6 +3394,7 @@ export default function AdminDashboard({
             resolvingPayment={resolvingPaymentOrderId === selectedOrder.id}
             onPaymentResolution={(action) => void resolveOrderPayment(selectedOrder, action)}
             onBack={() => setSelectedOrderId(null)}
+            onOpenPayments={() => setSection("payments")}
           />
         )}
 

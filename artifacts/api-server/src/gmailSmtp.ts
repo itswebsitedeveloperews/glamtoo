@@ -1,6 +1,8 @@
-import nodemailer from "nodemailer";
+import nodemailer, { type SendMailOptions } from "nodemailer";
 import { createHash } from "node:crypto";
 import { gmailOAuthClient, gmailUsesOAuth, getGmailRefreshToken } from "./gmailOAuthCredentials";
+
+type GmailMessage = { subject: string; html: string; text: string; attachments?: SendMailOptions["attachments"] };
 
 export type GmailSmtpConfig = {
   user: string; fromName: string; replyTo: string; mode: "app_password" | "oauth2";
@@ -67,7 +69,7 @@ export function gmailContactMessageId(config: { user: string }, enquiryId: numbe
 
 export async function sendGmailContactNotification(
   config: GmailSmtpConfig, enquiryId: number, adminEmail: string, customerEmail: string,
-  message: { subject: string; html: string; text: string },
+  message: GmailMessage,
   messageId = gmailContactMessageId(config, enquiryId, adminEmail),
 ) {
   return sendGmailMessage(config, adminEmail, message, messageId,
@@ -85,7 +87,7 @@ export async function sendGmailAdminOrderConfirmation(config: GmailSmtpConfig, o
 }
 
 async function sendGmailMessage(
-  config: GmailSmtpConfig, recipient: string, message: { subject: string; html: string; text: string },
+  config: GmailSmtpConfig, recipient: string, message: GmailMessage,
   messageId: string, headers: Record<string, string>, replyTo = config.replyTo,
 ) {
   const client = transport(config);

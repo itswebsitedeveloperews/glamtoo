@@ -7,7 +7,15 @@ The merchant requested replacing the previous deep pink with exactly `#c96381` t
 
 Action buttons, including the product-card “Shop Now” buttons, must use `#e23d6f` as their default background and `#c93260` on hover. This supersedes the earlier button palette; non-button accents remain unchanged.
 
-The bag-count badge number must be `#fff`; keep its existing pink background. The merchant explicitly requested this exception to dark accent text.
+Bag-count and wishlist-count badge numbers must be `#fff`; keep their existing pink backgrounds. The merchant explicitly requested these exceptions to dark accent text.
+
+Checkout step badge numbers (Billing, Shipping and Payment) must also be white
+on their existing pink backgrounds.
+
+**Why:** The merchant explicitly requested white numbers in the checkout steps.
+
+**How to apply:** Preserve this exception when applying generic accent-text rules;
+keep backgrounds and checkout behavior unchanged.
 
 Active admin navigation items should match the action buttons: `#e23d6f` with
 white text, and `#c93260` on hover.

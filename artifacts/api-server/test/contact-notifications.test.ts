@@ -114,6 +114,9 @@ test("Gmail alerts go only to configured admin, use customer Reply-To and escape
   assert.equal(smtpCalls[0].from.address, "sender@example.test");
   assert.equal(smtpCalls[0].html.includes("<script>"), false);
   assert.match(smtpCalls[0].html, /&lt;script&gt;/);
+  assert.match(smtpCalls[0].html, /src="cid:glam-too-contact-wordmark"/);
+  assert.equal(smtpCalls[0].attachments[0].contentType, "image/png");
+  assert.equal(smtpCalls[0].attachments[0].cid, "glam-too-contact-wordmark");
   assert.match(stored.email_message_id, /glam-too-contact-/);
   assert.equal(stored.delivered_at, null);
 });

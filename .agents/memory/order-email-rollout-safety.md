@@ -25,6 +25,17 @@ Keep provider setup and unrestricted customer-email rollout separate. Do not aut
 
 **How to apply:** Preserve recipient restrictions during setup and testing. Get explicit approval before enabling unrestricted customer delivery or a historical resend. Actual provider-delivery or controlled-inbox evidence is required before reporting end-to-end success; simulated responses and API acceptance are not that evidence.
 
+Checking or refreshing an order's email flow must not send or retry messages.
+Keep customer confirmations and admin copies separate, and distinguish
+provider acceptance from confirmed delivery.
+
+**Why:** The merchant reported a paid order without received email; payment,
+queued notifications, missing admin copies and inbox delivery are different
+facts, and confusing them can lead to duplicate sends.
+
+**How to apply:** Show recorded events and current blocking conditions without
+requeueing jobs or bypassing recipient and historical-send restrictions.
+
 The merchant approved Gmail SMTP for order confirmations, replacing the proposed MailerSend setup for that purpose.
 
 **Why:** The user explicitly chose “Switch to Gmail SMTP.”
