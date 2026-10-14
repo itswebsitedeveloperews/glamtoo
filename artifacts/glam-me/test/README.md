@@ -30,6 +30,22 @@ button and Escape must still work. These tests do not force clicks through an
 overlay and do not establish compatibility with physical screen readers.
 
 
+## Admin Products regression
+
+```sh
+pnpm --filter @workspace/glam-me test:storefront-browser admin-products.spec.ts
+```
+
+This check is also discovered by the unfiltered browser command. It visits the
+real admin route with a browser-only synthetic signed-in Clerk module and an
+authorized access response. The initialized catalog contains published and draft
+fixtures. It requires the product grid, Add product, View product links and Edit
+product buttons, while rejecting any Product Information Review text in the DOM.
+No control that changes data is clicked. Unknown API/auth requests, external
+requests and all non-read requests are blocked and fail the test. No accounts,
+products or business data are created or changed. This fixture checks the Products
+presentation, not real Clerk authentication or server-side authorization.
+
 ## Private receipt and checkout-dialog contrast
 
 `private-contrast.spec.ts` is automatically included by the existing
