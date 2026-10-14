@@ -49,3 +49,12 @@ Thumbs.db
 .cache/
 /generated-artifacts/
 .local/
+
+# Raw merchant email receipt evidence must remain local.
+/attached_assets/*.eml
+/attached_assets/0_Glam_Too_Boutique_1791976369380.txt
+/attached_assets/0_Screenshot_7_1791975860512.png
+/attached_assets/0_Screenshot_8_1791976351382.png
+/attached_assets/image_1791975199603.png
+/attached_assets/image_1791976145970.png
+/attached_assets/image_1791976224105.png
