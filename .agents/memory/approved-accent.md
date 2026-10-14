@@ -7,7 +7,11 @@ The merchant requested replacing the previous deep pink with exactly `#c96381` t
 
 Action buttons, including the product-card “Shop Now” buttons, must use `#e23d6f` as their default background and `#c93260` on hover. This supersedes the earlier button palette; non-button accents remain unchanged.
 
+The bag-count badge number must be `#fff`; keep its existing pink background. The merchant explicitly requested this exception to dark accent text.
+
 Exclude account dashboard shortcut cards and Google sign-in buttons from the pink action-button palette. Restore and preserve their original neutral styling.
+
+Google sign-in should match the merchant's reference: a white rectangular button with dark text, the standard Google logo, and a subtle neutral border/shadow. Preserve the provider's conditional “Last used” indicator rather than showing it for everyone.
 
 **Why these exceptions:** The merchant explicitly corrected the broad button-color change and asked for these cards and Google login buttons not to be colored.
 

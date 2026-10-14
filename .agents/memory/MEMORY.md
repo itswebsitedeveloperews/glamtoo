@@ -32,7 +32,8 @@
 - [Home page curation](home-page-curation.md) — An unset homepage uses defaults; intentionally empty saved selections must stay empty after refresh.
 - [Storefront defaults](storefront-defaults.md) — Merchant wants original header/footer menus and homepage category presentation; do not hide empty links/tiles incidentally.
 - [Glam Too Boutique wordmark](boutique-wordmark.md) — Keep Glam Too above Boutique, with the original serif and pink Boutique rules.
-- [Approved accent](approved-accent.md) — Preserve separate merchant-approved button and accent palettes; change foreground ink to meet contrast.
+- [Approved accent](approved-accent.md) — Preserve requested button colors and white labels; keep account cards and Google sign-in neutral.
+- [Form focus treatment](form-focus-treatment.md) — Merchant wants no outer outline on editable fields; use an existing-border or inset focus highlight.
 - [Catalog URL policy](catalog-url-policy.md) — Preserve URL formats and stable slugs; SEO metadata and redirects require server document handling.
 - [Chromium CDP preview checks](chromium-cdp-targets.md) — Select the actual page target and use instant scrolling for deterministic captures.
 - [Transactional email rollout](order-email-rollout-safety.md) — Separate multiple admin recipients for contacts/order copies; blank lists use admin email. Preserve customer restrictions and avoid replay/duplicates.
