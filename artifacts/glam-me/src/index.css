@@ -273,7 +273,7 @@ h2 { text-transform: capitalize !important; }
   min-height: 43px;
   border: 1px solid var(--button-bg);
   background-color: var(--button-bg);
-  color: #fff;
+  color: #000;
   padding: 0 22px;
   font-size: 14px;
   letter-spacing: .16em;
@@ -302,8 +302,8 @@ h2 { text-transform: capitalize !important; }
 .price { font-size: 16px; white-space: nowrap; }
 
 .moments { padding: 84px 0 96px; background: var(--pink-deep); }
-.moments-heading { margin: 0 auto 34px; color: var(--white); text-align: center; }
-.moments-heading .eyebrow { color: rgba(255,255,255,.8); }
+.moments-heading { margin: 0 auto 34px; color: var(--ink); text-align: center; }
+.moments-heading .eyebrow { color: inherit; }
 .moments-heading h2 { margin: 10px 0 0; font: 400 clamp(44px, 5.2vw, 70px)/.94 var(--hero-display); }
 .moment-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .moment-card { position: relative; aspect-ratio: 1 / 1.75; overflow: hidden; background: var(--pink-deep); color: var(--white); }

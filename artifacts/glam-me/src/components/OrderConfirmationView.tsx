@@ -43,8 +43,10 @@ const ALERT = 'M12 6v7M12 17.5v.01';
 const DOTS = 'M6 12h.01M12 12h.01M18 12h.01';
 
 function money(n: number, currency: string) {
-  try { return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(n); }
-  catch { return `${n.toFixed(2)} ${currency}`; }
+  // Saved orders use integer minor units, just like the account order view.
+  const amount = n / 100;
+  try { return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(amount); }
+  catch { return `${amount.toFixed(2)} ${currency}`; }
 }
 
 function Head({ icon, eyebrow, title, children }: { icon: string; eyebrow: string; title: string; children?: ReactNode }) {

@@ -9,6 +9,40 @@ STOREFRONT_BASE_URL=https://your-development-preview pnpm --filter @workspace/gl
 
 The browser suite uses `@playwright/test` and automatically uses Replit's Chromium when available. Outside Replit, provision Playwright's Chromium browser in your test environment, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an existing compatible Chromium executable. Both the frontend and API workflows must be running (the API also serves Clerk's development proxy).
 
+
+## Private receipt and checkout-dialog contrast
+
+`private-contrast.spec.ts` is automatically included by the existing
+`test:storefront-browser` entry point. To run only these focused checks:
+
+```sh
+pnpm --filter @workspace/glam-me test:storefront-browser private-contrast.spec.ts
+```
+
+These checks visit the real `/order-confirmation` route with mocked owned-order
+finalization responses: confirmed, account created/existing/pending, confirmation
+error, confirming/missing reference, and all refund/manual-resolution presentations.
+They also open the real Clerk modal from checkout using a synthetic signed-out
+Frontend API client/environment (including Google and password sign-in). The
+customer-facing fixture omits Clerk's developer-only warning; it does not omit
+any customer text from contrast measurement. Clerk's static SDK resources must
+still be available, but no real authentication, order, payment, or password
+mutation is sent. Unknown API calls fail the test and are blocked.
+
+The shared measurement helper reads actual computed colors, composites transparent
+backgrounds through the ancestor chain, and requires **4.5:1 for every visible text
+sample**, even headings. It checks default, settled hover, and keyboard
+`:focus-visible` states separately, including account action links/buttons.
+Unknown paint effects fail explicitly. Negative controls restore the old
+white-on-light-pink receipt/modal foregrounds and prove the measurement rejects
+them. No exact production palette values are asserted. These are focused client
+state checks, not additional public layout, hydration, or release tests.
+
+The receipt fixtures also assert item, subtotal, delivery, discount, VAT and final
+amounts in pounds from saved pence values, with EUR and invalid-currency fallback
+checks. The existing `launch.spec.ts` contrast checks reuse the same computed-color
+helper for shared action buttons. A stylesheet fixture covers the shared admin
+button classes without requiring admin access or performing admin actions.
 ## Promotional photo contrast
 
 ```sh

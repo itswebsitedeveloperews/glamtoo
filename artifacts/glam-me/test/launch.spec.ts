@@ -2,6 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { readFile } from "node:fs/promises";
 import { resolve, extname } from "node:path";
+import { expectControlContrast } from "./helpers/contrast";
 
 const image = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='500'%3E%3Crect width='400' height='500' fill='pink'/%3E%3C/svg%3E";
 const product = {
@@ -123,9 +124,10 @@ for (const path of ["/", "/shop", "/product/military-style-jacket", "/account", 
     await testInfo.attach("axe", { body: JSON.stringify(scan, null, 2), contentType: "application/json" });
     expect(scan.violations.filter((v) => v.id === "color-contrast")).toEqual([]);
     // Exercise applicable hover/focus states, with no blanket axe suppression.
-    const controls = page.locator(".nav a:last-child, .button-pink, .product-shop-now, .checkout-pay-button:not(:disabled), .cl-formButtonPrimary");
+    const controls = page.locator(".nav a:last-child, .button:not(:disabled), .product-info-link:has(.product-shop-now), .checkout-coupon-form button:not(:disabled), .cl-formButtonPrimary, .cl-socialButtonsBlockButton");
     for (const control of await controls.all()) {
       if (!await control.isVisible()) continue;
+      await expectControlContrast(page, control);
       await control.hover();
       await control.focus();
       const states = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
@@ -133,6 +135,43 @@ for (const path of ["/", "/shop", "/product/military-style-jacket", "/account", 
     }
   });
 }
+
+test("shared action button classes keep normal-size AA across default, hover and keyboard focus", async ({ page }) => {
+  await fixtures(page);
+  await page.goto("/order-confirmation");
+  await expect(page.locator(".ocv")).toBeVisible();
+  // Use the shipped stylesheet, including shared admin selectors, without
+  // signing in or sending any administrative mutations.
+  const classes = [
+    "button", "customer-recovery-button", "account-order-view-button",
+    "admin-primary", "admin-secondary", "admin-quiet-button", "admin-upload-button",
+    "admin-order-details-button", "admin-overview-payment-button", "admin-danger-button",
+    "shop-filter-apply",
+  ];
+  await page.evaluate((classes) => {
+    const section = document.createElement("section");
+    section.id = "shared-button-contrast-fixture";
+    for (const className of classes) {
+      const button = document.createElement("button");
+      button.className = className;
+      button.textContent = `Fixture ${className}`;
+      section.appendChild(button);
+    }
+    for (const className of ["contact-form", "newsletter-form", "footer-newsletter-form", "account-shortcuts", "checkout-coupon-form"]) {
+      const wrapper = document.createElement("div");
+      wrapper.className = className;
+      const button = document.createElement("button");
+      button.className = "button";
+      button.textContent = `Fixture ${className}`;
+      wrapper.appendChild(button);
+      section.appendChild(wrapper);
+    }
+    document.body.appendChild(section);
+  }, classes);
+  const controls = page.locator("#shared-button-contrast-fixture button");
+  await expect(controls).toHaveCount(16);
+  for (const control of await controls.all()) await expectControlContrast(page, control);
+});
 
 for (let run = 1; run <= 3; run++) {
   test(`mobile product maximum-session CLS sample ${run}`, async ({ page }, testInfo) => {

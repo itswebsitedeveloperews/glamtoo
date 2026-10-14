@@ -43,7 +43,9 @@ test("approved accent and button palettes keep readable ink in normal, hover and
   const readings: Array<{ name: string; state: string; contrast: number; background: string }> = [];
   for (const element of await page.locator("[data-check]").all()) {
     for (const state of ["normal", "hover", "focus"] as const) {
-      await page.mouse.move(0, 0);
+      // The first CSS-only fixture starts at (0, 0); move outside the viewport
+      // so the "normal" sample is not accidentally still hovering that button.
+      await page.mouse.move(-1, -1);
       await element.evaluate((node) => (node as HTMLElement).blur());
       if (state === "hover") await element.hover();
       if (state === "focus") await element.focus();
@@ -86,6 +88,14 @@ test("approved accent and button palettes keep readable ink in normal, hover and
       const style = getComputedStyle(node);
       return { outline: style.outlineStyle, width: style.outlineWidth, shadow: style.boxShadow };
     });
+    expect(focus.outline, `Visible focus on ${background}`).not.toBe("none");
+    expect(parseFloat(focus.width), `Focus outline width on ${background}`).toBeGreaterThanOrEqual(2);
+    expect(focus.shadow, `Second focus boundary on ${background}`).not.toBe("none");
+  }
+  expect(await page.locator("[data-copy]").evaluate((node) => getComputedStyle(node).fontSize)).toBe("16px");
+  expect(await page.locator("[data-support]").evaluate((node) => getComputedStyle(node).fontSize)).toBe("14px");
+  await test.info().attach("computed-contrast", { body: JSON.stringify(readings, null, 2), contentType: "application/json" });
+});
 
 async function expectReadableText(element: Locator) {
   const contrast = await element.evaluate((node) => {
@@ -104,13 +114,21 @@ async function expectReadableText(element: Locator) {
   });
   expect(contrast).toBeGreaterThanOrEqual(4.5);
 }
+
+test("FAQ link and delivery table headings keep readable supporting text", async ({ page }) => {
+  await page.setContent(`<style>${styles}</style><div id="root">
+    <a class="text-link" href="/faq" style="color:var(--accent-ink);border-color:var(--pink)">VISIT OUR FAQ</a>
+    <table class="delivery-information-table">
+      <thead><tr><th>Delivery method</th><th>Delivery time</th><th>Cost</th><th>Free delivery</th></tr></thead>
+    </table>
+  </div>`);
+  const faqLink = page.getByRole("link", { name: "VISIT OUR FAQ" });
+  await expect(faqLink).toBeVisible();
+  await expectReadableText(faqLink);
+  const headers = page.locator(".delivery-information-table th");
   await expect(headers).toHaveCount(4);
   for (const header of await headers.all()) {
     await expectReadableText(header);
     expect(await header.evaluate((node) => getComputedStyle(node).fontSize)).toBe("14px");
   }
 });
-
-  const faqLink = page.getByRole("link", { name: "VISIT OUR FAQ" });
-
-  const headers = page.locator(".delivery-information-table th");
