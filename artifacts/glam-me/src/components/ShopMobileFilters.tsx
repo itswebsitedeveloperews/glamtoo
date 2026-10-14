@@ -22,7 +22,7 @@ type Props = {
 };
 
 const sortChoices = [
-  { value: 'new', label: 'Date, new to old' },
+  { value: 'new', label: 'Featured order' },
   { value: 'bestsellers', label: 'Bestsellers' },
   { value: 'price-asc', label: 'Price, low to high' },
 ];

@@ -43,6 +43,17 @@ button, a, input, select, textarea, summary { outline-color: var(--pink-deep); o
 img { display: block; max-width: 100%; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
+.catalog-status { padding-top: 40px; padding-bottom: 40px; }
+.catalog-refresh-notice { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; padding: 16px; background: var(--paper); border-top: 1px solid var(--line); font-size: 14px; }
+.business-policies { margin: 28px 0; font-size: 16px; line-height: 1.6; }
+.policy-table-wrap { overflow-x: auto; }
+.policy-table-wrap .delivery-information-table { min-width: 540px; font-size: 16px; }
+.business-policies a, .admin-content-review button { text-decoration: underline; }
+.admin-content-review { padding: 24px; margin-bottom: 24px; }
+.admin-content-review p { font-size: 16px; line-height: 1.6; }
+.admin-content-review li { margin: 12px 0; font-size: 14px; }
+.admin-content-review button { border: 0; background: transparent; cursor: pointer; text-align: left; }
+
 .site-header {
   position: sticky; top: 0; z-index: 20;
   background: rgba(245,241,237,.96);
@@ -3419,3 +3430,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   .legal { padding-bottom: 12px; }
   .legal > p:last-child { margin-bottom: 0; }
 }
+
+/* Readable storefront copy, including narrow screens. */
+#root :is(.footer-intro, .footer-knowledge p, .faq-answer p, .detail-description, .detail-rich-text, .returns-help p, .collection-tile p) { font-size: 16px; }
+#root :is(.footer ul, .footer-bottom, .product-policy-text, .collection-tile-cta, .gallery-viewer-pagination, .detail-header-row .eyebrow, .delivery-information-table th, .detail-purchase-controls .field label, .detail-quantity-label, .wishlist-item-actions .button, .faq-support .button, .checkout-heading > .text-link) { font-size: 14px; }

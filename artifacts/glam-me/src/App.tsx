@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
 import logoImage from '@assets/logo-soft-options/glam-too-selected.svg';
@@ -22,7 +22,10 @@ import AdminDashboard from '@/pages/admin-dashboard';
 import { hasRichTextContent, sanitizeRichTextHtml } from '@/utils/rich-text';
 import { calculateShippingAmount, selectShippingMethod } from '@workspace/shipping';
 import { useShippingMethods } from '@/hooks/use-shipping-methods';
-import { getProductPricing } from '@/utils/product-pricing';
+import { getCartLineAmount, getProductPricing } from '@/utils/product-pricing';
+import BusinessPolicies, { DeliveryPolicy, ReturnPolicy } from '@/components/BusinessPolicies';
+import { categoryProductCount, type CatalogStatus } from '@/utils/storefront-truth';
+import { useMobileMenu } from '@/hooks/use-mobile-menu';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const clerkPubKey = publishableKeyFromHost(
@@ -77,8 +80,6 @@ const clerkAppearance = {
   },
 };
 
-const adminProductsStorageKey = 'glam-me-admin-products-v4';
-const adminCategoriesStorageKey = 'glam-me-admin-categories-v2';
 const cartStorageKey = 'glam-me-cart-v1';
 const pendingCouponPaymentStorageKey = 'glam-me-pending-coupon-payment-v1';
 const checkoutAttemptStorageKey = 'glam-too-checkout-attempt-v1';
@@ -101,8 +102,10 @@ function rememberCheckoutAttempt(attempt: { key: string; signature: string } | u
 }
 const checkoutPreferencesStorageKey = 'glam-me-checkout-preferences-v1';
 const inventoryStorageKey = 'glam-me-live-inventory-v1';
+let currentInventory: Record<string, number> = {};
 const wishlistStorageKey = 'glam-me-wishlist-v1';
 let sharedCatalog: { products: CatalogProduct[]; categories: CatalogCategory[]; homePage: HomePageSettings | null } | null = null;
+let catalogStatus: CatalogStatus = "loading";
 
 type CartItem = {
   productId: number;
@@ -410,11 +413,10 @@ function formatPounds(value: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(value);
 }
 
-type DeliveryInformationRow = { id: string; option: string; information: string; cost: number; freeOver: number | null; sortOrder: number };
 type SizeGuideRow = { id: string; size: string; ukSize: string; bust: string; waist: string; hips: string; sortOrder: number };
 
-function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'productId' | 'quantity'> = { size: 'One size' }, quantity = 1) {
-  const size = selection.size || 'One size';
+function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'productId' | 'quantity'> = { size: '' }, quantity = 1) {
+  const size = selection.size;
   const requestedQuantity = Math.max(1, Math.floor(quantity));
   const availableStock = selection.variationId
     ? product.variations.find((variation) => variation.id === selection.variationId)?.stock ?? 0
@@ -453,19 +455,8 @@ function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'pr
   }
 }
 
-function getStoredInventory() {
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(inventoryStorageKey) ?? '{}') as Record<string, unknown>;
-    return Object.fromEntries(
-      Object.entries(parsed).filter(([, stock]) => Number.isInteger(stock) && Number(stock) >= 0),
-    ) as Record<string, number>;
-  } catch {
-    return {};
-  }
-}
-
 function applyLiveInventory(products: CatalogProduct[]) {
-  const inventory = getStoredInventory();
+  const inventory = currentInventory;
   return products.map((product) => {
     if (product.type === 'Variable') {
       return {
@@ -496,7 +487,8 @@ function useLiveInventory() {
         const validInventory = Object.fromEntries(
           Object.entries(inventory).filter(([, stock]) => Number.isInteger(stock) && Number(stock) >= 0),
         );
-        window.localStorage.setItem(inventoryStorageKey, JSON.stringify(validInventory));
+        currentInventory = validInventory as Record<string, number>;
+        try { window.localStorage.setItem(inventoryStorageKey, JSON.stringify(validInventory)); } catch { /* The live response still applies without browser storage. */ }
         setInventoryVersion((version) => version + 1);
       })
       .catch(() => {
@@ -509,18 +501,7 @@ function useLiveInventory() {
 }
 
 function getStorefrontProducts(): CatalogProduct[] {
-  if (sharedCatalog) {
-    return applyLiveInventory(normalizeStorefrontProducts(sharedCatalog.products));
-  }
-  try {
-    const stored = window.localStorage.getItem(adminProductsStorageKey);
-    if (!stored) return applyLiveInventory(catalogProducts);
-    const products = JSON.parse(stored) as Array<Partial<CatalogProduct>>;
-    if (!Array.isArray(products)) return applyLiveInventory(catalogProducts);
-    return applyLiveInventory(normalizeStorefrontProducts(products));
-  } catch {
-    return applyLiveInventory(catalogProducts);
-  }
+  return sharedCatalog ? applyLiveInventory(normalizeStorefrontProducts(sharedCatalog.products)) : [];
 }
 
 function normalizeStorefrontProducts(products: Array<Partial<CatalogProduct>>): CatalogProduct[] {
@@ -544,73 +525,43 @@ function normalizeStorefrontProducts(products: Array<Partial<CatalogProduct>>): 
         || matchingCategory?.image
         || fashionImage;
       return {
-        ...matchingCatalogProduct,
         ...product,
         id: Number.isInteger(productId) && productId > 0 ? productId : matchingCatalogProduct?.id ?? index + 1,
         slug: createProductSlug(String(product.slug || product.name || matchingCatalogProduct?.slug || matchingCatalogProduct?.name || `product-${index + 1}`)),
         name: product.name || matchingCatalogProduct?.name || "Glam Too piece",
         category: product.category || matchingCatalogProduct?.category || "",
         eyebrow: typeof product.eyebrow === "string" ? product.eyebrow : matchingCatalogProduct?.eyebrow,
-        price: formatCatalogPrice(product.price || matchingCatalogProduct?.price || ""),
-        description: typeof product.description === "string" ? product.description : matchingCatalogProduct?.description ?? "",
-        longDescription: typeof product.longDescription === "string" ? product.longDescription : matchingCatalogProduct?.longDescription,
-        fitAndSize: typeof product.fitAndSize === "string" ? product.fitAndSize : matchingCatalogProduct?.fitAndSize,
-        deliveryAndReturns: typeof product.deliveryAndReturns === "string" ? product.deliveryAndReturns : matchingCatalogProduct?.deliveryAndReturns,
-        careDetails: typeof product.careDetails === "string" ? product.careDetails : matchingCatalogProduct?.careDetails,
+        price: formatCatalogPrice(product.price ?? ""),
+        description: product.description ?? "",
+        longDescription: product.longDescription,
+        fitAndSize: product.fitAndSize,
+        deliveryAndReturns: product.deliveryAndReturns,
+        careDetails: product.careDetails,
         image: primaryImage,
         position: product.position || matchingCatalogProduct?.position || "50% 50%",
         galleryImages: getCatalogProductImages({ image: primaryImage, galleryImages: product.galleryImages }),
-        variations: (product.variations ?? matchingCatalogProduct?.variations ?? []).map((variation) => ({
+        variations: (product.type === "Variable" ? product.variations ?? [] : []).map((variation) => ({
           ...variation,
           price: formatCatalogPrice(variation.price),
         })),
       } as CatalogProduct;
-    })
-    .sort((first, second) => second.id - first.id);
-}
-function getStoredCatalogMediaRecords(): Array<Pick<CatalogProduct, "image" | "galleryImages">> {
-  try {
-    const stored = window.localStorage.getItem(adminProductsStorageKey);
-    if (!stored) return [];
-    const products = JSON.parse(stored) as Array<Partial<CatalogProduct>>;
-    if (!Array.isArray(products)) return [];
-    return products.map((product) => ({
-      image: typeof product.image === "string" ? product.image : "",
-      galleryImages: Array.isArray(product.galleryImages)
-        ? product.galleryImages.filter((image): image is string => typeof image === "string")
-        : [],
-    }));
-  } catch {
-    return [];
-  }
+    });
 }
 function slugify(value: string): string {
   return value.toLowerCase().trim().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
 function getStorefrontCategories(): CatalogCategory[] {
-  if (sharedCatalog) return sharedCatalog.categories.map((category) => ({
+  return (sharedCatalog?.categories ?? []).map((category) => ({
     ...category,
     image: getCatalogMediaSource(category.image),
   }));
-  try {
-    const stored = window.localStorage.getItem(adminCategoriesStorageKey);
-    if (!stored) return catalogCategories;
-    const categories = JSON.parse(stored) as Array<Partial<CatalogCategory>>;
-    if (!Array.isArray(categories)) return catalogCategories;
-    return categories
-      .filter((category) => typeof category?.name === 'string' && category.name.trim())
-      .map((category, index) => ({
-        id: typeof category.id === 'number' ? category.id : index + 1,
-        name: category.name!.trim(),
-        slug: typeof category.slug === 'string' ? category.slug : undefined,
-        image: typeof category.image === 'string' ? category.image : '',
-        description: typeof category.description === 'string' ? category.description : '',
-        parentId: typeof category.parentId === 'number' ? category.parentId : null,
-      }));
-  } catch {
-    return catalogCategories;
-  }
+}
+
+function getPromotedCategories() {
+  const categories = getStorefrontCategories();
+  const products = getStorefrontProducts();
+  return categories.filter((category) => categoryProductCount(category, categories, products) > 0);
 }
 
 function categoryUrlForName(name: string) {
@@ -852,6 +803,13 @@ function WishlistButton({ product, detail = false }: { product: CatalogProduct; 
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
+  useMobileMenu(menuOpen, closeMenu, menuRef, menuTriggerRef);
+  const [routeLocation] = useLocation();
+  useEffect(() => { setMenuOpen(false); setSearchOpen(false); }, [routeLocation]);
+  const promotedCategories = getPromotedCategories().filter((category) => category.parentId == null);
   const [isScrolled, setIsScrolled] = useState(() => window.scrollY > 0);
   const [isCompact, setIsCompact] = useState(() => window.scrollY > 100);
   const [cartCount, setCartCount] = useState(getCartCount);
@@ -915,6 +873,7 @@ function Header() {
     <header className={`site-header${isScrolled ? " is-scrolled" : ""}${isCompact ? " is-compact" : ""}${menuOpen ? " is-menu-open" : ""}`} data-testid="site-header">
       <div className="header-inner">
         <button
+          ref={menuTriggerRef}
           className="menu-toggle"
           type="button"
           aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -1014,23 +973,21 @@ function Header() {
           </a>
         </div>
       </div>
-      {menuOpen && <button className="nav-overlay" type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} />}
-      <nav id="primary-navigation" className={menuOpen ? 'nav nav-open' : 'nav'} aria-label="Primary navigation">
+      {menuOpen && <div className="nav-overlay" aria-hidden="true" onClick={() => setMenuOpen(false)} />}
+      <nav ref={menuRef} tabIndex={-1} role={menuOpen ? "dialog" : undefined} aria-modal={menuOpen ? true : undefined} id="primary-navigation" className={menuOpen ? 'nav nav-open' : 'nav'} aria-label={menuOpen ? "Menu" : "Primary navigation"}>
         <div className="mobile-nav-head">
           <button className="mobile-nav-close" type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>×</button>
         </div>
-        <a href={categoryUrlForName("New In")} {...navLinkProps(categoryUrlForName("New In"))} data-testid="link-nav-new-in" onClick={() => setMenuOpen(false)}>New In</a>
-        <a href={categoryUrlForName("Clothes")} {...navLinkProps(categoryUrlForName("Clothes"))} data-testid="link-nav-clothes" onClick={() => setMenuOpen(false)}>Clothes</a>
-        <a href={categoryUrlForName("Handbags")} {...navLinkProps(categoryUrlForName("Handbags"))} data-testid="link-nav-handbags" onClick={() => setMenuOpen(false)}>Handbags</a>
-        <a href={categoryUrlForName("Purses")} {...navLinkProps(categoryUrlForName("Purses"))} data-testid="link-nav-purses" onClick={() => setMenuOpen(false)}>Purses</a>
-        <a href={categoryUrlForName("Jewellery")} {...navLinkProps(categoryUrlForName("Jewellery"))} data-testid="link-nav-jewellery" onClick={() => setMenuOpen(false)}>Jewellery</a>
-        <a href="/shop" data-testid="link-nav-sale" onClick={() => setMenuOpen(false)}>Sale</a>
+        {promotedCategories.map((category) => <a key={category.id} href={`/category/${getCategorySlug(category)}`} {...navLinkProps(`/category/${getCategorySlug(category)}`)} onClick={closeMenu}>{category.name}</a>)}
+        <a href="/shop" data-testid="link-nav-sale" onClick={closeMenu}>Shop all</a>
       </nav>
     </header>
   );
 }
 
 function Footer() {
+  useContext(CatalogMediaContext);
+  const categories = getPromotedCategories().filter((category) => category.parentId == null);
   return (
     <>
       <footer className="footer">
@@ -1040,10 +997,10 @@ function Footer() {
               <img className="footer-logo" src={logoImage} alt="Glam Too Boutique" />
               <p className="footer-intro">Outfits that make every moment yours. Expressive pieces for the beautifully busy life.</p>
             </div>
-            <div><h4>Shop</h4><ul><li><a href={categoryUrlForName("New In")} data-testid="link-footer-new-in">New In</a></li><li><a href={categoryUrlForName("Clothes")} data-testid="link-footer-clothes">Clothes</a></li><li><a href={categoryUrlForName("Handbags")} data-testid="link-footer-handbags">Handbags</a></li><li><a href={categoryUrlForName("Purses")} data-testid="link-footer-purses">Purses</a></li><li><a href={categoryUrlForName("Jewellery")} data-testid="link-footer-jewellery">Jewellery</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
-            <div><h4>Help</h4><ul><li><a href="/returns" data-testid="link-footer-delivery">Returns</a></li><li><a href="/faq" data-testid="link-footer-size-guide">Size Guide</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
-            <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">About</a></li><li><a href="/about" data-testid="link-footer-style-journal">Style Journal</a></li></ul></div>
-            <div className="footer-knowledge"><h4>Stay in the know</h4><p>Sign up for new arrivals<br /> and exclusive offers.</p><form className="footer-newsletter-form" action="/" method="get"><label className="sr-only" htmlFor="footer-newsletter-email">Email address</label><input id="footer-newsletter-email" name="email" type="email" placeholder="Enter your email" required data-testid="input-footer-newsletter-email" /><button type="submit" aria-label="Sign me up" data-testid="button-footer-newsletter-submit">→</button></form></div>
+            <div><h4>Shop</h4><ul>{categories.map((category) => <li key={category.id}><a href={`/category/${getCategorySlug(category)}`}>{category.name}</a></li>)}<li><a href="/shop" data-testid="link-footer-sale">Shop all</a></li></ul></div>
+            <div><h4>Help</h4><ul><li><a href="/delivery-returns" data-testid="link-footer-delivery">Delivery &amp; returns</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
+            <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">Our story</a></li></ul></div>
+            <div className="footer-knowledge"><h4>Need help?</h4><p>Contact us with questions about a product or your order.</p><a href="/contact" className="text-link">Get in touch</a></div>
           </div>
           <div className="footer-bottom"><span>© 2026 Glam Too. All rights reserved. <span aria-hidden="true">|</span> <a href="https://webdesignessex.io/" target="_blank" rel="noreferrer" data-testid="link-footer-web-design-essex">Web Design Essex</a></span><div className="footer-legal-links"><a href="/privacy" data-testid="link-footer-privacy">Privacy Policy</a><span aria-hidden="true">|</span><a href="/terms" data-testid="link-footer-terms">Terms &amp; Conditions</a></div></div>
         </div>
@@ -1065,7 +1022,7 @@ function ProductCard({ product, featured = false, showShopNow = false }: { produ
     <article className="product-card" data-testid={`card-product-${product.id}`}>
       <div className="product-image">
         <a className="product-card-image-link" href={`/product/${product.slug}`} data-testid={`link-product-${product.id}`} aria-label={`View ${product.name}`}>
-          {product.type === 'Simple' && product.stock <= 0 ? <span className="badge">Out of stock</span> : featured && <span className="badge">Just in</span>}
+          {product.type === 'Simple' && product.stock <= 0 ? <span className="badge">Out of stock</span> : featured && <span className="badge">Featured</span>}
           <img src={product.image} alt={product.name} />
         </a>
         <WishlistButton product={product} />
@@ -1080,13 +1037,14 @@ function ProductCard({ product, featured = false, showShopNow = false }: { produ
 }
 
 function Home() {
+  useContext(CatalogMediaContext);
   useLiveInventory();
   const products = getStorefrontProducts();
   const categories = getStorefrontCategories();
   const settings = sharedCatalog?.homePage ?? defaultHomePageSettings(categories, products);
   const categoryById = new Map(categories.map((category) => [category.id, category]));
   const productById = new Map(products.map((product) => [product.id, product]));
-  const featuredCategories = settings.categoryIds.map((id) => categoryById.get(id)).filter((category): category is CatalogCategory => Boolean(category));
+  const featuredCategories = settings.categoryIds.map((id) => categoryById.get(id)).filter((category): category is CatalogCategory => Boolean(category && categoryProductCount(category, categories, products) > 0));
   const obsessionProducts = settings.obsessionIds.map((id) => productById.get(id)).filter((product): product is CatalogProduct => Boolean(product));
   const momentProducts = settings.momentIds.map((id) => productById.get(id)).filter((product): product is CatalogProduct => Boolean(product));
   return (
@@ -1096,9 +1054,10 @@ function Home() {
         <div className="hero-copy">
           <h1>It&apos;s your moment</h1>
           <p>Standout outfits for every plan on your calendar.</p>
-          <a className="button button-pink" href="/shop" data-testid="link-hero-shop">Shop New In</a>
+          <a className="button button-pink" href="/shop" data-testid="link-hero-shop">Shop the collection</a>
         </div>
       </section>
+      {products.length === 0 && <section className="container catalog-status"><h2>No products are available right now.</h2><p>Please check back or <a href="/contact">contact us</a> for help.</p></section>}
       {featuredCategories.length > 0 && (
         <section className={`collection-collage container${featuredCategories.length >= 5 ? " is-five-or-more" : ""}`} aria-labelledby="collection-heading">
           <h2 id="collection-heading" className="sr-only">Shop the collection</h2>
@@ -1146,7 +1105,7 @@ function PageHero({ eyebrow, title, copy }: { eyebrow: string; title: string; co
 }
 
 const productSortOptions = [
-  { value: "new", label: "New in" },
+  { value: "new", label: "Featured order" },
   { value: "bestsellers", label: "Bestsellers" },
   { value: "price-asc", label: "Price: low to high" },
 ];
@@ -1181,6 +1140,7 @@ function isProductInStock(product: CatalogProduct) {
 }
 
 function Shop() {
+  useContext(CatalogMediaContext);
   useLiveInventory();
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -1408,7 +1368,8 @@ function CategoryCard({ category }: { category: CatalogCategory }) {
 }
 
 function CategoryIndex() {
-  const categories = getStorefrontCategories();
+  useContext(CatalogMediaContext);
+  const categories = getPromotedCategories();
   return (
     <Shell>
       <PageHero eyebrow="The collections" title="Find your moment." copy="Explore every Glam Too collection, from effortless everyday layers to the pieces made for an entrance." />
@@ -1420,12 +1381,14 @@ function CategoryIndex() {
         <div className="category-directory-grid">
           {categories.map((category) => <CategoryCard key={category.id} category={category} />)}
         </div>
+        {categories.length === 0 && <p>No populated collections are available right now.</p>}
       </section>
     </Shell>
   );
 }
 
 function CategoryDetail({ params }: { params: { slug: string } }) {
+  useContext(CatalogMediaContext);
   useLiveInventory();
   const [, navigate] = useLocation();
   const search = useSearch();
@@ -1443,9 +1406,16 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
   const categories = getStorefrontCategories();
   const category = categories.find((item) => getCategorySlug(item) === params.slug);
   if (!category) return <NotFoundRoute />;
-  const childCategoryNames = categories
-    .filter((item) => item.parentId === category.id)
-    .map((item) => getCategorySlug(item));
+  const descendantIds = new Set([category.id]);
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const item of categories) {
+      if (item.parentId != null && descendantIds.has(item.parentId) && !descendantIds.has(item.id)) {
+        descendantIds.add(item.id); changed = true;
+      }
+    }
+  }
+  const childCategoryNames = categories.filter((item) => descendantIds.has(item.id)).map((item) => getCategorySlug(item));
   const matchingCategorySlugs = new Set([getCategorySlug(category), ...childCategoryNames]);
   const sortFilter = new URLSearchParams(search).get("sort")?.trim().toLowerCase() ?? "new";
   const activeSort = productSortOptions.some((option) => option.value === sortFilter) ? sortFilter : "new";
@@ -1493,11 +1463,8 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
   );
 }
 
-function Product() {
-  return <Shell><div className="container product-detail"><div className="product-detail-layout"><div className="product-gallery"><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress in blush pink, full editorial view" /></div><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress detail" /></div><div className="gallery-image"><img src={fashionImage} alt="Luna ruffle mini dress styled for occasionwear" /></div></div><div className="detail-copy"><div className="eyebrow">The occasion edit · Just in</div><h1>Luna Ruffle Mini Dress</h1><div className="detail-price">£89.99</div><p>A little romance, a lot of movement. Luna is cut in soft recycled satin with a gathered neckline, floaty ruffles and a hem made for dancing.</p><form className="detail-form" action="/cart" method="get"><div className="field"><label htmlFor="dress-size">Select size</label><select id="dress-size" name="size" defaultValue="" required data-testid="select-product-size"><option value="" disabled>Choose a size</option><option>UK 6</option><option>UK 8</option><option>UK 10</option><option>UK 12</option><option>UK 14</option></select></div><div className="field"><label>Colour · Blush</label><div className="swatches" aria-label="Available colours"><span className="swatch swatch-pink" title="Blush"></span><span className="swatch swatch-black" title="Black"></span><span className="swatch swatch-blue" title="Sky"></span></div></div><button className="button" type="submit" data-testid="button-add-to-bag">Add to bag · £89.99</button></form><div className="detail-notes"><details open><summary>Fit &amp; details</summary><p>True to size with a relaxed, floaty fit. Adjustable straps and invisible side zip. Dress length: 82cm.</p></details><details><summary>Delivery &amp; returns</summary><p>Free standard delivery over £75. Return unworn pieces within 28 days.</p></details></div></div></div></div></Shell>;
-}
-
 function ProductDetail({ params }: { params: { slug: string } }) { 
+  useContext(CatalogMediaContext);
   useLiveInventory();
   const product = getStorefrontProducts().find((item) => item.slug === params.slug || String(item.id) === params.slug);
   const galleryImages = getCatalogProductImages(product ?? { image: "" });
@@ -1508,8 +1475,6 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const [quantity, setQuantity] = useState(1);
   const [variationMessage, setVariationMessage] = useState('');
   const [openProductInformation, setOpenProductInformation] = useState<string | null>(null);
-  const [deliveryInformation, setDeliveryInformation] = useState<DeliveryInformationRow[]>([]);
-  const [returnInformation, setReturnInformation] = useState("");
   const [sizeGuide, setSizeGuide] = useState<SizeGuideRow[]>([]);
 
   useEffect(() => {
@@ -1528,22 +1493,6 @@ function ProductDetail({ params }: { params: { slug: string } }) {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/delivery-information")
-      .then(async (response) => {
-        const payload = await response.json() as { deliveryInformation?: DeliveryInformationRow[] };
-        if (!response.ok) throw new Error("Delivery information could not be loaded.");
-        if (active) setDeliveryInformation(payload.deliveryInformation ?? []);
-      })
-      .catch(() => {
-        if (active) setDeliveryInformation([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
     fetch("/api/size-guide")
       .then(async (response) => {
         const payload = await response.json() as { sizeGuide?: SizeGuideRow[] };
@@ -1552,22 +1501,6 @@ function ProductDetail({ params }: { params: { slug: string } }) {
       })
       .catch(() => {
         if (active) setSizeGuide([]);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-    fetch("/api/return-information")
-      .then(async (response) => {
-        const payload = await response.json() as { content?: string };
-        if (!response.ok) throw new Error("Return information could not be loaded.");
-        if (active) setReturnInformation(payload.content ?? "");
-      })
-      .catch(() => {
-        if (active) setReturnInformation("");
       });
     return () => {
       active = false;
@@ -1607,7 +1540,6 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const productInformation = [
     { title: 'Description', content: product?.longDescription },
     { title: 'Fit & Size', content: product?.fitAndSize },
-    { title: 'Returns', content: returnInformation },
     { title: 'Care Details', content: product?.careDetails },
   ].filter((section): section is { title: string; content: string } => Boolean(section.content && hasRichTextContent(section.content)));
   const sizeGuideRowSpans = sizeGuide.map((row, index) => {
@@ -1650,8 +1582,8 @@ function ProductDetail({ params }: { params: { slug: string } }) {
       return;
     }
     const selection = selectedVariation
-      ? { size: selectedVariation.size || 'One size', colour: selectedVariation.colour || undefined, options: selectedVariation.attributes, variationId: selectedVariation.id }
-      : { size: 'One size' };
+      ? { size: selectedVariation.size, colour: selectedVariation.colour || undefined, options: selectedVariation.attributes, variationId: selectedVariation.id }
+      : { size: '' };
     const wasSaved = addProductToCart(selectedProduct, selection, quantity);
     const fallbackParams = new URLSearchParams({
       product: String(selectedProduct.id),
@@ -1804,7 +1736,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 
                 {isSoldOut && <p className="variation-message">This product is currently out of stock.</p>}
                 
-                <button className="button detail-add-to-bag" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation)} data-testid={`button-add-to-bag-${product.id}`}>
+                <button className="button detail-add-to-bag" type="submit" disabled={isSoldOut || (product.type === 'Variable' && !selectedVariation) || getCartLineAmount(product, selectedVariation?.id) === null} data-testid={`button-add-to-bag-${product.id}`}>
                   {isSoldOut ? 'Out of stock' : `ADD TO BAG · ${displayedPrice}`}
                   <ShoppingBag size={18} />
                 </button>
@@ -1813,8 +1745,8 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 <div className="product-policy">
                   <RefreshCcw className="product-policy-icon" aria-hidden="true" />
                   <div>
-                    <h3 className="product-policy-title">21-Day Returns</h3>
-                    <p className="product-policy-text">Return unworn items with tags attached for a full refund.</p>
+                    <h3 className="product-policy-title">Delivery &amp; returns</h3>
+                    <p className="product-policy-text"><a href="/delivery-returns">Read our current delivery and return information.</a></p>
                   </div>
                 </div>
                 <div className="product-policy">
@@ -1826,8 +1758,10 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 </div>
               </div>
               
-               {(productInformation.length > 0 || sizeGuide.length > 0 || deliveryInformation.length > 0) && (
+               <div>
                  <div className="detail-accordion" aria-label="Product information">
+                   <details><summary>Returns<span aria-hidden="true">+</span></summary><div className="detail-accordion-content"><ReturnPolicy /></div></details>
+                   <details><summary>Delivery<span aria-hidden="true">+</span></summary><div className="detail-accordion-content"><DeliveryPolicy /></div></details>
                    {productInformation.map((section) => (
                      <details key={section.title} open={openProductInformation === section.title}>
                        <summary onClick={(event) => {
@@ -1873,38 +1807,8 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                        </div>
                      </details>
                    )}
-                   {deliveryInformation.length > 0 && (
-                     <details open={openProductInformation === "Delivery"}>
-                       <summary onClick={(event) => {
-                         event.preventDefault();
-                         setOpenProductInformation((current) => current === "Delivery" ? null : "Delivery");
-                       }}>Delivery<span aria-hidden="true">+</span></summary>
-                       <div className="detail-accordion-content detail-delivery-content">
-                         <div className="delivery-table-wrap">
-                           <table className="delivery-information-table">
-                             <thead>
-                               <tr>
-                                 <th scope="col">Delivery option</th>
-                                 <th scope="col">Delivery information</th>
-                                 <th scope="col">Delivery cost</th>
-                               </tr>
-                             </thead>
-                             <tbody>
-                               {deliveryInformation.map((row) => (
-                                 <tr key={row.id}>
-                                   <td data-label="Delivery option">{row.option}</td>
-                                   <td data-label="Delivery information">{row.information}</td>
-                                   <td data-label="Delivery cost">{row.cost === 0 ? "Free" : formatPounds(row.cost / 100)}{row.cost > 0 && row.freeOver !== null && <small className="delivery-free-threshold">Free on orders {formatPounds(row.freeOver / 100)} or more</small>}</td>
-                                 </tr>
-                               ))}
-                             </tbody>
-                           </table>
-                         </div>
-                       </div>
-                     </details>
-                   )}
                  </div>
-               )}
+               </div>
             </form>
           </div>
         </div>
@@ -1929,6 +1833,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
 }
 
 function WishlistPage() {
+  useContext(CatalogMediaContext);
   useLiveInventory();
   const { productIds, isLoading, error, isPending, removeProduct, moveProductToCart } = useWishlist();
   const [cartError, setCartError] = useState("");
@@ -1975,8 +1880,6 @@ function WishlistPage() {
           <div className="wishlist-grid">
             {wishlistProducts.map((product) => {
               const available = isAvailable(product);
-              const salePrice = product.salePrice;
-              const hasSalePrice = product.type === "Simple" && Boolean(salePrice && parsePounds(salePrice) < parsePounds(product.price));
               return (
                 <article className="wishlist-item" key={product.id}>
                   <a className="wishlist-item-image" href={`/product/${product.slug}`} aria-label={`View ${product.name}`}>
@@ -1987,9 +1890,8 @@ function WishlistPage() {
                     <div>
                       <p className="wishlist-item-category">{product.category}</p>
                       <h2><a href={`/product/${product.slug}`}>{product.name}</a></h2>
-                      <div className={`wishlist-item-price${hasSalePrice ? " is-on-sale" : ""}`}>
-                        {hasSalePrice && <del>{product.price}</del>}
-                        <strong>{hasSalePrice ? salePrice : getProductPricing(product).label}</strong>
+                      <div className="wishlist-item-price">
+                        <strong>{getProductPricing(product).label}</strong>
                       </div>
                       <p className={`wishlist-stock${available ? " is-in-stock" : ""}`}>{available ? "In stock" : "Out of stock"}</p>
                     </div>
@@ -2114,13 +2016,10 @@ function FAQ() {
     { category: "Orders", question: "Where is my order?", answer: "Once your order has been dispatched, you will receive a confirmation email with a tracking link. You can use this link to follow your parcel’s journey in real time." },
     { category: "Orders", question: "Can I change or cancel my order?", answer: "We start preparing orders quickly, but email hello@glamtoo.co.uk as soon as possible and our team will do their best to help before dispatch." },
     { category: "Orders", question: "Can I update my delivery address?", answer: "If your order has not been dispatched, contact us straight away with your order number and the corrected address. We cannot guarantee changes after dispatch." },
-    { category: "Delivery", question: "How long does delivery take?", answer: "Standard delivery takes 2–4 working days and express delivery takes 1–2 working days. You will receive tracking as soon as your parcel leaves us." },
-    { category: "Delivery", question: "Do you deliver internationally?", answer: "We currently deliver within the UK. Delivery options and costs are shown at checkout before you place your order." },
-    { category: "Delivery", question: "How much does delivery cost?", answer: "Standard delivery is £3.95, or free on orders of £75 or more. Express delivery is £6.95." },
-    { category: "Returns", question: "How do I return an item?", answer: "Send unworn, unwashed items back within 28 days of delivery with tags attached. Email hello@glamtoo.co.uk with your order number to start your return." },
-    { category: "Returns", question: "When will I receive my refund?", answer: "We will process your refund once your return has been checked. Please allow up to 5 working days for the refund to appear in your original payment account." },
-    { category: "Products", question: "How do I choose the right size?", answer: "Every product page includes fit notes and garment measurements to help you choose. If you are between sizes, we recommend sizing up in fitted styles." },
-    { category: "Products", question: "How should I care for my Glam Too pieces?", answer: "Follow the care label on each garment. We recommend a cool wash where possible and keeping occasionwear away from perfume, makeup and deodorant." },
+    { category: "Delivery", question: "What are the current delivery options and costs?", answer: "See current delivery rates and descriptions below, or visit Delivery & returns." },
+    { category: "Returns", question: "What is the current returns policy?", answer: "See the current return information below. Contact us if you need help with your order." },
+    { category: "Products", question: "How do I choose the right size?", answer: "Check any fit and sizing information provided on the product page. If details are missing or unclear, contact us before ordering." },
+    { category: "Products", question: "How should I care for my Glam Too pieces?", answer: "Check the product’s care details and the item’s care label. Contact us if you need more information." },
     { category: "Payments", question: "Which payment methods do you accept?", answer: "You can pay securely by card through Stripe. Your available card options are shown at checkout." },
     { category: "Payments", question: "Is checkout secure?", answer: "Yes. Card details are handled securely by Stripe and never stored by Glam Too. We only receive the payment confirmation needed to complete your order." },
   ];
@@ -2195,6 +2094,7 @@ function FAQ() {
             )}
           </div>
 
+          <BusinessPolicies />
           <section className="faq-support" aria-labelledby="faq-support-heading">
             <div className="faq-support-copy">
               <div className="faq-support-icon" aria-hidden="true"><Headphones /></div>
@@ -2368,69 +2268,23 @@ function Contact() {
 }
 
 function ReturnsPage() {
-  const returnQuestions = [
-    {
-      question: "How do I make a return or exchange?",
-      answer: "Contact our customer care team with your order number and the item you would like to return. We’ll send you the return address and instructions. Items must be returned unworn, unused, and with their original tags attached.",
-    },
-    {
-      question: "What should I do if I receive an incorrect or faulty item?",
-      answer: "Please contact us before sending the item back. Include your order number, a description of the problem, and clear photographs where possible. Our team will arrange the most appropriate replacement, exchange, or refund.",
-    },
-    {
-      question: "What is the Glam Too returns policy?",
-      answer: "Return requests must be made within 21 days of purchase. Returned items must be unused, undamaged, in their original packaging, and have all tags attached. Earrings and other hygiene-sensitive items cannot be returned unless faulty.",
-    },
-    {
-      question: "How much does it cost to return an item?",
-      answer: "Customers are responsible for return postage unless the item is incorrect or faulty. We recommend using a tracked postal service because returned parcels remain your responsibility until they reach us.",
-    },
-    {
-      question: "How do I track my return?",
-      answer: "Use the tracking number supplied by your chosen postal service. Keep your postage receipt until your return has been processed.",
-    },
-    {
-      question: "Where is my refund?",
-      answer: "We’ll email you after your return has been received and inspected. Approved refunds are sent to your original payment method. Your bank or card provider may take several working days to display the funds.",
-    },
-    {
-      question: "Why have I been refunded a different amount?",
-      answer: "Original delivery charges and return postage are not normally refundable. Discounts, promotional codes, and partial order returns can also affect the final refund amount. Contact us if you believe the amount is incorrect.",
-    },
-    {
-      question: "What is the process for international returns?",
-      answer: "Contact our team before returning an international order. You are responsible for return postage, customs forms, and any related charges. Mark the parcel clearly as returned goods to help prevent customs delays.",
-    },
-    {
-      question: "How can I make a complaint?",
-      answer: "Please use our contact form and include your order number and a clear description of the issue. Our customer care team will review your complaint and respond as soon as possible.",
-    },
-  ];
-
   return (
     <Shell>
-      <main className="returns-page">
+      <div className="returns-page">
         <div className="container returns-page-inner">
           <nav className="returns-breadcrumb" aria-label="Breadcrumb">
-            <Link href="/">Home</Link><span aria-hidden="true">/</span><span>Returns</span>
+            <Link href="/">Home</Link><span aria-hidden="true">/</span><span>Delivery &amp; returns</span>
           </nav>
 
           <header className="returns-page-header">
             <div className="returns-page-icon"><RefreshCcw aria-hidden="true" /></div>
             <p className="eyebrow">Need some help?</p>
-            <h1>Returns</h1>
-            <p>Everything you need to know about returning an item and receiving your refund.</p>
+            <h1>Delivery &amp; returns</h1>
+            <p>Our current delivery options and return information.</p>
           </header>
 
-          <section className="returns-policy-card returns-faq-card" aria-label="Returns frequently asked questions">
-            <div className="returns-faq-list">
-              {returnQuestions.map((item, index) => (
-                <details key={item.question} open={index === 0}>
-                  <summary>{item.question}<ChevronDown aria-hidden="true" /></summary>
-                  <div className="returns-faq-answer"><p>{item.answer}</p></div>
-                </details>
-              ))}
-            </div>
+          <section className="returns-policy-card">
+            <BusinessPolicies />
           </section>
 
           <section className="returns-help">
@@ -2444,112 +2298,6 @@ function ReturnsPage() {
             <Link href="/contact" className="button button-pink">Contact us</Link>
           </section>
         </div>
-      </main>
-    </Shell>
-  );
-}
-
-function DeliveryReturnsPage() {
-  return (
-    <Shell>
-      <div className="dr-page">
-        <header className="dr-hero">
-          <div className="container">
-            <div className="eyebrow">The useful details</div>
-            <h1>Delivery & returns</h1>
-            <p>Everything you need to know about getting your order and sending it back if it’s not quite right.</p>
-          </div>
-        </header>
-
-        <section className="dr-section dr-delivery-section">
-          <div className="container dr-grid">
-            <div className="dr-sidebar">
-              <div className="dr-icon-box"><Truck /></div>
-              <h2>Delivery</h2>
-              <p>We aim to dispatch all orders quickly, so your new pieces arrive when you need them.</p>
-            </div>
-            <div className="dr-content">
-              <div className="dr-cards">
-                <div className="dr-card">
-                  <div className="dr-card-head">
-                    <h3>Standard UK</h3>
-                    <span className="dr-price">£3.95</span>
-                  </div>
-                  <div className="dr-card-body">
-                    <p className="dr-time">2–4 working days</p>
-                    <p className="dr-desc">Perfect for when you’re not in a rush. Delivered via our trusted courier partners.</p>
-                    <div className="dr-promo">
-                      <Sparkles />
-                      <span>Free on orders of £75 or more</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="dr-card">
-                  <div className="dr-card-head">
-                    <h3>Express UK</h3>
-                    <span className="dr-price">£6.95</span>
-                  </div>
-                  <div className="dr-card-body">
-                    <p className="dr-time">1–2 working days</p>
-                    <p className="dr-desc">Need it sooner? Choose express delivery at checkout for priority dispatch.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="dr-section dr-returns-section">
-          <div className="container dr-grid">
-            <div className="dr-sidebar">
-              <div className="dr-icon-box"><RefreshCcw /></div>
-              <h2>Returns</h2>
-              <p>Changed your mind? We gladly accept returns within 28 days of delivery.</p>
-            </div>
-            <div className="dr-content">
-              <div className="dr-steps">
-                <div className="dr-step">
-                  <div className="dr-step-number">01</div>
-                  <div className="dr-step-text">
-                    <h4>Check your items</h4>
-                    <p>Ensure items are unworn and have all original tags attached. Worn items may be declined.</p>
-                  </div>
-                </div>
-                <div className="dr-step">
-                  <div className="dr-step-number">02</div>
-                  <div className="dr-step-text">
-                    <h4>Email us to start</h4>
-                    <p>Contact our team at <a href="mailto:hello@glamtoo.co.uk" className="text-link">hello@glamtoo.co.uk</a> with your order number to begin the process.</p>
-                  </div>
-                </div>
-                <div className="dr-step">
-                  <div className="dr-step-number">03</div>
-                  <div className="dr-step-text">
-                    <h4>Send it back</h4>
-                    <p>We’ll provide you with a return address and instructions for sending your package safely back to us.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="dr-note">
-                <h4>A note on occasionwear</h4>
-                <p>Please try on occasionwear over underwear and ensure you keep makeup, perfume, and deodorant away from garments. Items showing signs of wear may not be accepted for a refund.</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="dr-cta-section">
-          <div className="container">
-            <div className="dr-cta-box">
-              <Mail />
-              <h2>Still have questions?</h2>
-              <p>If you need help with a delivery or return, our team is always here for you.</p>
-              <Link href="/contact" className="button button-pink">Get in touch</Link>
-            </div>
-          </div>
-        </section>
       </div>
     </Shell>
   );
@@ -2561,6 +2309,7 @@ function LegalPage({ type }: { type: 'privacy' | 'terms' }) {
 }
 
 function Cart() {
+  useContext(CatalogMediaContext);
   useLiveInventory();
   const { shippingMethods, shippingMethodsLoading, shippingMethodsError } = useShippingMethods();
   const [items, setItems] = useState<CartItem[]>(() => {
@@ -2581,8 +2330,9 @@ function Cart() {
     const variation = product?.type === 'Variable'
       ? product.variations.find((candidate) => candidate.id === item.variationId)
       : undefined;
-    return product ? [{ item, product, variation }] : [];
+    return product && getCartLineAmount(product, item.variationId) !== null ? [{ item, product, variation }] : [];
   });
+  const unavailableItems = items.filter((item) => !cartLines.some((line) => line.item === item));
   const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
   const selectedShipping = selectShippingMethod(shippingMethods, getCheckoutPreferences().delivery);
   const deliveryAmount = selectedShipping ? calculateShippingAmount(selectedShipping, Math.round(subtotal * 100)) / 100 : null;
@@ -2637,9 +2387,13 @@ function Cart() {
       <div className="container cart-page">
         <div className="eyebrow">Your edit</div>
         <h1>Your bag.</h1>
+        {unavailableItems.length > 0 && <section className="catalog-status" role="status">
+          <h2>Some bag items are unavailable</h2><p>These products or options cannot be priced from the current catalog. They have not been removed. Remove them or choose an available option before checking out.</p>
+          <ul>{unavailableItems.map((item, index) => <li key={index}>Product {item.productId}{item.size ? ` · ${item.size}` : ""} <button type="button" onClick={() => removeCartItem(item)}>Remove unavailable item</button></li>)}</ul>
+        </section>}
         {cartLines.length === 0 ? (
           <div className="cart-empty">
-            <p>Your bag is empty. Find a piece you love and add it to your edit.</p>
+            <p>{unavailableItems.length ? "No bag items can currently be priced." : "Your bag is empty. Find a piece you love and add it to your edit."}</p>
             <a className="button button-pink" href="/shop">Continue shopping</a>
           </div>
         ) : (
@@ -2688,9 +2442,9 @@ function Cart() {
               <h2>Summary</h2>
               <div className="summary-row"><span>Subtotal</span><span>{formatPounds(subtotal)}</span></div>
               <div className="summary-row"><span>{selectedShipping?.name ?? "Delivery"}</span><span>{deliveryAmount === null ? shippingMethodsLoading ? "Loading…" : "Unavailable" : deliveryAmount === 0 ? "Free" : formatPounds(deliveryAmount)}</span></div>
-              <div className="summary-row total"><span>Total</span><span>{deliveryAmount === null ? "—" : formatPounds(subtotal + deliveryAmount)}</span></div>
+              <div className="summary-row total"><span>Total</span><span>{deliveryAmount === null || unavailableItems.length > 0 ? "Unavailable" : formatPounds(subtotal + deliveryAmount)}</span></div>
               {!shippingMethodsLoading && !selectedShipping && <p className="checkout-payment-error" role="alert">{shippingMethodsError || "No delivery methods are currently available. Please try again later."}</p>}
-              <a className="button button-pink" href="/checkout" data-testid="link-checkout">Go to checkout</a>
+              {unavailableItems.length === 0 && <a className="button button-pink" href="/checkout" data-testid="link-checkout">Go to checkout</a>}
             </aside>
           </div>
         )}
@@ -2700,6 +2454,7 @@ function Cart() {
 }
 
 function Checkout() {
+  useContext(CatalogMediaContext);
   useLiveInventory();
   const { isLoaded, isSignedIn, userId } = useAuth();
   const { openSignUp, openSignIn } = useClerk();
@@ -2740,8 +2495,9 @@ function Checkout() {
     const variation = product?.type === "Variable"
       ? product.variations.find((candidate) => candidate.id === item.variationId)
       : undefined;
-    return product ? [{ item, product, variation }] : [];
+    return product && getCartLineAmount(product, item.variationId) !== null ? [{ item, product, variation }] : [];
   });
+  const hasUnavailableItems = cartLines.length !== checkoutItems.length;
   const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
 
   useEffect(() => {
@@ -2831,13 +2587,13 @@ function Checkout() {
   }
 
   useEffect(() => {
-    if (cartLines.length === 0) {
+    if (checkoutItems.length === 0) {
       setCouponCode("");
       setAppliedCoupon(null);
       saveCheckoutPreferences({ couponCode: undefined });
       setLocation(`${basePath}/cart`);
     }
-  }, [cartLines.length, setLocation]);
+  }, [checkoutItems.length, setLocation]);
 
   useEffect(() => {
     let cancelled = false;
@@ -3104,6 +2860,7 @@ function Checkout() {
     setCheckoutProfile((current) => ({ ...current, [field]: value }));
   };
 
+  if (hasUnavailableItems) return <Shell><section className="container catalog-status"><h1>Some bag items are unavailable</h1><p>A product or selected option is no longer available, or its current price is missing. Review your bag before continuing. No items have been removed.</p><a className="button" href="/cart">Review bag</a></section></Shell>;
   if (cartLines.length === 0) return null;
 
   return (
@@ -3165,7 +2922,7 @@ function Checkout() {
           </div>
           <aside className="checkout-order-review">
             <div className="checkout-order-heading"><h2>Your order</h2><span>{cartLines.reduce((count, { item }) => count + item.quantity, 0)} item{cartLines.reduce((count, { item }) => count + item.quantity, 0) === 1 ? "" : "s"}</span></div>
-            {cartLines.length === 0 ? <div className="checkout-empty-order"><p>Your bag is empty.</p><a className="text-link" href="/shop">Continue shopping</a></div> : <div className="checkout-order-items">{cartLines.map(({ item, product, variation }) => <article className="checkout-order-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ""}`}><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /><div><h3>{product.name}</h3><p>{[item.size !== "One size" ? item.size : "", item.colour ?? "", ...Object.values(item.options ?? {})].filter(Boolean).join(" · ") || "One size"} · Qty {item.quantity}</p></div><strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong></article>)}</div>}
+            {cartLines.length === 0 ? <div className="checkout-empty-order"><p>Your bag is empty.</p><a className="text-link" href="/shop">Continue shopping</a></div> : <div className="checkout-order-items">{cartLines.map(({ item, product, variation }) => <article className="checkout-order-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ""}`}><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /><div><h3>{product.name}</h3><p>{[product.type === "Variable" && item.size !== "One size" ? item.size : "", item.colour ?? "", ...Object.values(item.options ?? {})].filter(Boolean).join(" · ")} · Qty {item.quantity}</p></div><strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong></article>)}</div>}
             <div className="checkout-coupon" aria-label="Coupon code">
               <label htmlFor="checkout-coupon-code">Coupon code</label>
               {appliedCoupon ? (
@@ -4025,8 +3782,13 @@ function AppRoutes() {
     previousLocation.current = location;
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
   }, [location]);
-  const routeKey = location === "/admin" ? "admin" : mediaVersion;
-  return <Switch key={routeKey}>
+  const needsCatalog = ["/", "/shop", "/category", "/cart", "/wishlist", "/checkout"].includes(location) || location.startsWith("/product/") || location.startsWith("/category/");
+  if (needsCatalog && !sharedCatalog) return <Shell><section className="container catalog-status" aria-live="polite">
+    <h1>{catalogStatus === "loading" ? "Loading the collection…" : catalogStatus === "uninitialized" ? "Collection unavailable" : "Unable to load the collection"}</h1>
+    <p>{catalogStatus === "loading" ? "Please wait while we load current products and prices." : catalogStatus === "uninitialized" ? "The collection is not available yet. Please contact us for help." : "Current products and prices could not be loaded. Your saved bag has not been changed."}</p>
+    {catalogStatus !== "loading" && <button className="button" type="button" onClick={() => window.dispatchEvent(new Event("glam-catalog-retry"))}>Try again</button>}
+  </section></Shell>;
+  return <><Switch>
     <Route path="/" component={Home} />
     <Route path="/about" component={About} />
     <Route path="/shop" component={Shop} />
@@ -4050,7 +3812,7 @@ function AppRoutes() {
     <Route path="/sign-in/*?" component={CustomerSignInPage} />
     <Route path="/sign-up/*?" component={CustomerSignUpPage} />
     <Route component={NotFoundRoute} />
-  </Switch>;
+  </Switch>{needsCatalog && catalogStatus === "error" && <div className="catalog-refresh-notice" role="status">The collection could not be refreshed. Showing the last loaded catalog. <button type="button" onClick={() => window.dispatchEvent(new Event("glam-catalog-retry"))}>Retry</button></div>}</>;
 }
 
 function ClerkProviderWithRoutes() {
@@ -4075,24 +3837,33 @@ function CatalogMediaHydrator({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    let requestVersion = 0;
     async function refreshCatalog() {
-      await Promise.all([
-        hydrateCatalogProductMedia(getStoredCatalogMediaRecords()),
-        fetch("/api/catalog")
-          .then(async (response) => {
-            const payload = await response.json() as { products?: CatalogProduct[]; categories?: CatalogCategory[]; homePage?: HomePageSettings | null; initialized?: boolean };
-            if (!response.ok || !Array.isArray(payload.products) || !Array.isArray(payload.categories)) throw new Error("Catalog unavailable");
-            sharedCatalog = payload.initialized ? { products: payload.products, categories: payload.categories, homePage: payload.homePage ?? null } : null;
-          })
-          .catch(() => undefined),
-      ]);
-      if (active) setMediaVersion((version) => version + 1);
+      const version = ++requestVersion;
+      if (!sharedCatalog) { catalogStatus = "loading"; setMediaVersion((value) => value + 1); }
+      try {
+        const response = await fetch(`${basePath}/api/catalog`, { cache: "no-store" });
+        const payload = await response.json() as { products?: CatalogProduct[]; categories?: CatalogCategory[]; homePage?: HomePageSettings | null; initialized?: boolean };
+        if (!response.ok || !Array.isArray(payload.products) || !Array.isArray(payload.categories) || typeof payload.initialized !== "boolean") throw new Error("Catalog unavailable");
+        await hydrateCatalogProductMedia(payload.products);
+        if (!active || version !== requestVersion) return;
+        sharedCatalog = payload.initialized ? { products: payload.products, categories: payload.categories, homePage: payload.homePage ?? null } : null;
+        catalogStatus = payload.initialized ? "ready" : "uninitialized";
+      } catch {
+        if (!active || version !== requestVersion) return;
+        catalogStatus = "error";
+      }
+      if (active && version === requestVersion) setMediaVersion((value) => value + 1);
     }
     void refreshCatalog();
     window.addEventListener("glam-catalog-updated", refreshCatalog);
+    window.addEventListener("glam-catalog-retry", refreshCatalog);
+    window.addEventListener("focus", refreshCatalog);
     return () => {
       active = false;
       window.removeEventListener("glam-catalog-updated", refreshCatalog);
+      window.removeEventListener("glam-catalog-retry", refreshCatalog);
+      window.removeEventListener("focus", refreshCatalog);
     };
   }, []);
 

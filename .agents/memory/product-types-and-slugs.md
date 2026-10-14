@@ -5,6 +5,12 @@ description: Catalog rules for Simple versus Variable products and storefront pr
 
 Simple products are purchasable directly and must not render size, colour, or other variation controls. Variable products render only the size and colour values defined by their in-stock variations, and the selected variation determines the cart line and price.
 
+The absence of variations does not mean “one size.” Missing description, fit/sizing or care information must be reviewed by the owner, not generated or written automatically.
+
+**Why:** The merchant's launch-review scope explicitly forbids inferring product facts from the catalog structure or historical audit.
+
+**How to apply:** Keep direct Simple purchases available while flagging missing information nonblockingly in admin. Only display sizing or care facts supplied by the owner.
+
 Each product has a title-derived slug that can be edited in the admin. Storefront links use the slug; numeric product URLs remain valid as a backward-compatible fallback.
 
 **Why:** The storefront previously showed hard-coded variation UI for every product, which contradicted the selected product type and could not represent variation-level prices accurately.

@@ -23,3 +23,11 @@ export function getProductPricing(product: PricingProduct) {
     : min === max ? currency.format(min) : `${currency.format(min)} – ${currency.format(max)}`;
   return { amounts, min, max, label };
 }
+
+/** A stored variable line must resolve to an actual variant, never the parent price. */
+export function getCartLineAmount(product: PricingProduct, variationId?: number) {
+  const price = product.type === "Variable"
+    ? product.variations.find((variation) => variation.id === variationId)?.price
+    : product.price;
+  return price === undefined ? null : priceAmount(price);
+}

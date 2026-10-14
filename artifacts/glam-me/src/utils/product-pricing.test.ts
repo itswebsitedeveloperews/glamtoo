@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getProductPricing } from "./product-pricing.ts";
+import { getCartLineAmount, getProductPricing } from "./product-pricing.ts";
 
 const variable = (prices: Array<[string, number]>, parent = "£29.99") => ({
   type: "Variable" as const,
@@ -37,4 +37,13 @@ test("simple products preserve their own price", () => {
 test("invalid variant prices never become a zero-price or parent-price offer", () => {
   assert.equal(getProductPricing(variable([["", 1], ["NaN", 2]])).label, "Price unavailable");
   assert.equal(getProductPricing(variable([["£0.00", 1]])).label, "£0.00");
+});
+
+test("cart line pricing requires the chosen variable ID and never quotes its parent", () => {
+  const product = variable([["£34.99", 2]], "£1.00");
+  assert.equal(getCartLineAmount(product), null);
+  assert.equal(getCartLineAmount(product, 999), null);
+  assert.equal(getCartLineAmount(product, 0), 34.99);
+  assert.equal(getCartLineAmount({ ...product, type: "Simple", price: "£17.25" }, 999), 17.25);
+  assert.equal(getCartLineAmount({ ...product, type: "Simple", price: "" }), null);
 });
