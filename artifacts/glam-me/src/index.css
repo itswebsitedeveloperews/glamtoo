@@ -18,7 +18,7 @@
   --pink-deep: #c96381;
   --button-bg: #e23d6f;
   --button-hover-bg: #c93260;
-  --button-ink: #111111;
+  --button-ink: #fff;
   --button-hover-ink: #ffffff;
   /* Accent is merchant-approved. Text uses ink, not a darker substitute pink. */
   --accent-ink: #171615;
@@ -3464,14 +3464,14 @@ input:focus, select:focus, textarea:focus { outline: none; }
 #root :is(.footer ul, .footer-bottom, .product-policy-text, .collection-tile-cta, .gallery-viewer-pagination, .detail-header-row .eyebrow, .delivery-information-table th, .detail-purchase-controls .field label, .detail-quantity-label, .wishlist-item-actions .button, .faq-support .button, .checkout-heading > .text-link) { font-size: 14px; }
 
 /* Shared action-button palette. Keep navigation, icon and quantity controls separate. */
-:is(.button, .product-shop-now, .detail-add-to-bag, .contact-form .button, .newsletter-form button, .footer-newsletter-form button, .customer-recovery-button, .account-order-view-button, .account-shortcuts button, .checkout-coupon-form button, .admin-primary, .admin-secondary, .admin-quiet-button, .admin-upload-button, .admin-order-details-button, .admin-overview-payment-button, .admin-danger-button, .shop-filter-apply) {
+:is(.button, .product-shop-now, .detail-add-to-bag, .contact-form .button, .newsletter-form button, .footer-newsletter-form button, .customer-recovery-button, .account-order-view-button, .checkout-coupon-form button, .admin-primary, .admin-secondary, .admin-quiet-button, .admin-upload-button, .admin-order-details-button, .admin-overview-payment-button, .admin-danger-button, .shop-filter-apply) {
   background: var(--button-bg);
   border-color: var(--button-bg);
   color: var(--button-ink);
-  /* Avoid intermediate background/foreground combinations failing contrast. */
+  /* Keep button state changes immediate. */
   transition: transform .2s ease;
 }
-:is(.button, .product-shop-now, .detail-add-to-bag, .contact-form .button, .newsletter-form button, .footer-newsletter-form button, .customer-recovery-button, .account-order-view-button, .account-shortcuts button, .checkout-coupon-form button, .admin-primary, .admin-secondary, .admin-quiet-button, .admin-upload-button, .admin-order-details-button, .admin-overview-payment-button, .admin-danger-button, .shop-filter-apply):is(:hover, :focus-visible, :active):not(:disabled) {
+:is(.button, .product-shop-now, .detail-add-to-bag, .contact-form .button, .newsletter-form button, .footer-newsletter-form button, .customer-recovery-button, .account-order-view-button, .checkout-coupon-form button, .admin-primary, .admin-secondary, .admin-quiet-button, .admin-upload-button, .admin-order-details-button, .admin-overview-payment-button, .admin-danger-button, .shop-filter-apply):is(:hover, :focus-visible, :active):not(:disabled) {
   background: var(--button-hover-bg);
   border-color: var(--button-hover-bg);
   color: var(--button-hover-ink);

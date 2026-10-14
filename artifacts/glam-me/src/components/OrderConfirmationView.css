@@ -23,7 +23,7 @@
 .ocv address{font-style:normal}
 .ocv-muted{color:var(--o-muted);font-size:14px}
 .ocv-actions{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;margin-top:16px}
-.ocv-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 22px;border:1px solid var(--button-bg,#e23d6f);background:var(--button-bg,#e23d6f);color:var(--button-ink,#111111);font:inherit;font-size:14px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
+.ocv-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 22px;border:1px solid var(--button-bg,#e23d6f);background:var(--button-bg,#e23d6f);color:var(--button-ink,#fff);font:inherit;font-size:14px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
 .ocv-btn:is(:hover,:focus-visible,:active):not(:disabled){background:var(--button-hover-bg,#c93260);border-color:var(--button-hover-bg,#c93260);color:var(--button-hover-ink,#fff)}
 .ocv-btn:focus-visible,.ocv-link:focus-visible{outline:2px solid var(--o-ink);outline-offset:4px}
 .ocv-link{color:var(--o-ink);border-bottom:1px solid currentColor;padding:0;background:none;border-top:0;border-inline:0;font:inherit;font-size:14px;cursor:pointer}

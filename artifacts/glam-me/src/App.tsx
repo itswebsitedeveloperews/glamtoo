@@ -54,7 +54,7 @@ const clerkAppearance = {
   },
   variables: {
     colorPrimary: '#e23d6f',
-    colorPrimaryForeground: '#111111',
+    colorPrimaryForeground: '#fff',
     colorForeground: '#171615',
     colorMutedForeground: '#716a67',
     colorDanger: '#8b1d3d',
@@ -80,7 +80,7 @@ const clerkAppearance = {
     footerActionText: { color: '#716a67' },
     dividerText: { color: '#716a67' },
     formButtonPrimary: {
-      background: '#e23d6f', color: '#111111', borderRadius: '0px', fontSize: '14px', transition: 'none',
+      background: '#e23d6f', color: '#fff', borderRadius: '0px', fontSize: '14px', transition: 'none',
       '&:hover, &:focus-visible, &:active': { background: '#c93260', color: '#fff' },
       '&:focus-visible': { outline: '2px solid #171615', outlineOffset: '3px', boxShadow: '0 0 0 3px #fffdfb' },
     },
@@ -88,11 +88,8 @@ const clerkAppearance = {
     formFieldAction: { color: '#171615', fontSize: '14px', '&:hover, &:focus': { color: '#171615' } },
     formFieldErrorText: { color: '#8b1d3d', fontSize: '14px' },
     alertText: { color: '#8b1d3d', fontSize: '14px' },
-    socialButtonsBlockButton: {
-      background: '#e23d6f', color: '#111111', borderRadius: '0px', transition: 'none',
-      '&:hover, &:focus-visible, &:active': { background: '#c93260', color: '#fff' },
-    },
-    socialButtonsBlockButtonText: { color: 'inherit' },
+    socialButtonsBlockButton: { borderRadius: '0px' },
+    socialButtonsBlockButtonText: { color: '#171615' },
     dividerLine: { background: '#d8d0ca' },
     logoImage: { height: 'auto', width: '142px' },
   },
