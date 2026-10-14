@@ -18,6 +18,8 @@ and mobile, preserving the desktop layout.
 Keep every product-detail gallery smaller and left-aligned on iPad, using a portrait
 frame; do not apply this image sizing to phones or desktops.
 For grid and image sizing, keep phone and desktop presentation unchanged.
+Show a horizontal, scrollable gallery-thumbnail strip below the main image on
+iPad and mobile; preserve the vertical thumbnail rail on desktop.
 
 **Why:** The merchant explicitly requested two-column collections and products,
 then a smaller “New Arrivals” category heading and two-column Clothes category
@@ -35,6 +37,8 @@ The merchant subsequently requested smaller account-page headings on mobile too.
 The merchant requested wider text areas inside homepage category tiles on iPad.
 The merchant requested first-letter capitalization for account headings.
 The merchant explicitly requested half-width Shop page product cards on iPad.
+The merchant reported that the gallery slider was missing on iPad and mobile
+and explicitly requested adding it there.
 
 **How to apply:** Scope these adjustments to tablet layouts, not global grid or
 heading rules. Do not apply the desktop collection collage's spanning tile to

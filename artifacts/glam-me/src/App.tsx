@@ -1497,6 +1497,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const galleryLightbox = useRef<HTMLDivElement>(null);
   const galleryLightboxClose = useRef<HTMLButtonElement>(null);
   const galleryTouchStartX = useRef<number | null>(null);
+  const galleryThumbnails = useRef<HTMLDivElement>(null);
   const [quantity, setQuantity] = useState(1);
   const [variationMessage, setVariationMessage] = useState('');
   const [openProductInformation, setOpenProductInformation] = useState<string | null>(null);
@@ -1508,6 +1509,21 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     setGalleryZoomOpen(false);
     setQuantity(1);
   }, [product?.id, params.slug]);
+
+  useEffect(() => {
+    const strip = galleryThumbnails.current;
+    if (!strip || !window.matchMedia('(max-width: 1024px)').matches) return;
+    const active = strip.querySelector<HTMLElement>('[aria-current="true"]');
+    if (!active) return;
+    const bounds = strip.getBoundingClientRect();
+    const selected = active.getBoundingClientRect();
+    const shift = selected.left < bounds.left ? selected.left - bounds.left - 2
+      : selected.right > bounds.right ? selected.right - bounds.right + 2 : 0;
+    if (shift) strip.scrollTo({
+      left: strip.scrollLeft + shift,
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+    });
+  }, [activeGalleryIndex, galleryImages.length, product?.id]);
 
   useLayoutEffect(() => {
     if (!galleryZoomOpen) return;
@@ -1650,7 +1666,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
           <div className="product-gallery">
             {galleryImages.length > 1 && (
               <div className="gallery-thumbnails-col">
-                <div className="gallery-thumbnails" aria-label="Choose product image">
+                <div ref={galleryThumbnails} className="gallery-thumbnails" aria-label="Choose product image">
                   {galleryImages.map((image, index) => (
                     <button
                       className={`gallery-thumbnail ${index === displayedGalleryIndex ? "is-active" : ""}`}

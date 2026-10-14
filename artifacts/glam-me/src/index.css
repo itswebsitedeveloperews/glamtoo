@@ -1048,7 +1048,6 @@ h2 { text-transform: capitalize !important; }
   /* A column flex child otherwise sizes from its unloaded image (zero width).
      Reserve the full viewer before media arrives, including its aspect ratio. */
   .product-gallery .gallery-viewer { flex: none; width: 100%; }
-  .gallery-thumbnails-col { display: none; } /* Hide side thumbnails on mobile */
   .detail-header-row { flex-direction: column; align-items: flex-start; gap: 8px; }
   .detail-brand-tag { text-align: left; }
   .product-policies { grid-template-columns: 1fr; gap: 20px; }
@@ -1141,15 +1140,20 @@ h2 { text-transform: capitalize !important; }
   .product-detail-layout { display: flex; flex-direction: column; gap: 0; }
   .detail-copy { display: contents; }
   .detail-intro { order: 1; }
-  .product-gallery { order: 2; width: 100%; margin-top: 24px; }
+  .product-gallery { order: 2; width: 100%; margin-top: 24px; flex-direction: column; gap: 12px; }
+  .product-gallery .gallery-viewer { order: 1; }
+  .product-gallery .gallery-thumbnails-col { order: 2; display: block; flex: none; width: 100%; min-width: 0; }
+  .product-gallery .gallery-thumbnails { flex-direction: row; gap: 10px; max-height: none; overflow-x: auto; overflow-y: hidden; padding: 2px; scroll-snap-type: x proximity; }
+  .product-gallery .gallery-thumbnail { flex: 0 0 64px; width: 64px; scroll-snap-align: center; }
+  .product-gallery .gallery-thumbnail:focus-visible { outline: 2px solid var(--pink-deep); outline-offset: -3px; }
+  .product-gallery .gallery-thumbnails-more { display: none; }
   .detail-form { order: 3; width: 100%; margin-top: 24px; }
 }
 @media (min-width: 768px) and (max-width: 1024px) {
   .product-gallery { position: relative; top: auto; width: 100%; max-width: none; margin-inline: 0; align-self: flex-start; align-items: flex-start; justify-content: flex-start; }
   .product-gallery .gallery-viewer { flex: none; width: 60%; max-width: 480px; margin-inline: 0; align-self: flex-start; }
   .product-gallery .gallery-image { aspect-ratio: 3 / 4; }
-  .product-gallery .gallery-thumbnails-col { position: static; }
-  .product-gallery .gallery-thumbnails { max-height: min(calc(80vw - 94.4px), 584px); }
+  .product-gallery .gallery-thumbnails-col { position: static; width: 60%; max-width: 480px; }
 }
 @media (max-width: 460px) {
   .announcement { font-size: 14px; letter-spacing: .1em; }

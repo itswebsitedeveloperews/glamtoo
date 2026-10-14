@@ -27,3 +27,12 @@ to compare every product and add its gallery photos.
 **How to apply:** Use its explicitly matched product galleries as recovery
 evidence, preserving current non-media merchant fields. This approval does not
 authorize a permanent sync, unrelated catalog replacement, or production writes.
+
+Allow enough post-merge setup time for remote gallery-file and hash validation;
+do not remove the safety checks merely to meet a short setup timeout.
+
+**Why:** A recovery setup exceeded the original time limit while verifying
+remote photos, then completed successfully with more time.
+
+**How to apply:** Keep the one-time repair receipts and validation intact, and
+size the setup timeout for the work it actually performs.
