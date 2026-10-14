@@ -3575,6 +3575,13 @@ input:focus, select:focus, textarea:focus { outline: none; }
 #root :is(.footer ul, .footer-bottom, .product-policy-text, .collection-tile-cta, .gallery-viewer-pagination, .detail-header-row .eyebrow, .delivery-information-table th, .detail-purchase-controls .field label, .detail-quantity-label, .wishlist-item-actions .button, .faq-support .button, .checkout-heading > .text-link) { font-size: 14px; }
 
 @media (max-width: 767px) {
+  #root p.footer-intro,
+  #root .footer-knowledge p { font-size: 14px; }
+  #root .returns-page :is(.returns-page-header > p:last-child, .business-policies > p, .detail-rich-text, .returns-help p, .delivery-information-table),
+  #root .returns-page .delivery-information-table :is(th, td, .delivery-free-threshold),
+  #root .returns-page .delivery-information-table td[data-label]::before {
+    font-size: 14px;
+  }
   #root .faq-answer p { font-size: 14px; }
   #root .faq-page .delivery-information-table,
   #root .faq-page .delivery-information-table :is(th, td, .delivery-free-threshold),

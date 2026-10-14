@@ -25,3 +25,14 @@ paragraph specifically.
 
 **How to apply:** Widen the description without changing the footer menus,
 column positions, copy or typography.
+
+The footer description beneath the logo and the “Need help?” supporting
+paragraph should use 14px text on mobile only.
+
+**Why:** The merchant highlighted that description and requested “14px mobile
+footer font.”
+The merchant separately highlighted the “Need help?” paragraph and requested
+14px on mobile.
+
+**How to apply:** Preserve its available width, the wordmark, and tablet/desktop
+typography; do not change the other footer elements incidentally.

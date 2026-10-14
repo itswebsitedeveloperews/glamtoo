@@ -39,6 +39,8 @@ FAQ answer text should be 14px on mobile only; keep question text and
 tablet/desktop answer typography unchanged.
 The FAQ page's Delivery table text should be 12px on mobile only, without
 changing the 14px FAQ answers or tablet/desktop table typography.
+The Returns page's body and delivery-table text should be 14px on mobile only;
+keep headings and tablet/desktop typography unchanged.
 
 **Why:** The merchant explicitly requested two-column collections and products,
 then a smaller “New Arrivals” category heading and two-column Clothes category
@@ -72,6 +74,7 @@ The merchant then highlighted the overlaid product titles and requested a smalle
 The merchant explicitly requested 14px FAQ answers on mobile.
 The merchant separately highlighted the FAQ Delivery table and requested 12px
 on mobile.
+The merchant requested 14px mobile font size on the Returns page.
 
 **How to apply:** Scope these adjustments to tablet layouts, not global grid or
 heading rules. Do not apply the desktop collection collage's spanning tile to
