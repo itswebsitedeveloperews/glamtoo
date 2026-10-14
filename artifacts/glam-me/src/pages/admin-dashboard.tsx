@@ -15,7 +15,6 @@ import {
   type CatalogVariation,
 } from "@/data/catalog";
 import { sanitizeRichTextHtml } from "@/utils/rich-text";
-import { productContentGaps } from "@/utils/storefront-truth";
 import logoImage from "@assets/logo-soft-options/glam-too-selected-dark.svg";
 import AdminHomePage from "./admin-home-page";
 import AdminPromotionalPreview from "@/components/AdminPromotionalPreview";
@@ -3272,15 +3271,6 @@ export default function AdminDashboard({
         {section === "products" && editorProductId === null && (
           <>
             <SectionTitle eyebrow="Catalog" title="Products" description="Create, edit, publish, or move products back to draft from one product workspace." action={<button className="admin-primary" type="button" onClick={openNewProduct}>Add product</button>} />
-            <section className="admin-panel admin-content-review" aria-label="Product information review">
-              <h2>Product information review</h2>
-              <p>Missing information does not block sales. Please confirm product-specific descriptions, fit / sizing and care details before adding them. Simple products have no option selector; this does not mean they are one-size.</p>
-              <p>Owner review requested in the pre-launch report: Mini Tote Bag, Button Up Short Sleeve Blazer, Leather Cape Jacket, Button Up Belted Trouser Set, Denim Trim Ribbed Cardigan, Printed Aysemetric Tracksuit and Mesh Floral Sleeve Tracksuit.</p>
-              <ul>{products.filter((product) => productContentGaps(product).length > 0).map((product) => <li key={product.id}>
-                <button type="button" onClick={() => setEditorProductId(product.id)}>{product.name}</button> — Missing: {productContentGaps(product).join(", ")}
-              </li>)}</ul>
-              {!products.some((product) => productContentGaps(product).length > 0) && <p>No missing content fields detected on published products. Please still verify that entered facts are accurate.</p>}
-            </section>
             <section className="admin-panel admin-product-catalog-panel">
               <div className="admin-product-catalog-heading">
                 <div><p className="admin-eyebrow">The Glam Edit</p><h2>Our Current Obsessions</h2></div>

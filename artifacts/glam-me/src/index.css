@@ -3478,9 +3478,14 @@ input:focus, select:focus, textarea:focus { outline: none; }
 /* Keep the approved accent separate from readable foregrounds. These final
    rules cover the storefront, account and admin variants defined above. */
 .admin-nav button.is-active {
-  background: var(--pink);
-  border-color: var(--pink);
-  color: var(--accent-ink);
+  background: var(--button-bg);
+  border-color: var(--button-bg);
+  color: #fff;
+}
+.admin-nav button.is-active:is(:hover, :focus-visible, :active) {
+  background: var(--button-hover-bg);
+  border-color: var(--button-hover-bg);
+  color: #fff;
 }
 .bag-count { color: #fff; }
 :is(.wishlist-count, .wishlist-button.is-saved,

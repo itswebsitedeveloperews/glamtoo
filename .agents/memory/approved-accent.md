@@ -9,6 +9,14 @@ Action buttons, including the product-card “Shop Now” buttons, must use `#e2
 
 The bag-count badge number must be `#fff`; keep its existing pink background. The merchant explicitly requested this exception to dark accent text.
 
+Active admin navigation items should match the action buttons: `#e23d6f` with
+white text, and `#c93260` on hover.
+
+**Why:** The merchant explicitly requested the active menu color to match buttons.
+
+**How to apply:** Limit this treatment to the active admin menu item, not neutral
+account shortcut cards or public navigation.
+
 The homepage “Shop by moment” eyebrow and “Outfits for Every Plan” heading must
 be white on the existing pink background.
 

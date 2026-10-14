@@ -6,6 +6,7 @@
 - [Cart storage](cart-storage.md) — Persist only cart line identifiers, size, and quantity; derive product media from the catalog.
 - [Coupon cart lifecycle](coupon-cart-lifecycle.md) — Clear a saved coupon when the bag is emptied; preserve it only while the shopper is retrying the same bag.
 - [Admin image persistence](admin-image-persistence.md) — Keep catalog metadata small and media references immutable so gallery edits survive constrained browser storage.
+- [Admin Products presentation](admin-products-presentation.md) — Merchant repeatedly requested no Product Information Review panel in the Products workspace.
 - [Product types and slugs](product-types-and-slugs.md) — Simple products have no option controls; variable options and editable title-derived slugs drive storefront behavior.
 - [Stripe connector setup](stripe-connector-setup.md) — Treat an attached Stripe connection without credentials as “key setup needed,” not as a ready payment provider.
 - [Clerk recovery flow API](clerk-recovery-flow-api.md) — This app’s Clerk React version uses signal-based sign-in methods for custom password recovery.
