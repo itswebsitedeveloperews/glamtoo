@@ -41,9 +41,28 @@ per-product pre-repair fingerprints and SHA-256 hashes for original media bytes.
 `restore-product-gallery.mjs --reference-shop` applies the entire batch under one
 lock and transaction, with a full catalog backup and one durable receipt. A
 changed product or unavailable/changed image aborts the complete batch. Rerunning
-after success is a no-op, even after intentional gallery removals. Post-merge
-setup runs the original tracksuit recovery followed by this additional batch.
-No continuing synchronization with the reference site is introduced.
+after success is a no-op, even after intentional gallery removals. These repairs
+are never run by automatic post-merge setup. No continuing synchronization with
+the reference site is introduced.
+
+### Explicit operator procedure
+
+Initialize the catalog through the API first. Audit the intended environment,
+saved references, source images and pinned pre-repair fingerprints before
+choosing a repair. A fresh catalog or intervening merchant edits must not block
+ordinary merges, and are not permission to overwrite the catalog.
+
+Only an operator targeting the approved environment should run either command
+from the workspace root:
+
+```sh
+pnpm --filter @workspace/api-server exec node scripts/restore-product-gallery.mjs
+pnpm --filter @workspace/api-server exec node scripts/restore-product-gallery.mjs --reference-shop
+```
+
+The first is the screenshot-backed tracksuit repair; the second is the
+reference-shop batch. Run only the approved repair. If fingerprints no longer
+match, stop and re-audit rather than bypassing the guard.
 
 The reference site was read only; all changes are to development data. Local
 source snapshots, before/after comparison sheets and verification results are in

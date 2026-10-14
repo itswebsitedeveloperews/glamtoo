@@ -51,3 +51,5 @@
 - [Product hover previews](product-hover-previews.md) — All product listings preview the second detail-gallery photo on hover, not an unrelated image.
 - [Gallery recovery evidence](gallery-recovery-evidence.md) — Unused uploads do not prove accidental removal; restore only verified sets/order, once, without seed repopulation.
 - [Read-only admin test sessions](admin-test-session-safety.md) — Existing-admin testing needs explicit approval and session-only APIs; do not assume the generic helper preserves users.
+- [Preview retention safety](preview-retention-safety.md) — Opaque preview hashes need age-based eviction; use dry-run-first maintenance, never catalog edits or source deletion.
+- [Isolated setup validation](isolated-setup-validation.md) — Strip app credentials but preserve the resolved pnpm store when testing setup in the existing workspace.

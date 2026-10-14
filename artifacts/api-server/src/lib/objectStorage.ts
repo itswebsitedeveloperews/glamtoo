@@ -26,6 +26,14 @@ export class ObjectNotFoundError extends Error {
 }
 
 export class ObjectStorageService {
+  /** Only configured media buckets; callers must still restrict operations to
+   * the reserved listing-previews/ namespace, never these entire buckets. */
+  getListingPreviewBuckets() {
+    const paths = [this.getPrivateObjectDir(), ...this.getPublicObjectSearchPaths()];
+    const names = [...new Set(paths.map(path => parseObjectPath(path).bucketName))];
+    return names.map(name => objectStorageClient.bucket(name));
+  }
+
   getPublicObjectSearchPaths() {
     const paths = [...new Set((process.env.PUBLIC_OBJECT_SEARCH_PATHS ?? "").split(",").map((path) => path.trim()).filter(Boolean))];
     if (!paths.length) throw new Error("PUBLIC_OBJECT_SEARCH_PATHS is not configured.");

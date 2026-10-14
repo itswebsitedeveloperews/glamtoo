@@ -9,6 +9,8 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "test": "node ./test/isolated.mjs",
     "test:listing-preview": "esbuild test/listing-preview.test.ts --bundle --platform=node --format=esm --packages=external --outfile=test/.compiled/listing-preview.test.mjs && node --test test/.compiled/listing-preview.test.mjs",
+    "test:preview-retention": "esbuild test/listing-preview-retention.test.ts --bundle --platform=node --format=esm --packages=external --outfile=test/.compiled/listing-preview-retention.test.mjs && node --test test/.compiled/listing-preview-retention.test.mjs",
+    "previews:retain": "esbuild scripts/retain-listing-previews.ts --bundle --platform=node --format=esm --packages=external --outfile=scripts/.compiled/retain-listing-previews.mjs && node scripts/.compiled/retain-listing-previews.mjs",
     "test:guest-checkout": "node ./test/isolated.mjs guest-checkout",
     "test:isolated": "node ./test/isolated.mjs",
     "test:gallery-repair": "node --test test/gallery-repair.test.mjs",

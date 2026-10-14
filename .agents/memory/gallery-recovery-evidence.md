@@ -8,9 +8,8 @@ set and its order. Unreferenced App Storage images, upload timestamps, and a
 matching garment are not enough to classify an empty gallery as an accidental
 loss. Do not repopulate it from seed defaults.
 
-**Why:** Investigation found intact original uploads but no historical catalog
-revisions. A merchant screenshot established one exact four-view gallery; other
-unused product views could also represent deliberate removals.
+**Why:** Unused images can reflect deliberate removals. Guessing which photos
+belong in a gallery can undo merchant edits even when the originals still exist.
 
 **How to apply:** Audit saved references separately from public readability and
 rendering. Back up the catalog, reject intervening edits, and keep a durable
@@ -18,21 +17,22 @@ one-time repair receipt so an admin can later clear the gallery without a rerun
 bringing it back. For uncertain products, obtain a previous export, screenshot,
 or merchant-approved ordering instead of inferring intent from storage contents.
 
-The merchant explicitly approved using `https://glamtoo.webdesignessex.io/shop`
-as the reference for comparing all products and adding their gallery images.
+Run one-time media repairs only as explicitly targeted operator procedures,
+after initialization and an audit; never make them automatic merge prerequisites.
 
-**Why:** The user supplied that shop after the screenshot-only recovery and asked
-to compare every product and add its gallery photos.
+**Why:** Repair fingerprints deliberately reject intervening merchant changes,
+and new databases do not yet have an initialized catalog. Either situation must
+not prevent normal setup or future merges.
 
-**How to apply:** Use its explicitly matched product galleries as recovery
-evidence, preserving current non-media merchant fields. This approval does not
-authorize a permanent sync, unrelated catalog replacement, or production writes.
+**How to apply:** Preserve repair guards and receipts; consult the recovery
+documentation for approved evidence and procedures rather than replaying repairs
+on every merge.
 
-Allow enough post-merge setup time for remote gallery-file and hash validation;
-do not remove the safety checks merely to meet a short setup timeout.
+Allow enough time for remote file readability and hash verification during an
+explicitly approved repair; do not remove safety checks to meet a short timeout.
 
-**Why:** A recovery setup exceeded the original time limit while verifying
-remote photos, then completed successfully with more time.
+**Why:** Network validation can exceed ordinary setup time even for valid photos.
 
-**How to apply:** Keep the one-time repair receipts and validation intact, and
-size the setup timeout for the work it actually performs.
+**How to apply:** Give the operator-run repair sufficient time while retaining
+fingerprint checks, original-byte validation and one-time receipts. This does not
+make the repair part of automatic post-merge setup.

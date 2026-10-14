@@ -4,6 +4,7 @@ import sharp from "sharp";
 
 export const listingPreviewWidths = [320, 480, 640, 960] as const;
 export const listingPreviewVersion = "listing-v1";
+export const listingPreviewPrefix = "listing-previews/";
 const maxSourceBytes = 25 * 1024 * 1024;
 const pending = new Map<string, Promise<Buffer>>();
 let activeEncodes = 0;
@@ -54,7 +55,7 @@ export async function getListingPreview(source: File, width: number) {
   // during a burst. Only two original downloads/decodes are active at a time.
   if (pending.size >= 64) throw new PreviewBusyError("Preview service is busy.");
   const work = (async () => {
-    const derivative = source.bucket.file(`listing-previews/${listingPreviewVersion}/${key}.webp`);
+    const derivative = source.bucket.file(`${listingPreviewPrefix}${listingPreviewVersion}/${key}.webp`);
     try {
       const [bytes] = await derivative.download();
       return bytes;
