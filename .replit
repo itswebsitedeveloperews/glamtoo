@@ -34,3 +34,11 @@ GMAIL_SMTP_AUTH_MODE = "oauth2"
 
 [userenv.production]
 GMAIL_SMTP_OAUTH_REDIRECT_URI = "https://glamtoo.webdesignessex.io/api/gmail/oauth/callback"
+
+[[ports]]
+localPort = 8080
+externalPort = 80
+
+[[ports]]
+localPort = 18781
+externalPort = 3000

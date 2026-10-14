@@ -502,6 +502,57 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /storage/objects/uploads/{id}:
+    get:
+      tags: [storage]
+      operationId: getUploadedImage
+      summary: Serve an original upload or a cacheable listing-only WebP preview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: preview
+          in: query
+          schema:
+            type: string
+            enum: [listing-v1]
+        - name: width
+          in: query
+          description: Required for previews; originals are never resized.
+          schema:
+            type: integer
+            enum: [320, 480, 640, 960]
+      responses:
+        "200":
+          description: Original image bytes or WebP derivative; source ACL applies to both
+          content:
+            image/webp:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+        "304":
+          description: Cached preview is unchanged
+        "400":
+          description: Invalid preview parameters
+        "401":
+          description: Authentication required for a private image
+        "403":
+          description: Private image access denied
+        "404":
+          description: Original image not found
+        "422":
+          description: Image exceeds preview processing limits
+        "503":
+          description: Preview generation is busy; keep showing the primary image
+        "500":
+          description: Image storage or processing failed; keep showing the primary image
   /storage/uploads/request-url:
     post:
       tags: [storage]
@@ -816,4 +867,3 @@ components:
         code:
           type: string
           description: Optional stable error category; checkout distinguishes throttling, conflicts, cancellation, completion and retryable provider failures.
-

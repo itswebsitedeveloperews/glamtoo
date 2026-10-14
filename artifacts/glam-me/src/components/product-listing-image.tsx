@@ -33,7 +33,7 @@ export function ProductListingImage({ image, galleryImages, alt, sizes = "100vw"
       {showAlternate && (
         <img
           className="listing-product-image-secondary"
-          {...responsiveImage(secondImage, sizes)}
+          {...responsiveImage(secondImage, sizes, true)}
           alt=""
           aria-hidden="true"
           loading="lazy"

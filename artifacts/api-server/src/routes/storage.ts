@@ -3,6 +3,8 @@ import { Router, type IRouter, type Request, type Response } from "express";
 import { getAdminAccess, requireAdmin } from "../adminAuth";
 import { getObjectAclPolicy } from "../lib/objectAcl";
 import { ObjectNotFoundError, ObjectStorageService } from "../lib/objectStorage";
+import { GetUploadedImageQueryParams } from "@workspace/api-zod";
+import { getListingPreview, listingPreviewVersion, listingPreviewWidths, PreviewBusyError, PreviewSourceError } from "../lib/listingPreview";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
@@ -39,9 +41,24 @@ router.get("/storage/public-objects/*filePath", async (request, response) => {
 });
 
 router.get("/storage/objects/*path", async (request, response) => {
+  // Errors (including authorization failures) must never be cached as an image.
+  response.setHeader("Cache-Control", "no-store");
   try {
     const raw = request.params.path;
-    const file = await objectStorageService.getObjectEntityFile(`/objects/${Array.isArray(raw) ? raw.join("/") : raw}`);
+    const path = Array.isArray(raw) ? raw.join("/") : raw;
+    const preview = request.query.preview;
+    const width = Number(request.query.width);
+    const previewQuery = GetUploadedImageQueryParams.safeParse({ preview, width });
+    if (preview !== undefined && (
+      !previewQuery.success || preview !== listingPreviewVersion ||
+      !/^uploads\/[0-9a-f-]{36}$/.test(path) ||
+      typeof request.query.width !== "string" ||
+      !listingPreviewWidths.includes(width as typeof listingPreviewWidths[number])
+    )) {
+      response.status(400).json({ error: "Invalid listing preview." });
+      return;
+    }
+    const file = await objectStorageService.getObjectEntityFile(`/objects/${path}`);
     const aclPolicy = await getObjectAclPolicy(file);
     if (aclPolicy?.visibility !== "public") {
       const access = await getAdminAccess(request);
@@ -50,8 +67,20 @@ router.get("/storage/objects/*path", async (request, response) => {
         return;
       }
     }
+    if (preview !== undefined) {
+      const result = await getListingPreview(file, width);
+      response.setHeader("Cache-Control", aclPolicy?.visibility === "public"
+        ? "public, max-age=31536000, immutable" : "private, no-store");
+      response.setHeader("ETag", result.etag);
+      response.type("image/webp").send(result.bytes);
+      return;
+    }
     await pipeStorageResponse(objectStorageService, file, response);
   } catch (error) {
+    if (error instanceof PreviewBusyError || error instanceof PreviewSourceError) {
+      response.status(error instanceof PreviewBusyError ? 503 : 422).json({ error: error.message });
+      return;
+    }
     if (error instanceof ObjectNotFoundError) {
       response.status(404).json({ error: "Object not found" });
       return;

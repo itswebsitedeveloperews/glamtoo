@@ -336,3 +336,26 @@ export type ResolveSeoParams = {
 path: string;
 };
 
+export type GetUploadedImageParams = {
+preview?: GetUploadedImagePreview;
+/**
+ * Required for previews; originals are never resized.
+ */
+width?: GetUploadedImageWidth;
+};
+
+
+export const GetUploadedImagePreview = {
+  'listing-v1': 'listing-v1',
+} as const;
+
+export type GetUploadedImagePreview = typeof GetUploadedImagePreview[keyof typeof GetUploadedImagePreview];
+
+export type GetUploadedImageWidth = typeof GetUploadedImageWidth[keyof typeof GetUploadedImageWidth];
+
+export const GetUploadedImageWidth = {
+  NUMBER_320: 320,
+  NUMBER_480: 480,
+  NUMBER_640: 640,
+  NUMBER_960: 960,
+} as const;

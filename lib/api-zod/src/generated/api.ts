@@ -22,8 +22,6 @@ export const RequestOrderEmailActionParams = zod.object({
 export const requestOrderEmailActionBodyRecipientsMax = 50;
 
 
-
-
 export const RequestOrderEmailActionBody = zod.object({
   "action": zod.enum(['admin_copy', 'retry']),
   "confirmed": zod.literal(true),
@@ -40,7 +38,6 @@ export const RequestOrderEmailActionResponse = zod.void()
  */
 export const saveAdminCatalogBodyStockUpdatesItemRegExp = new RegExp('^\\d+(?::\\d+)?$');
 export const saveAdminCatalogBodyStockUpdatesMax = 500;
-
 
 
 export const SaveAdminCatalogBody = zod.object({
@@ -110,7 +107,6 @@ export const saveAdminContactNotificationSettingsBodyOrderAdminEmailsItemMax = 2
 export const saveAdminContactNotificationSettingsBodyOrderAdminEmailsMax = 20;
 
 
-
 export const SaveAdminContactNotificationSettingsBody = zod.object({
   "adminEmail": zod.string().max(saveAdminContactNotificationSettingsBodyAdminEmailMax).optional().describe('Legacy single contact recipient. Prefer adminEmails.'),
   "adminEmails": zod.array(zod.string().max(saveAdminContactNotificationSettingsBodyAdminEmailsItemMax)).max(saveAdminContactNotificationSettingsBodyAdminEmailsMax).optional(),
@@ -166,7 +162,6 @@ export const VerifyAdminGmailAuthenticationResponse = zod.object({
  */
 export const createCheckoutPaymentIntentHeaderIdempotencyKeyMin = 16;
 export const createCheckoutPaymentIntentHeaderIdempotencyKeyMax = 100;
-
 
 
 export const CreateCheckoutPaymentIntentHeader = zod.object({
@@ -233,7 +228,6 @@ export const FinalizeCheckoutPaymentResponse = zod.object({
  */
 export const createHostedCheckoutHeaderIdempotencyKeyMin = 16;
 export const createHostedCheckoutHeaderIdempotencyKeyMax = 100;
-
 
 
 export const CreateHostedCheckoutHeader = zod.object({
@@ -332,7 +326,13 @@ export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
 
-
+/**
+ * @summary Serve an original upload or a cacheable listing-only WebP preview
+ */
+export const GetUploadedImageQueryParams = zod.object({
+  "preview": zod.enum(['listing-v1']).optional(),
+  "width": zod.union([zod.literal(320),zod.literal(480),zod.literal(640),zod.literal(960)]).optional().describe('Required for previews; originals are never resized.')
+})
 /**
  * @summary Request a presigned upload URL
  */
@@ -366,7 +366,6 @@ export const submitContactEnquiryBodyOrderMax = 80;
 export const submitContactEnquiryBodyMessageMax = 5000;
 
 
-
 export const SubmitContactEnquiryBody = zod.object({
   "name": zod.string().min(submitContactEnquiryBodyNameMin).max(submitContactEnquiryBodyNameMax),
   "email": zod.string().max(submitContactEnquiryBodyEmailMax),
@@ -381,3 +380,4 @@ export const SubmitContactEnquiryResponse = zod.object({
 })
 
 
+export const GetUploadedImageResponse = zod.unknown()
