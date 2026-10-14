@@ -3,7 +3,7 @@ name: Tablet storefront presentation
 description: Merchant's responsive storefront requests for grids, centered cards and product headings above galleries
 ---
 
-Homepage collection tiles and product cards, related products, and category-page product cards
+Homepage collection tiles and product cards, Shop grid cards, related products, and category-page product cards
 (including Clothes), should use half widths on iPad/tablet, with two per row.
 Category banner headings should be smaller on iPad/tablet.
 All account-page H1 headings should be smaller on iPad/tablet and mobile,
@@ -15,7 +15,7 @@ Let homepage category-tile text use the available tile width on iPad rather
 than a narrow text column, while preserving the two-column tiles.
 On product pages, put the category and product title above the gallery on iPad
 and mobile, preserving the desktop layout.
-Keep the main product photo smaller and left-aligned on iPad, using a portrait
+Keep every product-detail gallery smaller and left-aligned on iPad, using a portrait
 frame; do not apply this image sizing to phones or desktops.
 For grid and image sizing, keep phone and desktop presentation unchanged.
 
@@ -27,11 +27,14 @@ The merchant requested moving the product heading above its image on iPad and mo
 The merchant supplied a smaller portrait image reference for iPad product pages.
 The merchant subsequently requested left alignment of the iPad product gallery,
 superseding the earlier centered-gallery presentation while preserving photo size.
+The merchant reiterated that left alignment applies to all product-page sliders,
+not just the Military Style Jacket example.
 The merchant explicitly requested half-width related products on iPad.
 The merchant requested smaller H1 headings across account sections on iPad.
 The merchant subsequently requested smaller account-page headings on mobile too.
 The merchant requested wider text areas inside homepage category tiles on iPad.
 The merchant requested first-letter capitalization for account headings.
+The merchant explicitly requested half-width Shop page product cards on iPad.
 
 **How to apply:** Scope these adjustments to tablet layouts, not global grid or
 heading rules. Do not apply the desktop collection collage's spanning tile to

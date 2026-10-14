@@ -45,9 +45,9 @@ type CartSidebarProps = {
   onNavigate: () => void;
 };
 
-function Thumb({ src, position, alt }: { src?: string; position?: string; alt: string }): ReactNode {
+function Thumb({ src, alt }: { src?: string; alt: string }): ReactNode {
   return src
-    ? <img src={src} alt={alt} loading="lazy" decoding="async" style={{ objectPosition: position || 'top' }} />
+    ? <img src={src} alt={alt} loading="lazy" decoding="async" style={{ objectPosition: 'top' }} />
     : <span className="cart-drawer-thumb-empty" aria-hidden="true" />;
 }
 
@@ -81,7 +81,7 @@ export default function CartSidebar(props: CartSidebarProps) {
               <ul className="cart-drawer-lines">
                 {lines.map((line) => (
                   <li key={line.key} className={`cart-drawer-line${line.unavailable ? ' is-unavailable' : ''}`} data-testid={`row-cart-line-${line.key}`}>
-                    <a className="cart-drawer-thumb" href={line.href} onClick={props.onNavigate} tabIndex={-1} aria-hidden="true"><Thumb src={line.image} position={line.imagePosition} alt="" /></a>
+                    <a className="cart-drawer-thumb" href={line.href} onClick={props.onNavigate} tabIndex={-1} aria-hidden="true"><Thumb src={line.image} alt="" /></a>
                     <div className="cart-drawer-info">
                       <a className="cart-drawer-name" href={line.href} onClick={props.onNavigate}>{line.name}</a>
                       {line.options.length > 0 && <p className="cart-drawer-meta">{line.options.join(' / ')}</p>}
@@ -110,7 +110,7 @@ export default function CartSidebar(props: CartSidebarProps) {
                 <ul>
                   {recommendations.map((rec) => (
                     <li key={rec.id} data-testid={`card-cart-rec-${rec.id}`}>
-                      <a className="cart-drawer-rec-thumb" href={rec.href} onClick={props.onNavigate} tabIndex={-1} aria-hidden="true">{rec.image ? <ProductListingImage image={rec.image} galleryImages={rec.galleryImages} alt="" position={rec.imagePosition} sizes="72px" /> : <Thumb alt="" />}</a>
+                      <a className="cart-drawer-rec-thumb" href={rec.href} onClick={props.onNavigate} tabIndex={-1} aria-hidden="true">{rec.image ? <ProductListingImage image={rec.image} galleryImages={rec.galleryImages} alt="" position="top" sizes="72px" /> : <Thumb alt="" />}</a>
                       <a className="cart-drawer-rec-name" href={rec.href} onClick={props.onNavigate}>{rec.name}</a>
                       <span className="cart-drawer-rec-price">{rec.priceLabel}</span>
                       {rec.canQuickAdd

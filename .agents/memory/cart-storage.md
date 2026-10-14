@@ -22,3 +22,12 @@ quantity changes, removals or restoring a saved cart. Preserve the full bag and
 its storage-failure fallback. The supplied reference is visual inspiration,
 not authorization to introduce parcel-protection fees, unsupported wallets or
 delivery countdown promises.
+
+Cart-sidebar item and recommendation photos must use top-aligned cropping,
+regardless of a product's stored positioning.
+
+**Why:** The merchant explicitly requested `object-position: top` for the
+sidebar product photos so their upper portions remain visible.
+
+**How to apply:** Apply this presentation override only inside the cart sidebar;
+do not change saved catalog positioning or image crops elsewhere.
