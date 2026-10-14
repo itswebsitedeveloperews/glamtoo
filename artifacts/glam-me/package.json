@@ -12,7 +12,7 @@
     "test:ssr-browser": "node test/run-ssr-browser.mjs",
     "test:storefront": "node --test src/utils/*.test.ts src/data/*.test.mjs",
     "test:storefront-browser": "playwright test --config playwright.config.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc --build ../../lib/api-client-react && tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

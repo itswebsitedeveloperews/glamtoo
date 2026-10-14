@@ -1,10 +1,10 @@
 ---
-name: Database declaration rebuild
-description: Composite database project references can retain stale declarations after a schema barrel changes.
+name: Workspace declaration rebuild
+description: Composite workspace project references can retain stale declarations despite correct source exports.
 ---
 
-After adding a database schema file or changing its barrel exports, run the database TypeScript build before typechecking dependent packages.
+When a dependent package reports a missing export that exists in source, check the referenced library's generated declarations before changing the contract. Build that library before typechecking the consumer.
 
-**Why:** Dependent workspace packages may resolve `lib/db/dist` declarations through composite project references, even when the linked source barrel already includes the new export.
+**Why:** Composite project references can resolve stale declarations even when the linked source barrel already exports the symbol. This affects database schemas and generated API client types; regenerating contracts or replacing correct imports would address the wrong problem.
 
-**How to apply:** Run `pnpm --filter @workspace/db exec tsc -b`, then typecheck the API or other packages that import the new database symbol.
+**How to apply:** Build only the affected referenced library with `tsc --build` before checking its consumer. Standalone typecheck commands that rely on generated library declarations should refresh those declarations themselves, rather than relying on a prior root build.
