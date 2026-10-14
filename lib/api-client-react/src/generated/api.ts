@@ -40,6 +40,7 @@ import type {
   GetAdminGmailSettings200,
   HealthStatus,
   HostedCheckoutResult,
+  OrderEmailActionInput,
   ResolveSeoParams,
   SaveAdminCatalog200,
   SaveAdminContactNotificationSettings200,
@@ -76,6 +77,96 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getRequestOrderEmailActionUrl = (orderId: string,) => {
+
+
+
+
+  return `/api/admin/orders/${orderId}/email-actions`
+}
+
+/**
+ * Admin only. Queues work without contacting SMTP. Requires an exact recipient snapshot and explicit confirmation. Never resends accepted or uncertain mail.
+ * @summary Explicitly approve a missing admin copy or one safe failed-message retry
+ */
+export const requestOrderEmailAction = async (orderId: string,
+    orderEmailActionInput: OrderEmailActionInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getRequestOrderEmailActionUrl(orderId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(orderEmailActionInput)
+  }
+);}
+
+
+
+
+
+export const getRequestOrderEmailActionMutationKey = () => ['requestOrderEmailAction'] as const;
+
+export const getRequestOrderEmailActionMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestOrderEmailAction>>, TError,RequestOrderEmailActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof requestOrderEmailAction>>, TError,RequestOrderEmailActionMutationVariables, TContext> => {
+
+const mutationKey = getRequestOrderEmailActionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestOrderEmailAction>>, RequestOrderEmailActionMutationVariables> = (props) => {
+          const {orderId,data} = props ?? {};
+
+          return  requestOrderEmailAction(orderId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RequestOrderEmailActionMutationResult = NonNullable<Awaited<ReturnType<typeof requestOrderEmailAction>>>
+    export type RequestOrderEmailActionMutationBody = BodyType<OrderEmailActionInput>
+    export type RequestOrderEmailActionMutationError = ErrorType<void>
+    export type RequestOrderEmailActionMutationVariables = {orderId: string;data: BodyType<OrderEmailActionInput>}
+
+    /**
+ * @summary Explicitly approve a missing admin copy or one safe failed-message retry
+ */
+export const useRequestOrderEmailAction = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestOrderEmailAction>>, TError,RequestOrderEmailActionMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof requestOrderEmailAction>>,
+        TError,
+        RequestOrderEmailActionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRequestOrderEmailActionMutationOptions(options), queryClient);
+    }
 
 export const getSaveAdminCatalogUrl = () => {
 

@@ -6,6 +6,7 @@ import { clearSavedStripeCredentials, saveStripeCredentials } from "../stripeCre
 import { initializeStripe } from "../stripeBootstrap";
 import { getAuth } from "@clerk/express";
 import { getOrderEmailStatus } from "../orderEmailStatus";
+import orderEmailActionsRouter from "./orderEmailActions";
 import { pool, orderFulfillmentTable } from "@workspace/db";
 import {
   calculateCouponPricing,
@@ -1354,6 +1355,8 @@ router.get("/admin/orders/:orderId/email-status", requireAdmin, async (request, 
     return response.status(503).json({ error: "Order email status could not be loaded. Please try again." });
   }
 });
+
+router.use(orderEmailActionsRouter);
 
 router.patch("/admin/orders/:stripeSessionId/status", requireAdmin, async (request, response) => {
   const stripeSessionId = safeText(request.params.stripeSessionId, 120);

@@ -17,6 +17,39 @@ tags:
   - name: seo
     description: Public search metadata and crawler files
 paths:
+  /admin/orders/{orderId}/email-actions:
+    post:
+      operationId: requestOrderEmailAction
+      summary: Explicitly approve a missing admin copy or one safe failed-message retry
+      description: >
+        Admin only. Queues work without contacting SMTP. Requires an exact recipient
+        snapshot and explicit confirmation. Never resends accepted or uncertain mail.
+      parameters:
+        - in: path
+          name: orderId
+          required: true
+          schema: { type: string, pattern: "^[a-zA-Z0-9_-]{1,120}$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderEmailActionInput"
+      responses:
+        "202":
+          description: The approved notification was queued, not necessarily sent or delivered
+        "400":
+          description: Invalid input or confirmation missing
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator required
+        "404":
+          description: Order not found
+        "409":
+          description: Payment, recipient snapshot, concurrency or duplicate-prevention guard rejected the action
+        "503":
+          description: Unable to queue the action
   /admin/catalog:
     put:
       operationId: saveAdminCatalog
@@ -537,6 +570,26 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
+    OrderEmailActionInput:
+      type: object
+      additionalProperties: false
+      required: [action, confirmed, recipients]
+      properties:
+        action:
+          type: string
+          enum: [admin_copy, retry]
+        confirmed:
+          type: boolean
+          enum: [true]
+        recipients:
+          type: array
+          minItems: 1
+          maxItems: 50
+          uniqueItems: true
+          items: { type: string, format: email }
+        notificationId:
+          type: integer
+          minimum: 1
     AdminCatalogSaveInput:
       type: object
       required: [products, categories]

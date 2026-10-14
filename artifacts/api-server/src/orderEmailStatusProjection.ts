@@ -1,4 +1,5 @@
 import type { getOrderEmailRuntimeStatus } from "./orderConfirmationNotifications";
+import { approvedAdminRecipients, missingAdminCopyBlock, retryBlock } from "./orderEmailActionsPolicy";
 
 type DateValue = Date | string | null;
 export type EmailStatusOrder = { id: string; email: string; payment_status: string; payment_resolution: string };
@@ -7,6 +8,7 @@ export type OrderEmailRecord = {
   attempts: number; provider: string; provider_message_id: string | null;
   created_at: DateValue; updated_at: DateValue; next_attempt_at: DateValue;
   sent_at: DateValue; accepted_at: DateValue; delivered_at: DateValue; last_error: string | null;
+  retry_safe?: number; manual_retry_count?: number; bounced_at?: DateValue; provider_email_id?: string | null;
 };
 type Runtime = Awaited<ReturnType<typeof getOrderEmailRuntimeStatus>>;
 function iso(value: DateValue) {
@@ -34,11 +36,12 @@ export function projectOrderEmailStatus(order: EmailStatusOrder, records: OrderE
         else if (!recipient || !runtime.adminRecipients.includes(recipient.toLowerCase())) blockReason = "This saved admin recipient is not currently enabled in Payments settings. The original recipient has not been changed.";
         else if (!runtime.adminConfigured) blockReason = "Admin email sending is not fully configured or Gmail is not authorised. Check authentication in Payments.";
       }
-      if (!blockReason && row.attempts >= 5) blockReason = "The maximum number of sending attempts has been reached.";
+      if (!blockReason && row.attempts >= 5 + (row.manual_retry_count ?? 0)) blockReason = "The maximum number of sending attempts has been reached.";
     }
     return {
       id: row.id, audience, recipient, status: row.status, blockReason,
-      attempts: row.attempts, maxAttempts: 5,
+      attempts: row.attempts, maxAttempts: 5 + (row.manual_retry_count ?? 0),
+      retryBlockReason: retryBlock(order, row, runtime),
       provider: row.attempts > 0 ? row.provider : audience === "admin" ? "gmail_smtp" : runtime.transport,
       messageId: row.provider_message_id,
       queuedAt: iso(row.created_at), lastUpdatedAt: iso(row.updated_at),
@@ -49,6 +52,10 @@ export function projectOrderEmailStatus(order: EmailStatusOrder, records: OrderE
   });
   return {
     orderId: order.id, notifications,
+    adminCopyAction: {
+      recipients: approvedAdminRecipients(runtime),
+      blockReason: missingAdminCopyBlock(order, records, runtime),
+    },
     notQueued: {
       customer: notifications.some(row => row.audience === "customer") ? null
         : "No customer confirmation was queued for this order. Older orders are not emailed automatically.",

@@ -5,6 +5,26 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type OrderEmailActionInputAction = typeof OrderEmailActionInputAction[keyof typeof OrderEmailActionInputAction];
+
+
+export const OrderEmailActionInputAction = {
+  admin_copy: 'admin_copy',
+  retry: 'retry',
+} as const;
+
+export interface OrderEmailActionInput {
+  action: OrderEmailActionInputAction;
+  confirmed: true;
+  /**
+     * @minItems 1
+     * @maxItems 50
+     */
+  recipients: string[];
+  /** @minimum 1 */
+  notificationId?: number;
+}
+
 export type AdminCatalogSaveInputProductsItem = { [key: string]: unknown };
 
 export type AdminCatalogSaveInputCategoriesItem = { [key: string]: unknown };

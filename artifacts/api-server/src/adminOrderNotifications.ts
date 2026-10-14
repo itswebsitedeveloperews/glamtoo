@@ -2,6 +2,9 @@ import { createHash } from "node:crypto";
 import { type PoolClient } from "@workspace/db";
 import { configuredAdminEmails } from "./adminAuth";
 
+export function adminOrderNotificationType(email: string) {
+  return `admin_order_confirmation:${createHash("sha256").update(email.trim().toLowerCase()).digest("hex")}`;
+}
 // Only called for a newly finalized paid order, within its existing transaction.
 // Saving settings and worker startup never backfill historical orders.
 export async function enqueueAdminOrderConfirmations(client: PoolClient, orderId: string) {
@@ -13,7 +16,7 @@ export async function enqueueAdminOrderConfirmations(client: PoolClient, orderId
   const recipients = settings.order_admin_emails.length ? settings.order_admin_emails : fallback ? [fallback] : [];
   for (const email of new Set(recipients.map(value => value.trim().toLowerCase()))) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) continue;
-    const type = `admin_order_confirmation:${createHash("sha256").update(email).digest("hex")}`;
+    const type = adminOrderNotificationType(email);
     await client.query(
       `INSERT INTO store_order_email_notifications (order_id, notification_type, recipient_email)
        VALUES ($1, $2, $3) ON CONFLICT (order_id, notification_type) DO NOTHING`, [orderId, type, email]);

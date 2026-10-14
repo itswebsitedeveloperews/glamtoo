@@ -9,6 +9,32 @@ import * as zod from 'zod';
 
 
 /**
+ * Admin only. Queues work without contacting SMTP. Requires an exact recipient snapshot and explicit confirmation. Never resends accepted or uncertain mail.
+ * @summary Explicitly approve a missing admin copy or one safe failed-message retry
+ */
+export const requestOrderEmailActionPathOrderIdRegExp = new RegExp('^[a-zA-Z0-9_-]{1,120}$');
+
+
+export const RequestOrderEmailActionParams = zod.object({
+  "orderId": zod.coerce.string().regex(requestOrderEmailActionPathOrderIdRegExp)
+})
+
+export const requestOrderEmailActionBodyRecipientsMax = 50;
+
+
+
+
+export const RequestOrderEmailActionBody = zod.object({
+  "action": zod.enum(['admin_copy', 'retry']),
+  "confirmed": zod.literal(true),
+  "recipients": zod.array(zod.string().email()).min(1).max(requestOrderEmailActionBodyRecipientsMax),
+  "notificationId": zod.number().int().min(1).optional()
+})
+
+export const RequestOrderEmailActionResponse = zod.void()
+
+
+/**
  * Omitted products are retired. Existing inventory stock is preserved unless its exact product or product:variation key is listed in stockUpdates. This prevents live-stock browser overlays from resetting unrelated stock.
  * @summary Save the full catalog and sellable inventory atomically (administrators only)
  */

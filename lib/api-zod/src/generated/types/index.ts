@@ -32,6 +32,8 @@ export * from './getAdminGmailSettings200';
 export * from './getAdminGmailSettings200AuthMode';
 export * from './healthStatus';
 export * from './hostedCheckoutResult';
+export * from './orderEmailActionInput';
+export * from './orderEmailActionInputAction';
 export * from './resolveSeoParams';
 export * from './saveAdminCatalog200';
 export * from './saveAdminCatalog200CategoriesItem';

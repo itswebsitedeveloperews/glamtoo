@@ -3686,6 +3686,11 @@ input:focus, select:focus, textarea:focus { outline: none; }
 .aoes-error { color: var(--error-ink); overflow-wrap: anywhere; }
 .aoes-msg code { display: block; margin-top: 6px; overflow-wrap: anywhere; color: var(--ink); }
 .aoes-msg summary { cursor: pointer; }
+.aoes-approval { margin-top: 20px; border: 1px solid var(--line); padding: 16px; font-size: 16px; overflow-wrap: anywhere; }
+.aoes-approval legend { font-weight: 600; font-size: 16px; padding: 0 6px; }
+.aoes-approval p, .aoes-approval ul { margin-bottom: 12px; }
+.aoes-approval label { display: flex; gap: 10px; align-items: baseline; font-size: 14px; }
+.aoes-approval-buttons { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
 .aoes-link { border: 0; background: none; padding: 0; text-decoration: underline; cursor: pointer; color: var(--ink); }
 .aoes-skeleton i { display: block; height: 64px; margin: 8px 0; background: var(--paper-deep); }
 

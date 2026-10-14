@@ -54,6 +54,17 @@ Prefer avoiding duplicate messages over automatically retrying ambiguous SMTP ou
 
 **How to apply:** Retry explicit temporary rejections or failures proven to precede message submission. Reconcile uncertain sends with the recorded Message-ID before permitting another attempt.
 
+Manual order-email repair is deliberately one-time and requires approval of the
+exact original recipient snapshot. Legacy failed jobs without recorded evidence
+of non-acceptance must remain ineligible; an error description or missing delivery
+receipt is not proof that resending is safe.
+
+**Why:** A merchant-approved missing admin copy is not approval for historical
+customer backfill or repeated repair attempts. Preventing duplicate emails takes
+priority over recovering older failures whose transport outcome is unknown.
+
+**How to apply:** Preserve this boundary when adding repair or reconciliation
+tools. Never infer retry permission from human-readable error text.
 
 ## Matching inbox evidence
 

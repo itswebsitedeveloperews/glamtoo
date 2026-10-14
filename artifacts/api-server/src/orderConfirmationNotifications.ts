@@ -66,9 +66,9 @@ class DeliveryError extends Error {
   constructor(public readonly kind: "retry" | "failed" | "uncertain", message: string) { super(message); }
 }
 
-async function send(config: NonNullable<Awaited<ReturnType<typeof configuration>>>, order: ConfirmationOrder, message: EmailMessage) {
+async function send(config: NonNullable<Awaited<ReturnType<typeof configuration>>>, order: ConfirmationOrder, message: EmailMessage, savedMessageId?: string | null) {
   if (config.transport === "gmail_smtp") {
-    return sendGmailConfirmation(config.smtp!, order, message);
+    return sendGmailConfirmation(config.smtp!, order, message, savedMessageId);
   }
   let response: Response;
   try {
@@ -110,7 +110,7 @@ async function claim(config: NonNullable<Awaited<ReturnType<typeof configuration
        SELECT n.id FROM store_order_email_notifications n
        JOIN store_orders o ON o.id = n.order_id
        WHERE n.status = 'pending'
-         AND n.next_attempt_at <= NOW() AND n.attempts < $1
+         AND n.next_attempt_at <= NOW() AND n.attempts < $1 + n.manual_retry_count
          AND o.payment_status = 'paid' AND o.payment_resolution = 'none'
          AND (
            ($6::boolean AND n.notification_type LIKE 'admin_order_confirmation:%' AND LOWER(n.recipient_email) = ANY($3::text[]))
@@ -121,7 +121,7 @@ async function claim(config: NonNullable<Awaited<ReturnType<typeof configuration
        ORDER BY n.created_at, n.id FOR UPDATE OF n SKIP LOCKED LIMIT 1
      )
      UPDATE store_order_email_notifications n
-     SET status = 'sending', attempts = n.attempts + 1, provider = $4, updated_at = NOW()
+     SET status = 'sending', attempts = n.attempts + 1, provider = $4, retry_safe = 0, updated_at = NOW()
      FROM candidate WHERE n.id = candidate.id RETURNING n.*`,
     [MAX_ATTEMPTS, config.allCustomers, config.recipients, config.transport, config.smtp?.authorizedSince ?? null, config.adminAudience],
   );
@@ -150,15 +150,15 @@ async function sendNotification(notification: Notification, config: NonNullable<
     // interrupted DATA transaction can be reconciled without a blind resend.
     await pool.query(
       "UPDATE store_order_email_notifications SET provider_message_id = $2 WHERE id = $1 AND status = 'sending'",
-      [notification.id, notification.recipient_email
+      [notification.id, notification.provider_message_id || (notification.recipient_email
         ? gmailAdminOrderMessageId(config.smtp!, order.id, notification.recipient_email)
-        : gmailOrderMessageId(config.smtp!, order.id)],
+        : gmailOrderMessageId(config.smtp!, order.id))],
     );
   }
   const message = buildOrderConfirmation(order, items.rows, config.publicUrl);
   const messageId = notification.recipient_email
-    ? await sendGmailAdminOrderConfirmation(config.smtp!, order.id, notification.recipient_email, message)
-    : await send(config, order, message);
+    ? await sendGmailAdminOrderConfirmation(config.smtp!, order.id, notification.recipient_email, message, notification.provider_message_id)
+    : await send(config, order, message, notification.provider_message_id);
   // This is provider acceptance, not evidence of inbox delivery.
   await pool.query(
     `UPDATE store_order_email_notifications SET status = 'accepted', provider_message_id = $2,
@@ -175,11 +175,11 @@ async function retryOrFail(notification: Notification, error: unknown) {
     : failure.kind === "uncertain" ? "uncertain" : "failed";
   const delay = Math.min(1800, 60 * 2 ** (notification.attempts - 1));
   await pool.query(
-    `UPDATE store_order_email_notifications SET status = $2, last_error = $3,
+    `UPDATE store_order_email_notifications SET status = $2, last_error = $3, retry_safe = $5,
      next_attempt_at = NOW() + make_interval(secs => $4),
      failed_at = CASE WHEN $2 = 'failed' THEN NOW() ELSE failed_at END, updated_at = NOW()
      WHERE id = $1 AND status = 'sending'`,
-    [notification.id, status, failure.message, delay],
+    [notification.id, status, failure.message, delay, failure.kind === "uncertain" ? 0 : 1],
   );
   logger.warn({ notificationId: notification.id, orderId: notification.order_id, status }, "Order email attempt needs attention");
 }

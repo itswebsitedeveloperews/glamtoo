@@ -58,8 +58,9 @@ export async function sendGmailConfirmation(
   config: GmailSmtpConfig,
   order: { id: string; email: string },
   message: { subject: string; html: string; text: string },
+  savedMessageId?: string | null,
 ) {
-  return sendGmailMessage(config, order.email, message, gmailOrderMessageId(config, order.id), { "X-Glam-Too-Order": order.id });
+  return sendGmailMessage(config, order.email, message, savedMessageId || gmailOrderMessageId(config, order.id), { "X-Glam-Too-Order": order.id });
 }
 
 export function gmailContactMessageId(config: { user: string }, enquiryId: number, recipient?: string) {
@@ -81,9 +82,9 @@ export function gmailAdminOrderMessageId(config: { user: string }, orderId: stri
   return gmailOrderMessageId(config, `${orderId}-admin-${hash}`);
 }
 export async function sendGmailAdminOrderConfirmation(config: GmailSmtpConfig, orderId: string, recipient: string,
-  message: { subject: string; html: string; text: string }) {
+  message: { subject: string; html: string; text: string }, savedMessageId?: string | null) {
   return sendGmailMessage(config, recipient, { ...message, subject: `Admin copy — ${message.subject}` },
-    gmailAdminOrderMessageId(config, orderId, recipient), { "X-Glam-Too-Order": orderId, "X-Glam-Too-Audience": "admin" });
+    savedMessageId || gmailAdminOrderMessageId(config, orderId, recipient), { "X-Glam-Too-Order": orderId, "X-Glam-Too-Audience": "admin" });
 }
 
 async function sendGmailMessage(
