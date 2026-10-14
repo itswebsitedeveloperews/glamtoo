@@ -24,3 +24,13 @@ close button at tablet width. That is separate from application focus failures.
 **How to apply:** Inspect the hit target and verify keyboard dismissal separately.
 Do not change approved shop styling or force clicks through an overlay to claim
 the actual pointer path works.
+Foreground CSS-only Playwright pages before measuring pointer pseudo-states.
+
+**Why:** With the workspace's headless Chromium, `setContent()` on an
+unforegrounded blank page accepted pointer actions but left both `:hover` and
+`:active` false, even on a plain button. Bringing the page to the front restored
+real pointer states.
+
+**How to apply:** Call `page.bringToFront()` for isolated blank-page fixtures,
+then assert the intended pseudo-state before reading computed styles. Keep
+hover, keyboard focus and pressed states separate so they cannot mask each other.

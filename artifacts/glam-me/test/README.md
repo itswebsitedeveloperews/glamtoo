@@ -9,6 +9,32 @@ STOREFRONT_BASE_URL=https://your-development-preview pnpm --filter @workspace/gl
 
 The browser suite uses `@playwright/test` and automatically uses Replit's Chromium when available. Outside Replit, provision Playwright's Chromium browser in your test environment, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an existing compatible Chromium executable. Both the frontend and API workflows must be running (the API also serves Clerk's development proxy).
 
+
+## Admin navigation visual policy (not an accessibility assertion)
+
+```sh
+pnpm --filter @workspace/glam-me test:storefront-browser admin-nav-style.spec.ts
+```
+
+`admin-nav-style.spec.ts` loads the complete `src/index.css` cascade into a
+CSS-only fixture, without package font imports. Each test uses a fresh browser
+context and blocks all network requests; no app, authentication, customer or
+admin data is loaded or changed.
+
+The active item must paint `--button-bg` (`#e23d6f`) with white text normally,
+and `--button-hover-bg` (`#c93260`) with white text on hover, real Tab
+`:focus-visible`, and held mouse `:active`. Those states are tested separately
+so one selector cannot hide a missing selector for another state. Disposable
+token overrides prove token dependency, not just matching hardcoded colors.
+Inactive items retain transparent/neutral backgrounds and neutral text.
+Negative controls prove lighter accent backgrounds and dark active text fail.
+
+These exact visual-policy checks are separate from the existing contrast tests.
+White on the merchant-approved normal pink does **not** meet normal-size AA.
+No contrast thresholds are lowered. The older `accent-contrast.spec.ts` also
+still expects the superseded non-button accent on active admin navigation; its
+historical assertions are not evidence that the current visual policy passes AA.
+
 ## Product image lightbox keyboard
 
 ```sh
