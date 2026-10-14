@@ -1,7 +1,7 @@
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { buildOrderConfirmation, type ConfirmationItem, type ConfirmationOrder } from "./orderConfirmationTemplate";
-import { emailRecipientPolicy } from "./emailRecipientPolicy";
+import { orderConfirmationRecipientPolicy } from "./emailRecipientPolicy";
 import { getContactNotificationSettings } from "./contactNotifications";
 import { gmailOrderMessageId, gmailAdminOrderMessageId, gmailSmtpConfiguration, GmailSmtpError, sendGmailConfirmation, sendGmailAdminOrderConfirmation } from "./gmailSmtp";
 
@@ -13,6 +13,7 @@ type Notification = {
   provider_message_id: string | null;
   provider_email_id: string | null;
   recipient_email: string | null;
+  notification_type: string;
 };
 type EmailMessage = ReturnType<typeof buildOrderConfirmation>;
 
@@ -25,7 +26,7 @@ async function configuration(transport = process.env.ORDER_EMAIL_TRANSPORT === "
   const adminRecipients = settings?.orderAdminEmails.length ? settings.orderAdminEmails
     : settings?.fallbackAdminEmail ? [settings.fallbackAdminEmail] : [];
   const policy = adminAudience ? settings?.orderEnabled && adminRecipients.length
-    ? { recipients: adminRecipients, allCustomers: false } : null : emailRecipientPolicy();
+    ? { recipients: adminRecipients, allCustomers: false, allCustomersSince: null as Date | null } : null : orderConfirmationRecipientPolicy();
   // Sending to arbitrary customers is an explicit rollout decision, not an
   // accidental consequence of adding credentials to a staging environment.
   if (!publicUrl || !policy) return null;
@@ -49,11 +50,13 @@ export async function getOrderEmailRuntimeStatus(customerEmail: string) {
   const [customer, admin, settings] = await Promise.all([
     configuration(), configuration("gmail_smtp", true), getContactNotificationSettings(),
   ]);
-  const policy = emailRecipientPolicy();
+  const policy = orderConfirmationRecipientPolicy();
+  const previouslyApproved = Boolean(policy?.recipients.includes(customerEmail.trim().toLowerCase()));
   return {
     transport: process.env.ORDER_EMAIL_TRANSPORT === "mailersend" ? "mailersend" : "gmail_smtp",
     customerConfigured: Boolean(customer),
     customerRecipientAllowed: Boolean(policy && (policy.allCustomers || policy.recipients.includes(customerEmail.trim().toLowerCase()))),
+    customerEnabledSince: previouslyApproved ? null : policy?.allCustomersSince ?? null,
     customerAuthorizedSince: customer?.smtp?.authorizedSince ?? null,
     adminConfigured: Boolean(admin),
     adminEnabled: settings.orderEnabled,
@@ -81,7 +84,15 @@ async function send(config: NonNullable<Awaited<ReturnType<typeof configuration>
         reply_to: { email: config.replyTo, name: config.fromName },
         to: [{ email: order.email }],
         tags: ["glam-too-order-confirmation", `glam-too-${order.id}`],
-        ...message,
+        subject: message.subject,
+        text: message.text,
+        html: message.html,
+        attachments: message.attachments.map((attachment) => ({
+          content: attachment.content.toString("base64"),
+          filename: attachment.filename,
+          disposition: attachment.contentDisposition,
+          id: attachment.cid,
+        })),
       }),
     });
   } catch {
@@ -115,15 +126,15 @@ async function claim(config: NonNullable<Awaited<ReturnType<typeof configuration
          AND (
            ($6::boolean AND n.notification_type LIKE 'admin_order_confirmation:%' AND LOWER(n.recipient_email) = ANY($3::text[]))
            OR (NOT $6::boolean AND n.notification_type = 'order_confirmation'
-             AND ($2::boolean OR LOWER(o.email) = ANY($3::text[]))
-             AND ($5::timestamptz IS NULL OR n.created_at >= $5))
+             AND (($2::boolean AND ($7::timestamptz IS NULL OR n.created_at >= $7 OR n.customer_retry_approved_at IS NOT NULL OR n.manual_retry_count > 0)) OR LOWER(o.email) = ANY($3::text[]))
+             AND ($5::timestamptz IS NULL OR n.created_at >= $5 OR n.customer_retry_approved_at IS NOT NULL))
          )
        ORDER BY n.created_at, n.id FOR UPDATE OF n SKIP LOCKED LIMIT 1
      )
      UPDATE store_order_email_notifications n
      SET status = 'sending', attempts = n.attempts + 1, provider = $4, retry_safe = 0, updated_at = NOW()
      FROM candidate WHERE n.id = candidate.id RETURNING n.*`,
-    [MAX_ATTEMPTS, config.allCustomers, config.recipients, config.transport, config.smtp?.authorizedSince ?? null, config.adminAudience],
+    [MAX_ATTEMPTS, config.allCustomers, config.recipients, config.transport, config.smtp?.authorizedSince ?? null, config.adminAudience, config.allCustomersSince],
   );
   return result.rows[0] ?? null;
 }
@@ -145,19 +156,21 @@ async function sendNotification(notification: Notification, config: NonNullable<
     "SELECT name, quantity, unit_amount, total FROM store_order_items WHERE order_id = $1 ORDER BY id",
     [order.id],
   );
+  const isAdminCopy = notification.notification_type.startsWith("admin_order_confirmation:");
+  if (isAdminCopy && !notification.recipient_email) throw new DeliveryError("failed", "The saved admin recipient is missing.");
   if (config.transport === "gmail_smtp") {
     // Persist the deterministic RFC Message-ID before contacting SMTP, so an
     // interrupted DATA transaction can be reconciled without a blind resend.
     await pool.query(
       "UPDATE store_order_email_notifications SET provider_message_id = $2 WHERE id = $1 AND status = 'sending'",
-      [notification.id, notification.provider_message_id || (notification.recipient_email
-        ? gmailAdminOrderMessageId(config.smtp!, order.id, notification.recipient_email)
+      [notification.id, notification.provider_message_id || (isAdminCopy
+        ? gmailAdminOrderMessageId(config.smtp!, order.id, notification.recipient_email!)
         : gmailOrderMessageId(config.smtp!, order.id))],
     );
   }
   const message = buildOrderConfirmation(order, items.rows, config.publicUrl);
-  const messageId = notification.recipient_email
-    ? await sendGmailAdminOrderConfirmation(config.smtp!, order.id, notification.recipient_email, message, notification.provider_message_id)
+  const messageId = isAdminCopy
+    ? await sendGmailAdminOrderConfirmation(config.smtp!, order.id, notification.recipient_email!, message, notification.provider_message_id)
     : await send(config, order, message, notification.provider_message_id);
   // This is provider acceptance, not evidence of inbox delivery.
   await pool.query(
@@ -255,8 +268,11 @@ export async function refreshOrderEmailDelivery(limit = 2) {
 }
 
 export async function processOrderConfirmations(limit = 10) {
-  const configs = [await configuration(), await configuration("gmail_smtp", true)].filter(
-    (config): config is NonNullable<typeof config> => config !== null);
+  const configured = await Promise.allSettled([configuration(), configuration("gmail_smtp", true)]);
+  const configs = configured.flatMap(result => result.status === "fulfilled" && result.value ? [result.value] : []);
+  configured.forEach((result, index) => {
+    if (result.status === "rejected") logger.warn({ audience: index === 0 ? "customer" : "admin" }, "Order email configuration unavailable; only this channel is paused");
+  });
   if (!configs.length) return;
   // A crashed sender may already have been accepted. Freeze these rows rather
   // than resetting them to pending and creating duplicate confirmations.

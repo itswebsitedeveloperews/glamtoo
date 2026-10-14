@@ -34,3 +34,9 @@ GMAIL_SMTP_AUTH_MODE = "oauth2"
 
 [userenv.production]
 GMAIL_SMTP_OAUTH_REDIRECT_URI = "https://glamtoo.webdesignessex.io/api/gmail/oauth/callback"
+ORDER_CONFIRMATION_ENABLED_SINCE = "2026-10-14T12:50:38.225Z"
+ORDER_CONFIRMATION_SEND_TO_ALL = "true"
+
+[userenv.development]
+ORDER_CONFIRMATION_SEND_TO_ALL = "false"
+ORDER_CONFIRMATION_TEST_RECIPIENTS = ""

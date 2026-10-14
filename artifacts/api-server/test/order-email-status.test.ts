@@ -6,6 +6,7 @@ const order = { id: "ord_example", email: "customer@example.test", payment_statu
 const runtime = {
   transport: "gmail_smtp", customerConfigured: true, customerRecipientAllowed: true,
   customerAuthorizedSince: new Date("2026-10-01"), adminConfigured: true,
+  customerEnabledSince: null as Date | null,
   adminEnabled: true, adminRecipients: ["admin@example.test"],
 };
 const record: OrderEmailRecord = {
@@ -26,11 +27,24 @@ test("pending status reports planned Gmail, not the unused schema provider defau
   assert.match(result.notQueued.admin!, /saving settings later does not resend/);
 });
 test("restricted customer recipients explain why sending cannot start", () => {
-  assert.match(project({}, { customerRecipientAllowed: false }).notifications[0].blockReason!, /restricted to approved recipients/);
+  assert.match(project({}, { customerRecipientAllowed: false }).notifications[0].blockReason!, /customer does not need to approve anything/);
 });
 test("missing configuration and historical Gmail cutoff are distinguished", () => {
   assert.match(project({}, { customerConfigured: false }).notifications[0].blockReason!, /not fully configured/);
   assert.match(project({ created_at: new Date("2026-09-01") }).notifications[0].blockReason!, /before the current Gmail/);
+});
+test("customer rollout does not present historical pending emails as ready to send", () => {
+  assert.match(project({}, { customerEnabledSince: new Date("2026-10-15") }).notifications[0].blockReason!, /before automatic customer emails were enabled/);
+  assert.equal(project({}, { customerEnabledSince: new Date("2026-10-13") }).notifications[0].blockReason, null);
+});
+test("one explicit historical approval bypasses cutoff reasons without authorizing uncertain resends", () => {
+  const approved = project({ created_at: new Date("2026-09-01"), customer_retry_approved_at: new Date("2026-10-14") }, { customerEnabledSince: new Date("2026-10-14") });
+  assert.equal(approved.notifications[0].blockReason, null);
+  assert.equal(approved.customerRetry.eligible, false);
+  assert.match(approved.customerRetry.reason, /already approved/);
+  const uncertain = project({ status: "uncertain", attempts: 1, customer_retry_approved_at: new Date("2026-10-14") });
+  assert.equal(uncertain.customerRetry.eligible, false);
+  assert.match(uncertain.customerRetry.reason, /reconciled/);
 });
 test("admin recipients retain their snapshots and each independent outcome", () => {
   const rows = [

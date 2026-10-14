@@ -22,6 +22,8 @@ export const orderEmailNotificationsTable = pgTable("store_order_email_notificat
   deliveredAt: timestamp("delivered_at", { withTimezone: true }),
   bouncedAt: timestamp("bounced_at", { withTimezone: true }),
   failedAt: timestamp("failed_at", { withTimezone: true }),
+  customerRetryApprovedAt: timestamp("customer_retry_approved_at", { withTimezone: true }),
+  customerRetryApprovedBy: text("customer_retry_approved_by"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({

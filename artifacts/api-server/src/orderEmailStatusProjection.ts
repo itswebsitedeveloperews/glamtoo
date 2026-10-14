@@ -1,5 +1,6 @@
 import type { getOrderEmailRuntimeStatus } from "./orderConfirmationNotifications";
 import { approvedAdminRecipients, missingAdminCopyBlock, retryBlock } from "./orderEmailActionsPolicy";
+import { customerEmailRetryEligibility } from "./customerEmailRetryEligibility";
 
 type DateValue = Date | string | null;
 export type EmailStatusOrder = { id: string; email: string; payment_status: string; payment_resolution: string };
@@ -9,6 +10,7 @@ export type OrderEmailRecord = {
   created_at: DateValue; updated_at: DateValue; next_attempt_at: DateValue;
   sent_at: DateValue; accepted_at: DateValue; delivered_at: DateValue; last_error: string | null;
   retry_safe?: number; manual_retry_count?: number; bounced_at?: DateValue; provider_email_id?: string | null;
+  customer_retry_approved_at?: DateValue;
 };
 type Runtime = Awaited<ReturnType<typeof getOrderEmailRuntimeStatus>>;
 function iso(value: DateValue) {
@@ -26,9 +28,13 @@ export function projectOrderEmailStatus(order: EmailStatusOrder, records: OrderE
       if (order.payment_status !== "paid" || order.payment_resolution !== "none") {
         blockReason = "Email is paused because payment is not confirmed or requires a refund/resolution.";
       } else if (audience === "customer") {
-        if (!runtime.customerRecipientAllowed) blockReason = "Customer emails are restricted to approved recipients. This customer is not currently approved; no sending attempt is authorised.";
+        if (!runtime.customerRecipientAllowed) blockReason = "The shop is in test-recipient mode. Automatic customer confirmations are not enabled for this address. This is a shop sending restriction; the customer does not need to approve anything.";
         else if (!runtime.customerConfigured) blockReason = "Order email sending is not fully configured or Gmail is not authorised. Check Gmail authentication and email settings in Payments.";
-        else if (runtime.customerAuthorizedSince && row.created_at && new Date(row.created_at) < runtime.customerAuthorizedSince) {
+        else if (!row.customer_retry_approved_at && !(row.manual_retry_count && row.manual_retry_count > 0)
+          && runtime.customerEnabledSince && row.created_at && new Date(row.created_at) < runtime.customerEnabledSince) {
+          blockReason = "This confirmation was queued before automatic customer emails were enabled. Older queued emails are not sent automatically.";
+        }
+        else if (!row.customer_retry_approved_at && runtime.customerAuthorizedSince && row.created_at && new Date(row.created_at) < runtime.customerAuthorizedSince) {
           blockReason = "This email was queued before the current Gmail authorisation. Historical emails are not sent automatically.";
         }
       } else {
@@ -45,17 +51,15 @@ export function projectOrderEmailStatus(order: EmailStatusOrder, records: OrderE
       provider: row.attempts > 0 ? row.provider : audience === "admin" ? "gmail_smtp" : runtime.transport,
       messageId: row.provider_message_id,
       queuedAt: iso(row.created_at), lastUpdatedAt: iso(row.updated_at),
-      sentAt: iso(row.sent_at), acceptedAt: iso(row.accepted_at),
-      deliveredAt: iso(row.delivered_at), nextAttemptAt: iso(row.next_attempt_at),
+      nextAttemptAt: iso(row.next_attempt_at), sentAt: iso(row.sent_at),
+      acceptedAt: iso(row.accepted_at), deliveredAt: iso(row.delivered_at),
       lastError: row.last_error,
     };
   });
   return {
     orderId: order.id, notifications,
-    adminCopyAction: {
-      recipients: approvedAdminRecipients(runtime),
-      blockReason: missingAdminCopyBlock(order, records, runtime),
-    },
+    customerRetry: customerEmailRetryEligibility(order, records.find(row => row.notification_type === "order_confirmation"), runtime),
+    adminCopyAction: { recipients: approvedAdminRecipients(runtime), blockReason: missingAdminCopyBlock(order, records, runtime) },
     notQueued: {
       customer: notifications.some(row => row.audience === "customer") ? null
         : "No customer confirmation was queued for this order. Older orders are not emailed automatically.",

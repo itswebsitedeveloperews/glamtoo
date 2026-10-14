@@ -5,6 +5,7 @@ import { gmailOAuthClient, saveGmailRefreshToken } from "../src/gmailOAuthCreden
 import { createPendingOrder, finalizePaidOrder } from "../src/orderService";
 import { isOrderEmailConfigured, processOrderConfirmations, refreshOrderEmailDelivery } from "../src/orderConfirmationNotifications";
 import { verifyGmailSmtp } from "../src/gmailSmtp";
+import { approveCustomerEmailRetry } from "../src/customerEmailRetry";
 import { resetSmtp, setSmtpFailure, setMismatchedRecipient, smtpCalls, smtpConnections } from "./fixtures/gmail-smtp";
 
 const runId = `smtp_test_${crypto.randomUUID().replace(/-/g, "")}`;
@@ -12,9 +13,9 @@ const recipient = `${runId}@example.test`;
 const orders: string[] = [];
 const originalFetch = globalThis.fetch;
 let externalRequests = 0;
-async function paid(guest = false) {
+async function paid(guest = false, email = recipient) {
   const order = await createPendingOrder({
-    userId: `${guest ? "guest" : "user"}_${runId}`, email: recipient, customerName: "SMTP Test",
+    userId: `${guest ? "guest" : "user"}_${runId}`, email, customerName: "SMTP Test",
     phone: "", address: { line1: "1 Test Street", city: "London", postcode: "SW1A 1AA", country: "GB" },
     delivery: "Standard Delivery", subtotal: 1999, deliveryAmount: 395, discountAmount: 0, total: 2394, vatAmount: 399,
     expiresAt: new Date(Date.now() + 60_000),
@@ -25,7 +26,7 @@ async function paid(guest = false) {
   return order.id;
 }
 async function notification(id: string) {
-  return (await pool.query("SELECT * FROM store_order_email_notifications WHERE order_id = $1", [id])).rows[0];
+  return (await pool.query("SELECT * FROM store_order_email_notifications WHERE order_id = $1 AND notification_type='order_confirmation'", [id])).rows[0];
 }
 async function due(id: string) {
   await pool.query("UPDATE store_order_email_notifications SET next_attempt_at = NOW() - INTERVAL '1 second' WHERE order_id = $1", [id]);
@@ -47,7 +48,11 @@ before(() => {
 beforeEach(() => {
   resetSmtp(); externalRequests = 0;
   process.env.GMAIL_SMTP_APP_PASSWORD = "fake test only pass";
+  process.env.GMAIL_SMTP_AUTH_MODE = "app_password";
   process.env.ORDER_EMAIL_ALLOWED_RECIPIENTS = recipient;
+  delete process.env.ORDER_CONFIRMATION_SEND_TO_ALL;
+  delete process.env.ORDER_CONFIRMATION_ENABLED_SINCE;
+  delete process.env.ORDER_CONFIRMATION_TEST_RECIPIENTS;
 });
 afterEach(async () => {
   await pool.query("DELETE FROM store_orders WHERE id = ANY($1::text[])", [orders]);
@@ -67,6 +72,122 @@ test("Gmail is default; missing credentials or safe recipients cannot fall back 
   await processOrderConfirmations();
   assert.equal(smtpCalls.length, 0);
   assert.equal((await notification(id)).status, "pending");
+});
+
+test("customer rollout sends new paid confirmations outside the test list exactly once", async () => {
+  process.env.ORDER_EMAIL_ALLOWED_RECIPIENTS = "other-test@example.test";
+  process.env.ORDER_CONFIRMATION_SEND_TO_ALL = "true";
+  process.env.ORDER_CONFIRMATION_ENABLED_SINCE = new Date(Date.now() - 1000).toISOString();
+  const id = await paid();
+  await processOrderConfirmations();
+  await processOrderConfirmations();
+  assert.equal((await notification(id)).status, "accepted");
+  assert.equal(smtpCalls.length, 1);
+  assert.equal(smtpCalls[0].to, recipient);
+  assert.equal(smtpCalls[0].attachments[0].cid, "glam-too-order-wordmark");
+  assert.ok(Buffer.isBuffer(smtpCalls[0].attachments[0].content));
+});
+
+test("customer rollout leaves older unapproved confirmations pending with zero attempts", async () => {
+  process.env.ORDER_EMAIL_ALLOWED_RECIPIENTS = "other-test@example.test";
+  process.env.ORDER_CONFIRMATION_SEND_TO_ALL = "true";
+  process.env.ORDER_CONFIRMATION_ENABLED_SINCE = new Date(Date.now() - 1000).toISOString();
+  const id = await paid();
+  await pool.query("UPDATE store_order_email_notifications SET created_at=NOW()-INTERVAL '1 day' WHERE order_id=$1", [id]);
+  await processOrderConfirmations();
+  assert.equal((await notification(id)).status, "pending");
+  assert.equal((await notification(id)).attempts, 0);
+  assert.equal(smtpCalls.length, 0);
+});
+
+test("two distinct customers receive only their own saved paid-order confirmation", async () => {
+  process.env.ORDER_EMAIL_ALLOWED_RECIPIENTS = "";
+  process.env.ORDER_CONFIRMATION_SEND_TO_ALL = "true";
+  process.env.ORDER_CONFIRMATION_ENABLED_SINCE = new Date(Date.now() - 1000).toISOString();
+  const second = `second_${runId}@example.test`;
+  const firstId = await paid(false, recipient);
+  const secondId = await paid(true, second);
+  // A stale/custom notification recipient must never override the paid order.
+  await pool.query("UPDATE store_order_email_notifications SET recipient_email='wrong@example.test' WHERE order_id=ANY($1::text[])", [[firstId, secondId]]);
+  await processOrderConfirmations();
+  await processOrderConfirmations();
+  assert.equal(smtpCalls.length, 2);
+  const firstMail = smtpCalls.find(mail => mail.to === recipient);
+  const secondMail = smtpCalls.find(mail => mail.to === second);
+  assert.ok(firstMail); assert.ok(secondMail);
+  const firstReference = firstId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase();
+  const secondReference = secondId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase();
+  assert.ok(firstMail.html.includes(firstReference));
+  assert.ok(!firstMail.html.includes(secondReference));
+  assert.ok(secondMail.html.includes(secondReference));
+  assert.ok(!secondMail.html.includes(firstReference));
+  assert.ok(firstMail.html.includes("£23.94"));
+  assert.ok(secondMail.html.includes("£23.94"));
+  assert.ok(smtpCalls.every(mail => mail.to === mail.envelope.to[0]));
+});
+
+test("one historical approval is idempotent and cannot resend an accepted confirmation", async () => {
+  process.env.ORDER_EMAIL_ALLOWED_RECIPIENTS = "";
+  process.env.ORDER_CONFIRMATION_SEND_TO_ALL = "true";
+  process.env.ORDER_CONFIRMATION_ENABLED_SINCE = new Date(Date.now() - 1000).toISOString();
+  const id = await paid();
+  await pool.query("UPDATE store_order_email_notifications SET created_at=NOW()-INTERVAL '1 day' WHERE order_id=$1", [id]);
+  await pool.query(
+    `INSERT INTO store_order_email_notifications (order_id,notification_type,recipient_email,status,attempts,provider_message_id)
+     VALUES ($1,'admin_order_confirmation:already-accepted','staff@example.test','accepted',1,'existing-admin-message')`, [id],
+  );
+  await processOrderConfirmations();
+  assert.equal(smtpCalls.length, 0);
+  const approvals = await Promise.all([
+    approveCustomerEmailRetry(`pi_test_${id}`, "approved_test_admin"),
+    approveCustomerEmailRetry(`pi_test_${id}`, "approved_test_admin"),
+  ]);
+  assert.deepEqual(approvals.map(value => value.outcome).sort(), ["already_approved", "approved"]);
+  assert.ok((await notification(id)).customer_retry_approved_at);
+  assert.equal((await notification(id)).attempts, 0);
+  await processOrderConfirmations();
+  assert.equal(smtpCalls.length, 1);
+  assert.equal((await notification(id)).status, "accepted");
+  assert.equal((await approveCustomerEmailRetry(`pi_test_${id}`, "approved_test_admin")).outcome, "already_processed");
+  await processOrderConfirmations();
+  assert.equal(smtpCalls.length, 1);
+  const adminCopy = (await pool.query("SELECT status,attempts,provider_message_id FROM store_order_email_notifications WHERE order_id=$1 AND notification_type LIKE 'admin_order_confirmation:%'", [id])).rows[0];
+  assert.deepEqual(adminCopy, { status: "accepted", attempts: 1, provider_message_id: "existing-admin-message" });
+});
+
+test("controlled approval cannot bypass payment, staging restrictions or uncertain attempts", async () => {
+  const id = await paid();
+  process.env.ORDER_CONFIRMATION_SEND_TO_ALL = "false";
+  process.env.ORDER_CONFIRMATION_TEST_RECIPIENTS = "another@example.test";
+  await assert.rejects(approveCustomerEmailRetry(`pi_test_${id}`, "admin"), /staging recipient policy/);
+  process.env.ORDER_CONFIRMATION_TEST_RECIPIENTS = recipient;
+  await pool.query("UPDATE store_orders SET payment_status='cancelled' WHERE id=$1", [id]);
+  await assert.rejects(approveCustomerEmailRetry(`pi_test_${id}`, "admin"), /confirmed paid order/);
+  await pool.query("UPDATE store_orders SET payment_status='paid' WHERE id=$1", [id]);
+  for (const status of ["sending", "uncertain", "failed", "bounced"]) {
+    await pool.query("UPDATE store_order_email_notifications SET status=$2 WHERE order_id=$1", [id, status]);
+    await assert.rejects(approveCustomerEmailRetry(`pi_test_${id}`, "admin"), /reconciled/);
+  }
+  await pool.query("UPDATE store_order_email_notifications SET status='pending',attempts=1 WHERE order_id=$1", [id]);
+  await assert.rejects(approveCustomerEmailRetry(`pi_test_${id}`, "admin"), /reconciled/);
+  assert.equal(smtpCalls.length, 0);
+});
+
+test("an invalid customer activation date cannot interrupt independently enabled admin copies", async () => {
+  await pool.query(`INSERT INTO store_contact_notification_settings (id,order_enabled,order_admin_emails,updated_by)
+    VALUES (1,true,ARRAY['staff@example.test'],'fixture')
+    ON CONFLICT (id) DO UPDATE SET order_enabled=true,order_admin_emails=EXCLUDED.order_admin_emails`);
+  try {
+    const id = await paid();
+    process.env.ORDER_CONFIRMATION_SEND_TO_ALL = "true";
+    process.env.ORDER_CONFIRMATION_ENABLED_SINCE = "invalid";
+    await processOrderConfirmations();
+    assert.equal(smtpCalls.length, 1);
+    assert.equal(smtpCalls[0].to, "staff@example.test");
+    assert.equal((await notification(id)).attempts, 0);
+  } finally {
+    await pool.query("DELETE FROM store_contact_notification_settings WHERE id=1");
+  }
 });
 
 test("registered/guest confirmations use authenticated sender, TLS, saved totals and exactly one SMTP attempt", async () => {

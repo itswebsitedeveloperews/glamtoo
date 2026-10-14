@@ -19,11 +19,33 @@ Track each admin recipient independently so a failed address cannot cause an alr
 
 ## Order email rollout
 
+The merchant wants every customer to receive confirmation for their own paid
+order, using only the email saved on that order, alongside existing admin
+copies. They also requested redesigning the outgoing order email.
+
+**Why:** They explicitly requested removing the production test-recipient
+restriction, while retaining separately configurable staging restrictions,
+payment verification, retries, duplicate prevention and admin-copy settings.
+
+**How to apply:** Keep the customer-confirmation rollout separate from refunds.
+Use an explicit activation cutoff for newly eligible customers rather than
+releasing the old queue. Previously blocked orders need a controlled per-order
+approval, never automatic historical backfill or resending accepted messages.
+Redesign the actual outgoing email, not just the admin status panel. Two
+distinct approved inboxes and matching actual receipts are required to call
+the production customer flow verified.
+
 Keep provider setup and unrestricted customer-email rollout separate. Do not automatically backfill confirmations for old paid orders.
 
-**Why:** The merchant requested controlled staging verification only and prohibited emails to real customers or automatic historical resends. Connecting credentials can otherwise activate existing refund jobs as well as purchase emails.
+**Why:** Credential setup was originally restricted to controlled staging.
+The later approval for normal production customer confirmations does not
+authorize unrestricted refunds or automatic historical resends.
 
-**How to apply:** Preserve recipient restrictions during setup and testing. Get explicit approval before enabling unrestricted customer delivery or a historical resend. Actual provider-delivery or controlled-inbox evidence is required before reporting end-to-end success; simulated responses and API acceptance are not that evidence.
+**How to apply:** Preserve staging and refund recipient restrictions during
+setup and testing. Production customer confirmations are approved, but any
+historical send still needs the per-order control. Actual controlled-inbox
+evidence is required before reporting end-to-end success; simulated responses
+and SMTP acceptance are not that evidence.
 
 Checking or refreshing an order's email flow must not send or retry messages.
 Keep customer confirmations and admin copies separate, and distinguish

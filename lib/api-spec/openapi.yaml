@@ -50,6 +50,39 @@ paths:
           description: Payment, recipient snapshot, concurrency or duplicate-prevention guard rejected the action
         "503":
           description: Unable to queue the action
+  /admin/orders/{reference}/customer-email/retry:
+    post:
+      operationId: approveCustomerConfirmation
+      summary: Approve one demonstrably unsent customer confirmation for a paid order
+      description: Uses only the saved paid-order email. Never resends accepted or uncertain messages and never changes admin copies.
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema: { type: string, pattern: "^[a-zA-Z0-9_-]{1,120}$" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerConfirmationApprovalInput"
+      responses:
+        "200":
+          description: Approved or already processed; no synchronous email is sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [outcome, message]
+                properties:
+                  outcome: { type: string, enum: [approved, already_approved, already_processed] }
+                  message: { type: string }
+        "400": { description: Invalid reference or approval body. }
+        "401": { description: Sign-in required. }
+        "403": { description: Administrator access and trusted origin required. }
+        "404": { description: Saved order not found. }
+        "409": { description: "Payment, sending configuration or previous attempt prevents safe approval." }
+        "503": { description: Approval could not be saved. }
   /admin/catalog:
     put:
       operationId: saveAdminCatalog
@@ -641,6 +674,12 @@ components:
         notificationId:
           type: integer
           minimum: 1
+    CustomerConfirmationApprovalInput:
+      type: object
+      additionalProperties: false
+      required: [confirmation]
+      properties:
+        confirmation: { type: string, enum: [send_saved_order_confirmation] }
     AdminCatalogSaveInput:
       type: object
       required: [products, categories]

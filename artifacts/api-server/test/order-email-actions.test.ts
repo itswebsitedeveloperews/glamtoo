@@ -59,6 +59,38 @@ async function post(id: string, body: unknown = input, user = "oauth-admin") {
 async function jobs(id: string) {
   return (await pool.query("SELECT * FROM store_order_email_notifications WHERE order_id=$1 ORDER BY id", [id])).rows;
 }
+
+test("an explicitly approved safe customer retry survives the new activation cutoff and preserves Message-ID", async () => {
+  process.env.ORDER_CONFIRMATION_SEND_TO_ALL = "true";
+  process.env.ORDER_CONFIRMATION_ENABLED_SINCE = new Date(Date.now() - 1000).toISOString();
+  try {
+    const email = "outside-legacy-list@example.test";
+    const id = await order(true, email);
+    await pool.query(`UPDATE store_order_email_notifications SET status='failed', attempts=5,
+      retry_safe=1, provider='gmail_smtp', provider_message_id='<saved-customer-retry@example.test>',
+      created_at=NOW()-INTERVAL '1 day'
+      WHERE order_id=$1 AND notification_type='order_confirmation'`, [id]);
+    const notification = (await jobs(id)).find(row => row.notification_type === "order_confirmation");
+    assert.equal((await post(id, {
+      action: "retry", confirmed: true, recipients: [email], notificationId: notification.id,
+    })).status, 202);
+    const status = await getOrderEmailStatus(id);
+    assert.equal(status!.notifications.find(row => row.audience === "customer")!.blockReason, null);
+    assert.equal(status!.customerRetry.eligible, false);
+    assert.equal(status!.adminCopyAction.blockReason, null);
+    await processOrderConfirmations();
+    await processOrderConfirmations();
+    assert.equal(smtpCalls.length, 1);
+    assert.equal(smtpCalls[0].to, email);
+    assert.equal(smtpCalls[0].messageId, "<saved-customer-retry@example.test>");
+    const sent = (await jobs(id)).find(row => row.notification_type === "order_confirmation");
+    assert.equal(sent.status, "accepted");
+    assert.equal(sent.attempts, 6);
+  } finally {
+    delete process.env.ORDER_CONFIRMATION_SEND_TO_ALL;
+    delete process.env.ORDER_CONFIRMATION_ENABLED_SINCE;
+  }
+});
 test("anonymous, customer and malformed approvals cannot queue emails", async () => {
   const id = await order();
   assert.equal((await post(id, input, "")).status, 401);

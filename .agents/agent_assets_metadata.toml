@@ -84,3 +84,17 @@ mtime_ms = 1791976607856
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/bbe09732-d932-43fd-81fe-e373a1b428b1/422cc5c3-1987-49a5-be8b-493cb8fe1fc1"
 storage_version_token = "1791976666186597"
 content_type = "image/png"
+
+[[outputs]]
+id = "p1yDcafN3e9IZfCur4XAD"
+uri = "file://generated-artifacts/order-confirmation-preview.html"
+type = "html"
+title = "Redesigned order confirmation — preview"
+description = "Self-contained preview with synthetic order details. This is the outgoing email design, not a sent message or proof of inbox receipt."
+logical_id = "c35acf06-ab84-41bd-a0eb-cfd928305a51"
+content_hash = "sha256:d484dc5f0c2ec6a7d74caea9a7a0dd4f28a58148e717b6911c490de887d6e325"
+size = 41848
+mtime_ms = 1791982157092
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/c35acf06-ab84-41bd-a0eb-cfd928305a51/df1b20e2-3359-4eb7-b7c4-75e82f2788e7"
+storage_version_token = "1791983262089056"
+content_type = "text/html"

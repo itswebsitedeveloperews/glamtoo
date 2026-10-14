@@ -27,6 +27,7 @@ import type {
 import type {
   AbandonCheckoutPayment200,
   AdminCatalogSaveInput,
+  ApproveCustomerConfirmation200,
   CheckoutFinalizationResult,
   CheckoutPaymentInput,
   CheckoutPaymentIntentResult,
@@ -34,6 +35,7 @@ import type {
   ContactEnquiryInput,
   ContactEnquiryResponse,
   ContactNotificationSettingsInput,
+  CustomerConfirmationApprovalInput,
   ErrorEnvelope,
   GetAdminContactEnquiries200,
   GetAdminContactNotificationSettings200,
@@ -157,6 +159,11 @@ export const useRequestOrderEmailAction = <TError = ErrorType<void>,
       return useMutation(getRequestOrderEmailActionMutationOptions(options), queryClient);
     }
 
+export const getApproveCustomerConfirmationUrl = (reference: string,) => {
+
+
+  return `/api/admin/orders/${reference}/customer-email/retry`
+}
 export const getSaveAdminCatalogUrl = () => {
 
 
@@ -1596,3 +1603,78 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
 }
 
 export type GetUploadedImageQueryResult = NonNullable<Awaited<ReturnType<typeof getUploadedImage>>>
+
+export const getApproveCustomerConfirmationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveCustomerConfirmation>>, TError,ApproveCustomerConfirmationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveCustomerConfirmation>>, TError,ApproveCustomerConfirmationMutationVariables, TContext> => {
+
+const mutationKey = getApproveCustomerConfirmationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveCustomerConfirmation>>, ApproveCustomerConfirmationMutationVariables> = (props) => {
+          const {reference,data} = props ?? {};
+
+          return  approveCustomerConfirmation(reference,data,requestOptions)
+        }
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveCustomerConfirmationMutationBody = BodyType<CustomerConfirmationApprovalInput>
+
+    export type ApproveCustomerConfirmationMutationVariables = {reference: string;data: BodyType<CustomerConfirmationApprovalInput>}
+
+    export type ApproveCustomerConfirmationMutationResult = NonNullable<Awaited<ReturnType<typeof approveCustomerConfirmation>>>
+
+    /**
+ * @summary Approve one demonstrably unsent customer confirmation for a paid order
+ */
+export const useApproveCustomerConfirmation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveCustomerConfirmation>>, TError,ApproveCustomerConfirmationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof approveCustomerConfirmation>>,
+        TError,
+        ApproveCustomerConfirmationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveCustomerConfirmationMutationOptions(options), queryClient);
+    }
+
+    export type ApproveCustomerConfirmationMutationError = ErrorType<void>
+
+/**
+ * Uses only the saved paid-order email. Never resends accepted or uncertain messages and never changes admin copies.
+ * @summary Approve one demonstrably unsent customer confirmation for a paid order
+ */
+export const approveCustomerConfirmation = async (reference: string,
+    customerConfirmationApprovalInput: CustomerConfirmationApprovalInput, options?: Parameters<typeof customFetch>[1]): Promise<ApproveCustomerConfirmation200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ApproveCustomerConfirmation200>(getApproveCustomerConfirmationUrl(reference),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(customerConfirmationApprovalInput)
+  }
+);}
+
+export const getApproveCustomerConfirmationMutationKey = () => ['approveCustomerConfirmation'] as const;

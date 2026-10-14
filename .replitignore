@@ -4,6 +4,11 @@
 # No need to store the pnpm store twice.
 .local
 /generated-artifacts/
+/attached_assets/*.msg
+/attached_assets/*.mbox
+/attached_assets/order-email-receipts/
+/attached_assets/image_1791981809216.png
+/attached_assets/image_1791981892738.png
 
 # Do not package raw merchant email receipt evidence.
 /attached_assets/*.eml

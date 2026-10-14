@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OrderEmailActionInput } from "@workspace/api-client-react";
+import { useApproveCustomerConfirmation } from "@workspace/api-client-react";
 
 type Notification = {
   id: number; audience: "customer" | "admin"; recipient: string | null; status: string; blockReason: string | null;
@@ -8,8 +9,11 @@ type Notification = {
   nextAttemptAt: string; lastError: string | null;
   retryBlockReason?: string | null;
 };
+
+type CustomerRetry = { eligible: boolean; reason: string; recipient: string };
 type EmailStatus = {
-  orderId: string; notifications: Notification[]; notQueued: { customer: string | null; admin: string | null };
+  orderId: string; loadedReference: string; customerRetry?: CustomerRetry;
+  notifications: Notification[]; notQueued: { customer: string | null; admin: string | null };
   adminCopyAction?: { recipients: string[]; blockReason: string | null };
 };
 
@@ -62,6 +66,45 @@ function NotificationRow({ n, onRetry, disabled }: { n: Notification; onRetry: (
   );
 }
 
+function CustomerRetryControl({ orderId, retry, onApproved }: { orderId: string; retry: CustomerRetry; onApproved: () => void }) {
+  const approve = useApproveCustomerConfirmation();
+  const current = useRef(orderId);
+  const mounted = useRef(true);
+  current.current = orderId;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null);
+  const recipient = retry.recipient.slice(0, 254);
+  const run = () => {
+    if (approve.isPending || !retry.eligible) return;
+    if (!window.confirm(`Send the saved order confirmation once to ${recipient}? The recipient cannot be changed here.`)) return;
+    setNotice(null);
+    const started = orderId;
+    approve.mutate({ reference: started, data: { confirmation: "send_saved_order_confirmation" } }, {
+      onSuccess: (res) => {
+        if (!mounted.current || current.current !== started) return;
+        setNotice({ ok: true, text: sanitize(res.message || "Approved.") });
+        onApproved();
+      },
+      onError: () => {
+        if (!mounted.current || current.current !== started) return;
+        setNotice({ ok: false, text: "The approval could not be completed. Refresh the status to see what was recorded before trying again." });
+      },
+    });
+  };
+  const box = { margin: "12px 0 0", overflowWrap: "anywhere" as const, wordBreak: "break-word" as const };
+  return (
+    <div className="aoes-retry" style={box}>
+      {retry.eligible ? (
+        <>
+          <p className="aoes-note" style={{ fontSize: 14 }}>This confirmation was held back and can be sent once to the saved recipient, {recipient}.</p>
+          <button className="admin-secondary" type="button" disabled={approve.isPending} onClick={run}>{approve.isPending ? "Approving…" : "Approve and send confirmation"}</button>
+        </>
+      ) : <p className="aoes-note" style={{ fontSize: 14 }}>Not available to retry: {sanitize(retry.reason)}</p>}
+      {approve.isPending && <p className="aoes-note" role="status" style={{ fontSize: 14 }}>Submitting approval…</p>}
+      {notice && <p className={notice.ok ? "aoes-note" : "aoes-error"} role={notice.ok ? "status" : "alert"} style={{ fontSize: 14 }}>{notice.text}</p>}
+    </div>
+  );
+}
 export default function AdminOrderEmailStatus({ orderId, onOpenPayments }: { orderId: string; onOpenPayments?: () => void }) {
   const [data, setData] = useState<EmailStatus | null>(null);
   const [error, setError] = useState("");
@@ -85,7 +128,7 @@ export default function AdminOrderEmailStatus({ orderId, onOpenPayments }: { ord
       const body = res.headers.get("content-type")?.includes("application/json") ? await res.json() : null;
       if (!res.ok || !body || !Array.isArray(body.notifications)) throw new Error(body?.error || "Email status is unavailable.");
       if (!alive.current || mine !== seq.current) return;
-      setData(body as EmailStatus); setError(""); setChecked(new Date());
+      setData({ ...body, loadedReference: id } as EmailStatus); setError(""); setChecked(new Date());
     } catch (failure) {
       if (!alive.current || mine !== seq.current) return;
       setError(failure instanceof Error ? failure.message : "Email status could not be loaded.");
@@ -148,7 +191,7 @@ export default function AdminOrderEmailStatus({ orderId, onOpenPayments }: { ord
       <p className="aoes-lead">Payment, email sending and inbox delivery are separate. Payment is recorded above; each stage below shows only what has been recorded.</p>
       {loading && !data && <div className="aoes-skeleton" aria-label="Loading email status"><i /><i /></div>}
       {error && <p className="admin-payment-error" role="alert">{error} {data ? "Showing the last loaded status." : ""} <button className="admin-secondary" type="button" onClick={() => void load(orderId, false)}>Retry</button></p>}
-      {data && channels.map(({ key, title }) => {
+      {data && data.loadedReference === orderId && channels.map(({ key, title }) => {
         const rows = data.notifications.filter((n) => n.audience === key);
         return (
           <div className="aoes-channel" key={key}>
@@ -156,6 +199,9 @@ export default function AdminOrderEmailStatus({ orderId, onOpenPayments }: { ord
             {rows.length === 0
               ? <p className="aoes-empty">Nothing queued. {data.notQueued[key] || "No reason was recorded."}</p>
               : <ul>{rows.map((n) => <NotificationRow n={n} key={n.id} disabled={submitting || Boolean(approval) || Boolean(error)} onRetry={() => review({ action: "retry", confirmed: true, notificationId: n.id, recipients: [n.recipient!] })} />)}</ul>}
+            {key === "customer" && data.customerRetry && !error && !approval && !submitting && (
+              <CustomerRetryControl key={orderId} orderId={orderId} retry={data.customerRetry} onApproved={() => void load(orderId, false)} />
+            )}
             {key === "admin" && rows.length === 0 && data.adminCopyAction && (
               data.adminCopyAction.blockReason
                 ? <p className="aoes-note">Manual copy unavailable: {data.adminCopyAction.blockReason}</p>

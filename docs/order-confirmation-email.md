@@ -122,4 +122,51 @@ and controlled-inbox protocol.
 
 The merchant confirmed completion on 2026-10-14 with an admin screenshot showing “Authorization saved” and “Gmail SMTP authentication passed. No email was sent; inbox delivery is not yet verified.” The production callback is registered and mailbox authorization is complete. This is merchant-provided evidence of authentication, not an independently observed recipient-inbox delivery.
 
-Sending remains restricted to the configured test recipients. Controlled-inbox delivery through a new approved sandbox order remains unverified; do not replay historical orders or enable unrestricted customer sending without approval. Gmail SMTP acceptance cannot be automatically upgraded to delivered or used as inbox-delivery evidence. If the Google consent app remains in Testing, account for its possible seven-day refresh-token expiry before production rollout.
+The merchant subsequently requested automatic customer confirmations alongside
+admin copies. Customer confirmations now have a separate, explicitly enabled
+rollout; the shared refund-email recipient policy remains restricted.
+Controlled-inbox delivery through a new approved order remains unverified.
+Gmail SMTP acceptance cannot be automatically upgraded to delivered or used as
+inbox-delivery evidence. If the Google consent app remains in Testing, account
+for its possible seven-day refresh-token expiry before production rollout.
+
+## Automatic customer confirmations and redesigned email
+
+Customer confirmations use these separate non-secret **production** settings:
+
+- `ORDER_CONFIRMATION_SEND_TO_ALL=true`
+- `ORDER_CONFIRMATION_ENABLED_SINCE=<ISO activation timestamp>`
+
+Both must be present and valid. The timestamp prevents enabling automatic
+confirmations from releasing the historical queue. Existing explicitly approved
+test recipients retain their previous eligibility. Gmail authorization,
+confirmed payment, terminal/uncertain-send protection and retry limits still
+apply. Turning the customer-only flag off restores the existing test-recipient
+policy. Staging has its own optional `ORDER_CONFIRMATION_TEST_RECIPIENTS`
+override; an explicitly empty list allows nobody. Do not set
+`ORDER_EMAIL_SEND_TO_ALL=true` merely to enable customer
+confirmations: that shared policy also controls refund notifications.
+
+**An older pending confirmation is not automatically retried by this change.**
+It requires a separate, specific approval path rather than a bulk queue release.
+No production message or real test email was sent while implementing this
+change, and no published Gmail/Outlook rendering or inbox delivery is claimed.
+The per-order approval control, exact environment changes, release/schema steps,
+Gmail limitations and outstanding two-inbox protocol are documented in
+[customer-confirmation-rollout.md](customer-confirmation-rollout.md).
+The new configuration takes effect when the updated server code is running;
+the already-published server is not changed by local template previews.
+
+Both customer messages and admin copies use the redesigned, centred,
+table-based order email: approved inline-PNG branding, payment/order summary,
+products and options, discount/shipping/VAT-inclusive totals, delivery details,
+and the existing guest-safe contact or signed-in account link. Body/supporting
+copy is 16px/14px. Gmail receives the logo as an inline MIME attachment; the
+legacy MailerSend path receives its base64 inline attachment representation.
+
+Verification included workspace type checking, API build, isolated
+email-confirmation and Gmail SMTP suites, customer policy and status projection
+tests, template/MIME tests, and desktop/390px rendered previews. The new isolated
+SMTP cases prove a fresh customer outside the test list is accepted exactly
+once while a pre-activation unapproved confirmation stays pending with zero
+attempts. All external delivery responses in those tests were simulated.

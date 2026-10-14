@@ -31,7 +31,11 @@ export const RequestOrderEmailActionBody = zod.object({
 
 export const RequestOrderEmailActionResponse = zod.void()
 
-
+/**
+ * Uses only the saved paid-order email. Never resends accepted or uncertain messages and never changes admin copies.
+ * @summary Approve one demonstrably unsent customer confirmation for a paid order
+ */
+export const approveCustomerConfirmationPathReferenceRegExp = new RegExp('^[a-zA-Z0-9_-]{1,120}$');
 /**
  * Omitted products are retired. Existing inventory stock is preserved unless its exact product or product:variation key is listed in stockUpdates. This prevents live-stock browser overlays from resetting unrelated stock.
  * @summary Save the full catalog and sellable inventory atomically (administrators only)
@@ -381,3 +385,16 @@ export const SubmitContactEnquiryResponse = zod.object({
 
 
 export const GetUploadedImageResponse = zod.unknown()
+
+export const ApproveCustomerConfirmationBody = zod.object({
+  "confirmation": zod.enum(['send_saved_order_confirmation'])
+})
+
+export const ApproveCustomerConfirmationParams = zod.object({
+  "reference": zod.coerce.string().regex(approveCustomerConfirmationPathReferenceRegExp)
+})
+
+export const ApproveCustomerConfirmationResponse = zod.object({
+  "outcome": zod.enum(['approved', 'already_approved', 'already_processed']),
+  "message": zod.string()
+})

@@ -42,7 +42,7 @@
 - [Form focus treatment](form-focus-treatment.md) — Merchant wants no outer outline on editable fields; use an existing-border or inset focus highlight.
 - [Catalog URL policy](catalog-url-policy.md) — Preserve URL formats and stable slugs; SEO metadata and redirects require server document handling.
 - [Chromium CDP preview checks](chromium-cdp-targets.md) — Select the actual page target and use instant scrolling for deterministic captures.
-- [Transactional email rollout](order-email-rollout-safety.md) — Separate multiple admin recipients for contacts/order copies; blank lists use admin email. Preserve customer restrictions and avoid replay/duplicates.
+- [Transactional email rollout](order-email-rollout-safety.md) — Production customer confirmations are separate from restricted staging/refunds; historical sends need per-order approval, not bulk replay.
 - [Workflow port ownership](workflow-port-ownership.md) — A failed workflow can still have a server listening; verify port ownership before restarting.
 - [Checkout creation uncertainty](checkout-creation-safety.md) — Lost provider responses retain allocations and retry identity; session locks must not exhaust the query pool.
 - [Performance audits](performance-audits.md) — Check real images and configured services; local scores are not live PageSpeed results. Preserve original catalog media URLs.
@@ -50,3 +50,4 @@
 - [CSP provider boundaries](csp-provider-boundaries.md) — Attribute violations to their owning document; do not loosen the parent policy for Stripe iframe warnings.
 - [Product hover previews](product-hover-previews.md) — All product listings preview the second detail-gallery photo on hover, not an unrelated image.
 - [Gallery recovery evidence](gallery-recovery-evidence.md) — Unused uploads do not prove accidental removal; restore only verified sets/order, once, without seed repopulation.
+- [Read-only admin test sessions](admin-test-session-safety.md) — Existing-admin testing needs explicit approval and session-only APIs; do not assume the generic helper preserves users.

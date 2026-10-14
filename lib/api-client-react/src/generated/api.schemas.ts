@@ -25,6 +25,7 @@ export interface OrderEmailActionInput {
   notificationId?: number;
 }
 
+export type CustomerConfirmationApprovalInputConfirmation = typeof CustomerConfirmationApprovalInputConfirmation[keyof typeof CustomerConfirmationApprovalInputConfirmation];
 export type AdminCatalogSaveInputProductsItem = { [key: string]: unknown };
 
 export type AdminCatalogSaveInputCategoriesItem = { [key: string]: unknown };
@@ -226,6 +227,7 @@ export interface ErrorEnvelope {
   code?: string;
 }
 
+export type ApproveCustomerConfirmation200Outcome = typeof ApproveCustomerConfirmation200Outcome[keyof typeof ApproveCustomerConfirmation200Outcome];
 export type SaveAdminCatalog200ProductsItem = { [key: string]: unknown };
 
 export type SaveAdminCatalog200CategoriesItem = { [key: string]: unknown };
@@ -359,3 +361,22 @@ export const GetUploadedImageWidth = {
   NUMBER_640: 640,
   NUMBER_960: 960,
 } as const;
+
+export const CustomerConfirmationApprovalInputConfirmation = {
+  send_saved_order_confirmation: 'send_saved_order_confirmation',
+} as const;
+
+export interface CustomerConfirmationApprovalInput {
+  confirmation: CustomerConfirmationApprovalInputConfirmation;
+}
+
+export const ApproveCustomerConfirmation200Outcome = {
+  approved: 'approved',
+  already_approved: 'already_approved',
+  already_processed: 'already_processed',
+} as const;
+
+export type ApproveCustomerConfirmation200 = {
+  outcome: ApproveCustomerConfirmation200Outcome;
+  message: string;
+};
