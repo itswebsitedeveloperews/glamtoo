@@ -1,0 +1,79 @@
+# Fresh bugs and regression findings — 14 October 2026
+
+## GT-010 — High — Newly created product cannot enter checkout
+
+- Route: /product/qa-launch-20261014-1791952755723 → /cart → /checkout.
+- Steps: Create/publish a simple product with a unique ID (this fixture used £1, stock2, Handbags and an existing image). Add it in a fresh guest context. Open its nonempty basket. Click Go to checkout.
+- Expected: Checkout retains the line and offers billing/payment.
+- Actual: Navigation reaches /checkout then /cart about40ms later. Nonempty basket still shows the item. Reproduced by direct checkout navigation and by basket link; no order created for this fixture.
+- Evidence: [navigation record](evidence/new-product-checkout.json), [screenshot](evidence/new-product-checkout-redirect.png), [trace](evidence/new-product-checkout-trace.zip), [source condition](evidence/launch-facts.json).
+- Cause: Public compiled checkout code redirects when its resolved item array has length0. Failure to await catalogue hydration before that redirect is inferred from the new-ID-only failure and navigation trace; backend/source repository was not inspected.
+- Fix: Distinguish catalogue loading from a truly empty/invalid basket. Await authoritative catalogue/inventory before resolving lines or redirecting. Cover newly created products, reload/direct checkout and unavailable products in regression tests. Fixture deleted after reproduction.
+
+## GT-009 — High — Fresh order confirmation email not received
+
+- Route: /checkout → /order-confirmation; admin order GM-03B7D305.
+- Steps: Complete guest sandbox order using supplied dedicated email; check inbox/spam.
+- Expected: Order confirmation delivered once with correct item, shipping and total.
+- Actual: Paid £23.98 order exists exactly once; user explicitly reports no email received. Earlier four-order non-delivery issue remains unresolved. Actual delivered content was not inspected.
+- Evidence: [user receipt report](evidence/email-receipt.json), [admin order](evidence/admin-fresh-order.png), [payment record](evidence/payment-run.json).
+- Cause: Unknown. Successful payment/finalization is not proof of sending or delivery.
+- Fix: Trace order trigger/outbox, safe-recipient routing, provider configuration/message ID and provider delivery status. Verify receipt in an owned inbox before closing.
+
+## GT-013 — Medium — Mobile product page shifts substantially during loading
+
+- Route: /product/military-style-jacket, 390×844 fresh context.
+- Steps: Load with buffered layout-shift observer; collect after network settling and1.2seconds. Repeat three times.
+- Expected: Stable geometry while catalogue, images, fonts and product information arrive; target CLS≤0.1 per [web.dev](https://web.dev/articles/cls).
+- Actual: Three proper maximum-session-window samples measure CLS 0.339–0.493. Modern values differ from earlier observer sums when shifts are separated by more than1second. LCP also varies2.072/4.496/12.504seconds; these are local lab samples.
+- Evidence: [session-window measurements and shift sources](evidence/performance-modern.json); earlier sum-only diagnostic samples in performance.json/performance-followup.json.
+- Cause: Not isolated; observer source records identify movement in footer, detail-form, gallery pagination and add-to-bag geometry during loading. Do not infer a field percentile/Core Web Vitals certification from these local samples alone.
+- Fix: Reserve image/gallery/accordion dimensions; make fallback and hydrated layouts match; capture individual layout-shift sources and retest.
+
+## GT-004 — Medium — Colour contrast failures persist
+
+- Routes: /, /shop, /product/military-style-jacket, /account, /cart, /checkout.
+- Steps: Run included axe WCAG A/AA scans at1440px.
+- Expected: Normal-size text contrast≥4.5:1; appropriate large text≥3:1.
+- Actual: Sale link3.64:1; several white-on-pink labels/buttons4.09:1. All six scans fail colour-contrast. Exact nodes/ratios in axe JSON.
+- Evidence: evidence/axe-*.json and corresponding screenshots/traces under test-results/.
+- Cause: Rendered foreground/background combinations confirmed; full stylesheet source not inspected.
+- Fix: Adjust colours and verify all states, then repeat axe and keyboard/low-vision checks.
+
+## GT-011 — Medium, requires manual accessibility confirmation — Stripe hidden focus node
+
+- Route: /checkout.
+- Steps: Run axe after Stripe card element loads.
+- Expected: Hidden elements are excluded from keyboard focus/accessibility.
+- Actual: aria-hidden-focus flagged .__PrivateStripeElement-input. Third-party integration attribution and actual keyboard impact remain unverified.
+- Evidence: [checkout axe](evidence/axe-checkout.json), native trace in test-results/storefront-accessibility-checkout/.
+- Fix: Manually validate Stripe keyboard behaviour; check supported element configuration/vendor guidance. Do not arbitrarily remove Stripe-managed DOM nodes.
+
+## GT-012 — Low — Deleting QA product leaves its inventory entry
+
+- Routes: /admin Products; /api/inventory.
+- Steps: Create simple product stock2, delete through its scoped Remove button, compare catalogue/inventory with baseline.
+- Expected: Product is absent and obsolete inventory is removed/archived consistently.
+- Actual: Public catalogue restored to15 products with fixture absent; additional inventory key1791952756162 remains at2. No deletion control for that key exists in the inspected UI. Retail stock only changes122:5→4 for the paid order.
+- Evidence: [cleanup](evidence/cleanup-verification.json), [final APIs](evidence/api-final.json), [fixture record](evidence/fixture.json).
+- Cause: Inventory cleanup path not inspected.
+- Fix: Delete/archive corresponding product and variation inventory when removing catalogue records. Safely remove this specific staging orphan and verify no other IDs change.
+
+## GT-008 — Low — Product naming typos persist
+
+- Routes: sequin dress, printed tracksuit and belted dress pages/listings.
+- Steps: Inspect displayed names versus descriptions.
+- Actual: Aysemetric and Doubled Breasted remain; sequin description uses Asymmetric.
+- Expected/fix: Merchant-approved spelling consistently; preserve slugs or redirects when renaming.
+- Evidence: [crawl](evidence/crawl.json), product screenshots.
+- Cause: Catalogue text confirmed; intended brand naming not confirmed.
+
+## Fixed or qualified earlier findings
+
+- GT-001/002: configured shipping totals and promises align in fresh checks.
+- GT-003: **visible listing/PDP price fixed**. API parent29.99 versus variants34.99 remains metadata discrepancy. The old API-based assertion was corrected; UI followup passed. No current visible pricing failure asserted.
+- GT-005: current viewport width=device-width, initial-scale=1.0; zoom restriction absent.
+- GT-006: placeholder social # links absent from crawl.
+- GT-007: guest checkout payment succeeded.
+- TEST50 discounts shipping too: £19.99+£3.99,50% discount£11.99,total£11.99. Merchant discount basis/rounding decision needed before categorizing as a bug.
+- Coupon quote accepts sold-out variation (200), but payment initialization rejects it (409) without creating an intent. This is a quote-stage inconsistency, not demonstrated overselling.
