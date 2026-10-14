@@ -46,6 +46,36 @@ requests and all non-read requests are blocked and fail the test. No accounts,
 products or business data are created or changed. This fixture checks the Products
 presentation, not real Clerk authentication or server-side authorization.
 
+## Product-page responsive geometry
+
+```sh
+pnpm --filter @workspace/glam-me test:product-layout
+```
+
+This focused suite uses the existing isolated Vite/SSR test harness (port 18784;
+override with `PRODUCT_LAYOUT_PORT`). It needs no preview, API, credentials or
+live catalog. Client-only catalog fixtures provide one single-image product and
+one eight-image product; decoded portrait SVGs are local, deterministic test
+media. Unexpected API/external requests and all writes are blocked and fail.
+
+Both products resize in the same mounted page through 1280, 1024, 820, 768, 393,
+820 and 1280px. Geometry assertions protect the single H1/category above the
+gallery, left-aligned 60%-width/capped 480px 3:4 tablet frame, thumbnail rail clearance
+from viewer/purchase form, phone full-width/original-ratio photos, and desktop
+side-by-side/original-ratio photos. The rail is intentionally hidden at 768px
+(the existing 800px breakpoint). The multi-image case selects a second image at
+every size, checks loading and descriptive alt text, then returns to the first.
+Image and thumbnail decoding, page overflow and absence of single-image
+thumbnails are also checked. No business data is saved.
+Negative controls temporarily inject six broken CSS rules in the disposable
+browser and require the corresponding geometry assertion to reject each one.
+The left alignment follows the merchant's newer approval on the main branch,
+which supersedes the original centered-tablet layout requested for this suite.
+
+This is layout regression coverage, not gallery persistence, general public-page
+release automation, SSR/hydration coverage, or authentication testing. Failures
+retain screenshots/traces in ignored `generated-artifacts/product-layout-tests`.
+
 ## Private receipt and checkout-dialog contrast
 
 `private-contrast.spec.ts` is automatically included by the existing
