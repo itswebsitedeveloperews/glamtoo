@@ -15,6 +15,17 @@ by making public content renderable.
 post-hydration refresh behavior. Existing browser API mocks cannot affect initial
 server HTML; explicitly isolate client-only fallback tests.
 
+Judge hydration by both browser diagnostics and functioning controls, not just
+visible content after JavaScript runs.
+
+**Why:** React can replace mismatched server HTML with a client render that looks
+correct. A successful screenshot or final heading alone can therefore hide a
+broken hydration path.
+
+**How to apply:** Keep the initial server snapshot intact in SSR browser checks,
+capture mismatch warnings and page errors from before navigation, and require
+a post-hydration interaction or browser-only state change as well.
+
 Do not introduce an await or streaming renderer while request data is held in
 storefront module state; rendering must finish synchronously and reset in finally.
 

@@ -9,6 +9,7 @@
     "serve": "node server/index.mjs",
     "test:seo": "node --test --test-timeout=60000 server/*.test.mjs",
     "test:ssr": "pnpm run build && node --test server/public-ssr.integration.mjs",
+    "test:ssr-browser": "node test/run-ssr-browser.mjs",
     "test:storefront": "node --test src/utils/*.test.ts src/data/*.test.mjs",
     "test:storefront-browser": "playwright test --config playwright.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"

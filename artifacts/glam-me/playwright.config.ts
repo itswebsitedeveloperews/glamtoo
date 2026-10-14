@@ -6,6 +6,7 @@ const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
 
 export default defineConfig({
   testDir: "./test",
+  testIgnore: "public-ssr.spec.ts",
   timeout: 45000,
   workers: 1,
   reporter: "list",

@@ -1,7 +1,8 @@
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-import App from './App';
+import App, { setPublicSnapshot } from './App';
+import { readPublicSnapshot } from './data/public-snapshot';
 import { ErrorBoundary } from '@/components/error-boundary';
 
 const queryClient = new QueryClient();
@@ -21,6 +22,9 @@ const app = (
   </ErrorBoundary>
 );
 if (document.getElementById('public-storefront-data')) {
+  // Seed the same catalog and inventory used by renderToString before React's
+  // first browser render; a later effect is too late for hydration.
+  setPublicSnapshot(readPublicSnapshot());
   hydrateRoot(root, app, options);
 } else {
   createRoot(root, options).render(app);

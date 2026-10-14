@@ -55,8 +55,10 @@ templates, current stock overrides, variable prices, query routes and isolation
 between successive requests. HTTP tests cover safe serialization, private-route
 exclusion, API failures, redirects, headers and unchanged discovery policy.
 
-For browser checks, verify direct public visits with JavaScript disabled, then
-enable JavaScript and check hydration, filters, product options and adding to the
-bag. Browser-only API mocks do not change an already server-rendered snapshot;
-tests simulating an absent initial catalog must explicitly use the client-only
-fallback shell or supply a server-side catalog fixture.
+Run `pnpm --filter @workspace/glam-me test:ssr-browser` for the automated
+development/production browser gate (includes the production build/HTTP checks).
+It covers JavaScript-disabled desktop/mobile layouts and links, plus hydration
+and public-to-bag navigation. See `artifacts/glam-me/test/README.md` for isolated
+fixtures, ports and diagnostic output. Browser-only API mocks do not change an
+already server-rendered snapshot; tests simulating an absent initial catalog
+must explicitly use the client-only fallback shell or a server-side fixture.

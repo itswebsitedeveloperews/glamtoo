@@ -4,23 +4,7 @@ import assert from 'node:assert/strict';
 import { render } from '../dist/server/entry-server.js';
 import { createSeoServer } from './index.mjs';
 
-const categories = [{ id: 50, name: 'Dresses', slug: 'stable-dresses', description: 'Current collection', image: '/objects/category.webp' }];
-const simple = {
-  id: 9001, name: 'Live cotton dress', slug: 'live-cotton', category: 'Dresses',
-  status: 'Published', type: 'Simple', price: '£27.25', stock: 7,
-  image: '/objects/cotton.webp', galleryImages: [], position: '50% 50%',
-  description: 'Actual public description', sku: 'LIVE', variations: [],
-  longDescription: '<p>Detailed cotton <strong>description</strong><img src=x onerror=alert(1)><script>alert(1)</script></p>',
-};
-const variable = {
-  ...simple, id: 9002, name: 'Variable evening dress', slug: 'variable-evening',
-  type: 'Variable', price: '£999.00',
-  variations: [
-    { id: 20, size: 'S', colour: '', price: '£35.25', stock: 5, sku: 'S' },
-    { id: 21, size: 'M', colour: '', price: '£39.75', stock: 3, sku: 'M' },
-  ],
-};
-const snapshot = { products: [simple, variable], categories, homePage: null, inventory: { 9001: 0, '9002:20': 0, '9002:21': 2 }, sales: { 9002: 8 } };
+import { snapshot, fixtureResponse } from './public-ssr.fixtures.mjs';
 
 test('real React templates produce visible public HTML with live stock and variant prices', () => {
   for (const route of ['/', '/shop', '/category', '/category/stable-dresses', '/product/live-cotton', '/product/variable-evening']) {
@@ -61,22 +45,9 @@ test('production documents render for people and crawlers; redirects and private
   const fetcher = async (url, options) => {
     assert.deepEqual(options.headers, { accept: 'application/json' });
     const target = new URL(url);
-    if (target.pathname === '/api/seo/resolve') {
-      const path = target.searchParams.get('path');
-      if (path === '/product/old-cotton') return Response.json({ status: 301, location: '/product/live-cotton' });
-      if (path === '/product/missing') return Response.json({ status: 404, title: 'Not found' });
-      return Response.json({ status: 200, title: 'Current public page', canonicalUrl: 'https://example.test/shop' });
-    }
-    publicLoads++;
-    if (target.pathname === '/api/catalog') return Response.json({ ...snapshot, initialized: true });
-    if (target.pathname === '/api/inventory') return failStock
-      ? new Response('Unavailable', { status: 503 }) : Response.json({ inventory: snapshot.inventory });
-    if (target.pathname === '/api/stripe/product-sales') return Response.json({ sales: snapshot.sales });
-    if (target.pathname === '/api/shipping-methods') return Response.json({ shippingMethods: [
-      { id: 'live', name: 'Merchant delivery', description: 'Current dispatch terms', price: 725, freeOver: null, enabled: true, sortOrder: 0 },
-    ] });
-    if (target.pathname === '/api/return-information') return Response.json({ content: '<p>Merchant return terms.</p>' });
-    throw new Error(`Unexpected request ${url}`);
+    if (target.pathname !== '/api/seo/resolve') publicLoads++;
+    if (target.pathname === '/api/inventory' && failStock) return new Response('Unavailable', { status: 503 });
+    return fixtureResponse(url, options);
   };
   const server = createSeoServer({ fetcher, render });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
