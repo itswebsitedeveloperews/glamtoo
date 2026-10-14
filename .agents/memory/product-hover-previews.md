@@ -24,3 +24,14 @@ ordering, and full-resolution detail zoom to survive performance optimizations.
 **How to apply:** Preserve originals, authorize derivatives against the source
 image, and version derivative URLs when changing their encoding policy so
 long-lived browser caches do not retain an obsolete preview.
+
+For browser assertions, visibility alone does not prove a preview is displayed:
+Playwright treats opacity-zero images as visible. Check settled computed opacity
+and loaded pixels, and compare image geometry in the same frame after scale
+animations settle.
+
+**Why:** The listing's opacity fade and existing image-scale animation finish at
+different times; sequential geometry samples can report a false mismatch.
+
+**How to apply:** Use condition-based polling rather than fixed animation sleeps
+when testing the primary/alternate overlay.

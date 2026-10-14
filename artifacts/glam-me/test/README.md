@@ -10,6 +10,30 @@ STOREFRONT_BASE_URL=https://your-development-preview pnpm --filter @workspace/gl
 The browser suite uses `@playwright/test` and automatically uses Replit's Chromium when available. Outside Replit, provision Playwright's Chromium browser in your test environment, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an existing compatible Chromium executable. Both the frontend and API workflows must be running (the API also serves Clerk's development proxy).
 
 
+## Product second-photo previews
+
+```sh
+pnpm --filter @workspace/glam-me test:storefront-browser product-hover.spec.ts
+```
+
+`product-hover.spec.ts` is also included in the normal browser-suite command.
+It uses per-test catalog and colored SVG media fixtures; merchant products and
+settings are never edited. Browser SSR snapshots are removed so the fixture
+catalog is authoritative. Unknown API calls and mutations are blocked and fail
+the test; Clerk bootstrap responses are synthetic and signed out.
+
+Coverage includes category, Shop, homepage Obsessions and moment cards, related
+products, guest wishlist, header search suggestions and bag recommendations.
+Each checks the exact second normalized detail-gallery URL, successful image
+decoding, alternate opacity and image geometry on hover, then primary restoration
+on pointer exit. Additional cases cover single/duplicate gallery entries, failed
+requests, keyboard focus and Enter navigation, reduced-motion fades, touch-only
+first-tap navigation without alternate downloads, and an in-place catalog refresh
+whose replacement image is deliberately delayed. No fixed animation sleeps or
+external photo dependencies are used. This is Chromium rendering coverage, not a
+screen-reader, physical-device, gallery-persistence or detail-slider test.
+
+
 ## Admin navigation visual policy (not an accessibility assertion)
 
 ```sh
