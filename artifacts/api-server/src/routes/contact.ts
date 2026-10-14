@@ -3,8 +3,7 @@ import {
   SubmitContactEnquiryBody,
   SubmitContactEnquiryResponse,
 } from "@workspace/api-zod";
-import { contactEnquiriesTable, db } from "@workspace/db";
-import { notifyContactAdmin } from "../contactNotifications";
+import { storeContactEnquiry } from "../contactNotifications";
 
 const router: IRouter = Router();
 const submissionWindows = new Map<string, number[]>();
@@ -47,15 +46,14 @@ router.post("/contact-enquiries", async (request, response): Promise<void> => {
 
   const name = parsed.data.name.trim();
   const order = parsed.data.order?.trim();
-  let enquiry: typeof contactEnquiriesTable.$inferSelect;
   try {
-    [enquiry] = await db.insert(contactEnquiriesTable).values({
+    await storeContactEnquiry({
       name,
       email,
       orderNumber: order || null,
       topic: parsed.data.topic,
       message: parsed.data.message.trim(),
-    }).returning();
+    });
   } catch (error) {
     request.log?.error("Contact enquiry could not be stored");
     response.status(503).json({ error: "Your message could not be submitted. Please try again." });
@@ -69,11 +67,6 @@ router.post("/contact-enquiries", async (request, response): Promise<void> => {
   // The customer gets success as soon as the message is durably stored.
   // SMTP cannot delay that response or turn a saved enquiry into a failure.
   response.json(successResponse);
-  try {
-    await notifyContactAdmin(enquiry);
-  } catch (error) {
-    request.log?.warn({ enquiryId: enquiry.id }, "Stored contact enquiry email status could not be updated");
-  }
 });
 
 export default router;

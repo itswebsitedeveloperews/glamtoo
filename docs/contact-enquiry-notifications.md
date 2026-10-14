@@ -34,12 +34,14 @@ sending. Recipient changes do not reroute old jobs to newly added addresses.
 
 ## Persistence and outcomes
 
-Contact enquiries are stored before a successful customer response. SMTP is
-best-effort after that response, so a provider outage cannot turn a stored enquiry
-into a submission error. The admin inbox shows full messages and refreshes every
+Contact enquiries and one durable notification job per explicitly enabled
+recipient are stored together before a successful customer response. A background
+worker handles SMTP, so a provider outage cannot turn a stored enquiry into a
+submission error. The admin inbox shows full messages and refreshes every
 30 seconds while open.
 
-- `not_configured`: alerts are disabled, the recipient is missing, or Gmail is not configured.
+- `not_configured`: alerts were disabled or no recipient was available at submission.
+- `pending`: durable jobs are queued, awaiting Gmail configuration, or safely retrying.
 - `sending`: SMTP has started; an interrupted process can leave the outcome pending.
 - `accepted`: SMTP accepted the message. This is **not** proof of inbox delivery.
 - `partial`: some contact recipients were accepted and others failed or remain uncertain.
@@ -49,11 +51,17 @@ into a submission error. The admin inbox shows full messages and refreshes every
 - Historical `delivered` records are labeled “Legacy provider accepted,” because
   the old provider HTTP response did not prove inbox delivery.
 
-There is no automatic retry or historical backfill. A durable outbox would be a
-separate improvement; retries after ambiguous SMTP outcomes must not duplicate emails.
+Proven pre-submission failures and explicit temporary SMTP rejections retry with
+backoff, up to five attempts per recipient. Accepted and ambiguous recipients
+never automatically resend. Disabling contact alerts pauses unsent jobs;
+re-enabling resumes them for their original recipients. Settings edits do not
+retarget queued contact jobs. There is no historical backfill. See
+[outbox operations](contact-notification-outbox.md) for restart and reconciliation
+details. Admin order-copy removal behavior remains separate and unchanged.
 
 The development schema update adds private recipient lists, a verified admin
-fallback, per-recipient enquiry outcomes and snapshotted order-copy recipients.
+fallback, per-recipient enquiry outcomes, durable contact notification jobs and
+snapshotted order-copy recipients.
 Apply the corresponding schema changes when publishing; no production
 database was changed by this implementation.
 
@@ -62,7 +70,9 @@ database was changed by this implementation.
 The disposable-database `contact-notifications` suite covers authorization,
 recipient changes, invalid settings, full inbox data, HTML escaping, isolated
 SMTP acceptance/failure/uncertainty, response-before-SMTP completion, no historical
-replay, and persistence failures. SMTP is mocked; no real emails are sent.
+replay, transactional persistence failures, lease/restart recovery, concurrent
+claims, per-recipient retry isolation and failed acceptance-recording.
+SMTP is mocked; no real emails are sent by these tests.
 The settings component is browser-tested with intercepted fixture responses,
 not a live authenticated administrator session.
 

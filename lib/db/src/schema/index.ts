@@ -11,6 +11,7 @@ export * from "./shipping-methods";
 export * from "./catalog";
 export * from "./contact-enquiries";
 export * from "./contact-notification-settings";
+export * from "./contact-notification-jobs";
 export * from "./delivery-information";
 export * from "./size-guide";
 export * from "./return-information";

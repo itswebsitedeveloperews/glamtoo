@@ -68,8 +68,9 @@ export function gmailContactMessageId(config: { user: string }, enquiryId: numbe
 export async function sendGmailContactNotification(
   config: GmailSmtpConfig, enquiryId: number, adminEmail: string, customerEmail: string,
   message: { subject: string; html: string; text: string },
+  messageId = gmailContactMessageId(config, enquiryId, adminEmail),
 ) {
-  return sendGmailMessage(config, adminEmail, message, gmailContactMessageId(config, enquiryId, adminEmail),
+  return sendGmailMessage(config, adminEmail, message, messageId,
     { "X-Glam-Too-Enquiry": String(enquiryId) }, customerEmail);
 }
 

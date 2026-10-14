@@ -23,6 +23,7 @@
 - [OpenAPI/Zod compatibility](openapi-email-validation.md) — Generator auto-detection emitted unsupported helpers; explicitly match the installed Zod major.
 - [Contact spam protection](contact-spam-protection.md) — Do not use a hidden honeypot field; browser autofill caused valid enquiries to fail validation.
 - [Contact submission semantics](contact-submission-semantics.md) — Success means the enquiry is durably received; email delivery is best-effort and must not block customers.
+- [Contact alert authorization](contact-alert-authorization.md) — Snapshot each contact recipient at submission; disabling pauses unsent jobs, re-enabling resumes original recipients, never historical backfill.
 - [Flexible variation attributes](flexible-variation-attributes.md) — Products define ordered attributes first; combinations and storefront selectors must render only those definitions.
 - [Configurable shipping methods](configurable-shipping-methods.md) — Checkout shipping comes from enabled database methods; the server resolves every selected rate and threshold.
 - [Reactive Wouter query state](reactive-wouter-query-state.md) — Subscribe to search changes when query parameters drive UI; pathname location alone can leave views stale.

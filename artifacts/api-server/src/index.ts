@@ -4,6 +4,7 @@ import { startExpiredOrderRecovery } from "./routes/stripe";
 import { initializeStripe } from "./stripeBootstrap";
 import { isRefundEmailDeliveryConfigured, startRefundNotificationWorker } from "./refundNotifications";
 import { isOrderEmailConfigured, startOrderConfirmationWorker } from "./orderConfirmationNotifications";
+import { startContactNotificationWorker } from "./contactNotifications";
 
 const rawPort = process.env["PORT"];
 
@@ -40,6 +41,7 @@ if (!await isOrderEmailConfigured().catch(() => false)) {
   logger.warn("Order confirmation email is queued but not being sent; configure Gmail credentials/authorization, the shop URL, and the recipient allowlist.");
 }
 startOrderConfirmationWorker();
+startContactNotificationWorker();
 
 app.listen(port, (err) => {
   if (err) {
