@@ -13,4 +13,4 @@ Preserve signal API validation errors rather than replacing them with a generic 
 
 **Why:** Customers need the provider's safe validation explanation to correct rejected input; session activation can fail independently after a successful password reset.
 
-**How to apply:** Throw returned provider errors before checking status; keep security verification separate from session finalization. An activation failure after a completed reset must not say the password was rejected.
+**How to apply:** Throw returned provider errors before checking status; keep security verification separate from session finalization. An activation failure after a completed reset must not say the password was rejected. Test credentials only with fresh development fixtures; never change existing customer passwords to verify a fix.
