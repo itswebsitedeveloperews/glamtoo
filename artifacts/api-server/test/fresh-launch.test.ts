@@ -24,6 +24,20 @@ test("catalog publication and retirement preserve payment and stock invariants",
     assert.equal((await getCheckoutCatalogLine(String(simple.id)))?.unitAmount, 100);
     assert.equal((await getInventoryLevels())[`${variable.id}:1`], 3);
   });
+  await t.test("ordered galleries survive catalog saves; explicit empty galleries stay empty", async () => {
+    const galleryImages = ["https://images.example/detail.jpg", "https://images.example/back.jpg", "https://images.example/front.jpg"];
+    const galleryProduct = { ...simple, galleryImages };
+    await save([galleryProduct, variable, builtin]);
+    await save([{ ...galleryProduct, description: "An unrelated merchant edit" }, variable, builtin]);
+    assert.deepEqual((await getCatalogRecord()).products[0].galleryImages, galleryImages);
+    const oldClient = { ...simple, description: "Older editor omits gallery metadata" };
+    await save([oldClient, variable, builtin]);
+    assert.deepEqual((await getCatalogRecord()).products[0].galleryImages, galleryImages);
+    await save([{ ...simple, galleryImages: [] }, variable, builtin]);
+    await save([oldClient, variable, builtin]);
+    assert.deepEqual((await getCatalogRecord()).products[0].galleryImages, []);
+    assert.deepEqual((await getCatalogRecord()).products[1].galleryImages, undefined, "genuine single-image product remains unchanged");
+  });
   await t.test("an inventory failure rolls back catalog and all stock changes", async () => {
     await assert.rejects(save([{ ...simple, stock: 9 }, { ...variable, variations: [{ ...variable.variations[0], price: "invalid" }] }], [String(simple.id)]));
     assert.equal((await getInventoryLevels())[simple.id], 2);

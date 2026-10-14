@@ -225,6 +225,123 @@ test("failed background refresh retains resolved prices and gallery state throug
   await expect(page.locator(".gallery-pagination-status")).toHaveText("2 / 2");
 });
 
+test("four original-order gallery views synchronize thumbnails, arrows, keyboard, touch and zoom", async ({ page }) => {
+  const photos = [image, ...["blue", "green", "orange"].map((colour) => image.replace("pink", colour))];
+  await fixtures(page, { ...catalog, products: [{ ...simple, galleryImages: photos.slice(1) }, { ...variable, galleryImages: [] }] });
+  await page.goto("/product/military-style-jacket");
+  const viewer = page.locator(".gallery-viewer");
+  const status = page.locator(".gallery-pagination-status");
+  const thumbs = page.locator(".gallery-thumbnail");
+  await expect(thumbs).toHaveCount(4);
+  await expect(status).toHaveText("1 / 4");
+  for (let index = 0; index < 4; index++) {
+    await thumbs.nth(index).click();
+    await expect(viewer.locator(".gallery-image img")).toHaveAttribute("src", photos[index]);
+    await expect(thumbs.nth(index)).toHaveAttribute("aria-current", "true");
+    await expect(page.locator(".gallery-thumbnail.is-active")).toHaveCount(1);
+    await expect(status).toHaveText(`${index + 1} / 4`);
+  }
+  await viewer.getByRole("button", { name: "View next product image" }).click();
+  await expect(status).toHaveText("1 / 4");
+  await viewer.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(status).toHaveText("4 / 4");
+  await page.keyboard.press("ArrowRight");
+  await expect(status).toHaveText("1 / 4");
+  await viewer.evaluate((element) => {
+    const touch = (clientX: number) => new Touch({ identifier: 0, target: element, clientX });
+    element.dispatchEvent(new TouchEvent("touchstart", { touches: [touch(250)], bubbles: true }));
+    element.dispatchEvent(new TouchEvent("touchend", { changedTouches: [touch(80)], bubbles: true }));
+  });
+  await expect(status).toHaveText("2 / 4");
+  await viewer.getByRole("button", { name: "Open larger product image" }).click();
+  const zoom = page.getByRole("dialog", { name: /enlarged image/ });
+  await expect(zoom.locator("img")).toHaveAttribute("src", photos[1]);
+  await zoom.getByRole("button", { name: "View next product image" }).click();
+  await expect(status).toHaveText("3 / 4");
+  await zoom.getByRole("button", { name: "Close enlarged image" }).click();
+  await expect(zoom).toHaveCount(0);
+  await page.reload();
+  await expect(status).toHaveText("1 / 4");
+  await expect(thumbs).toHaveCount(4);
+  // Actual client-side route transition, not a new document.
+  await page.locator('a[href="/product/defined-options"]').first().click();
+  await expect(status).toHaveText("1 / 1");
+  await expect(thumbs).toHaveCount(0);
+  await viewer.getByRole("button", { name: "View next product image" }).click();
+  await expect(status).toHaveText("1 / 1");
+  await page.locator('a[href="/product/military-style-jacket"]').first().click();
+  await expect(status).toHaveText("1 / 4");
+});
+
+for (const width of [390, 820]) {
+  test(`multi-image gallery preserves the responsive layout at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await fixtures(page);
+    await page.goto("/product/military-style-jacket");
+    await expect(page.locator(".gallery-thumbnail")).toHaveCount(2);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.locator(".gallery-viewer").getByRole("button", { name: "View next product image" }).click();
+    await expect(page.locator(".gallery-pagination-status")).toHaveText("2 / 2");
+  });
+}
+
+test("recovered real catalog loads four distinct durable tracksuit views in a fresh shopper session", async ({ page, request }) => {
+  test.skip(process.env.VERIFY_RECOVERED_GALLERY !== "1", "Opt-in check against the repaired development catalog, without fixtures.");
+  const response = await request.get("/api/catalog");
+  expect(response.ok()).toBe(true);
+  const real = await response.json();
+  const tracksuit = real.products.find((product: { id: number }) => product.id === 109);
+  expect(tracksuit.galleryImages).toEqual([
+    "/objects/uploads/e21d69ba-69d0-4f17-9521-fc6936bc2f4e",
+    "/objects/uploads/96ba7ef5-6e5c-4e08-aa34-d5dc0835d9ce",
+    "/objects/uploads/742554e7-72d4-4f08-acab-0f205c9a14e3",
+  ]);
+  for (const path of tracksuit.galleryImages) {
+    const media = await request.get(`/api/storage${path}`);
+    expect(media.ok()).toBe(true);
+    expect(media.headers()["content-type"]).toMatch(/^image\//);
+  }
+  await page.goto("/product/mesh-floral-sleeve-tracksuit");
+  await expect(page.locator(".gallery-thumbnail")).toHaveCount(4);
+  const sources = new Set<string>();
+  for (let i = 0; i < 4; i++) {
+    await page.locator(".gallery-thumbnail").nth(i).click();
+    const main = page.locator(".gallery-image img");
+    await expect(main).toBeVisible();
+    await expect.poll(() => main.evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    sources.add((await main.getAttribute("src"))!);
+    await expect(page.locator(".gallery-pagination-status")).toHaveText(`${i + 1} / 4`);
+  }
+  expect(sources.size).toBe(4);
+  await page.reload();
+  await expect(page.locator(".gallery-thumbnail")).toHaveCount(4);
+  await expect(page.locator(".gallery-pagination-status")).toHaveText("1 / 4");
+});
+
+test("reference-shop galleries are present on every real product and new clothing/bag galleries survive reload", async ({ page, request }) => {
+  test.skip(process.env.VERIFY_REFERENCE_GALLERIES !== "1", "Opt-in check against the merchant-approved reference recovery, without fixtures.");
+  const response = await request.get("/api/catalog");
+  expect(response.ok()).toBe(true);
+  const real = await response.json();
+  expect(real.products).toHaveLength(15);
+  for (const product of real.products) {
+    expect(product.galleryImages, product.name).toHaveLength(3);
+    expect(new Set(product.galleryImages).size, product.name).toBe(3);
+  }
+  for (const slug of ["aysemetric-sequin-dress", "mini-tote-bag"]) {
+    await page.goto(`/product/${slug}`);
+    const thumbs = page.locator(".gallery-thumbnail");
+    await expect(thumbs).toHaveCount(4);
+    await thumbs.nth(3).click();
+    await expect(page.locator(".gallery-pagination-status")).toHaveText("4 / 4");
+    await expect.poll(() => page.locator(".gallery-image img").evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    await page.reload();
+    await expect(thumbs).toHaveCount(4);
+    await expect(page.locator(".gallery-pagination-status")).toHaveText("1 / 4");
+  }
+});
+
 test("Simple purchase, gallery, guest wishlist, bag and checkout use catalog truth", async ({ page }) => {
   await fixtures(page);
   await page.goto("/product/military-style-jacket");

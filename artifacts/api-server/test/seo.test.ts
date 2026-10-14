@@ -57,6 +57,22 @@ test("old clients preserve slug, history and galleries; renames record history",
   const spoofed = { ...rename, products: [{ ...rename.products[0], slugHistory: ["stolen"] }, rename.products[1]] };
   assert.deepEqual(prepareCatalog(spoofed, oldClient, spoofed).products[0].slugHistory, ["sienna-dress"]);
 });
+test("gallery order survives unrelated edits and explicit removals stay removed", () => {
+  const saved = backfillCatalog(fixture());
+  saved.products[0].galleryImages = ["/objects/uploads/front-detail", "/objects/uploads/back", "/objects/uploads/front"];
+  const edit = structuredClone(saved);
+  edit.products[0].price = "£39.99";
+  const updated = prepareCatalog(edit, saved, edit);
+  assert.deepEqual(updated.products[0].galleryImages, saved.products[0].galleryImages);
+  const removal = structuredClone(updated);
+  removal.products[0].galleryImages = [];
+  const cleared = prepareCatalog(removal, updated, removal);
+  assert.deepEqual(cleared.products[0].galleryImages, []);
+  const oldClient = structuredClone(cleared);
+  delete oldClient.products[0].galleryImages;
+  oldClient.products[0].description = "Unrelated content edit";
+  assert.deepEqual(prepareCatalog(oldClient, cleared, oldClient).products[0].galleryImages, []);
+});
 test("reject duplicate category IDs, slug collisions, reserved history and numeric aliases", () => {
   const saved = backfillCatalog(fixture());
   const duplicated = fixture();

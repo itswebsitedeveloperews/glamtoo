@@ -9,6 +9,7 @@ export * from "./order-email-notifications";
 export * from "./wishlists";
 export * from "./shipping-methods";
 export * from "./catalog";
+export * from "./catalog-gallery-repairs";
 export * from "./contact-enquiries";
 export * from "./contact-notification-settings";
 export * from "./contact-notification-jobs";
