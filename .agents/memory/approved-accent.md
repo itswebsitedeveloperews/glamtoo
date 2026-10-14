@@ -9,4 +9,4 @@ Action buttons, including the product-card “Shop Now” buttons, must use `#e2
 
 **Why:** Explicit visual direction from the merchant, not an accidental palette change.
 
-**How to apply:** Preserve these button backgrounds when doing unrelated accessibility fixes. White text on the default button shade measures approximately 4.09:1, below the 4.5:1 normal-text requirement, so correct foreground treatment or obtain approval for a different shade rather than silently darkening the approved colors.
+**How to apply:** Preserve these button backgrounds when doing unrelated accessibility fixes. Use #111111 ink on default buttons (4.61:1) and white on hover buttons (5.11:1); neither one foreground passes on both shades. Keep non-button #c96381 accents, using dark ink for normal-size text on pink and light surfaces. Do not darken the approved backgrounds or resize copy to evade contrast checks. Keep ordinary/supporting copy at 16px/14px and keyboard focus visible on light, pink, and dark surfaces. Do not alter payment, auth, or order logic for color work.

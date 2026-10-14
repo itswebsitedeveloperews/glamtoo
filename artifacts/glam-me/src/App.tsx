@@ -53,15 +53,17 @@ const clerkAppearance = {
     logoImageUrl: typeof window === 'undefined' ? logoImage : new URL(logoImage, window.location.origin).href,
   },
   variables: {
-    colorPrimary: '#bd2855',
+    colorPrimary: '#e23d6f',
+    colorPrimaryForeground: '#111111',
     colorForeground: '#171615',
     colorMutedForeground: '#716a67',
-    colorDanger: '#b42342',
+    colorDanger: '#8b1d3d',
     colorBackground: '#fffdfb',
     colorInput: '#f5f1ed',
     colorInputForeground: '#171615',
     colorNeutral: '#d8d0ca',
     fontFamily: 'DM Sans Variable, sans-serif',
+    fontSize: '16px',
     borderRadius: '0px',
   },
   elements: {
@@ -74,19 +76,23 @@ const clerkAppearance = {
     headerTitle: { color: '#171615' },
     headerSubtitle: { color: '#716a67' },
     formFieldLabel: { color: '#171615' },
-    footerActionLink: { color: '#bd2855' },
+    footerActionLink: { color: '#171615', textDecoration: 'underline', '&:hover, &:focus': { color: '#171615' } },
     footerActionText: { color: '#716a67' },
     dividerText: { color: '#716a67' },
     formButtonPrimary: {
-      background: '#e23d6f', color: '#fff', borderRadius: '0px',
+      background: '#e23d6f', color: '#111111', borderRadius: '0px', fontSize: '14px', transition: 'none',
       '&:hover, &:focus-visible, &:active': { background: '#c93260', color: '#fff' },
+      '&:focus-visible': { outline: '2px solid #171615', outlineOffset: '3px', boxShadow: '0 0 0 3px #fffdfb' },
     },
-    formFieldInput: { background: '#f5f1ed', color: '#171615', borderRadius: '0px' },
+    formFieldInput: { background: '#f5f1ed', color: '#171615', borderRadius: '0px', fontSize: '16px' },
+    formFieldAction: { color: '#171615', fontSize: '14px', '&:hover, &:focus': { color: '#171615' } },
+    formFieldErrorText: { color: '#8b1d3d', fontSize: '14px' },
+    alertText: { color: '#8b1d3d', fontSize: '14px' },
     socialButtonsBlockButton: {
-      background: '#e23d6f', color: '#fff', borderRadius: '0px',
+      background: '#e23d6f', color: '#111111', borderRadius: '0px', transition: 'none',
       '&:hover, &:focus-visible, &:active': { background: '#c93260', color: '#fff' },
     },
-    socialButtonsBlockButtonText: { color: '#fff' },
+    socialButtonsBlockButtonText: { color: 'inherit' },
     dividerLine: { background: '#d8d0ca' },
     logoImage: { height: 'auto', width: '142px' },
   },
@@ -2278,7 +2284,7 @@ function Contact() {
               <p>Browse our FAQ for instant answers to the most common questions.</p>
             </div>
           </div>
-          <Link href="/faq" className="text-link" style={{ color: 'var(--pink-deep)', borderColor: 'var(--pink-deep)' }}>VISIT OUR FAQ <span>&#8594;</span></Link>
+          <Link href="/faq" className="text-link" style={{ color: 'var(--accent-ink)', borderColor: 'var(--pink)' }}>VISIT OUR FAQ <span>&#8594;</span></Link>
         </div>
       </div>
     </Shell>

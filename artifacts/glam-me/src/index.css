@@ -14,10 +14,15 @@
   --ink: #171615;
   --muted: #716a67;
   --line: #d8d0ca;
-  --pink: #bd2855;
+  --pink: #c96381;
   --pink-deep: #c96381;
   --button-bg: #e23d6f;
   --button-hover-bg: #c93260;
+  --button-ink: #111111;
+  --button-hover-ink: #ffffff;
+  /* Accent is merchant-approved. Text uses ink, not a darker substitute pink. */
+  --accent-ink: #171615;
+  --error-ink: #8b1d3d;
   --blush: #f4cad5;
   --sage: #c9d0c1;
   --white: #fffdfb;
@@ -724,7 +729,7 @@ h2 { text-transform: capitalize !important; }
 .delivery-table-wrap { width: 100%; overflow-x: auto; }
 .delivery-information-table { width: 100%; table-layout: fixed; border-collapse: collapse; background: #f9dde4; font-size: 14px; line-height: 1.45; }
 .delivery-information-table th, .delivery-information-table td { border: 2px solid var(--white); padding: 14px 12px; text-align: left; vertical-align: middle; }
-.delivery-information-table th { background: #ef9fba; color: var(--white); font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.delivery-information-table th { background: #ef9fba; color: var(--accent-ink); font-size: 14px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .delivery-information-table th:first-child, .delivery-information-table td:first-child { width: 25%; background-color: #f2b2c6; }
 .delivery-information-table th:nth-child(2), .delivery-information-table td:nth-child(2) { width: 60%; }
 .delivery-information-table th:last-child, .delivery-information-table td:last-child { width: 15%; text-align: center; white-space: nowrap; }
@@ -3459,13 +3464,96 @@ input:focus, select:focus, textarea:focus { outline: none; }
 #root :is(.footer ul, .footer-bottom, .product-policy-text, .collection-tile-cta, .gallery-viewer-pagination, .detail-header-row .eyebrow, .delivery-information-table th, .detail-purchase-controls .field label, .detail-quantity-label, .wishlist-item-actions .button, .faq-support .button, .checkout-heading > .text-link) { font-size: 14px; }
 
 /* Shared action-button palette. Keep navigation, icon and quantity controls separate. */
-:is(.button, .contact-form .button, .newsletter-form button, .footer-newsletter-form button, .customer-recovery-button, .account-order-view-button, .account-shortcuts button, .checkout-coupon-form button, .admin-primary, .admin-secondary, .admin-quiet-button, .admin-upload-button, .admin-order-details-button, .admin-overview-payment-button, .admin-danger-button, .shop-filter-apply) {
+:is(.button, .product-shop-now, .detail-add-to-bag, .contact-form .button, .newsletter-form button, .footer-newsletter-form button, .customer-recovery-button, .account-order-view-button, .account-shortcuts button, .checkout-coupon-form button, .admin-primary, .admin-secondary, .admin-quiet-button, .admin-upload-button, .admin-order-details-button, .admin-overview-payment-button, .admin-danger-button, .shop-filter-apply) {
   background: var(--button-bg);
   border-color: var(--button-bg);
-  color: #fff;
+  color: var(--button-ink);
+  /* Avoid intermediate background/foreground combinations failing contrast. */
+  transition: transform .2s ease;
 }
-:is(.button, .contact-form .button, .newsletter-form button, .footer-newsletter-form button, .customer-recovery-button, .account-order-view-button, .account-shortcuts button, .checkout-coupon-form button, .admin-primary, .admin-secondary, .admin-quiet-button, .admin-upload-button, .admin-order-details-button, .admin-overview-payment-button, .admin-danger-button, .shop-filter-apply):is(:hover, :focus-visible, :active):not(:disabled) {
+:is(.button, .product-shop-now, .detail-add-to-bag, .contact-form .button, .newsletter-form button, .footer-newsletter-form button, .customer-recovery-button, .account-order-view-button, .account-shortcuts button, .checkout-coupon-form button, .admin-primary, .admin-secondary, .admin-quiet-button, .admin-upload-button, .admin-order-details-button, .admin-overview-payment-button, .admin-danger-button, .shop-filter-apply):is(:hover, :focus-visible, :active):not(:disabled) {
   background: var(--button-hover-bg);
   border-color: var(--button-hover-bg);
-  color: #fff;
+  color: var(--button-hover-ink);
 }
+/* Keep the approved accent separate from readable foregrounds. These final
+   rules cover the storefront, account and admin variants defined above. */
+.admin-nav button.is-active {
+  background: var(--pink);
+  border-color: var(--pink);
+  color: var(--accent-ink);
+}
+:is(.bag-count, .wishlist-count, .wishlist-button.is-saved,
+    .wishlist-button:hover:not(:disabled), .dr-icon-box,
+    .checkout-section-heading > span, .account-avatar,
+    .admin-media-library-item-check) {
+  color: var(--accent-ink);
+}
+.moments-heading, .moments-heading .eyebrow { color: var(--accent-ink); }
+/* Moment cards retain white text over their existing dark image overlay. */
+
+:is(.header-tools a:hover, .footer a:hover, .nav a:hover,
+    .nav a:last-child, .nav a.is-active, .search-link[aria-expanded="true"],
+    .header-search-view-all, .text-link:hover, .category-directory-link,
+    .filter a:hover, .shop-pagination a:hover, .about-text-link:hover,
+    .faq-support .eyebrow, .faq-group > h2, .faq-number,
+    .returns-breadcrumb a:hover, .returns-page-header .eyebrow,
+    .returns-policy-heading span, .dr-hero .eyebrow, .dr-price,
+    .gallery-thumbnails-more:hover, .gallery-viewer-zoom:hover,
+    .wishlist-item h2 a:hover, .checkout-field-grid .field label .checkout-required,
+    .account-signout:hover, .account-order-number:hover, .account-order-back:hover,
+    .account-nav button:hover, .account-nav button.is-active,
+    .account-nav .account-nav-logout:hover, .saved-payment-method button,
+    .admin-home-chip button, .admin-delivery-row legend, .admin-size-guide-row legend,
+    .admin-rich-text-editor a, .detail-rich-text a,
+    .admin-product-gallery-item-actions button:hover:not(:disabled),
+    .admin-media-edit-button:hover, .admin-gallery-upload-tile:hover,
+    .not-found-shop-link:hover, .contact-care-head .eyebrow,
+    .contact-detail .text-link:hover,
+    .admin-media-library-upload-card:hover, .admin-media-library-upload-card:focus-visible) {
+  color: var(--accent-ink);
+}
+/* This link sits on the dark admin sidebar, not paper. */
+.admin-store-link:hover { color: var(--pink); }
+.variation-message { color: var(--error-ink); }
+
+/* Legacy accent literals in admin controls and product detail variants. */
+:is(.admin-publish-card, .admin-stripe-guide) { border-top-color: var(--pink); }
+.admin-payment-card::before {
+  background: var(--pink);
+}
+:is(.admin-publish-dot, .admin-editor-save-state > span, .admin-checklist-progress span,
+    .admin-order-progress li.is-complete i) { background: var(--pink); }
+:is(.admin-product-editor .admin-checklist li.is-complete:before,
+    .admin-order-progress li.is-complete .admin-order-progress-marker,
+    .admin-payment-step-icon b) {
+  background: var(--pink);
+  border-color: var(--pink);
+  color: var(--accent-ink);
+}
+.admin-order-progress li.is-current .admin-order-progress-marker {
+  border-color: var(--pink);
+  color: var(--accent-ink);
+}
+.admin-home-chip.is-drop-before { box-shadow: -4px 0 0 var(--pink); }
+.admin-home-chip.is-drop-after { box-shadow: 4px 0 0 var(--pink); }
+.admin-payment-mode-grid article.is-selected { box-shadow: inset 0 3px 0 var(--pink), 3px 3px 0 rgba(23,22,21,.025); }
+:is(.admin-variation-attributes input, .admin-coupon-active input) { accent-color: var(--ink); }
+
+/* Two-tone focus survives both light surfaces and the approved pink. Restore
+   outlines removed by individual search/filter/editor rules, without resizing. */
+:is(button, a, input, select, textarea, summary, [tabindex], [contenteditable="true"]):focus-visible {
+  outline: 2px solid var(--ink) !important;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--white) !important;
+}
+:is(.faq-search-wrap, .checkout-card-field, .admin-rich-text):focus-within {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 2px var(--white), 0 0 0 4px var(--ink);
+}
+/* Clerk links must not inherit its primary background color as text ink. */
+:is(.cl-footerActionLink, .cl-formFieldAction, .cl-identityPreviewEditButton,
+    .cl-formResendCodeLink, .cl-alternativeMethodsBlockButton,
+    .cl-footerActionLink:hover, .cl-formFieldAction:hover,
+    .cl-identityPreviewEditButton:hover, .cl-formResendCodeLink:hover,
+    .cl-alternativeMethodsBlockButton:hover) { color: var(--accent-ink); }
