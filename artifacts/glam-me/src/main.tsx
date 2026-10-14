@@ -1,22 +1,27 @@
-import { createRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import App from './App';
 import { ErrorBoundary } from '@/components/error-boundary';
 
-import './index.css';
-
 const queryClient = new QueryClient();
 
-createRoot(document.getElementById('root')!, {
+const root = document.getElementById('root')!;
+const options = {
   // Keeps caught errors off reportError(), which would raise the dev overlay.
-  onCaughtError: (error, errorInfo) => {
+  onCaughtError: (error: unknown, errorInfo: { componentStack?: string | null }) => {
     console.error(error, errorInfo.componentStack);
   },
-}).render(
+};
+const app = (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
-  </ErrorBoundary>,
+  </ErrorBoundary>
 );
+if (document.getElementById('public-storefront-data')) {
+  hydrateRoot(root, app, options);
+} else {
+  createRoot(root, options).render(app);
+}

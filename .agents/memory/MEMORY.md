@@ -36,4 +36,5 @@
 - [Workflow port ownership](workflow-port-ownership.md) — A failed workflow can still have a server listening; verify port ownership before restarting.
 - [Checkout creation uncertainty](checkout-creation-safety.md) — Lost provider responses retain allocations and retry identity; session locks must not exhaust the query pool.
 - [Performance audits](performance-audits.md) — Check real images and configured services; local scores are not live PageSpeed results. Preserve original catalog media URLs.
+- [Public rendering](public-rendering.md) — Share public snapshots for hydration; keep private routes client-only, rendering synchronous and SSR image URLs public.
 - [CSP provider boundaries](csp-provider-boundaries.md) — Attribute violations to their owning document; do not loosen the parent policy for Stripe iframe warnings.

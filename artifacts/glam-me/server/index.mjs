@@ -5,6 +5,7 @@ import path from 'node:path';
 import { FALLBACK, injectSeo, isDocumentPath, parseRequestUrl, proxySeoFile, resolveSeo } from './seo.mjs';
 import { storefrontHeaders } from './security.mjs';
 import { compressAsset } from './asset-compression.mjs';
+import { injectPublicBody } from './public-render.mjs';
 
 const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist/public');
 const mime = {
@@ -24,7 +25,10 @@ function send(res, method, status, body, headers = {}) {
   res.end(method === 'HEAD' ? undefined : bytes);
 }
 
-export function createSeoServer({ directory = dist, fetcher = fetch } = {}) {
+export function createSeoServer({ directory = dist, fetcher = fetch, render = async (...args) => {
+  const entry = await import('../dist/server/entry-server.js');
+  return entry.render(...args);
+} } = {}) {
   return createServer(async (req, res) => {
     const method = req.method || 'GET';
     if (method !== 'GET' && method !== 'HEAD') {
@@ -71,12 +75,14 @@ export function createSeoServer({ directory = dist, fetcher = fetch } = {}) {
             // Older/test builds have no generated preload; the normal image still loads.
           }
         }
+        if (data.status === 200) html = await injectPublicBody(html, (pathname === '/index.html' ? '/' : pathname) + search, { fetcher, render });
         send(res, method, data.status, injectSeo(html, data.status === 404 ? { ...data, robots: 'noindex, nofollow' } : data), {
           'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache',
         });
       } catch {
         try {
-          const html = await readFile(path.join(directory, 'index.html'), 'utf8');
+          const html = (await readFile(path.join(directory, 'index.html'), 'utf8'))
+            .replace('<div id="root"></div>', '<div id="root"><main><h1>Storefront temporarily unavailable</h1><p>Current products and prices could not be loaded. Please try again shortly.</p></main></div>');
           send(res, method, 503, injectSeo(html, FALLBACK), {
             'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store',
           });

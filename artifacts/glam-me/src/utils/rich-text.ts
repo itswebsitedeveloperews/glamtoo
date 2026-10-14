@@ -10,8 +10,8 @@ function isSafeHref(value: string) {
 }
 
 export function sanitizeRichTextHtml(value: string) {
-  if (typeof window === "undefined" || typeof DOMParser === "undefined") return value;
-  const document = new DOMParser().parseFromString(`<div>${value}</div>`, "text/html");
+  if (typeof DOMParser === "undefined") throw new Error("HTML parser unavailable");
+  const document = new DOMParser().parseFromString(`<html><body><div>${value}</div></body></html>`, "text/html");
   const root = document.body.firstElementChild;
   if (!root) return "";
 
@@ -30,11 +30,26 @@ export function sanitizeRichTextHtml(value: string) {
     }
   };
   clean(root);
-  return root.innerHTML;
+  // Native DOM and the server DOM serialize attribute insertion order
+  // differently. Emit a deterministic allowlisted representation on both sides
+  // so identical content also hydrates without an innerHTML mismatch.
+  const escapeText = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\u00a0/g, "&nbsp;");
+  const serialize = (node: Node): string => {
+    if (node.nodeType === 3) return escapeText(node.textContent ?? "");
+    if (node.nodeType !== 1) return "";
+    const element = node as Element;
+    const tag = element.tagName.toLowerCase();
+    if (tag === "br") return "<br>";
+    const href = element.getAttribute("href");
+    const attributes = tag === "a" && href !== null
+      ? ` href="${escapeText(href).replace(/"/g, "&quot;")}" rel="noopener noreferrer"` : "";
+    return `<${tag}${attributes}>${[...element.childNodes].map(serialize).join("")}</${tag}>`;
+  };
+  return [...root.childNodes].map(serialize).join("");
 }
 
 export function hasRichTextContent(value: string) {
-  if (typeof window === "undefined" || typeof DOMParser === "undefined") return Boolean(value.trim());
-  const document = new DOMParser().parseFromString(value, "text/html");
+  if (typeof DOMParser === "undefined") throw new Error("HTML parser unavailable");
+  const document = new DOMParser().parseFromString(`<html><body>${value}</body></html>`, "text/html");
   return Boolean(document.body.textContent?.trim());
 }

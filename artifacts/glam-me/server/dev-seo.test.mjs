@@ -16,6 +16,11 @@ test('development documents, HEAD, redirects and fallbacks get noindex without i
     if (parsed.origin !== 'http://127.0.0.1:8080') return originalFetch(url, options);
     if (parsed.pathname.endsWith('robots.txt')) return new Response('User-agent: *\nAllow: /\nDisallow: /api/\n');
     if (parsed.pathname.endsWith('sitemap.xml')) return new Response('<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+    if (parsed.pathname === '/api/catalog') return Response.json({ initialized: true, products: [], categories: [], homePage: null });
+    if (parsed.pathname === '/api/inventory') return Response.json({ inventory: {} });
+    if (parsed.pathname === '/api/stripe/product-sales') return Response.json({ sales: {} });
+    if (parsed.pathname === '/api/shipping-methods') return Response.json({ shippingMethods: [] });
+    if (parsed.pathname === '/api/return-information') return Response.json({ content: '<p>Current return terms</p>' });
     const target = parsed.searchParams.get('path');
     if (target === '/broken') throw new Error('resolver unavailable');
     if (target === '/old') return Response.json({ status: 301, location: '/shop' });
@@ -47,6 +52,9 @@ test('development documents, HEAD, redirects and fallbacks get noindex without i
        assert.ok(response.headers.get('content-security-policy').includes('ws: wss:'));
        assert.equal(response.headers.get('content-security-policy-report-only'), null);
       const body = await response.text();
+      if (method === 'GET' && (route === '/' || route === '/shop?page=2')) {
+        assert.match(body, /<link rel="stylesheet" href="\/src\/index\.css"[^>]*>/);
+      }
       if (method === 'HEAD') assert.equal(body, '');
       else if (response.headers.get('content-type')?.includes('text/html')) {
         assert.equal((body.match(/name="robots"/g) || []).length, 1);

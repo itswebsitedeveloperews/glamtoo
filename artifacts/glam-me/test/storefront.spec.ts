@@ -27,6 +27,18 @@ const catalog = {
 const shipping = { shippingMethods: [{ id: "8", name: "Owner delivery", description: "Owner delivery description", price: 825, freeOver: 12300, enabled: true, sortOrder: 0 }] };
 
 async function fixtures(page: Page, payload = catalog) {
+  // These tests deliberately exercise browser-only catalog loading/failure.
+  // Browser API mocks cannot control a document's server-side snapshot.
+  await page.route("**/*", async (route) => {
+    if (route.request().resourceType() !== "document") return route.fallback();
+    const response = await route.fetch();
+    const html = await response.text();
+    const body = html.replace(
+      /<div id="root">[\s\S]*?<\/div><script id="public-storefront-data" type="application\/json">[\s\S]*?<\/script>/,
+      '<div id="root"></div>',
+    );
+    await route.fulfill({ response, body });
+  });
   await page.route("**/api/catalog", (route) => route.fulfill({ json: payload }));
   await page.route("**/api/inventory", (route) => route.fulfill({ json: { inventory: {} } }));
   await page.route("**/api/shipping-methods", (route) => route.fulfill({ json: shipping }));

@@ -19,6 +19,9 @@ export function responsiveImages(): Plugin {
       base = config.base;
     },
     resolveId(id) { if (id === moduleId) return resolvedId; },
+    // Rollup's SSR default is a file:// URL. These images are served by the
+    // client build; use the identical public URLs for both rendering targets.
+    resolveFileUrl({ fileName }) { return JSON.stringify(`${base}${fileName}`); },
     async load(id) {
       if (id !== resolvedId) return;
       if (!production) return 'export default {};';

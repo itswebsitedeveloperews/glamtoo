@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { useShippingMethods } from "../hooks/use-shipping-methods";
 import { hasRichTextContent, sanitizeRichTextHtml } from "../utils/rich-text";
+import { PublicSnapshotContext } from "../data/public-snapshot";
 
 const pounds = (pence: number) => new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" }).format(pence / 100);
 
@@ -18,8 +19,9 @@ export function DeliveryPolicy() {
 }
 
 export function ReturnPolicy() {
-  const [content, setContent] = useState("");
-  const [loading, setLoading] = useState(true);
+  const snapshot = useContext(PublicSnapshotContext);
+  const [content, setContent] = useState(snapshot?.returnInformation ?? "");
+  const [loading, setLoading] = useState(snapshot?.returnInformation === undefined);
   useEffect(() => {
     const controller = new AbortController();
     fetch(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/api/return-information`, { signal: controller.signal, cache: "no-store" })

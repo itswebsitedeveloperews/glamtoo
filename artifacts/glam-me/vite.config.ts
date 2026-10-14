@@ -8,6 +8,7 @@ import { storefrontHeaders } from './server/security.mjs';
 import { responsiveImages } from './build/responsive-images';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
+import { injectPublicBody } from './server/public-render.mjs';
 
 const rawPort = process.env.PORT;
 
@@ -95,7 +96,10 @@ export default defineConfig({
           try {
             const html = await readFile(path.resolve(import.meta.dirname, 'index.html'), 'utf8');
             const transformed = await server.transformIndexHtml(req.url || '/', html, req.originalUrl);
-            const body = injectSeo(transformed, status === 404 ? { ...data, robots: 'noindex, nofollow' } : data);
+            const rendered = status === 200 ? await injectPublicBody(transformed, (pathname === '/index.html' ? '/' : pathname) + search, {
+              render: async (path, snapshot) => (await server.ssrLoadModule('/src/entry-server.tsx')).render(path, snapshot),
+            }) : transformed;
+            const body = injectSeo(rendered, status === 404 ? { ...data, robots: 'noindex, nofollow' } : data);
             res.statusCode = status;
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.setHeader('Cache-Control', status === 503 ? 'no-store' : 'no-cache');
@@ -145,7 +149,7 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    outDir: path.resolve(import.meta.dirname, 'dist/public'),
+    outDir: path.resolve(import.meta.dirname, process.env.STOREFRONT_SSR ? 'dist/server' : 'dist/public'),
     emptyOutDir: true,
   },
   server: {

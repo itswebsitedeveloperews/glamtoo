@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import type { ShippingMethod } from "@workspace/shipping";
+import { PublicSnapshotContext } from "../data/public-snapshot";
 
 export function useShippingMethods() {
-  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
-  const [shippingMethodsLoading, setShippingMethodsLoading] = useState(true);
+  const snapshot = useContext(PublicSnapshotContext);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>(snapshot?.shippingMethods?.filter(method => method.enabled) ?? []);
+  const [shippingMethodsLoading, setShippingMethodsLoading] = useState(snapshot?.shippingMethods === undefined);
   const [shippingMethodsError, setShippingMethodsError] = useState("");
   useEffect(() => {
     const controller = new AbortController();

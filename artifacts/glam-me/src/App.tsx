@@ -26,11 +26,12 @@ import { getCartLineAmount, getProductPricing } from '@/utils/product-pricing';
 import BusinessPolicies, { DeliveryPolicy, ReturnPolicy } from '@/components/BusinessPolicies';
 import { categoryProductCount, type CatalogStatus } from '@/utils/storefront-truth';
 import { useMobileMenu } from '@/hooks/use-mobile-menu';
+import { PublicSnapshotContext, readPublicSnapshot, type PublicSnapshot } from '@/data/public-snapshot';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const AdminDashboard = lazy(() => import('@/pages/admin-dashboard'));
 const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
+  typeof window === 'undefined' ? '' : window.location.hostname,
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
 );
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
@@ -47,7 +48,7 @@ const clerkAppearance = {
   options: {
     logoPlacement: 'inside' as const,
     logoLinkUrl: basePath || '/',
-    logoImageUrl: new URL(logoImage, window.location.origin).href,
+    logoImageUrl: typeof window === 'undefined' ? logoImage : new URL(logoImage, window.location.origin).href,
   },
   variables: {
     colorPrimary: '#e23d6f',
@@ -110,6 +111,7 @@ const wishlistStorageKey = 'glam-me-wishlist-v1';
 let sharedCatalog: { products: CatalogProduct[]; categories: CatalogCategory[]; homePage: HomePageSettings | null } | null = null;
 let catalogStatus: CatalogStatus = "loading";
 
+let publicSnapshot = readPublicSnapshot();
 type CartItem = {
   productId: number;
   size: string;
@@ -813,11 +815,12 @@ function Header() {
   const [routeLocation] = useLocation();
   useEffect(() => { setMenuOpen(false); setSearchOpen(false); }, [routeLocation]);
   const promotedCategories = getPromotedCategories().filter((category) => category.parentId == null);
-  const [isScrolled, setIsScrolled] = useState(() => window.scrollY > 0);
-  const [isCompact, setIsCompact] = useState(() => window.scrollY > 100);
-  const [cartCount, setCartCount] = useState(getCartCount);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(window.location.search).get("search") ?? "");
+  const routeSearch = useSearch();
+  const [searchQuery, setSearchQuery] = useState(() => new URLSearchParams(routeSearch).get("search") ?? "");
   const catalogVersion = useContext(CatalogMediaContext);
   const searchTerm = searchQuery.trim().toLowerCase();
   const suggestions = useMemo(() => {
@@ -829,7 +832,7 @@ function Header() {
   const searchButtonRef = useRef<HTMLButtonElement>(null);
   const searchFormRef = useRef<HTMLFormElement>(null);
   const { count: wishlistCount } = useWishlist();
-  const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+  const currentPath = routeLocation.replace(/\/+$/, "") || "/";
   const navLinkProps = (path: string) => currentPath === path
     ? { className: "is-active", "aria-current": "page" as const }
     : {};
@@ -847,6 +850,7 @@ function Header() {
 
   useEffect(() => {
     const updateCartCount = () => setCartCount(getCartCount());
+    updateCartCount();
     window.addEventListener('glam-cart-updated', updateCartCount);
     return () => window.removeEventListener('glam-cart-updated', updateCartCount);
   }, []);
@@ -1147,7 +1151,7 @@ function Shop() {
   useLiveInventory();
   const [, navigate] = useLocation();
   const search = useSearch();
-  const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
+  const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>(publicSnapshot?.sales ?? {});
   const [mobileView, setMobileView] = useState<'cards' | 'list'>('cards');
   const browseTabsRef = useRef<HTMLElement>(null);
   const listingStartRef = useRef<HTMLElement>(null);
@@ -1395,7 +1399,7 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
   useLiveInventory();
   const [, navigate] = useLocation();
   const search = useSearch();
-  const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>({});
+  const [salesByProduct, setSalesByProduct] = useState<Record<string, number>>(publicSnapshot?.sales ?? {});
   useEffect(() => {
     let active = true;
     fetch("/api/stripe/product-sales")
@@ -3872,9 +3876,9 @@ function CatalogMediaHydrator({ children }: { children: ReactNode }) {
 
   return <CatalogMediaContext.Provider value={mediaVersion}>{children}</CatalogMediaContext.Provider>;
 }
-function App() {
+function App({ ssrPath }: { ssrPath?: string } = {}) {
   if (!clerkPubKey) throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY');
-  return <WouterRouter base={basePath}><RouteSeo /><ClerkProviderWithRoutes /></WouterRouter>;
+  return <PublicSnapshotContext.Provider value={publicSnapshot}><WouterRouter base={basePath} ssrPath={ssrPath}><RouteSeo /><ClerkProviderWithRoutes /></WouterRouter></PublicSnapshotContext.Provider>;
 }
 
 export default App;
@@ -3902,4 +3906,12 @@ function paymentResolutionCopy(order: CustomerOrder) {
     title: "Order cancelled — refund on its way",
     detail: "Your payment arrived after this order had been cancelled and the reserved availability changed. This order will not be fulfilled. We are arranging a full refund and will update this order once it has been processed.",
   };
+}
+
+/** renderToString is synchronous; the server restores these module values in finally. */
+export function setPublicSnapshot(snapshot: PublicSnapshot | null) {
+  publicSnapshot = snapshot;
+  sharedCatalog = snapshot?.catalogReady === false ? null : snapshot;
+  currentInventory = snapshot?.inventory ?? {};
+  catalogStatus = sharedCatalog ? "ready" : "loading";
 }

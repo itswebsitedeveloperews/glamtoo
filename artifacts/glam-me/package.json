@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
-    "build": "vite build --config vite.config.ts",
+    "build": "vite build --config vite.config.ts && STOREFRONT_SSR=1 vite build --config vite.config.ts --ssr src/entry-server.tsx",
     "serve": "node server/index.mjs",
     "test:seo": "node --test --test-timeout=60000 server/*.test.mjs",
+    "test:ssr": "pnpm run build && node --test server/public-ssr.integration.mjs",
     "test:storefront": "node --test src/utils/*.test.ts src/data/*.test.mjs",
     "test:storefront-browser": "playwright test --config playwright.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -86,6 +87,7 @@
   },
   "dependencies": {
     "@clerk/react": "^6.17.8",
-    "@clerk/themes": "^2.4.57"
+    "@clerk/themes": "^2.4.57",
+    "linkedom": "^0.18.13"
   }
 }

@@ -98,7 +98,16 @@ test('HTTP status, HEAD, static files, error response and dynamic feeds', async 
     if (target === '/missing') return Response.json({ status: 404, title: 'Not found', robots: 'index, follow' }, { status: 404 });
     return Response.json({ status: target === '/missing' ? 404 : 200, title: 'Category', description: 'Products', canonicalUrl: 'https://glamtoo.webdesignessex.io/shop', robots: 'index, follow', type: 'website' });
   };
-  const server = createSeoServer({ directory, fetcher });
+  const seoFetcher = async (url, options) => {
+    const endpoint = new URL(url).pathname;
+    if (endpoint === '/api/catalog') return Response.json({ initialized: true, products: [], categories: [] });
+    if (endpoint === '/api/inventory') return Response.json({ inventory: {} });
+    if (endpoint === '/api/stripe/product-sales') return Response.json({ sales: {} });
+    return fetcher(url, options);
+  };
+  // Exercise document plumbing without depending on the compiled React bundle.
+  await writeFile(path.join(directory, 'index.html'), '<html><head><title>Fallback</title></head><body>App shell<div id="root"></div></body></html>');
+  const server = createSeoServer({ directory, fetcher: seoFetcher, render: () => '<main>Public collection</main>' });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(async () => { await new Promise((resolve) => server.close(resolve)); await rm(directory, { recursive: true, force: true }); });
   const base = `http://127.0.0.1:${server.address().port}`;
