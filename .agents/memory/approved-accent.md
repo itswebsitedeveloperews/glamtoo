@@ -5,7 +5,7 @@ description: Merchant's exact accent choice and the contrast tradeoff to preserv
 
 The merchant requested replacing the previous deep pink with exactly `#c96381` throughout Glam Too.
 
-Action buttons must use `#e23d6f` as their default background and `#c93260` on hover. This supersedes the earlier button palette; non-button accents remain unchanged.
+Action buttons, including the product-card “Shop Now” buttons, must use `#e23d6f` as their default background and `#c93260` on hover. This supersedes the earlier button palette; non-button accents remain unchanged.
 
 **Why:** Explicit visual direction from the merchant, not an accidental palette change.
 
