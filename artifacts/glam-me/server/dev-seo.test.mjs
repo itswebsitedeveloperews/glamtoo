@@ -32,7 +32,10 @@ test('development documents, HEAD, redirects and fallbacks get noindex without i
     if (previousBase === undefined) delete process.env.BASE_PATH; else process.env.BASE_PATH = previousBase;
   });
   server = await createServer({ configFile: path.join(root, 'vite.config.ts'),
-    server: { port: 0, strictPort: false, host: '127.0.0.1' }, logLevel: 'silent' });
+    server: { port: 0, strictPort: false, host: '127.0.0.1' }, logLevel: 'silent',
+    // This HTTP/header test does not need dependency prebundling. Avoid racing
+    // optimizer restarts while requesting Vite runtime modules in a clean tree.
+    optimizeDeps: { noDiscovery: true, include: [] } });
   await server.listen();
   const base = `http://127.0.0.1:${server.httpServer.address().port}`;
   for (const method of ['GET', 'HEAD']) {

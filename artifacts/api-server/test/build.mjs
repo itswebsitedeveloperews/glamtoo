@@ -6,6 +6,12 @@ import { spawn } from "node:child_process";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const outputDir = resolve(testDir, ".compiled");
+const databaseUrl = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL) : null;
+if (process.env.NODE_ENV !== "test" || !databaseUrl
+    || !["127.0.0.1", "localhost", "[::1]"].includes(databaseUrl.hostname)
+    || !/^\/glam_checkout_test_[a-f0-9]{32}$/.test(databaseUrl.pathname)) {
+  throw new Error("BLOCKED: backend test builds require the disposable local database runner. Use test:isolated or pnpm validate:linux.");
+}
 const testName = ["shipping", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth"].includes(process.argv[2]) ? process.argv[2] : "regressions";
 const outputFile = resolve(outputDir, `${testName}.test.cjs`);
 
@@ -63,7 +69,7 @@ await build({
 });
 
 await new Promise((resolvePromise, reject) => {
-  const child = spawn(process.execPath, ["--test", outputFile], {
+  const child = spawn(process.execPath, ["--test", "--test-timeout=60000", outputFile], {
     stdio: "inherit",
     env: process.env,
   });

@@ -45,3 +45,6 @@ _Describe the high-level user-facing capabilities of this app once they exist._
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- `docs/launch-readiness.md` — current GT-01–GT-16 evidence and owner/access sign-off gates; this is not launch approval.
+- `pnpm validate:linux` — clean Linux x64 install, declarations/types, production builds, standalone checks and backend regressions in an automatically destroyed local PostgreSQL cluster. Requires Node 24.12+, pnpm 10.26.1 and PostgreSQL tools on PATH. Inherits no provider credentials.
+- Backend test commands require explicit `TEST_DATABASE_ADMIN_URL` for a disposable loopback cluster, never the app's `DATABASE_URL`. Prefer the automatic Linux validator.
