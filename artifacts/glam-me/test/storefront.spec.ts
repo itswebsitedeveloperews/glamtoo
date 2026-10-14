@@ -26,6 +26,95 @@ const catalog = {
 };
 const shipping = { shippingMethods: [{ id: "8", name: "Owner delivery", description: "Owner delivery description", price: 825, freeOver: 12300, enabled: true, sortOrder: 0 }] };
 
+test.describe("product image lightbox keyboard", () => {
+  for (const width of [390, 820, 1440]) {
+    test(`focus, arrows, dismissal and restoration at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await fixtures(page);
+      await page.goto("/product/military-style-jacket");
+      const trigger = page.getByRole("button", { name: "Open larger product image" });
+      // Reproduce pointer opening, not just keyboard activation.
+      await trigger.click();
+      const dialog = page.getByRole("dialog", { name: "Military Style Jacket enlarged image", exact: true });
+      const close = dialog.getByRole("button", { name: "Close enlarged image" });
+      const previous = dialog.getByRole("button", { name: "View previous product image" });
+      const next = dialog.getByRole("button", { name: "View next product image" });
+      await expect(dialog).toHaveAttribute("aria-modal", "true");
+      await expect(close).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+
+      await page.keyboard.press("Enter");
+      await expect(close).toBeFocused();
+      await page.keyboard.press("Shift+Tab");
+      await expect(next).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(close).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(previous).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(next).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(close).toBeFocused();
+      // An outside programmatic focus attempt must not escape the modal.
+      await trigger.evaluate((button) => button.focus());
+      await expect(close).toBeFocused();
+
+      const enlargedImage = dialog.getByRole("img");
+      const firstSource = await enlargedImage.getAttribute("src");
+      await page.keyboard.press("ArrowRight");
+      await expect(enlargedImage).toHaveAttribute("alt", "Military Style Jacket enlarged view 2");
+      expect(await enlargedImage.getAttribute("src")).not.toBe(firstSource);
+      await expect(close).toBeFocused();
+      await page.keyboard.press("ArrowRight");
+      await expect(enlargedImage).toHaveAttribute("src", firstSource!);
+      await page.keyboard.press("ArrowLeft");
+      await expect(enlargedImage).toHaveAttribute("alt", "Military Style Jacket enlarged view 2");
+      await page.keyboard.press("Tab");
+      await expect(previous).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+      expect(await page.evaluate(() => document.body.style.overflow)).not.toBe("hidden");
+
+      await page.keyboard.press("Enter");
+      await expect(close).toBeFocused();
+      // Keyboard activation is independent of development-banner pointer overlap.
+      await page.keyboard.press("Enter");
+      await expect(dialog).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+    });
+  }
+
+  test("single image traps both Tab directions and restores focus after pointer dismissal", async ({ page }) => {
+    await page.setViewportSize({ width: 820, height: 1000 });
+    await fixtures(page, { ...catalog, products: [{ ...simple, galleryImages: [] }] });
+    await page.goto("/product/military-style-jacket");
+    const trigger = page.getByRole("button", { name: "Open larger product image" });
+    await trigger.click();
+    const dialog = page.getByRole("dialog", { name: "Military Style Jacket enlarged image" });
+    const close = dialog.getByRole("button", { name: "Close enlarged image" });
+    await expect(close).toBeFocused();
+    await expect(dialog.getByRole("button")).toHaveCount(1);
+    for (const key of ["Tab", "Shift+Tab", "ArrowLeft", "ArrowRight"]) {
+      await page.keyboard.press(key);
+      await expect(close).toBeFocused();
+      await expect(dialog.getByRole("img")).toHaveAttribute("alt", "Military Style Jacket enlarged view 1");
+    }
+    // Test the app control without force-clicking through a development overlay.
+    await close.click();
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await page.keyboard.press("Enter");
+    await dialog.getByRole("img").click();
+    await expect(dialog).toBeVisible();
+    await dialog.click({ position: { x: 5, y: 5 } });
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+});
+
 async function fixtures(page: Page, payload = catalog) {
   // These tests deliberately exercise browser-only catalog loading/failure.
   // Browser API mocks cannot control a document's server-side snapshot.

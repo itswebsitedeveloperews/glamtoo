@@ -1493,6 +1493,9 @@ function ProductDetail({ params }: { params: { slug: string } }) {
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
   const [galleryTransitionDirection, setGalleryTransitionDirection] = useState<1 | -1>(1);
   const [galleryZoomOpen, setGalleryZoomOpen] = useState(false);
+  const galleryZoomTrigger = useRef<HTMLButtonElement>(null);
+  const galleryLightbox = useRef<HTMLDivElement>(null);
+  const galleryLightboxClose = useRef<HTMLButtonElement>(null);
   const galleryTouchStartX = useRef<number | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [variationMessage, setVariationMessage] = useState('');
@@ -1506,11 +1509,25 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     setQuantity(1);
   }, [product?.id, params.slug]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!galleryZoomOpen) return;
     const previousOverflow = document.body.style.overflow;
+    const trigger = galleryZoomTrigger.current;
+    const dialog = galleryLightbox.current;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previousOverflow; };
+    galleryLightboxClose.current?.focus({ preventScroll: true });
+    // Keep focus in the modal even if another control tries to take it.
+    const containFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && !dialog?.contains(event.target)) {
+        galleryLightboxClose.current?.focus({ preventScroll: true });
+      }
+    };
+    document.addEventListener('focusin', containFocus);
+    return () => {
+      document.removeEventListener('focusin', containFocus);
+      document.body.style.overflow = previousOverflow;
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    };
   }, [galleryZoomOpen]);
 
   useEffect(() => {
@@ -1678,7 +1695,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
               }}
             >
               <WishlistButton product={product} detail />
-              <button className="gallery-viewer-zoom" type="button" onClick={() => setGalleryZoomOpen(true)} aria-label="Open larger product image"><ZoomIn size={18} /></button>
+              <button ref={galleryZoomTrigger} className="gallery-viewer-zoom" type="button" onClick={() => setGalleryZoomOpen(true)} aria-label="Open larger product image"><ZoomIn size={18} /></button>
               <div className="gallery-image">
                 <img
                   key={galleryImages[displayedGalleryIndex] || product.image}
@@ -1701,13 +1718,25 @@ function ProductDetail({ params }: { params: { slug: string } }) {
             </div>
             {galleryZoomOpen && createPortal(
               <div
+                ref={galleryLightbox}
                 className="gallery-lightbox"
                 role="dialog"
                 aria-modal="true"
                 aria-label={`${product.name} enlarged image`}
-                tabIndex={0}
-                autoFocus
+                tabIndex={-1}
                 onKeyDown={(event) => {
+                  if (event.key === "Tab") {
+                    const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not([disabled])');
+                    const first = buttons[0];
+                    const last = buttons[buttons.length - 1];
+                    if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) {
+                      event.preventDefault();
+                      last?.focus();
+                    } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === event.currentTarget)) {
+                      event.preventDefault();
+                      first?.focus();
+                    }
+                  }
                   if (event.key === "ArrowLeft") {
                     event.preventDefault();
                     changeGallery(-1);
@@ -1716,11 +1745,15 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                     event.preventDefault();
                     changeGallery(1);
                   }
-                  if (event.key === "Escape") setGalleryZoomOpen(false);
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setGalleryZoomOpen(false);
+                  }
                 }}
                 onClick={() => setGalleryZoomOpen(false)}
               >
-                <button className="gallery-lightbox-close" type="button" onClick={() => setGalleryZoomOpen(false)} aria-label="Close enlarged image"><X aria-hidden="true" /></button>
+                <button ref={galleryLightboxClose} className="gallery-lightbox-close" type="button" onClick={() => setGalleryZoomOpen(false)} aria-label="Close enlarged image"><X aria-hidden="true" /></button>
                 {galleryImages.length > 1 && (
                   <>
                     <button className="gallery-lightbox-arrow gallery-lightbox-arrow-prev" type="button" onClick={(event) => { event.stopPropagation(); changeGallery(-1); }} aria-label="View previous product image">&lsaquo;</button>

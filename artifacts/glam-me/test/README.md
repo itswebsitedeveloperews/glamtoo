@@ -9,6 +9,26 @@ STOREFRONT_BASE_URL=https://your-development-preview pnpm --filter @workspace/gl
 
 The browser suite uses `@playwright/test` and automatically uses Replit's Chromium when available. Outside Replit, provision Playwright's Chromium browser in your test environment, or set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` to an existing compatible Chromium executable. Both the frontend and API workflows must be running (the API also serves Clerk's development proxy).
 
+## Product image lightbox keyboard
+
+```sh
+pnpm --filter @workspace/glam-me test:storefront-browser --grep "product image lightbox keyboard"
+```
+
+These focused checks use synthetic catalog responses on the real product page.
+They cover pointer and keyboard opening, initial close-button focus, forward and
+reverse Tab wrapping, Escape and close-button dismissal, focus restoration,
+arrow-key image navigation and wrapping, accessible dialog naming, and the
+single-image case at 820px. The multi-image flow also runs at 390px and 1440px.
+No product, cart, image-size, or style configuration is changed.
+
+The Replit development banner can intercept pointer clicks on the top-right
+close button in the external proxied preview. Check the pointer hit target before
+calling that an application failure; do not move or restyle the shop's controls
+to work around development-only UI. Keyboard activation of the focused close
+button and Escape must still work. These tests do not force clicks through an
+overlay and do not establish compatibility with physical screen readers.
+
 
 ## Private receipt and checkout-dialog contrast
 

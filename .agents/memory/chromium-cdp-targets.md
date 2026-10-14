@@ -14,3 +14,13 @@ For page-bottom captures, request instant scrolling rather than assuming a succe
 **Why:** A smooth-scroll animation can start after CDP evaluation returns, so an immediate screenshot shows the old page position even though the command succeeded.
 
 **How to apply:** Use `window.scrollTo({ top, behavior: 'instant' })` and verify `scrollY` and the target's bounding rectangle before capturing.
+
+In the external proxied development preview, distinguish Replit's development
+banner from shop controls when investigating failed pointer clicks.
+
+**Why:** The banner has intercepted clicks on the product lightbox's top-right
+close button at tablet width. That is separate from application focus failures.
+
+**How to apply:** Inspect the hit target and verify keyboard dismissal separately.
+Do not change approved shop styling or force clicks through an overlay to claim
+the actual pointer path works.
