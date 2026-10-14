@@ -18,3 +18,13 @@ Google sign-in should match the merchant's reference: a white rectangular button
 **Why:** Explicit visual direction from the merchant, not an accidental palette change.
 
 **How to apply:** The merchant explicitly requested `#fff` text on pink action buttons, including Shop Now and Shop the Collection, in default and hover states. Preserve that direction rather than silently restoring dark button text. White on the default pink measures approximately 4.09:1, below normal-text AA; white on the hover pink measures 5.11:1. Do not claim the default combination passes AA or weaken contrast checks. Keep Google sign-in and account dashboard shortcut cards neutral. Keep non-button #c96381 accents, using dark ink for normal-size text on pink and light surfaces. Do not darken the approved backgrounds or resize copy to evade contrast checks. Keep ordinary/supporting copy at 16px/14px and keyboard focus visible on light, pink, and dark surfaces. Do not alter payment, auth, or order logic for color work.
+Photo-overlay accessibility must be verified against rendered images, bright crops,
+and failed-image states on desktop and mobile, not inferred from solid swatches.
+
+**Why:** The user explicitly distinguished promotional photo contrast from generic
+public-page layout/hydration checks; responsive crops can move light fabric or sky
+under text even when the original image looks safe.
+
+**How to apply:** Preserve the merchant's images and palette. Use overlays or
+text backplates to protect copy, and verify the composited pixels behind text
+without counting text shadows as the contrast solution.

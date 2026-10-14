@@ -2024,7 +2024,7 @@ function About() {
         <section
           className="about-cta"
           aria-labelledby="about-cta-heading"
-          style={{ backgroundImage: `linear-gradient(rgba(43, 19, 26, .5), rgba(43, 19, 26, .5)), url(${getCatalogMediaSource("/objects/uploads/bfdfc3f3-ba5f-4632-8b6a-0258cf1f37ee")})` }}
+          style={{ backgroundImage: `linear-gradient(rgba(43, 19, 26, .72), rgba(43, 19, 26, .72)), url(${getCatalogMediaSource("/objects/uploads/bfdfc3f3-ba5f-4632-8b6a-0258cf1f37ee")})` }}
         >
           <div className="container">
             <div className="eyebrow">Your next chapter</div>
@@ -2071,7 +2071,7 @@ function FAQ() {
         <section
           className="faq-hero"
           aria-labelledby="faq-heading"
-          style={{ backgroundImage: `linear-gradient(rgba(34, 15, 20, .52), rgba(34, 15, 20, .52)), url(${aboutStoryImage})` }}
+          style={{ backgroundImage: `linear-gradient(rgba(34, 15, 20, .72), rgba(34, 15, 20, .72)), url(${aboutStoryImage})` }}
         >
           <div className="eyebrow">Help centre</div>
           <h1 id="faq-heading">Frequently asked questions</h1>
