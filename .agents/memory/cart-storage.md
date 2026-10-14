@@ -8,3 +8,17 @@ Persist only a product ID, selected size, and quantity for each cart line. Resol
 **Why:** Product images can be data URLs after admin uploads. Saving image snapshots in cart localStorage can exceed the browser quota and prevent Add to bag from completing.
 
 **How to apply:** Do not add media payloads or full product objects to cart persistence. If localStorage is unavailable or full, preserve the immediate add-to-cart flow with a compact URL fallback.
+
+## Cart sidebar interaction
+
+The merchant requested a bottom-right cart icon that opens a sidebar, and a
+smooth automatic opening when a product is added to the cart.
+
+**Why:** The user asked for a cart preview without leaving the current shopping
+page, rather than the previous immediate navigation to the full bag.
+
+**How to apply:** Keep automatic opening tied to successful additions, not
+quantity changes, removals or restoring a saved cart. Preserve the full bag and
+its storage-failure fallback. The supplied reference is visual inspiration,
+not authorization to introduce parcel-protection fees, unsupported wallets or
+delivery countdown promises.

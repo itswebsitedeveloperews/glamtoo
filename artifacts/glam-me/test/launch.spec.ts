@@ -61,6 +61,10 @@ test("API-only simple product survives guest add, basket navigation, direct chec
   await page.route("**/api/stripe/payment-config", (route) => route.fulfill({ json: { publishableKey: "pk_test_isolated_not_a_real_key" } }));
   await page.goto(`/product/${product.slug}`);
   await page.getByTestId(`button-add-to-bag-${product.id}`).click();
+  await expect(page).toHaveURL(new RegExp(`/product/${product.slug}$`));
+  await expect(page.getByTestId("drawer-cart")).toBeVisible();
+  await expect(page.locator(".cart-drawer-line")).toContainText(product.name);
+  await page.getByTestId("drawer-cart").getByRole("link", { name: "View bag", exact: true }).click();
   await expect(page).toHaveURL(/\/cart$/);
   await expect(page.locator(".cart-item-price")).toHaveText("£1.00");
   await page.getByRole("link", { name: /Go to checkout/i }).click();

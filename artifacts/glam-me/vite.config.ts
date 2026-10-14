@@ -50,7 +50,7 @@ export default defineConfig({
           const { pathname, search } = url;
           // Do not interfere with API, Vite modules or assets. Documents, feeds,
           // direct HTML and their redirects/errors get the same protections.
-          if (isDocumentPath(pathname) || pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+          if (isDocumentPath(pathname) || pathname === '/robots.txt' || pathname === '/sitemap.xml' || pathname === '/sitemap_index.xml') {
             Object.entries(storefrontHeaders({ development: true })).forEach(([key, value]) => res.setHeader(key, value));
           }
           if (req.method !== 'GET' && req.method !== 'HEAD') return next();
@@ -60,7 +60,7 @@ export default defineConfig({
             res.end(req.method === 'HEAD' ? undefined : 'OK');
             return;
           }
-          if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+          if (pathname === '/robots.txt' || pathname === '/sitemap.xml' || pathname === '/sitemap_index.xml') {
             try {
               const result = await proxySeoFile(pathname);
               res.statusCode = result.status;

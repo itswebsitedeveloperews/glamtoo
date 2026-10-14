@@ -31,6 +31,7 @@ import { useMobileMenu } from '@/hooks/use-mobile-menu';
 import { getRecoveryErrorMessage, saveRecoveryPassword } from '@/utils/password-recovery';
 import { PublicSnapshotContext, readPublicSnapshot, type PublicSnapshot } from '@/data/public-snapshot';
 import { CollectionTile, MomentCard } from '@/components/PromotionalCards';
+import CartSidebar, { type CartSidebarLine, type CartSidebarRecommendation } from '@/components/cart-sidebar';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const AdminDashboard = lazy(() => import('@/pages/admin-dashboard'));
@@ -454,6 +455,8 @@ function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'pr
     && item.variationId === selection.variationId
     && optionSignature(item.options) === optionSignature(selection.options)
   );
+  const previousQuantity = existingIndex >= 0 ? items[existingIndex].quantity : 0;
+  if (availableStock <= previousQuantity) return false;
   const nextItems = [...items];
   if (existingIndex >= 0) {
     nextItems[existingIndex] = {
@@ -473,6 +476,7 @@ function addProductToCart(product: CatalogProduct, selection: Omit<CartItem, 'pr
   try {
     window.localStorage.setItem(cartStorageKey, JSON.stringify(nextItems));
     window.dispatchEvent(new Event('glam-cart-updated'));
+    window.dispatchEvent(new Event('glam-cart-open'));
     return true;
   } catch {
     return false;
@@ -1601,7 +1605,15 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     const selection = selectedVariation
       ? { size: selectedVariation.size, colour: selectedVariation.colour || undefined, options: selectedVariation.attributes, variationId: selectedVariation.id }
       : { size: '' };
+    const stockLimit = selectedVariation ? selectedVariation.stock : selectedProduct.stock;
+    const inBag = getCartItems().filter((item) => item.productId === selectedProduct.id && item.variationId === selection.variationId && item.size === selection.size && item.colour === selection.colour)
+      .reduce((total, item) => total + item.quantity, 0);
+    if (stockLimit <= inBag) {
+      setVariationMessage(stockLimit <= 0 ? 'This item is out of stock.' : `You already have the maximum available (${stockLimit}) in your bag.`);
+      return;
+    }
     const wasSaved = addProductToCart(selectedProduct, selection, quantity);
+    if (wasSaved) { setVariationMessage(''); return; }
     const fallbackParams = new URLSearchParams({
       product: String(selectedProduct.id),
       size: selection.size,
@@ -1610,7 +1622,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     if (selection.variationId) fallbackParams.set('variation', String(selection.variationId));
     if (selection.options && Object.keys(selection.options).length > 0) fallbackParams.set('options', JSON.stringify(selection.options));
     fallbackParams.set('quantity', String(quantity));
-    window.location.href = wasSaved ? '/cart' : `/cart?${fallbackParams.toString()}`;
+    window.location.href = `/cart?${fallbackParams.toString()}`;
   }
 
   return (
@@ -1670,7 +1682,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 <img
                   key={galleryImages[displayedGalleryIndex] || product.image}
                   className={galleryTransitionDirection > 0 ? "gallery-slide-next" : "gallery-slide-prev"}
-                  {...responsiveImage(galleryImages[displayedGalleryIndex] || product.image, '(max-width: 800px) 100vw, 55vw')}
+                  {...responsiveImage(galleryImages[displayedGalleryIndex] || product.image, '(max-width: 767px) 100vw, (max-width: 1024px) min(calc(60vw - 28.8px), 480px), 55vw')}
                   fetchPriority="high"
                   alt={`${product.name} view ${displayedGalleryIndex + 1}`}
                   style={{ objectPosition: "center top" }}
@@ -2342,6 +2354,21 @@ function Cart() {
       ? [...storedItems, queryItem]
       : storedItems;
   });
+  const ownCartEvent = useRef(false);
+  useEffect(() => {
+    const syncFromStorage = () => {
+      if (ownCartEvent.current) { ownCartEvent.current = false; return; }
+      const storedItems = getCartItems();
+      const queryItem = getCartQueryItem();
+      setItems(queryItem && !storedItems.some((item) =>
+        item.productId === queryItem.productId && item.size === queryItem.size && item.colour === queryItem.colour && item.variationId === queryItem.variationId,
+      ) ? [...storedItems, queryItem] : storedItems);
+    };
+    const onStorage = (event: StorageEvent) => { if (event.key === null || event.key === cartStorageKey) syncFromStorage(); };
+    window.addEventListener('glam-cart-updated', syncFromStorage);
+    window.addEventListener('storage', onStorage);
+    return () => { window.removeEventListener('glam-cart-updated', syncFromStorage); window.removeEventListener('storage', onStorage); };
+  }, []);
   const products = getStorefrontProducts();
   const cartLines = items.flatMap((item) => {
     const product = products.find((candidate) => candidate.id === item.productId);
@@ -2350,7 +2377,12 @@ function Cart() {
       : undefined;
     return product && getCartLineAmount(product, item.variationId) !== null ? [{ item, product, variation }] : [];
   });
-  const unavailableItems = items.filter((item) => !cartLines.some((line) => line.item === item));
+  const unavailableItems = items.filter((item) => {
+    const line = cartLines.find((candidate) => candidate.item === item);
+    if (!line) return true;
+    const availableStock = line.product.type === 'Variable' ? line.variation?.stock ?? 0 : line.product.stock;
+    return availableStock < item.quantity;
+  });
   const subtotal = cartLines.reduce((total, { item, product, variation }) => total + parsePounds(variation?.price ?? product.price) * item.quantity, 0);
   const selectedShipping = selectShippingMethod(shippingMethods, getCheckoutPreferences().delivery);
   const deliveryAmount = selectedShipping ? calculateShippingAmount(selectedShipping, Math.round(subtotal * 100)) / 100 : null;
@@ -2378,6 +2410,7 @@ function Cart() {
     ) {
       window.history.replaceState({}, '', '/cart');
     }
+    ownCartEvent.current = true;
     window.dispatchEvent(new Event('glam-cart-updated'));
   }
 
@@ -2397,6 +2430,7 @@ function Cart() {
     } catch {
       // The visible cart still updates if browser storage is unavailable.
     }
+    ownCartEvent.current = true;
     window.dispatchEvent(new Event('glam-cart-updated'));
   }
 
@@ -2406,7 +2440,7 @@ function Cart() {
         <div className="eyebrow">Your edit</div>
         <h1>Your bag.</h1>
         {unavailableItems.length > 0 && <section className="catalog-status" role="status">
-          <h2>Some bag items are unavailable</h2><p>These products or options cannot be priced from the current catalog. They have not been removed. Remove them or choose an available option before checking out.</p>
+          <h2>Some bag items are unavailable</h2><p>Some products, options or quantities are not currently available. Nothing has been removed. Reduce the quantity, choose an available option or remove the item before checking out.</p>
           <ul>{unavailableItems.map((item, index) => <li key={index}>Product {item.productId}{item.size ? ` · ${item.size}` : ""} <button type="button" onClick={() => removeCartItem(item)}>Remove unavailable item</button></li>)}</ul>
         </section>}
         {cartLines.length === 0 ? (
@@ -3782,6 +3816,125 @@ function AdminRoute() {
   return <Suspense fallback={<div role="status">Loading admin workspace…</div>}><AdminDashboard onSignOut={() => signOut({ redirectUrl: basePath || '/' })} /></Suspense>;
 }
 
+function cartLineKey(item: CartItem) {
+  return [item.productId, item.size, item.colour ?? '', item.variationId ?? '', JSON.stringify(Object.entries(item.options ?? {}).sort(([a], [b]) => a.localeCompare(b)))].join('|');
+}
+
+function CartDrawerHost({ location }: { location: string }) {
+  useContext(CatalogMediaContext);
+  useLiveInventory();
+  const [open, setOpen] = useState(false);
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [error, setError] = useState('');
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const refresh = () => { setItems(getCartItems()); setTick((tick) => tick + 1); };
+    const openDrawer = () => { setError(''); setOpen(true); };
+    const onStorage = (event: StorageEvent) => { if (event.key === null || event.key === cartStorageKey) refresh(); };
+    refresh();
+    window.addEventListener('glam-cart-updated', refresh);
+    window.addEventListener('glam-cart-open', openDrawer);
+    window.addEventListener('storage', onStorage);
+    return () => {
+      window.removeEventListener('glam-cart-updated', refresh);
+      window.removeEventListener('glam-cart-open', openDrawer);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
+  const path = location.replace(/\/+$/, '') || '/';
+  // /cart keeps its own storage-failure query fallback; checkout, admin and confirmation flows stay uncovered.
+  const hidden = path === '/cart' || path === '/checkout' || path.startsWith('/admin') || path === '/order-confirmation' || path.startsWith('/account/recovery');
+
+  useEffect(() => { setOpen(false); }, [location]);
+
+  // Re-resolve on every render, including useLiveInventory's refresh. Catalog
+  // media and cart items alone do not capture changes in live availability.
+  const view = (() => {
+    const products = getStorefrontProducts();
+    const lines: CartSidebarLine[] = items.map((item) => {
+      const product = products.find((candidate) => candidate.id === item.productId);
+      const variation = product?.type === 'Variable' ? product.variations.find((candidate) => candidate.id === item.variationId) : undefined;
+      const amount = product ? getCartLineAmount(product, item.variationId) : null;
+      const stock = !product ? 0 : product.type === 'Variable' ? variation?.stock ?? 0 : product.stock;
+      const unavailable = !product || amount === null || stock <= 0;
+      const optionValues = Object.values(item.options ?? {}).filter(Boolean);
+      const options = optionValues.length ? optionValues : [item.size, item.colour].filter((value): value is string => Boolean(value));
+      return {
+        key: cartLineKey(item),
+        name: product?.name ?? 'Unavailable item',
+        href: product ? `/product/${product.slug}` : '/cart',
+        image: product?.image,
+        imagePosition: product?.position,
+        options,
+        unitLabel: amount === null ? 'Price unavailable' : formatPounds(amount),
+        lineLabel: amount === null ? 'Price unavailable' : formatPounds(amount * item.quantity),
+        quantity: item.quantity,
+        maxQuantity: stock,
+        unavailable,
+        notice: unavailable ? 'No longer available. Remove it to continue.' : item.quantity > stock ? `Only ${stock} in stock. Reduce the quantity to continue.` : undefined,
+      };
+    });
+    const subtotal = items.reduce((total, item) => {
+      const product = products.find((candidate) => candidate.id === item.productId);
+      const key = cartLineKey(item);
+      const line = lines.find((candidate) => candidate.key === key);
+      const amount = product ? getCartLineAmount(product, item.variationId) : null;
+      return amount === null || !line || line.unavailable ? total : total + amount * item.quantity;
+    }, 0);
+    const inBag = new Set(items.map((item) => item.productId));
+    const recommendations: CartSidebarRecommendation[] = products
+      .filter((product) => !inBag.has(product.id) && getProductPricing(product).amounts.length > 0
+        && (product.type === 'Variable' ? product.variations.some((variation) => variation.stock > 0) : product.stock > 0))
+      .slice(0, 3)
+      .map((product) => ({
+        id: product.id,
+        name: product.name,
+        href: `/product/${product.slug}`,
+        image: product.image,
+        imagePosition: product.position,
+        priceLabel: getProductPricing(product).label,
+        canQuickAdd: product.type !== 'Variable',
+      }));
+    return { lines, subtotal, recommendations, hasUnavailable: lines.some((line) => line.unavailable) };
+  })();
+
+  function write(nextItems: CartItem[]) {
+    if (!restoreCartItems(nextItems)) {
+      setError('Your bag could not be updated because browser storage is unavailable. Nothing was changed.');
+      return;
+    }
+    setError('');
+    if (nextItems.length === 0) saveCheckoutPreferences({ couponCode: undefined });
+  }
+
+  if (hidden) return null;
+  return (
+    <CartSidebar
+      open={open}
+      onOpenChange={setOpen}
+      itemCount={items.reduce((total, item) => total + item.quantity, 0)}
+      lines={view.lines}
+      subtotalLabel={formatPounds(view.subtotal)}
+      hasUnavailable={view.hasUnavailable}
+      error={error}
+      recommendations={view.recommendations}
+      onQuantityChange={(key, quantity) => {
+        const line = view.lines.find((candidate) => candidate.key === key);
+        const next = Math.max(1, Math.min(quantity, line?.maxQuantity ?? quantity));
+        write(getCartItems().map((item) => cartLineKey(item) === key ? { ...item, quantity: next } : item));
+      }}
+      onRemove={(key) => write(getCartItems().filter((item) => cartLineKey(item) !== key))}
+      onQuickAdd={(productId) => {
+        const product = getStorefrontProducts().find((candidate) => candidate.id === productId);
+        if (!product || product.type === 'Variable') return;
+        if (!addProductToCart(product)) setError('That item could not be added to your bag. It may be out of stock or storage is unavailable.');
+      }}
+      onNavigate={() => setOpen(false)}
+    />
+  );
+}
+
 function AppRoutes() {
   const mediaVersion = useContext(CatalogMediaContext);
   const [location] = useLocation();
@@ -3833,7 +3986,7 @@ function AppRoutes() {
     <Route path="/sign-in/*?" component={CustomerSignInPage} />
     <Route path="/sign-up/*?" component={CustomerSignUpPage} />
     <Route component={NotFoundRoute} />
-  </Switch>{needsCatalog && catalogStatus === "error" && <div className="catalog-refresh-notice" role="status">The collection could not be refreshed. Showing the last loaded catalog. <button type="button" onClick={() => window.dispatchEvent(new Event("glam-catalog-retry"))}>Retry</button></div>}</>;
+  </Switch><CartDrawerHost location={location} />{needsCatalog && catalogStatus === "error" && <div className="catalog-refresh-notice" role="status">The collection could not be refreshed. Showing the last loaded catalog. <button type="button" onClick={() => window.dispatchEvent(new Event("glam-catalog-retry"))}>Retry</button></div>}</>;
 }
 
 function ClerkProviderWithRoutes() {

@@ -9,7 +9,7 @@ Keep the existing /product/ and /category/ URL formats. Category name changes mu
 
 **How to apply:** Keep canonical resolution and redirects consistent with published catalog visibility. Use the verified production origin, never a browser Host or development domain.
 
-Keep the entire Glam Too website noindex until the user explicitly requests a policy change. Public crawling must remain permitted so crawlers can discover noindex; sitemaps stay empty and are not advertised.
+Keep the entire Glam Too website noindex until the user explicitly requests a policy change. Public crawling must remain permitted so crawlers can discover noindex; page-URL sitemaps stay empty and robots.txt does not advertise them. A requested sitemap index may reference the empty child sitemap without authorizing page indexing.
 
 **Why:** The user's pre-launch requirement is site-wide noindex, not merely private-page exclusions. Accurate product and social metadata does not authorize enabling indexing or promising immediate removal of previously indexed pages.
 

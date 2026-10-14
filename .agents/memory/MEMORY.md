@@ -3,7 +3,7 @@
 - [Clerk UI upgrade policy](clerk-ui-upgrades.md) — Upgrade bundled auth UI deliberately; verify the real signed-out widgets, not appearance fixtures alone.
 - [Private contrast fixtures](private-contrast-fixtures.md) — Mock Clerk’s full settings bootstrap; measure real, settled hover and keyboard-focus colors.
 - [Vite catalog state](vite-catalog-state.md) — Hot reload can preserve browser state when a localStorage-backed catalog changes; verify seeded data in a fresh context.
-- [Cart storage](cart-storage.md) — Persist only cart line identifiers, size, and quantity; derive product media from the catalog.
+- [Cart storage and sidebar](cart-storage.md) — Minimal stored lines; requested bottom-right drawer opens after additions, not ordinary cart updates.
 - [Coupon cart lifecycle](coupon-cart-lifecycle.md) — Clear a saved coupon when the bag is emptied; preserve it only while the shopper is retrying the same bag.
 - [Admin image persistence](admin-image-persistence.md) — Keep catalog metadata small and media references immutable so gallery edits survive constrained browser storage.
 - [Admin Products presentation](admin-products-presentation.md) — Merchant repeatedly requested no Product Information Review panel in the Products workspace.
@@ -33,7 +33,7 @@
 - [Catalog seed lifecycle](catalog-seed-lifecycle.md) — Seed built-in products only for an uninitialized catalog; never restore missing products after admins delete them.
 - [Unified delivery advice](delivery-content-vs-shipping.md) — Merchant approved product advice rates/promises; Shipping now feeds both product Delivery and checkout.
 - [Home page curation](home-page-curation.md) — An unset homepage uses defaults; intentionally empty saved selections must stay empty after refresh.
-- [Tablet presentation](tablet-presentation.md) — Merchant wants two-column homepage/category grids and smaller category headings on iPad; keep phone/desktop unchanged.
+- [Responsive storefront](tablet-presentation.md) — Two-column iPad grids with centered final home cards; product headings above the gallery on iPad/mobile. Preserve desktop layouts.
 - [Mobile product tables](mobile-product-tables.md) — Merchant explicitly wants 12px Delivery and Size Guide table text on phones, without changing tablet/desktop.
 - [Mobile checkout note](mobile-checkout-presentation.md) — Stack the Stripe payment reassurance text at full width on phones; keep tablet/desktop unchanged.
 - [Storefront defaults](storefront-defaults.md) — Merchant wants original header/footer menus and homepage category presentation; do not hide empty links/tiles incidentally.

@@ -139,8 +139,11 @@ test.describe("hydrated public pages", () => {
         await expect(page.getByTestId("button-add-to-bag-9002")).toBeEnabled();
         await page.getByTestId("button-add-to-bag-9002").click();
         await expect(page.getByTestId("link-cart")).toHaveAttribute("aria-label", "Shopping bag, 2 items");
+        await expect(page.getByTestId("drawer-cart")).toBeVisible();
+        await page.getByTestId("drawer-cart").getByRole("link", { name: "View bag", exact: true }).click();
+      } else {
+        await page.getByTestId("link-cart").click();
       }
-      await page.getByTestId("link-cart").click();
       await expect(page).toHaveURL(/\/cart$/);
       await expect(page.getByRole("heading", { name: "Your bag.", exact: true })).toBeVisible();
       await expect(page.locator(".cart-item-price")).toHaveText(route.path.startsWith("/product/") ? "£79.50" : "£39.75");

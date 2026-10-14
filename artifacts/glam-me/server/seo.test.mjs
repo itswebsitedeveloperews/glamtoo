@@ -82,6 +82,27 @@ test('safe discovery does not depend on API availability or stale sitemap data',
   assert.equal(new TextDecoder().decode(robots.body), 'User-agent: *\nAllow: /\nDisallow: /api/\n');
 });
 
+test('sitemap index references the existing empty sitemap without enabling indexing', async () => {
+  const previous = process.env.SEO_SITE_ORIGIN;
+  process.env.SEO_SITE_ORIGIN = 'https://glamtoo.webdesignessex.io';
+  try {
+    const response = await proxySeoFile('/sitemap_index.xml', () => { throw new Error('No API request expected'); });
+    assert.equal(response.status, 200);
+    assert.equal(response.contentType, 'application/xml; charset=utf-8');
+    const xml = new TextDecoder().decode(response.body);
+    assert.match(xml, /<sitemapindex xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9">/);
+    assert.match(xml, /<loc>https:\/\/glamtoo.webdesignessex.io\/sitemap.xml<\/loc>/);
+    assert.doesNotMatch(xml, /<urlset|<url>|replit\.dev/);
+    const child = await proxySeoFile('/sitemap.xml');
+    assert.doesNotMatch(new TextDecoder().decode(child.body), /<url>|<loc>/);
+    process.env.SEO_SITE_ORIGIN = 'http://untrusted.example';
+    await assert.rejects(proxySeoFile('/sitemap_index.xml'), /HTTPS origin/);
+  } finally {
+    if (previous === undefined) delete process.env.SEO_SITE_ORIGIN;
+    else process.env.SEO_SITE_ORIGIN = previous;
+  }
+});
+
 test('HTTP status, HEAD, static files, error response and dynamic feeds', async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), 'glam-seo-'));
   await writeFile(path.join(directory, 'index.html'), '<html><head><title>Fallback</title></head><body>App shell</body></html>');
@@ -133,6 +154,13 @@ test('HTTP status, HEAD, static files, error response and dynamic feeds', async 
   assert.equal(await head.text(), '');
   assert.equal((await fetch(`${base}/nonexistent.png`)).status, 404);
   const sitemap = await fetch(`${base}/sitemap.xml`);
+  const index = await fetch(`${base}/sitemap_index.xml`);
+  assert.equal(index.status, 200);
+  assert.equal(index.headers.get('content-type'), 'application/xml; charset=utf-8');
+  assert.match(await index.text(), /<sitemapindex xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9">/);
+  const indexHead = await fetch(`${base}/sitemap_index.xml`, { method: 'HEAD' });
+  assert.equal(indexHead.status, 200);
+  assert.equal(await indexHead.text(), '');
   assert.equal(sitemap.headers.get('content-type'), 'application/xml; charset=utf-8');
   const xml = await sitemap.text();
   assert.match(xml, /<urlset xmlns="http:\/\/www.sitemaps.org\/schemas\/sitemap\/0.9"><\/urlset>/);

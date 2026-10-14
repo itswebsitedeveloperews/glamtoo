@@ -45,7 +45,7 @@ export function createSeoServer({ directory = dist, fetcher = fetch, render = as
       send(res, method, 200, 'OK', { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
       return;
     }
-    if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+    if (pathname === '/robots.txt' || pathname === '/sitemap.xml' || pathname === '/sitemap_index.xml') {
       try {
         const result = await proxySeoFile(pathname, fetcher);
         send(res, method, result.status, Buffer.from(result.body), { 'Content-Type': result.contentType, 'Cache-Control': 'no-cache' });

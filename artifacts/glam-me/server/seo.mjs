@@ -82,11 +82,22 @@ export function injectSeo(html, data = FALLBACK) {
 }
 
 
+export function sitemapIndexXml(origin = process.env.SEO_SITE_ORIGIN) {
+  if (!origin) throw new Error('SEO_SITE_ORIGIN is required for the sitemap index');
+  const url = new URL(origin);
+  if (url.protocol !== 'https:' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) {
+    throw new Error('SEO_SITE_ORIGIN must be an HTTPS origin');
+  }
+  const location = `${url.origin}/sitemap.xml`.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>${location}</loc></sitemap></sitemapindex>`;
+}
+
 export async function proxySeoFile(pathname, fetcher = fetch) {
   // Discovery is deliberately static under the global noindex policy. It must
   // remain safe even if the API is unavailable or running an older release.
   const body = pathname === '/robots.txt'
     ? 'User-agent: *\nAllow: /\nDisallow: /api/\n'
+    : pathname === '/sitemap_index.xml' ? sitemapIndexXml()
     : '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>';
   return {
     status: 200,
