@@ -18,6 +18,8 @@ import { sanitizeRichTextHtml } from "@/utils/rich-text";
 import { productContentGaps } from "@/utils/storefront-truth";
 import logoImage from "@assets/logo-soft-options/glam-too-selected-dark.svg";
 import AdminHomePage from "./admin-home-page";
+import AdminPromotionalPreview from "@/components/AdminPromotionalPreview";
+import { defaultHomePageSettings, type HomePageSettings } from "@/data/home-page";
 import AdminGmailSettings from "@/components/admin-gmail-settings";
 import AdminContactEmailSettings from "@/components/admin-contact-email-settings";
 import type { AdminCatalogSaveInput } from "@workspace/api-client-react";
@@ -1485,12 +1487,14 @@ function ProductEditor({
   product,
   categories,
   availableImages,
+  promotionalProducts,
   onCancel,
   onSave,
 }: {
   product?: Product;
   categories: string[];
   availableImages: string[];
+  promotionalProducts: Product[];
   onCancel: () => void;
   onSave: (draft: ProductDraft) => Promise<boolean>;
 }) {
@@ -1992,6 +1996,14 @@ function ProductEditor({
               </div>
             </div>
           </section>
+          <AdminPromotionalPreview
+            moments={promotionalProducts.some(item => item.id === product?.id)
+              ? promotionalProducts.map(item => item.id === product?.id ? { ...draft, id: item.id } : item)
+              : [{ ...draft, id: product?.id ?? -1 }, ...promotionalProducts].slice(0, 4)}
+            note={promotionalProducts.some(item => item.id === product?.id)
+              ? "Your unsaved primary image and copy are shown in this product’s current homepage position."
+              : "This product is not currently featured. Shown as an example in the first moment slot; this does not add it to the homepage."}
+          />
         </div>
 
         <aside className="admin-editor-sidebar">
@@ -2093,6 +2105,10 @@ export default function AdminDashboard({
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
   const [products, setProducts, commitProducts] = useStoredState<Product[]>(productsStorageKey, getStoredProducts());
   const [categories, setCategories, commitCategories] = useStoredState<Category[]>(categoriesStorageKey, getStoredCategories());
+  const [homePageSettings, setHomePageSettings] = useState<HomePageSettings | null>(null);
+  const previewSettings = homePageSettings ?? defaultHomePageSettings(categories, products);
+  const promotionalCategories = previewSettings.categoryIds.flatMap(id => categories.filter(category => category.id === id));
+  const promotionalProducts = previewSettings.momentIds.flatMap(id => products.filter(product => product.id === id && product.status === "Published"));
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
@@ -2197,7 +2213,7 @@ export default function AdminDashboard({
       try {
         await hydrateCatalogProductMedia(getStoredProducts());
         const response = await fetch("/api/admin/catalog", { credentials: "include" });
-        const catalog = await response.json() as { products?: Product[]; categories?: Category[]; initialized?: boolean; error?: string };
+        const catalog = await response.json() as { products?: Product[]; categories?: Category[]; homePage?: HomePageSettings | null; initialized?: boolean; error?: string };
         if (!response.ok || !Array.isArray(catalog.products) || !Array.isArray(catalog.categories)) {
           throw new Error(catalog.error || "The shared catalog could not be loaded.");
         }
@@ -2250,6 +2266,7 @@ export default function AdminDashboard({
           }
         }
         if (!active) return;
+        setHomePageSettings(catalog.homePage ?? null);
         const resolvedCatalog = resolveBuiltInCatalogAssets(
           nextCatalog.products ?? [],
           nextCatalog.categories ?? [],
@@ -3248,9 +3265,9 @@ export default function AdminDashboard({
           </div>
         )}
 
-        {section === "home-page" && <AdminHomePage categories={categories} products={products} />}
+        {section === "home-page" && <AdminHomePage categories={categories} products={products} onSaved={setHomePageSettings} />}
 
-        {section === "products" && editorProductId !== null && <ProductEditor product={editorProduct} categories={categoryNames} availableImages={catalogImages} onCancel={() => setEditorProductId(null)} onSave={saveProduct} />}
+        {section === "products" && editorProductId !== null && <ProductEditor product={editorProduct} categories={categoryNames} availableImages={catalogImages} promotionalProducts={promotionalProducts} onCancel={() => setEditorProductId(null)} onSave={saveProduct} />}
 
         {section === "products" && editorProductId === null && (
           <>
@@ -3359,6 +3376,14 @@ export default function AdminDashboard({
                 </div>
                 {getCatalogMediaSource(categoryDraft.image) && <img className="admin-category-form-preview" src={getCatalogMediaSource(categoryDraft.image)} alt="Category preview" />}
                 <label>Description<textarea value={categoryDraft.description} onChange={(event) => setCategoryDraft((current) => ({ ...current, description: event.target.value }))} placeholder="A short description for this collection." rows={4} /></label>
+                <AdminPromotionalPreview
+                  categories={promotionalCategories.some(item => item.id === editingCategoryId)
+                    ? promotionalCategories.map(item => item.id === editingCategoryId ? { ...categoryDraft, id: item.id } : item)
+                    : [{ ...categoryDraft, id: editingCategoryId ?? -1 }, ...promotionalCategories].slice(0, 5)}
+                  note={promotionalCategories.some(item => item.id === editingCategoryId)
+                    ? "Your unsaved image and copy are shown in this category’s current homepage position."
+                    : "This category is not currently featured. Shown as an example in the first category slot; this does not add it to the homepage."}
+                />
                  <div className="admin-category-form-actions"><button className="admin-primary" type="submit" disabled={categorySaving} aria-busy={categorySaving}>{categorySaving ? editingCategoryId !== null ? "Updating…" : "Creating…" : editingCategoryId !== null ? "Update category" : "Create category"}</button>{editingCategoryId !== null && <button className="admin-secondary" type="button" onClick={cancelCategoryEdit} disabled={categorySaving}>Cancel</button>}</div>
               </form>
             </div>

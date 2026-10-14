@@ -30,6 +30,7 @@ import { categoryProductCount, type CatalogStatus } from '@/utils/storefront-tru
 import { useMobileMenu } from '@/hooks/use-mobile-menu';
 import { getRecoveryErrorMessage, saveRecoveryPassword } from '@/utils/password-recovery';
 import { PublicSnapshotContext, readPublicSnapshot, type PublicSnapshot } from '@/data/public-snapshot';
+import { CollectionTile, MomentCard } from '@/components/PromotionalCards';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
 const AdminDashboard = lazy(() => import('@/pages/admin-dashboard'));
@@ -1089,14 +1090,7 @@ function Home() {
         <section className={`collection-collage container${featuredCategories.length >= 5 ? " is-five-or-more" : ""}`} aria-labelledby="collection-heading">
           <h2 id="collection-heading" className="sr-only">Shop the collection</h2>
           {featuredCategories.map((category) => (
-            <a className="collection-tile" key={category.id} href={`/category/${getCategorySlug(category)}`}>
-              {category.image && <img {...responsiveImage(category.image, '(max-width: 640px) 100vw, 50vw')} alt={`${category.name} collection`} loading="lazy" decoding="async" />}
-              <div>
-                <h3>{category.name}</h3>
-                {category.description && <p>{category.description}</p>}
-                <span className="collection-tile-cta">Shop {category.name} <span aria-hidden="true">→</span></span>
-              </div>
-            </a>
+            <CollectionTile key={category.id} category={category} />
           ))}
         </section>
       )}
@@ -1112,13 +1106,9 @@ function Home() {
           <div className="moments-heading"><div className="eyebrow">Shop by moment</div><h2 id="moments-heading">Outfits for Every Plan</h2></div>
           <div className="moment-grid">
             {momentProducts.map((product, index) => {
-              return <article className="moment-card" key={product.id} data-testid={`card-moment-${index}`}>
-                <a className="moment-card-link" href={`/product/${product.slug}`} data-testid={`link-moment-${index}`}>
-                  <img {...responsiveImage(product.image, '(max-width: 640px) 100vw, 33vw')} alt={product.name} loading="lazy" decoding="async" style={{ objectPosition: product.position }} />
-                  <div className="moment-copy"><h3>{product.name}</h3>{product.description && <p>{product.description}</p>}<span className="moment-shop-link">Shop now <span aria-hidden="true">→</span></span></div>
-                </a>
+              return <MomentCard product={product} index={index} key={product.id}>
                 <WishlistButton product={product} />
-              </article>;
+              </MomentCard>;
             })}
           </div>
         </div>

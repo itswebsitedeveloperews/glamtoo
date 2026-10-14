@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { GripVertical } from "lucide-react";
 import type { CatalogCategory, CatalogProduct } from "@/data/catalog";
 import { defaultHomePageSettings, type HomePageSettings } from "@/data/home-page";
+import AdminPromotionalPreview from "@/components/AdminPromotionalPreview";
 
 type SettingsField = keyof HomePageSettings;
 type Choice = { id: number; label: string; detail?: string };
@@ -127,7 +128,7 @@ function SelectionDropdown({
   );
 }
 
-export default function AdminHomePage({ categories, products }: { categories: CatalogCategory[]; products: CatalogProduct[] }) {
+export default function AdminHomePage({ categories, products, onSaved }: { categories: CatalogCategory[]; products: CatalogProduct[]; onSaved?: (settings: HomePageSettings) => void }) {
   const [draft, setDraft] = useState<HomePageSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -173,6 +174,7 @@ export default function AdminHomePage({ categories, products }: { categories: Ca
       const payload = await response.json() as { homePage?: HomePageSettings; error?: string };
       if (!response.ok || !payload.homePage) throw new Error(payload.error || "Home page settings could not be saved.");
       setDraft(payload.homePage);
+      onSaved?.(payload.homePage);
       setSaved(true);
       window.dispatchEvent(new Event("glam-catalog-updated"));
     } catch (cause) {
@@ -200,6 +202,11 @@ export default function AdminHomePage({ categories, products }: { categories: Ca
           <SelectionDropdown title="Category Section" description="Choose up to five categories for the image tiles, in display order." choices={categoryChoices} selected={draft.categoryIds} onChange={(ids) => update("categoryIds", ids)} maxSelections={5} />
           <SelectionDropdown title="Obsessions Section" description="Choose up to three published products, in display order." choices={productChoices} selected={draft.obsessionIds} onChange={(ids) => update("obsessionIds", ids)} maxSelections={3} />
           <SelectionDropdown title="Outfits Plan Section" description="Choose up to four published products, in display order." choices={productChoices} selected={draft.momentIds} onChange={(ids) => update("momentIds", ids)} maxSelections={4} />
+          <AdminPromotionalPreview
+            categories={draft.categoryIds.flatMap(id => categories.filter(category => category.id === id))}
+            moments={draft.momentIds.flatMap(id => products.filter(product => product.id === id && product.status === "Published"))}
+            note="To replace a photo, edit its category or the product’s primary image. Selection and order changes above appear here before you save."
+          />
           <div className="admin-home-actions">
             <button className="admin-primary" type="button" disabled={saving} onClick={() => void save()}>{saving ? "Saving…" : "Save Home Page"}</button>
             {saved && <span role="status">Home page saved.</span>}
