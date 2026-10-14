@@ -53,3 +53,42 @@ Prefer avoiding duplicate messages over automatically retrying ambiguous SMTP ou
 **Why:** An SMTP server may accept DATA before its acknowledgement is lost. Nodemailer can label post-DATA socket errors as `CONN`, so that label alone does not establish a safe pre-send failure.
 
 **How to apply:** Retry explicit temporary rejections or failures proven to precede message submission. Reconcile uncertain sends with the recorded Message-ID before permitting another attempt.
+
+
+## Matching inbox evidence
+
+Receipt verification must match the specific approved test's saved Message-ID,
+recipient, Reply-To, and complete content. A merchant's explicit Inbox-location
+confirmation plus the matching original email is acceptable; copied message text
+or an original for a different test is not.
+
+**Why:** Earlier synthetic enquiries can have similar subjects and were supplied
+as evidence for a different send. Accepting them would falsely prove delivery to
+the approved inbox.
+
+**How to apply:** Use one unique synthetic marker, inspect only the provided
+matching original, and retain sanitized comparison results rather than copying
+personal addresses or full transport headers into the verification report.
+Do not resend an accepted test just because its receipt evidence is missing.
+
+Exclude raw receipt uploads from source control before requesting them.
+Removing files from the final tree or adding ignore rules afterward does not
+remove earlier committed copies.
+
+**Why:** Automatic checkpoints can capture uploaded mail originals and screenshots
+before a final sanitized evidence report is prepared.
+
+**How to apply:** Establish private-evidence exclusions before collecting originals,
+record only sanitized comparisons, and inspect the task's complete history rather
+than just its final diff. If raw evidence was committed, coordinate approved
+history cleanup; do not claim it has been purged based on a clean working tree.
+
+Checkpoint-managed auxiliary references can reintroduce older ancestry after a
+local rewrite, even while the outgoing task branch stays clean.
+
+**Why:** A later checkpoint restored an agent reference containing pre-cleanup
+history after local branch filtering had removed the raw evidence paths.
+
+**How to apply:** Check the outgoing task commit range independently of auxiliary
+references, and explicitly distinguish sanitized delivery from global data
+erasure. Do not promise removal from platform-managed retained copies.
