@@ -23,10 +23,9 @@
 .ocv address{font-style:normal}
 .ocv-muted{color:var(--o-muted);font-size:14px}
 .ocv-actions{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;margin-top:16px}
-.ocv-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 22px;border:1px solid var(--o-pink);background:var(--o-pink);color:#fff;font:inherit;font-size:14px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer}
-.ocv-btn:hover{filter:brightness(1.1)}
+.ocv-btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 22px;border:1px solid var(--button-bg,#c96381);background:var(--button-bg,#c96381);color:#fff;font:inherit;font-size:14px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:background .2s ease,border-color .2s ease}
+.ocv-btn:is(:hover,:focus-visible,:active):not(:disabled){background:var(--button-hover-bg,#bd2855);border-color:var(--button-hover-bg,#bd2855)}
 .ocv-btn:focus-visible,.ocv-link:focus-visible{outline:2px solid var(--o-ink);outline-offset:4px}
-.ocv-btn.is-quiet{background:transparent;color:var(--o-ink);border-color:var(--o-ink)}
 .ocv-link{color:var(--o-pink);border-bottom:1px solid currentColor;padding:0;background:none;border-top:0;border-inline:0;font:inherit;font-size:14px;cursor:pointer}
 .ocv-skel{height:14px;margin:12px 0;background:var(--o-paper);max-width:420px}
 @media (max-width:800px){.ocv{width:calc(100% - 32px);padding:40px 0 64px}.ocv-grid{grid-template-columns:1fr}.ocv-head{grid-template-columns:1fr}.ocv-card{padding:18px}}

@@ -16,6 +16,8 @@
   --line: #d8d0ca;
   --pink: #bd2855;
   --pink-deep: #c96381;
+  --button-bg: #c96381;
+  --button-hover-bg: #bd2855;
   --blush: #f4cad5;
   --sage: #c9d0c1;
   --white: #fffdfb;
@@ -3455,3 +3457,15 @@ input:focus, select:focus, textarea:focus { outline: none; }
 /* Readable storefront copy, including narrow screens. */
 #root :is(.footer-intro, .footer-knowledge p, .faq-answer p, .detail-description, .detail-rich-text, .returns-help p, .collection-tile p) { font-size: 16px; }
 #root :is(.footer ul, .footer-bottom, .product-policy-text, .collection-tile-cta, .gallery-viewer-pagination, .detail-header-row .eyebrow, .delivery-information-table th, .detail-purchase-controls .field label, .detail-quantity-label, .wishlist-item-actions .button, .faq-support .button, .checkout-heading > .text-link) { font-size: 14px; }
+
+/* Shared action-button palette. Keep navigation, icon and quantity controls separate. */
+:is(.button, .contact-form .button, .newsletter-form button, .footer-newsletter-form button, .customer-recovery-button, .account-order-view-button, .account-shortcuts button, .checkout-coupon-form button, .admin-primary, .admin-secondary, .admin-quiet-button, .admin-upload-button, .admin-order-details-button, .admin-overview-payment-button, .admin-danger-button, .shop-filter-apply) {
+  background: var(--button-bg);
+  border-color: var(--button-bg);
+  color: #fff;
+}
+:is(.button, .contact-form .button, .newsletter-form button, .footer-newsletter-form button, .customer-recovery-button, .account-order-view-button, .account-shortcuts button, .checkout-coupon-form button, .admin-primary, .admin-secondary, .admin-quiet-button, .admin-upload-button, .admin-order-details-button, .admin-overview-payment-button, .admin-danger-button, .shop-filter-apply):is(:hover, :focus-visible, :active):not(:disabled) {
+  background: var(--button-hover-bg);
+  border-color: var(--button-hover-bg);
+  color: #fff;
+}
