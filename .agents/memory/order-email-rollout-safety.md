@@ -17,7 +17,7 @@ The merchant approved Gmail SMTP for order confirmations, replacing the proposed
 
 Use the merchant's Google OAuth application credentials with an interactive mailbox-authorization step, not as an SMTP password.
 
-**Why:** The merchant repeatedly supplied Client ID, Client Secret and sender email instead of an App Password or manually obtained refresh token.
+**Why:** The merchant repeatedly supplied Client ID, Client Secret and sender email instead of an App Password or manually obtained refresh token. They confirmed that the admin consent flow saved authorization and passed SMTP authentication with their own Google client.
 
 **How to apply:** Keep a one-time admin “Connect Gmail” consent step that obtains the refresh token securely. Do not silently switch to the API-based Gmail connector, ask for credentials in chat, or claim that application credentials alone prove mailbox authorization.
 
