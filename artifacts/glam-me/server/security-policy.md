@@ -10,63 +10,77 @@ not guarantee immediate removal of previously indexed pages.
 - `X-Robots-Tag: noindex, follow`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `X-Content-Type-Options: nosniff`
-- Production CSP `frame-ancestors 'self'`
-- Development CSP adds `https://replit.com https://*.replit.dev` for workspace preview.
+- A complete enforced CSP restricts scripts, connections, frames, images, styles,
+  fonts, workers, media, objects, base URLs and forms.
+- Production frame ancestors are `'self'`; development additionally permits
+  `https://replit.com https://*.replit.dev` for workspace preview.
 
 Frame protection rejects cross-origin production embedding and permits the
 workspace's development preview. X-Frame-Options is deliberately omitted because
 SAMEORIGIN/DENY would conflict with that development preview allowance.
 
-## Report-only candidate, not a fully enforced CSP
+## Enforced Content Security Policy
 
-`Content-Security-Policy-Report-Only` restricts scripts, connections, frames,
-styles, images, fonts, workers, media, objects, base URLs and forms.
-Violations appear in the browser console; no external reporting endpoint receives
-customer data.
+The full resource policy is sent as `Content-Security-Policy`, not
+`Content-Security-Policy-Report-Only`. Production scripts have neither
+`'unsafe-inline'` nor `'unsafe-eval'`. Exact initial inline script contents are
+hashed. Styles retain inline permission because Clerk/Stripe and React need it.
+Violations appear in the browser console; there is no stored historical reporting
+endpoint and no external reporting service receiving customer data.
 
 Dependencies represented in the candidate:
 
-- Clerk: same-origin proxy (when configured), Clerk account/API/script hosts,
-  Cloudflare challenge frames/scripts/connections. External identity providers
-  and custom Clerk domains require explicit validation before enforcement.
-- Stripe: js.stripe.com Card Element/script/frame, api.stripe.com connections,
-  hooks.stripe.com and checkout.stripe.com frames, Stripe telemetry hosts.
-  Issuer-hosted 3-D Secure challenges may require additional frame origins.
+- Clerk: same-origin proxy, exact tenant hosts derived from configured public
+  keys and the verified site origin (never arbitrary request Host headers).
+  Protection scripts/frames use `*.protect.clerk.com`; protection connections
+  retain the vendor-required `:*` for non-standard ports. Clerk telemetry and
+  Cloudflare challenge hosts remain explicitly permitted.
+- Stripe: js.stripe.com and *.js.stripe.com SDK/script/frame hosts, api.stripe.com
+  connections, hooks.stripe.com authentication and checkout.stripe.com frames,
+  and existing Stripe telemetry connections. No generic HTTPS script/frame
+  wildcard was added. The current interface mounts Card Element. Other Stripe
+  integrations require review of their matching vendor directives before adoption.
 - Catalog: same-origin assets and object-storage proxy, HTTPS image URLs supplied
   by admins, existing data/blob uploads. HTTPS image permission is intentional,
   not a script or connection wildcard.
-- Fonts: Google Fonts CSS and gstatic font files; inline styles support Clerk,
-  Stripe and existing React styles.
+- Fonts are self-hosted. Unused Google Fonts CSS/gstatic sources were removed.
 - Development: Vite/React Refresh inline code, overlay eval and WebSocket HMR.
   Production omits eval/inline script permission and hashes initial inline scripts.
 
-HTTP tests validate production/development documents, headers, HEAD, aliases,
-fallbacks and runtime bypass. A fresh browser pass verifies metadata navigation
-and inspects third-party loading. Full CSP enforcement must wait for proven
-Clerk sign-in/recovery, saved-card and Stripe 3DS compatibility in a controlled
-test-mode environment. Do not perform live payments, send recovery emails, or
-broaden permissions just to suppress console reports.
+HTTP tests validate complete enforced policies on production/development
+documents, HEAD, aliases, fallbacks and runtime bypass. Source tests check exact
+Clerk origin validation, required provider directives, script hashes and isolated
+development exceptions. Native Chromium checks proved that trusted scripts and
+same-origin fetches run while injected scripts, eval, unapproved connections,
+frames, HTTP images, external forms and base URLs are blocked. The controlled
+external test server received zero requests.
 
-### Browser verification and remaining blockers
+### Browser compatibility and remaining coverage
 
-The fresh-context browser pass confirmed one persistent noindex tag, parsed
-Product JSON-LD, removal of product schema/social images on navigation, homepage
-social image loading, alias GET/HEAD protection, catalog image loading, embedded
-Clerk sign-in/recovery rendering, and Stripe test-mode Card Element mounting.
-The browser-head regression test also exercises stale/aborted resolver responses,
-network failure, redirects and synchronous removal of previous product metadata.
+A fresh baseline sign-in browser capture found no violations. Compatibility
+checks must attribute events to their owning document and distinguish the
+parent policy from third-party iframe policies. Do not broaden parent directives
+to silence warnings emitted inside Stripe-controlled documents.
 
-No recovery messages or payments were submitted. Full Clerk authentication/
-recovery completion, saved-card confirmation, and issuer 3DS were not verified:
-the pass lacked a controlled signed-in payment fixture. Those checks remain
-required before broad CSP enforcement. No full production CSP browser proof is
-claimed.
+A direct browser check applied the actual production policy to initial preview
+documents, hashing their original inline scripts rather than permitting inline
+scripts/eval. Clerk sign-in, signup and recovery screens rendered, and a populated
+guest checkout mounted Stripe card frames, with zero unexpected parent-document
+violations. Development Vite WebSocket attempts were blocked by the production
+connection policy and excluded as expected test-harness traffic. Vendor iframe
+policies were not overridden. This used the development Clerk tenant, not the live
+production tenant.
 
-Stripe frame loading produced inline-style violation events from Stripe-related
-policies, but the capture did not retain documentURI, so exact iframe attribution
-was not established. Card Element mounted; do not weaken the storefront candidate
-based on unattributed third-party events. Vite reconnected after reloads; no
-blocking page errors were observed.
+No recovery messages or payments are submitted by these checks. Saved-card
+confirmation, actual issuer 3DS completion and email-based recovery require a
+separate controlled, approved fixture. Frame mounting is not proof that a payment
+completed. Live deployment headers also require re-verification after publishing.
+The automated signed-in shopper pass did not finish and was stopped; no signed-in
+compatibility success is claimed.
+
+Vendor references:
+- https://clerk.com/docs/guides/secure/best-practices/csp-headers
+- https://docs.stripe.com/security/guide#content-security-policy
 
 Pagination canonical differences are intentional existing behavior: unfiltered
 `/shop?page=2` retains `?page=2`; filtered `/shop?sort=new&page=2` canonicalizes to

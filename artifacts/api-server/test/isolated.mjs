@@ -33,7 +33,7 @@ try {
   await admin.query(`CREATE DATABASE "${database}"`);
   await run(["--filter", "@workspace/db", "run", "push-force"]);
   const suites = process.argv.slice(2);
-  for (const suite of suites.length ? suites : ["regressions", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth", "shipping"]) {
+  for (const suite of suites.length ? suites : ["regressions", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth", "shipping", "contact-notifications"]) {
     await run(["--filter", "@workspace/api-server", "exec", "node", "test/build.mjs", suite]);
   }
 } finally {

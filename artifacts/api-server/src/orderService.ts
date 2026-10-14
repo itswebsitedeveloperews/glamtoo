@@ -1,6 +1,7 @@
 import { pool, type PoolClient } from "@workspace/db";
 import { provisionCheckoutAccount, type CheckoutAccountStatus } from "./checkoutAccount";
 import { logger } from "./lib/logger";
+import { enqueueAdminOrderConfirmations } from "./adminOrderNotifications";
 
 export type FulfillmentStatus = "Processing" | "Shipped" | "Delivered";
 export type OrderPaymentType = "payment_intent" | "checkout_session";
@@ -532,6 +533,7 @@ async function finalizeSavedOrder(
          ON CONFLICT (order_id, notification_type) DO NOTHING`,
         [order.id],
       );
+      await enqueueAdminOrderConfirmations(client, order.id);
     }
     const finalOrder = await loadOrder(client, "id", order.id);
     await client.query("COMMIT");

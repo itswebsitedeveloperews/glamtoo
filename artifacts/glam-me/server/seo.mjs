@@ -55,10 +55,10 @@ export async function resolveSeo(path, fetcher = fetch) {
 export function injectSeo(html, data = FALLBACK) {
   const title = escapeHtml(data.title || FALLBACK.title);
   const description = escapeHtml(data.description || FALLBACK.description);
-  const robots = NOINDEX;
+  const robots = data.robots?.includes('nofollow') ? 'noindex, nofollow' : NOINDEX;
   const canonical = data.canonicalUrl ? `<link rel="canonical" href="${escapeHtml(data.canonicalUrl)}" data-route-seo>` : '';
   const image = data.image ? `<meta property="og:image" content="${escapeHtml(data.image)}" data-route-seo><meta name="twitter:image" content="${escapeHtml(data.image)}" data-route-seo>` : '';
-  const structured = data.type === 'product' && data.structuredData
+  const structured = data.structuredData
     ? `<script type="application/ld+json" data-route-seo>${serializeStructuredData(data.structuredData)}</script>` : '';
   const tags = `<title data-route-seo>${title}</title>
     <meta name="description" content="${description}" data-route-seo>
@@ -77,6 +77,7 @@ export function injectSeo(html, data = FALLBACK) {
   // The static shell contains no route-specific metadata. Replace any older managed
   // tags as well, so repeated transforms cannot duplicate SEO tags.
   return html.replace(/<script\b[^>]*data-route-seo\b[^>]*>[\s\S]*?<\/script>|<title\b[^>]*>[\s\S]*?<\/title>|<(?:meta|link)\b[^>]*data-route-seo\b[^>]*>/gi, '')
+    .replace(/<meta\b[^>]*(?:name\s*=\s*["'](?:description|robots|twitter:[^"']*)["']|property\s*=\s*["']og:[^"']*["'])[^>]*>|<link\b[^>]*rel\s*=\s*["']canonical["'][^>]*>/gi, '')
     .replace('</head>', `    ${tags}\n  </head>`);
 }
 

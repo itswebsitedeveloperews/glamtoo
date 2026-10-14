@@ -60,7 +60,7 @@ export function MediaLibrary({
                   type="button"
                   onClick={() => toggleSelection(image)}
                 >
-                  {preview ? <img src={preview} alt="" /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /></div>}
+                  {preview ? <img src={preview} alt={`Product media preview ${i + 1}`} loading="lazy" decoding="async" /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /></div>}
                   {isSelected && <div className="admin-media-library-item-check"><span aria-hidden="true">✓</span></div>}
                 </button>
               );

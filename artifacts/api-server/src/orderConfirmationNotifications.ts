@@ -2,7 +2,8 @@ import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { buildOrderConfirmation, type ConfirmationItem, type ConfirmationOrder } from "./orderConfirmationTemplate";
 import { emailRecipientPolicy } from "./emailRecipientPolicy";
-import { gmailOrderMessageId, gmailSmtpConfiguration, GmailSmtpError, sendGmailConfirmation } from "./gmailSmtp";
+import { getContactNotificationSettings } from "./contactNotifications";
+import { gmailOrderMessageId, gmailAdminOrderMessageId, gmailSmtpConfiguration, GmailSmtpError, sendGmailConfirmation, sendGmailAdminOrderConfirmation } from "./gmailSmtp";
 
 const MAX_ATTEMPTS = 5;
 type Notification = {
@@ -11,15 +12,20 @@ type Notification = {
   attempts: number;
   provider_message_id: string | null;
   provider_email_id: string | null;
+  recipient_email: string | null;
 };
 type EmailMessage = ReturnType<typeof buildOrderConfirmation>;
 
-async function configuration(transport = process.env.ORDER_EMAIL_TRANSPORT === "mailersend" ? "mailersend" : "gmail_smtp") {
+async function configuration(transport = process.env.ORDER_EMAIL_TRANSPORT === "mailersend" ? "mailersend" : "gmail_smtp", adminAudience = false) {
   const token = process.env.MAILERSEND_API_TOKEN?.trim();
   const fromEmail = process.env.MAILERSEND_FROM_EMAIL?.trim();
   const smtp = transport === "gmail_smtp" ? await gmailSmtpConfiguration() : null;
   const publicUrl = process.env.ORDER_EMAIL_PUBLIC_URL?.trim();
-  const policy = emailRecipientPolicy();
+  const settings = adminAudience ? await getContactNotificationSettings() : null;
+  const adminRecipients = settings?.orderAdminEmails.length ? settings.orderAdminEmails
+    : settings?.fallbackAdminEmail ? [settings.fallbackAdminEmail] : [];
+  const policy = adminAudience ? settings?.orderEnabled && adminRecipients.length
+    ? { recipients: adminRecipients, allCustomers: false } : null : emailRecipientPolicy();
   // Sending to arbitrary customers is an explicit rollout decision, not an
   // accidental consequence of adding credentials to a staging environment.
   if (!publicUrl || !policy) return null;
@@ -30,7 +36,7 @@ async function configuration(transport = process.env.ORDER_EMAIL_TRANSPORT === "
   } catch { return null; }
   return {
     token: token ?? "", fromEmail: fromEmail ?? "", publicUrl, ...policy, transport, smtp,
-    fromName: process.env.MAILERSEND_FROM_NAME?.trim() || "Glam Too Boutique",
+    adminAudience, fromName: process.env.MAILERSEND_FROM_NAME?.trim() || "Glam Too Boutique",
     replyTo: process.env.MAILERSEND_REPLY_TO_EMAIL?.trim() || fromEmail,
   };
 }
@@ -84,17 +90,21 @@ async function claim(config: NonNullable<Awaited<ReturnType<typeof configuration
     `WITH candidate AS (
        SELECT n.id FROM store_order_email_notifications n
        JOIN store_orders o ON o.id = n.order_id
-       WHERE n.notification_type = 'order_confirmation' AND n.status = 'pending'
+       WHERE n.status = 'pending'
          AND n.next_attempt_at <= NOW() AND n.attempts < $1
          AND o.payment_status = 'paid' AND o.payment_resolution = 'none'
-         AND ($2::boolean OR LOWER(o.email) = ANY($3::text[]))
-         AND ($5::timestamptz IS NULL OR n.created_at >= $5)
+         AND (
+           ($6::boolean AND n.notification_type LIKE 'admin_order_confirmation:%' AND LOWER(n.recipient_email) = ANY($3::text[]))
+           OR (NOT $6::boolean AND n.notification_type = 'order_confirmation'
+             AND ($2::boolean OR LOWER(o.email) = ANY($3::text[]))
+             AND ($5::timestamptz IS NULL OR n.created_at >= $5))
+         )
        ORDER BY n.created_at, n.id FOR UPDATE OF n SKIP LOCKED LIMIT 1
      )
      UPDATE store_order_email_notifications n
      SET status = 'sending', attempts = n.attempts + 1, provider = $4, updated_at = NOW()
      FROM candidate WHERE n.id = candidate.id RETURNING n.*`,
-    [MAX_ATTEMPTS, config.allCustomers, config.recipients, config.transport, config.smtp?.authorizedSince ?? null],
+    [MAX_ATTEMPTS, config.allCustomers, config.recipients, config.transport, config.smtp?.authorizedSince ?? null, config.adminAudience],
   );
   return result.rows[0] ?? null;
 }
@@ -121,10 +131,15 @@ async function sendNotification(notification: Notification, config: NonNullable<
     // interrupted DATA transaction can be reconciled without a blind resend.
     await pool.query(
       "UPDATE store_order_email_notifications SET provider_message_id = $2 WHERE id = $1 AND status = 'sending'",
-      [notification.id, gmailOrderMessageId(config.smtp!, order.id)],
+      [notification.id, notification.recipient_email
+        ? gmailAdminOrderMessageId(config.smtp!, order.id, notification.recipient_email)
+        : gmailOrderMessageId(config.smtp!, order.id)],
     );
   }
-  const messageId = await send(config, order, buildOrderConfirmation(order, items.rows, config.publicUrl));
+  const message = buildOrderConfirmation(order, items.rows, config.publicUrl);
+  const messageId = notification.recipient_email
+    ? await sendGmailAdminOrderConfirmation(config.smtp!, order.id, notification.recipient_email, message)
+    : await send(config, order, message);
   // This is provider acceptance, not evidence of inbox delivery.
   await pool.query(
     `UPDATE store_order_email_notifications SET status = 'accepted', provider_message_id = $2,
@@ -221,17 +236,18 @@ export async function refreshOrderEmailDelivery(limit = 2) {
 }
 
 export async function processOrderConfirmations(limit = 10) {
-  const config = await configuration();
-  if (!config) return;
+  const configs = [await configuration(), await configuration("gmail_smtp", true)].filter(
+    (config): config is NonNullable<typeof config> => config !== null);
+  if (!configs.length) return;
   // A crashed sender may already have been accepted. Freeze these rows rather
   // than resetting them to pending and creating duplicate confirmations.
   await pool.query(
     `UPDATE store_order_email_notifications SET status = 'uncertain',
      last_error = 'Sender lease expired; reconcile the Message-ID or order tag with the recorded provider before resending', updated_at = NOW()
-     WHERE notification_type = 'order_confirmation' AND status = 'sending'
+     WHERE (notification_type = 'order_confirmation' OR notification_type LIKE 'admin_order_confirmation:%') AND status = 'sending'
        AND updated_at < NOW() - INTERVAL '15 minutes'`,
   );
-  for (let index = 0; index < limit; index += 1) {
+  for (const config of configs) for (let index = 0; index < limit; index += 1) {
     const notification = await claim(config);
     if (!notification) break;
     try { await sendNotification(notification, config); }

@@ -15,6 +15,7 @@
     "test:email-confirmations": "node ./test/isolated.mjs email-confirmations",
     "test:gmail-smtp": "node ./test/isolated.mjs gmail-smtp",
     "test:gmail-oauth": "node ./test/isolated.mjs gmail-oauth",
+    "test:contact-notifications": "node ./test/isolated.mjs contact-notifications",
     "verify:gmail-smtp": "node ./scripts/verify-gmail-smtp.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

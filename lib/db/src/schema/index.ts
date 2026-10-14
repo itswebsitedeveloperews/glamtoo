@@ -10,6 +10,7 @@ export * from "./wishlists";
 export * from "./shipping-methods";
 export * from "./catalog";
 export * from "./contact-enquiries";
+export * from "./contact-notification-settings";
 export * from "./delivery-information";
 export * from "./size-guide";
 export * from "./return-information";

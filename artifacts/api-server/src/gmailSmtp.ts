@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { createHash } from "node:crypto";
 import { gmailOAuthClient, gmailUsesOAuth, getGmailRefreshToken } from "./gmailOAuthCredentials";
 
 export type GmailSmtpConfig = {
@@ -56,19 +57,49 @@ export async function sendGmailConfirmation(
   order: { id: string; email: string },
   message: { subject: string; html: string; text: string },
 ) {
+  return sendGmailMessage(config, order.email, message, gmailOrderMessageId(config, order.id), { "X-Glam-Too-Order": order.id });
+}
+
+export function gmailContactMessageId(config: { user: string }, enquiryId: number, recipient?: string) {
+  const suffix = recipient ? `-${createHash("sha256").update(recipient.toLowerCase()).digest("hex").slice(0, 20)}` : "";
+  return `<glam-too-contact-${enquiryId}${suffix}@${config.user.split("@")[1]}>`;
+}
+
+export async function sendGmailContactNotification(
+  config: GmailSmtpConfig, enquiryId: number, adminEmail: string, customerEmail: string,
+  message: { subject: string; html: string; text: string },
+) {
+  return sendGmailMessage(config, adminEmail, message, gmailContactMessageId(config, enquiryId, adminEmail),
+    { "X-Glam-Too-Enquiry": String(enquiryId) }, customerEmail);
+}
+
+export function gmailAdminOrderMessageId(config: { user: string }, orderId: string, recipient: string) {
+  const hash = createHash("sha256").update(recipient.toLowerCase()).digest("hex").slice(0, 20);
+  return gmailOrderMessageId(config, `${orderId}-admin-${hash}`);
+}
+export async function sendGmailAdminOrderConfirmation(config: GmailSmtpConfig, orderId: string, recipient: string,
+  message: { subject: string; html: string; text: string }) {
+  return sendGmailMessage(config, recipient, { ...message, subject: `Admin copy — ${message.subject}` },
+    gmailAdminOrderMessageId(config, orderId, recipient), { "X-Glam-Too-Order": orderId, "X-Glam-Too-Audience": "admin" });
+}
+
+async function sendGmailMessage(
+  config: GmailSmtpConfig, recipient: string, message: { subject: string; html: string; text: string },
+  messageId: string, headers: Record<string, string>, replyTo = config.replyTo,
+) {
   const client = transport(config);
   try {
     const result = await client.sendMail({
       // The authenticated mailbox is the sender: no unverified branded spoofing.
       from: { name: config.fromName, address: config.user },
-      replyTo: config.replyTo,
-      to: order.email,
-      envelope: { from: config.user, to: [order.email] },
-      messageId: gmailOrderMessageId(config, order.id),
-      headers: { "X-Glam-Too-Order": order.id },
+      replyTo,
+      to: recipient,
+      envelope: { from: config.user, to: [recipient] },
+      messageId,
+      headers,
       ...message,
     });
-    const accepted = result.accepted?.some((address) => address.toLowerCase() === order.email.toLowerCase());
+    const accepted = result.accepted?.some((address) => address.toLowerCase() === recipient.toLowerCase());
     if (!accepted || !result.messageId || !/^2\d\d\b/.test(result.response)) {
       throw new GmailSmtpError("uncertain", "SMTP acceptance could not be verified; reconcile the Message-ID before resending.");
     }

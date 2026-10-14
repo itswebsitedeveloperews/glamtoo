@@ -65,10 +65,10 @@ test('browser metadata stays noindex, removes stale tags, and ignores obsolete r
     await new Promise(setImmediate);
   };
   const meta = (key, value) => children.filter((node) => node.tag === 'meta' && node.attrs.get(key) === value);
-  const assertNoindex = () => {
+  const assertNoindex = (expected = 'noindex, follow') => {
     const robots = meta('name', 'robots');
     assert.equal(robots.length, 1);
-    assert.equal(robots[0].attrs.get('content'), 'noindex, follow');
+    assert.equal(robots[0].attrs.get('content'), expected);
   };
   const schema = () => children.filter((node) => node.tag === 'script' && node.type === 'application/ld+json');
   render('/product/dress');
@@ -97,12 +97,12 @@ test('browser metadata stays noindex, removes stale tags, and ignores obsolete r
   assert.equal(meta('name', 'twitter:card')[0].attrs.get('content'), 'summary_large_image');
   render('/missing');
   await settle({ status: 404, title: 'Not found', type: 'website' });
-  assertNoindex();
+  assertNoindex('noindex, nofollow');
   assert.equal(meta('property', 'og:image').length, 0);
   render('/broken');
   requests.at(-1).reject(new Error('offline'));
   await new Promise(setImmediate);
-  assertNoindex();
+  assertNoindex('noindex, nofollow');
   assert.equal(schema().length, 0);
   render('/product/7');
   await settle({ status: 301, location: '/product/dress' });

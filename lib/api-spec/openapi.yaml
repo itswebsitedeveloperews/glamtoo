@@ -17,6 +17,110 @@ tags:
   - name: seo
     description: Public search metadata and crawler files
 paths:
+  /admin/contact-enquiries:
+    get:
+      operationId: getAdminContactEnquiries
+      summary: List persisted customer enquiries (administrators only)
+      responses:
+        "200":
+          description: Newest-first inbox with full messages and notification outcomes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [enquiries]
+                properties:
+                  enquiries:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name, email, topic, message, createdAt, deliveryStatus]
+                      properties:
+                        id: { type: integer }
+                        name: { type: string }
+                        email: { type: string }
+                        orderNumber: { type: [string, "null"] }
+                        topic: { type: string }
+                        message: { type: string }
+                        createdAt: { type: string, format: date-time }
+                        deliveryStatus: { type: string, enum: [pending, sending, accepted, partial, uncertain, delivered, failed, not_configured] }
+                        emailRecipients:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              email: { type: string }
+                              status: { type: string }
+                              messageId: { type: string }
+                              error: { type: [string, "null"] }
+                        deliveryError: { type: [string, "null"] }
+                        emailMessageId: { type: [string, "null"] }
+                        deliveredAt: { type: [string, "null"], format: date-time }
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
+        "503":
+          description: Inbox unavailable
+  /admin/contact-notification-settings:
+    get:
+      operationId: getAdminContactNotificationSettings
+      summary: Read private contact-alert recipient settings (administrators only)
+      responses:
+        "200":
+          description: Current settings and Gmail configuration availability
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [adminEmail, adminEmails, orderAdminEmails, fallbackAdminEmail, enabled, orderEnabled, gmailConfigured]
+                properties:
+                  adminEmail: { type: string }
+                  adminEmails: { type: array, items: { type: string } }
+                  orderAdminEmails: { type: array, items: { type: string } }
+                  fallbackAdminEmail: { type: string }
+                  enabled: { type: boolean }
+                  orderEnabled: { type: boolean }
+                  gmailConfigured: { type: boolean }
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
+        "503":
+          description: Settings unavailable
+    put:
+      operationId: saveAdminContactNotificationSettings
+      summary: Change admin recipients for new contact enquiries and paid-order copies
+      description: Does not change public contact details, login permissions or order email policy. Does not resend historical enquiries.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactNotificationSettingsInput"
+      responses:
+        "200":
+          description: Saved settings
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [adminEmail, enabled]
+                properties:
+                  adminEmail: { type: string }
+                  adminEmails: { type: array, items: { type: string } }
+                  orderAdminEmails: { type: array, items: { type: string } }
+                  fallbackAdminEmail: { type: string }
+                  enabled: { type: boolean }
+                  orderEnabled: { type: boolean }
+        "400":
+          description: Valid recipient lists or a verified admin fallback are required
+        "401":
+          description: Sign-in required
+        "403":
+          description: Administrator access required
+        "503":
+          description: Settings could not be saved
   /admin/gmail:
     get:
       operationId: getAdminGmailSettings
@@ -392,6 +496,27 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
+    ContactNotificationSettingsInput:
+      type: object
+      additionalProperties: false
+      properties:
+        adminEmail:
+          type: string
+          maxLength: 254
+          deprecated: true
+          description: Legacy single contact recipient. Prefer adminEmails.
+        adminEmails:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 254 }
+        orderAdminEmails:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 254 }
+        enabled:
+          type: boolean
+        orderEnabled:
+          type: boolean
     CheckoutPaymentInput:
       type: object
       required: [email, customerName, lines, delivery, address]

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { FALLBACK, injectSeo, isDocumentPath, parseRequestUrl, proxySeoFile, resolveSeo } from './seo.mjs';
 import { storefrontHeaders } from './security.mjs';
+import { compressAsset } from './asset-compression.mjs';
 
 const dist = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist/public');
 const mime = {
@@ -60,7 +61,16 @@ export function createSeoServer({ directory = dist, fetcher = fetch } = {}) {
           send(res, method, 301, '', { Location: data.location, 'Cache-Control': 'no-cache' });
           return;
         }
-        const html = await readFile(path.join(directory, 'index.html'), 'utf8');
+        let html = await readFile(path.join(directory, 'index.html'), 'utf8');
+        if (pathname === '/' || pathname === '/index.html') {
+          try {
+            const preload = JSON.parse(await readFile(path.join(directory, 'home-hero-preload.json'), 'utf8'));
+            const escape = value => String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+            html = html.replace('</head>', `<link rel="preload" as="image" href="${escape(preload.href)}" imagesrcset="${escape(preload.srcSet)}" imagesizes="${escape(preload.sizes)}" fetchpriority="high"></head>`);
+          } catch {
+            // Older/test builds have no generated preload; the normal image still loads.
+          }
+        }
         send(res, method, data.status, injectSeo(html, data.status === 404 ? { ...data, robots: 'noindex, nofollow' } : data), {
           'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache',
         });
@@ -84,8 +94,11 @@ export function createSeoServer({ directory = dist, fetcher = fetch } = {}) {
       if (!real.startsWith(`${path.resolve(directory)}${path.sep}`)) throw new Error('Invalid asset path');
       const info = await stat(real);
       if (!info.isFile()) throw new Error('Not a file');
-      send(res, method, 200, await readFile(real), {
-        'Content-Type': mime[path.extname(real).toLowerCase()] || 'application/octet-stream',
+      const contentType = mime[path.extname(real).toLowerCase()] || 'application/octet-stream';
+      const asset = await compressAsset(await readFile(real), contentType, req.headers['accept-encoding'], `${real}:${info.mtimeMs}:${info.size}`);
+      send(res, method, 200, asset.body, {
+        'Content-Type': contentType,
+        ...asset.headers,
         'Cache-Control': pathname.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'public, max-age=3600',
       });
     } catch {

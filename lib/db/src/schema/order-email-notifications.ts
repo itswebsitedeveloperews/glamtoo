@@ -5,6 +5,7 @@ export const orderEmailNotificationsTable = pgTable("store_order_email_notificat
   id: serial("id").primaryKey(),
   orderId: text("order_id").notNull().references(() => storeOrdersTable.id, { onDelete: "cascade" }),
   notificationType: text("notification_type").notNull(),
+  recipientEmail: text("recipient_email"),
   status: text("status").notNull().default("pending"),
   attempts: integer("attempts").notNull().default(0),
   lastError: text("last_error"),

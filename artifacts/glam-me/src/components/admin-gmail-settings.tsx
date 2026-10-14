@@ -46,11 +46,11 @@ export default function AdminGmailSettings() {
   }
   return (
     <section className="admin-payment-card" aria-labelledby="gmail-settings-title" style={{ padding: 24, marginBottom: 24 }}>
-      <h3 id="gmail-settings-title" style={{ fontSize: 20, marginBottom: 12 }}>Order confirmation emails</h3>
+      <h3 id="gmail-settings-title" style={{ fontSize: 20, marginBottom: 12 }}>Gmail notification connection</h3>
       <p style={{ fontSize: 16 }}>Gmail SMTP · OAuth2 · {status?.connected ? "Authorization saved" : "Authorization needed"}</p>
       <p style={{ fontSize: 14 }}>Use your Google OAuth Web application client and enable the Gmail API in its Google Cloud project so we can verify the sender mailbox. Add the callback URL below to its authorized redirect URIs, then connect that mailbox.</p>
       {status?.callbackUrl && <p style={{ fontSize: 14, overflowWrap: "anywhere" }}><strong>Google callback URL:</strong> <code>{status.callbackUrl}</code></p>}
-      <p style={{ fontSize: 14 }}>Google SMTP requires full Gmail permission. This app uses it only for authentication and sending order confirmations, not reading messages. Google OAuth apps in Testing may lose authorization after seven days.</p>
+      <p style={{ fontSize: 14 }}>Google SMTP requires full Gmail permission. This app uses it only for authentication and sending approved notifications, not reading messages. Google OAuth apps in Testing may lose authorization after seven days.</p>
       <p style={{ fontSize: 14 }}>{status?.recipientRestricted ? "Sending is restricted to the configured test recipients." : "Customer sending is enabled by the recipient policy."} Connecting Gmail does not resend past orders. A saved authorization is not proof of current access or inbox delivery.</p>
       {!status?.configured && <p style={{ fontSize: 14 }}>Google credentials, sender, callback URL and secure storage must be configured before connecting.</p>}
       <div className="admin-payment-actions">

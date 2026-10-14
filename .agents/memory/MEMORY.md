@@ -32,6 +32,8 @@
 - [Glam Too Boutique wordmark](boutique-wordmark.md) — Keep Glam Too above Boutique, with the original serif and pink Boutique rules.
 - [Catalog URL policy](catalog-url-policy.md) — Preserve URL formats and stable slugs; SEO metadata and redirects require server document handling.
 - [Chromium CDP preview checks](chromium-cdp-targets.md) — Select the actual page target and use instant scrolling for deterministic captures.
-- [Order email rollout safety](order-email-rollout-safety.md) — Provider setup must not silently send to real customers or replay historical orders; acceptance is not delivery proof.
+- [Transactional email rollout](order-email-rollout-safety.md) — Separate multiple admin recipients for contacts/order copies; blank lists use admin email. Preserve customer restrictions and avoid replay/duplicates.
 - [Workflow port ownership](workflow-port-ownership.md) — A failed workflow can still have a server listening; verify port ownership before restarting.
 - [Checkout creation uncertainty](checkout-creation-safety.md) — Lost provider responses retain allocations and retry identity; session locks must not exhaust the query pool.
+- [Performance audits](performance-audits.md) — Check real images and configured services; local scores are not live PageSpeed results. Preserve original catalog media URLs.
+- [CSP provider boundaries](csp-provider-boundaries.md) — Attribute violations to their owning document; do not loosen the parent policy for Stripe iframe warnings.

@@ -15,7 +15,7 @@ type SeoResponse = {
 };
 
 function updateHead(data: Partial<SeoResponse>) {
-  document.head.querySelectorAll('[data-route-seo], title, meta[name="robots"]').forEach((node) => node.remove());
+  document.head.querySelectorAll('[data-route-seo], title, meta[name="robots"], meta[name="description"], meta[property^="og:"], meta[name^="twitter:"], link[rel="canonical"]').forEach((node) => node.remove());
   const title = data.title || 'Glam Too Boutique';
   const description = data.description || 'Affordable fashion, stunning handbags and chic jewellery at Glam Too Boutique.';
   const add = (tag: 'meta' | 'link', attrs: Record<string, string>) => {
@@ -29,7 +29,7 @@ function updateHead(data: Partial<SeoResponse>) {
   titleElement.textContent = title;
   document.head.appendChild(titleElement);
   add('meta', { name: 'description', content: description });
-  add('meta', { name: 'robots', content: 'noindex, follow' });
+  add('meta', { name: 'robots', content: data.robots?.includes('nofollow') ? 'noindex, nofollow' : 'noindex, follow' });
   if (data.canonicalUrl) {
     add('link', { rel: 'canonical', href: data.canonicalUrl });
     add('meta', { property: 'og:url', content: data.canonicalUrl });
@@ -45,7 +45,7 @@ function updateHead(data: Partial<SeoResponse>) {
   add('meta', { name: 'twitter:card', content: data.image ? 'summary_large_image' : 'summary' });
   add('meta', { name: 'twitter:title', content: title });
   add('meta', { name: 'twitter:description', content: description });
-  if (data.type === 'product' && data.structuredData) {
+  if (data.structuredData) {
     const script = document.createElement('script');
     script.type = 'application/ld+json';
     script.setAttribute('data-route-seo', '');

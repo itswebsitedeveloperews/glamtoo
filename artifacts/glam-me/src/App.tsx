@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
+import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
 import logoImage from '@assets/logo-soft-options/glam-too-selected.svg';
@@ -18,7 +18,7 @@ import { Link, Route, Router as WouterRouter, Switch, useLocation, useSearch } f
 import { useSubmitContactEnquiry } from '@workspace/api-client-react';
 import type { CheckoutPaymentInput, CheckoutPaymentIntentResult } from '@workspace/api-client-react';
 import NotFound from '@/pages/not-found';
-import AdminDashboard from '@/pages/admin-dashboard';
+import { responsiveImage } from '@/utils/responsive-images';
 import { hasRichTextContent, sanitizeRichTextHtml } from '@/utils/rich-text';
 import { calculateShippingAmount, selectShippingMethod } from '@workspace/shipping';
 import { useShippingMethods } from '@/hooks/use-shipping-methods';
@@ -28,6 +28,7 @@ import { categoryProductCount, type CatalogStatus } from '@/utils/storefront-tru
 import { useMobileMenu } from '@/hooks/use-mobile-menu';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+const AdminDashboard = lazy(() => import('@/pages/admin-dashboard'));
 const clerkPubKey = publishableKeyFromHost(
   window.location.hostname,
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
@@ -57,10 +58,12 @@ const clerkAppearance = {
     colorInput: '#f5f1ed',
     colorInputForeground: '#171615',
     colorNeutral: '#d8d0ca',
-    fontFamily: 'DM Sans, sans-serif',
+    fontFamily: 'DM Sans Variable, sans-serif',
     borderRadius: '0px',
   },
   elements: {
+    modalBackdrop: { position: 'fixed', inset: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', overflowY: 'auto' },
+    modalContent: { position: 'relative', top: 'auto', left: 'auto', transform: 'none', margin: '0', width: '440px', maxWidth: '100%', maxHeight: 'calc(100dvh - 32px)', overflowY: 'auto' },
     rootBox: { width: '100%', minWidth: '0', maxWidth: '100%', display: 'flex', justifyContent: 'center' },
     cardBox: { width: '440px', maxWidth: '100%', overflow: 'hidden', background: '#fffdfb', border: '1px solid #d8d0ca', borderRadius: '0px', boxShadow: '12px 12px 0 rgba(23, 22, 21, .08)' },
     card: { border: '0', background: 'transparent', borderRadius: '0px', boxShadow: 'none' },
@@ -924,7 +927,7 @@ function Header() {
                     key={product.id}
                     onClick={() => setSearchOpen(false)}
                   >
-                    {product.image ? <img src={product.image} alt="" style={{ objectPosition: product.position }} /> : <span className="header-search-result-placeholder">Glam Too</span>}
+                    {product.image ? <img {...responsiveImage(product.image, '64px')} alt={product.name} loading="lazy" decoding="async" style={{ objectPosition: product.position }} /> : <span className="header-search-result-placeholder">Glam Too</span>}
                     <span className="header-search-result-details">
                       <strong>{product.name}</strong>
                       <small>{product.category} · {getProductPricing(product).label}</small>
@@ -1023,11 +1026,11 @@ function ProductCard({ product, featured = false, showShopNow = false }: { produ
       <div className="product-image">
         <a className="product-card-image-link" href={`/product/${product.slug}`} data-testid={`link-product-${product.id}`} aria-label={`View ${product.name}`}>
           {product.type === 'Simple' && product.stock <= 0 ? <span className="badge">Out of stock</span> : featured && <span className="badge">Featured</span>}
-          <img src={product.image} alt={product.name} />
+          <img {...responsiveImage(product.image, '(max-width: 640px) calc(100vw - 32px), (max-width: 1000px) 45vw, 30vw')} alt={product.name} loading="lazy" decoding="async" />
         </a>
         <WishlistButton product={product} />
       </div>
-      <a className="product-info product-info-link" href={`/product/${product.slug}`} aria-label={`View ${product.name}`}>
+      <a className="product-info product-info-link" href={`/product/${product.slug}`}>
         <div><div className="product-name">{product.name}</div><div className="product-meta">{product.category}</div></div>
         <div className="price">{getProductPricing(product).label}</div>
         {showShopNow && <span className="product-shop-now">Shop now</span>}
@@ -1050,7 +1053,7 @@ function Home() {
   return (
     <Shell>
       <section className="hero" aria-label="The new occasion edit">
-        <img className="hero-image" src={heroImage} alt="Woman in a pink dress beside a vintage pink car on a sunny street" />
+        <img className="hero-image" {...responsiveImage(heroImage)} alt="Woman in a pink dress beside a vintage pink car on a sunny street" fetchPriority="high" loading="eager" />
         <div className="hero-copy">
           <h1>It&apos;s your moment</h1>
           <p>Standout outfits for every plan on your calendar.</p>
@@ -1062,8 +1065,8 @@ function Home() {
         <section className={`collection-collage container${featuredCategories.length >= 5 ? " is-five-or-more" : ""}`} aria-labelledby="collection-heading">
           <h2 id="collection-heading" className="sr-only">Shop the collection</h2>
           {featuredCategories.map((category) => (
-            <a className="collection-tile" key={category.id} href={`/category/${getCategorySlug(category)}`} aria-label={`Shop ${category.name}`}>
-              {category.image && <img src={category.image} alt="" />}
+            <a className="collection-tile" key={category.id} href={`/category/${getCategorySlug(category)}`}>
+              {category.image && <img {...responsiveImage(category.image, '(max-width: 640px) 100vw, 50vw')} alt={`${category.name} collection`} loading="lazy" decoding="async" />}
               <div>
                 <h3>{category.name}</h3>
                 {category.description && <p>{category.description}</p>}
@@ -1087,7 +1090,7 @@ function Home() {
             {momentProducts.map((product, index) => {
               return <article className="moment-card" key={product.id} data-testid={`card-moment-${index}`}>
                 <a className="moment-card-link" href={`/product/${product.slug}`} data-testid={`link-moment-${index}`}>
-                  <img src={product.image} alt={product.name} style={{ objectPosition: product.position }} />
+                  <img {...responsiveImage(product.image, '(max-width: 640px) 100vw, 33vw')} alt={product.name} loading="lazy" decoding="async" style={{ objectPosition: product.position }} />
                   <div className="moment-copy"><h3>{product.name}</h3>{product.description && <p>{product.description}</p>}<span className="moment-shop-link">Shop now <span aria-hidden="true">→</span></span></div>
                 </a>
                 <WishlistButton product={product} />
@@ -1353,7 +1356,7 @@ function CategoryCard({ category }: { category: CatalogCategory }) {
   return (
     <a className="category-directory-card" href={`/category/${categorySlug}`} data-testid={`link-category-${categorySlug}`}>
       <div className="category-directory-image">
-        {category.image ? <img src={category.image} alt={`${category.name} collection`} /> : <span>No image yet</span>}
+        {category.image ? <img {...responsiveImage(category.image, '(max-width: 640px) 100vw, 33vw')} alt={`${category.name} collection`} loading="lazy" decoding="async" /> : <span>No image yet</span>}
       </div>
       <div className="category-directory-copy">
         <div>
@@ -1435,7 +1438,7 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
       <section className="category-banner" aria-labelledby="category-banner-heading">
         <div className="container category-banner-inner">
           <div className="category-banner-media">
-            {category.image ? <img src={category.image} alt={`${category.name} collection campaign`} /> : <div className="category-banner-empty">Glam Too collection</div>}
+            {category.image ? <img {...responsiveImage(category.image, '(max-width: 640px) 100vw, 50vw')} alt={`${category.name} collection campaign`} fetchPriority="high" /> : <div className="category-banner-empty">Glam Too collection</div>}
           </div>
           <div className="category-banner-copy">
             <div className="eyebrow">The {category.name.toLowerCase()} edit</div>
@@ -1613,7 +1616,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                       aria-label={`View ${product.name} image ${index + 1}`}
                       aria-current={index === displayedGalleryIndex ? "true" : undefined}
                     >
-                      <img src={image} alt="" style={{ objectPosition: product.position }} />
+                      <img {...responsiveImage(image, '80px')} alt={`${product.name} gallery view ${index + 1}`} loading="lazy" decoding="async" style={{ objectPosition: product.position }} />
                     </button>
                   ))}
                 </div>
@@ -1653,7 +1656,8 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                 <img
                   key={galleryImages[displayedGalleryIndex] || product.image}
                   className={galleryTransitionDirection > 0 ? "gallery-slide-next" : "gallery-slide-prev"}
-                  src={galleryImages[displayedGalleryIndex] || product.image}
+                  {...responsiveImage(galleryImages[displayedGalleryIndex] || product.image, '(max-width: 800px) 100vw, 55vw')}
+                  fetchPriority="high"
                   alt={`${product.name} view ${displayedGalleryIndex + 1}`}
                   style={{ objectPosition: "center top" }}
                 />
@@ -1940,7 +1944,7 @@ function About() {
     <Shell>
       <div className="about-page">
         <section className="about-hero" aria-labelledby="about-hero-heading">
-          <img className="about-hero-image" src={aboutHeroImage} alt="Woman wearing a pink printed dress seated beside the sea" />
+          <img className="about-hero-image" {...responsiveImage(aboutHeroImage)} alt="Woman wearing a pink printed dress seated beside the sea" fetchPriority="high" />
           <div className="about-hero-overlay" aria-hidden="true" />
           <div className="container about-hero-copy">
             <div className="eyebrow">The Glam Too story</div>
@@ -1960,7 +1964,7 @@ function About() {
             <a className="about-text-link" href="/shop">Explore the edit <span aria-hidden="true">↗</span></a>
           </div>
           <div className="about-intro-media">
-            <img src={aboutStudioImage} alt="Woman in a white co-ord set holding a handbag" />
+            <img {...responsiveImage(aboutStudioImage, '(max-width: 800px) 100vw, 50vw')} alt="Woman in a white co-ord set holding a handbag" loading="lazy" decoding="async" />
           </div>
         </section>
 
@@ -1981,7 +1985,7 @@ function About() {
 
         <section className="container about-story" aria-labelledby="about-story-heading">
           <div className="about-story-media">
-            <img src={aboutStoryImage} alt="Woman wearing a pink printed dress from Glam Too" />
+            <img {...responsiveImage(aboutStoryImage, '(max-width: 800px) 100vw, 50vw')} alt="Woman wearing a pink printed dress from Glam Too" loading="lazy" decoding="async" />
           </div>
           <div className="about-story-copy">
             <div className="eyebrow">Our story</div>
@@ -2105,7 +2109,7 @@ function FAQ() {
                 <a className="button button-pink" href="/contact" data-testid="link-faq-contact">Contact us</a>
               </div>
             </div>
-            <div className="faq-support-image"><img src={aboutStoryImage} alt="Woman wearing a pink printed Glam Too dress" /></div>
+            <div className="faq-support-image"><img {...responsiveImage(aboutStoryImage, '(max-width: 800px) 100vw, 50vw')} alt="Woman wearing a pink printed Glam Too dress" loading="lazy" decoding="async" /></div>
           </section>
         </div>
       </div>
@@ -2674,7 +2678,7 @@ function Checkout() {
           style: {
             base: {
               color: "#171615",
-              fontFamily: "DM Sans, sans-serif",
+              fontFamily: "DM Sans Variable, sans-serif",
               fontSize: "16px",
               "::placeholder": { color: "#827975" },
             },
@@ -3022,11 +3026,10 @@ function CustomerSignInContent() {
       <div className="customer-auth-page">
         <div className="customer-auth-copy">
           <div className="eyebrow">Your Glam Too account</div>
-          <h1>Welcome back.</h1>
+          <div className="customer-auth-intro-title">Welcome back.</div>
           <p>Sign in to manage your details and make shopping your next plan even easier.</p>
         </div>
         <div className="customer-auth-card">
-          <h2 className="customer-signin-title">Sign in to Glam Too Boutique</h2>
           <SignIn appearance={{ elements: { cardBox: { boxShadow: 'none' } } }} signUpUrl={`${basePath}/register`} fallbackRedirectUrl={basePath || '/'} />
           <a className="customer-recovery-link" href={`${basePath}/account/recovery`}>Forgot your password?</a>
         </div>
@@ -3198,7 +3201,7 @@ function PaymentMethodsPanel({ profile }: { profile: CustomerProfile }) {
           disableLink: true,
           hidePostalCode: true,
           style: {
-            base: { color: "#171615", fontFamily: "DM Sans, sans-serif", fontSize: "16px", "::placeholder": { color: "#827975" } },
+            base: { color: "#171615", fontFamily: "DM Sans Variable, sans-serif", fontSize: "16px", "::placeholder": { color: "#827975" } },
             invalid: { color: "#b42342" },
           },
         });
@@ -3642,7 +3645,7 @@ function CustomerAccountPage() {
 }
 
 function CustomerSignUpPage() {
-  return <Shell><div className="customer-auth-page customer-signup-page"><div className="customer-auth-copy"><div className="eyebrow">New here?</div><h1>Create your account.</h1><p>Register to keep your Glam Too details ready for every checkout.</p></div><SignUp appearance={{ elements: { card: 'glam-signup-card', headerTitle: { display: 'none' }, headerSubtitle: { display: 'none' } } }} signInUrl={`${basePath}/account`} fallbackRedirectUrl={basePath || '/'} /></div></Shell>;
+  return <Shell><div className="customer-auth-page customer-signup-page"><div className="customer-auth-copy"><div className="eyebrow">New here?</div><div className="customer-auth-intro-title">Create your account.</div><p>Register to keep your Glam Too details ready for every checkout.</p></div><SignUp appearance={{ elements: { card: 'glam-signup-card' } }} signInUrl={`${basePath}/account`} fallbackRedirectUrl={basePath || '/'} /></div></Shell>;
 }
 
 function PasswordRecoveryPage() {
@@ -3770,7 +3773,7 @@ function AdminRoute() {
   if (accessState === "checking") return <div className="admin-auth-page"><p>Verifying admin access…</p></div>;
   if (accessState === "denied") return <AdminAccessDenied onSignOut={() => void signOut({ redirectUrl: basePath || '/' })} />;
   if (accessState === "error") return <div className="admin-auth-page"><div className="admin-access-denied"><div className="eyebrow">Private studio</div><h1>Access check unavailable.</h1><p>We could not verify this account right now. Please try again shortly.</p><div className="admin-access-actions"><button className="button" type="button" onClick={() => window.location.reload()}>Try again</button><a className="text-link" href="/">Return to storefront</a></div></div></div>;
-  return <AdminDashboard onSignOut={() => signOut({ redirectUrl: basePath || '/' })} />;
+  return <Suspense fallback={<div role="status">Loading admin workspace…</div>}><AdminDashboard onSignOut={() => signOut({ redirectUrl: basePath || '/' })} /></Suspense>;
 }
 
 function AppRoutes() {

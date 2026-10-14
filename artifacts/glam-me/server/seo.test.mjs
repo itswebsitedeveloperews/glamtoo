@@ -48,17 +48,22 @@ test('structured JSON is safely serialized and removed along with stale social m
   assert.equal((injectSeo(product, data).match(/application\/ld\+json/g) || []).length, 1);
 });
 
-test('report-only integration policy is separate from enforced frame protection', () => {
+test('complete integration policy is enforced without unsafe production scripts', () => {
   const headers = storefrontHeaders({ html: '<script type="application/ld+json">{}</script>' });
-  assert.equal(headers['Content-Security-Policy'], FRAME_POLICY);
+  assert.ok(headers['Content-Security-Policy'].includes(FRAME_POLICY));
   assert.equal(headers['Referrer-Policy'], 'strict-origin-when-cross-origin');
-  const policy = headers['Content-Security-Policy-Report-Only'];
+  const policy = headers['Content-Security-Policy'];
+  assert.equal(headers['Content-Security-Policy-Report-Only'], undefined);
   for (const dependency of ['https://js.stripe.com', 'https://api.stripe.com', 'https://hooks.stripe.com',
-    'https://*.clerk.accounts.dev', 'https://*.clerk.com', 'https://challenges.cloudflare.com',
-    'https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'https://storage.googleapis.com',
+    'https://*.js.stripe.com', 'https://*.protect.clerk.com:*', 'https://challenges.cloudflare.com',
+    'https://clerk.glamtoo.webdesignessex.io', 'https://storage.googleapis.com',
     "object-src 'none'", "'sha256-"]) assert.ok(policy.includes(dependency), dependency);
   assert.ok(!policy.includes("'unsafe-eval'"));
-  assert.ok(storefrontHeaders({ development: true })['Content-Security-Policy-Report-Only'].includes('ws: wss:'));
+  assert.ok(!policy.match(/script-src[^;]*'unsafe-inline'/));
+  assert.ok(!policy.includes('fonts.googleapis.com'));
+  assert.ok(!policy.includes('fonts.gstatic.com'));
+  assert.ok(!policy.includes('https://*.clerk.com'));
+  assert.ok(storefrontHeaders({ development: true })['Content-Security-Policy'].includes('ws: wss:'));
 });
 
 test('malformed and traversal paths are rejected', () => {
@@ -106,7 +111,7 @@ test('HTTP status, HEAD, static files, error response and dynamic feeds', async 
   assert.equal(missing.status, 404);
   const missingHtml = await missing.text();
   assert.match(missingHtml, /App shell/);
-   assert.match(missingHtml, /noindex, follow/);
+   assert.match(missingHtml, /noindex, nofollow/);
   const broken = await fetch(`${base}/broken`);
   assert.equal(broken.status, 503);
   assert.equal(broken.headers.get('cache-control'), 'no-store');
@@ -130,12 +135,13 @@ test('HTTP status, HEAD, static files, error response and dynamic feeds', async 
       const response = await fetch(`${base}${route}`, { method, redirect: 'manual' });
       assert.equal(response.headers.get('x-robots-tag'), 'noindex, follow', `${method} ${route}`);
       assert.equal(response.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
-      assert.equal(response.headers.get('content-security-policy'), FRAME_POLICY);
-      assert.ok(response.headers.get('content-security-policy-report-only'));
+      assert.ok(response.headers.get('content-security-policy').includes(FRAME_POLICY));
+      assert.ok(response.headers.get('content-security-policy').includes("default-src 'self'"));
+      assert.equal(response.headers.get('content-security-policy-report-only'), null);
       const body = await response.text();
       if (method === 'HEAD') assert.equal(body, '');
       else if (response.headers.get('content-type')?.includes('text/html')) {
-        assert.match(body, /name="robots" content="noindex, follow"/);
+        assert.match(body, /name="robots" content="noindex, (?:follow|nofollow)"/);
         assert.doesNotMatch(body, /content="index, follow"/);
       }
     }

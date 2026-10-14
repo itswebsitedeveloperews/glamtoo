@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 import { readFile } from 'node:fs/promises';
 import { FALLBACK, injectSeo, isDocumentPath, parseRequestUrl, proxySeoFile, resolveSeo } from './server/seo.mjs';
 import { storefrontHeaders } from './server/security.mjs';
+import { responsiveImages } from './build/responsive-images';
 
 import runtimeErrorOverlay from '@replit/vite-plugin-runtime-error-modal';
 
@@ -113,6 +114,7 @@ export default defineConfig({
       },
     },
     react(),
+    responsiveImages(),
     tailwindcss(),
     runtimeErrorOverlay(),
     ...(process.env.NODE_ENV !== 'production' &&

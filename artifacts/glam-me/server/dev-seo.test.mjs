@@ -43,13 +43,14 @@ test('development documents, HEAD, redirects and fallbacks get noindex without i
       const response = await originalFetch(`${base}${route}`, { method, redirect: 'manual' });
       assert.equal(response.headers.get('x-robots-tag'), 'noindex, follow', `${method} ${route}`);
       assert.equal(response.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
-      assert.equal(response.headers.get('content-security-policy'), DEVELOPMENT_FRAME_POLICY);
-      assert.ok(response.headers.get('content-security-policy-report-only').includes('ws: wss:'));
+       assert.ok(response.headers.get('content-security-policy').includes(DEVELOPMENT_FRAME_POLICY));
+       assert.ok(response.headers.get('content-security-policy').includes('ws: wss:'));
+       assert.equal(response.headers.get('content-security-policy-report-only'), null);
       const body = await response.text();
       if (method === 'HEAD') assert.equal(body, '');
       else if (response.headers.get('content-type')?.includes('text/html')) {
         assert.equal((body.match(/name="robots"/g) || []).length, 1);
-        assert.match(body, /name="robots" content="noindex, follow"/);
+        assert.match(body, /name="robots" content="noindex, (?:follow|nofollow)"/);
       }
       if (route === '/index.html' && method === 'GET') assert.match(body, /<title data-route-seo>Home<\/title>/);
       if (route === '/old') { assert.equal(response.status, 301); assert.equal(response.headers.get('location'), '/shop'); }

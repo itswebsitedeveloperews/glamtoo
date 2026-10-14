@@ -98,6 +98,7 @@ test("SEO handles one-hop aliases, drafts, canonical queries and pagination", ()
   assert.equal(resolveSeo("/product/sienna-dress", catalog, origin).description, "A lovely & bright dress.");
   catalog.products.push(...Array.from({ length: 12 }, (_, id) => ({ id: id + 20, slug: `piece-${id}`, status: "Published", name: `Piece ${id}` })));
   assert.equal(resolveSeo("/shop?page=2&utm_source=x", catalog, origin).canonicalUrl, `${origin}/shop?page=2`);
+  assert.notEqual(resolveSeo("/shop?page=2", catalog, origin).title, resolveSeo("/shop", catalog, origin).title);
   assert.equal(resolveSeo("/shop?search=dress&page=999", catalog, origin).robots, "noindex, follow");
   assert.equal(resolveSeo("/shop?search=dress&page=999", catalog, origin).canonicalUrl, `${origin}/shop`);
   assert.equal(resolveSeo("/shop?category=dresses&page=2", catalog, origin).canonicalUrl, `${origin}/shop`);
@@ -123,7 +124,7 @@ test("all resolver outcomes remain noindex without losing pagination or aliases"
     "/wishlist", "/admin/orders", "/missing", "/product/sienna-dress", "/product/7",
     "/product/private-piece", "/category/new-arrivals", "/shop?page=1", "/shop?page=999",
     "/shop?stock=in", "/bad%"]) {
-    assert.equal(resolveSeo(path, catalog, origin).robots, "noindex, follow", path);
+    assert.match(resolveSeo(path, catalog, origin).robots, /^noindex, (?:follow|nofollow)$/, path);
   }
   assert.equal(resolveSeo("/", catalog, origin).image, `${origin}/social-home.webp`);
 });
@@ -138,7 +139,7 @@ test("Product data uses real identity and verified simple/variable checkout offe
   assert.equal(read().description, "A lovely & bright dress.");
   assert.equal(read().offers, undefined, "no unverified stock or prices");
   assert.deepEqual(read({ "7": { unitAmount: 4999, stock: 0 } }).offers,
-    [{ "@type": "Offer", url: `${origin}/product/sienna-dress`, priceCurrency: "GBP", price: "49.99", availability: "https://schema.org/OutOfStock", sku: "SIENNA" }]);
+    [{ "@type": "Offer", url: `${origin}/product/sienna-dress`, priceCurrency: "GBP", price: "49.99", availability: "https://schema.org/OutOfStock", sku: "SIENNA", seller: { "@type": "Organization", name: "Glam Too", url: origin } }]);
   product.salePrice = "£39.99";
   assert.equal(read({ "7": { unitAmount: 4999, stock: 1 } }).offers, undefined, "conflicting display/checkout prices omitted");
   assert.equal((read({ "7": { unitAmount: 3999, stock: 1 } }).offers as any[])[0].price, "39.99");
@@ -159,6 +160,6 @@ test("Product data uses real identity and verified simple/variable checkout offe
   product.image = "/@fs/home/runner/workspace/attached_assets/photo.webp";
   assert.deepEqual(read().image, ["https://images.example/a.jpg"], "Vite paths are never public production media");
   assert.equal(resolveSeo("/product/sienna-dress", catalog, origin).image, "https://images.example/a.jpg");
-  assert.equal(resolveSeo("/about", catalog, origin).structuredData, undefined);
+  assert.ok(resolveSeo("/about", catalog, origin).structuredData?.["@graph"]);
   assert.equal(resolveSeo("/product/private-piece", catalog, origin).structuredData, undefined);
 });

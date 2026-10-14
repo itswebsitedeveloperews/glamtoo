@@ -1,4 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@400;500&family=Poppins:wght@400;500;600;700;800&display=swap');
+@import '@fontsource-variable/dm-sans';
+@import '@fontsource-variable/playfair-display';
+@import '@fontsource/cormorant-garamond/latin-400.css';
+@import '@fontsource/cormorant-garamond/latin-500.css';
+@import '@fontsource/poppins/latin-400.css';
+@import '@fontsource/poppins/latin-500.css';
+@import '@fontsource/poppins/latin-600.css';
+@import '@fontsource/poppins/latin-700.css';
+@import '@fontsource/poppins/latin-800.css';
 
 :root {
   --paper: #f5f1ed;
@@ -12,8 +20,8 @@
   --sage: #c9d0c1;
   --white: #fffdfb;
   --display: 'Poppins', sans-serif;
-  --hero-display: 'Playfair Display', Georgia, serif;
-  --body: 'DM Sans', sans-serif;
+  --hero-display: 'Playfair Display Variable', Georgia, serif;
+  --body: 'DM Sans Variable', sans-serif;
 }
 
 .admin-app h1,
@@ -1133,7 +1141,9 @@ h2 { text-transform: capitalize !important; }
 .admin-signin-wrap { display: grid; justify-items: center; gap: 16px; width: min(440px, 100%); }
 .admin-signin-wrap > p { max-width: 400px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; text-align: center; }
 .customer-auth-page { display: grid; grid-template-columns: minmax(260px, .8fr) minmax(320px, 1fr); align-items: center; gap: clamp(35px, 8vw, 110px); width: min(1020px, calc(100% - 48px)); min-height: 670px; margin: 0 auto; padding: 70px 0; }
-.customer-auth-copy h1 {
+.customer-auth-copy :is(h1, .customer-auth-intro-title) {
+  font-family: var(--display);
+  font-weight: 400;
   margin: 10px 0 18px;
   font-size: 60px !important;
   font-weight: 400;
@@ -1143,9 +1153,6 @@ h2 { text-transform: capitalize !important; }
 .customer-auth-copy p { max-width: 330px; color: var(--muted); font-size: 16px; line-height: 1.6; }
 .customer-auth-card { position: relative; display: grid; justify-items: center; gap: 14px; }
 /* Clerk owns its heading element; replace the visible start-step title with a semantic h2. */
-#root .customer-signin-title { display: none; position: absolute; z-index: 1; top: 72px; left: 0; width: 100%; margin: 0; color: var(--ink); font: 400 17px/24px 'DM Sans', sans-serif; font-size: 17px !important; letter-spacing: -1px; text-align: center; text-transform: none !important; pointer-events: none; }
-#root .customer-auth-card:has(.cl-signIn-start) .customer-signin-title { display: block; }
-.customer-auth-card:has(.cl-signIn-start) .cl-headerTitle { visibility: hidden; }
 .glam-signup-card { border: 0; background: transparent; border-radius: 0; box-shadow: none; }
 .customer-recovery-link, .customer-recovery-card > a { color: var(--ink); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
 .customer-recovery-card > a { display: inline-block; margin-top: 16px; }
@@ -2884,7 +2891,7 @@ input:focus, select:focus, textarea:focus { outline: none; }
   }
   .customer-recovery-page { gap: 25px; }
   .customer-recovery-page .customer-auth-copy p { margin-bottom: 0; }
-  .customer-auth-copy h1 { font-size: 42px !important; }
+  .customer-auth-copy :is(h1, .customer-auth-intro-title) { font-size: 42px !important; }
   .customer-auth-copy p { max-width: 520px; }
   .glam-signup-card { padding: 20px; }
   .customer-auth-card, .customer-recovery-card {
@@ -2893,7 +2900,6 @@ input:focus, select:focus, textarea:focus { outline: none; }
     box-sizing: border-box;
   }
   .customer-auth-card { grid-template-columns: minmax(0, 1fr); }
-  #root .customer-signin-title { line-height: 20px; }
   .customer-recovery-card {
     padding: 28px 24px;
   }

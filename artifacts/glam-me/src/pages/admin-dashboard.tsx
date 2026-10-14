@@ -19,6 +19,7 @@ import { productContentGaps } from "@/utils/storefront-truth";
 import logoImage from "@assets/logo-soft-options/glam-too-selected-dark.svg";
 import AdminHomePage from "./admin-home-page";
 import AdminGmailSettings from "@/components/admin-gmail-settings";
+import AdminContactEmailSettings from "@/components/admin-contact-email-settings";
 
 type RichTextEditorProps = {
   value: string;
@@ -270,7 +271,9 @@ type ContactEnquiry = {
   orderNumber: string | null;
   topic: string;
   message: string;
-  deliveryStatus: "pending" | "delivered" | "failed" | "not_configured";
+  deliveryStatus: "pending" | "sending" | "accepted" | "partial" | "uncertain" | "delivered" | "failed" | "not_configured";
+  emailRecipients?: Array<{ email: string; status: string; messageId: string; error: string | null }>;
+  emailMessageId: string | null;
   deliveryError: string | null;
   createdAt: string;
   deliveredAt: string | null;
@@ -588,7 +591,7 @@ function AdminOrderDetailPage({
                   return (
                   <div className="admin-order-item-row" key={`${item.productId ?? item.name}-${index}`}>
                     <div className="admin-order-item-product">
-                      <div className="admin-order-item-image">{imageSource ? <img src={imageSource} alt="" /> : <span aria-hidden="true">No image</span>}</div>
+                      <div className="admin-order-item-image">{imageSource ? <img src={imageSource} alt={item.name} loading="lazy" decoding="async" /> : <span aria-hidden="true">No image</span>}</div>
                       <div><strong>{item.name}</strong>{item.productId && <small>Product ID: {item.productId}</small>}</div>
                     </div>
                     <span>{formatPounds((item.quantity > 0 ? item.total / item.quantity : item.total) / 100)}</span>
@@ -1452,7 +1455,7 @@ function MediaLibrary({
                   type="button"
                   onClick={() => toggleSelection(image)}
                 >
-                  {preview ? <img src={preview} alt="" /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /></div>}
+                  {preview ? <img src={preview} alt={`Product media preview ${i + 1}`} loading="lazy" decoding="async" /> : <div className="admin-image-placeholder"><ImageIcon aria-hidden="true" /></div>}
                   {isSelected && <div className="admin-media-library-item-check"><Check aria-hidden="true" /></div>}
                 </button>
               );
@@ -3144,6 +3147,12 @@ export default function AdminDashboard({
     if (section === "messages") void refreshMessages();
   }, [section]);
 
+  useEffect(() => {
+    if (section !== "messages") return;
+    const timer = window.setInterval(() => void refreshMessages(), 30_000);
+    return () => window.clearInterval(timer);
+  }, [section]);
+
   const editorProduct = typeof editorProductId === "number" ? products.find((product) => product.id === editorProductId) : undefined;
   const visibleUsers = useMemo(() => {
     const query = userSearch.trim().toLowerCase();
@@ -3325,7 +3334,7 @@ export default function AdminDashboard({
                 <div className="admin-category-grid">
                   {categories.map((category) => (
                     <article className="admin-category-card" key={category.id}>
-                      {getCatalogMediaSource(category.image) ? <img src={getCatalogMediaSource(category.image)} alt="" /> : <div className="admin-category-image-empty">No image</div>}
+                      {getCatalogMediaSource(category.image) ? <img src={getCatalogMediaSource(category.image)} alt={`${category.name} collection preview`} loading="lazy" decoding="async" /> : <div className="admin-category-image-empty">No image</div>}
                       <div className="admin-category-card-content">
                         <h3>{category.name}</h3>
                         {category.parentId && <p>Parent: {categories.find((item) => item.id === category.parentId)?.name ?? "Unknown"}</p>}
@@ -3591,6 +3600,7 @@ export default function AdminDashboard({
               description="Review every contact enquiry, including messages retained when email delivery was unavailable."
               action={<button className="admin-secondary" type="button" onClick={() => void refreshMessages()} disabled={messagesLoading}>{messagesLoading ? "Refreshing…" : "Refresh messages"}</button>}
             />
+            <AdminContactEmailSettings onOpenGmail={() => setSection("payments")} />
             {messagesError && <p className="admin-payment-error" role="alert">{messagesError}</p>}
             <section className="admin-panel admin-table-panel admin-message-panel" aria-label="Contact form submissions">
               {messagesLoading && contactEnquiries.length === 0 ? (
@@ -3602,7 +3612,15 @@ export default function AdminDashboard({
                   <div className="admin-table-head"><span>Submitted</span><span>Customer</span><span>Email</span><span>Order</span><span>Topic</span><span>Message</span><span>Email status</span></div>
                   {contactEnquiries.map((enquiry) => {
                     const statusLabel = enquiry.deliveryStatus === "delivered"
-                      ? "Delivered"
+                      ? "Legacy provider accepted"
+                      : enquiry.deliveryStatus === "accepted"
+                        ? "SMTP accepted"
+                        : enquiry.deliveryStatus === "partial"
+                          ? "Partially accepted"
+                        : enquiry.deliveryStatus === "uncertain"
+                          ? "Outcome unknown"
+                          : enquiry.deliveryStatus === "sending"
+                            ? "Sending / outcome pending"
                       : enquiry.deliveryStatus === "failed"
                         ? "Failed"
                         : enquiry.deliveryStatus === "not_configured"
@@ -3615,7 +3633,17 @@ export default function AdminDashboard({
                         <a href={`mailto:${enquiry.email}`}>{enquiry.email}</a>
                         <span>{enquiry.orderNumber || "—"}</span>
                         <span>{enquiry.topic}</span>
-                        <span className="admin-message-table-copy">{enquiry.message}</span>
+                        <div className="admin-message-table-copy" style={{ whiteSpace: "normal", overflow: "visible" }}>
+                          <details>
+                            <summary>Read message</summary>
+                            <span style={{ display: "block", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: 16 }}>{enquiry.message}</span>
+                            {enquiry.emailRecipients?.map(recipient => <span key={recipient.email} style={{ display: "block", fontSize: 14, overflowWrap: "anywhere", marginTop: 8 }}>
+                              {recipient.email}: {recipient.status}{recipient.error ? ` — ${recipient.error}` : ""}<br />Message ID: {recipient.messageId}
+                            </span>)}
+                            {enquiry.deliveryError && <span style={{ display: "block", fontSize: 14, marginTop: 8 }}>{enquiry.deliveryError}</span>}
+                            {enquiry.emailMessageId && <span style={{ display: "block", fontSize: 14, overflowWrap: "anywhere", marginTop: 8 }}>Message ID: {enquiry.emailMessageId}</span>}
+                          </details>
+                        </div>
                         <span className={`admin-message-status is-${enquiry.deliveryStatus}`} title={enquiry.deliveryError || undefined}>{statusLabel}</span>
                       </div>
                     );
@@ -3680,6 +3708,7 @@ export default function AdminDashboard({
           <div className="admin-payments-page">
             <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Too." action={<button className="admin-payment-view-transactions" type="button" onClick={() => setSection("orders")}>View transactions</button>} />
             <AdminGmailSettings />
+            <AdminContactEmailSettings kind="order" />
             <section className={`admin-payment-card ${stripeStatus.configured ? "is-connected" : ""}`}>
               <div className="admin-payment-banner-copy">
                 <div className="admin-payment-provider-row">

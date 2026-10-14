@@ -16,6 +16,23 @@ const staticPages: Record<string, [string, string]> = {
   "/returns": ["Returns and Delivery | Glam Too", "Find out about delivery and returns when shopping at Glam Too."],
 };
 const privatePage = /^\/(?:cart|wishlist|checkout|order-confirmation|admin(?:\/.*)?|account(?:\/.*)?|register(?:\/.*)?|sign-in(?:\/.*)?|sign-up(?:\/.*)?)$/;
+const privatePages: Record<string, [string, string]> = {
+  "/account": ["My Account | Glam Too", "Sign in to your Glam Too account to manage orders, addresses and account details."],
+  "/register": ["Create an Account | Glam Too", "Create your Glam Too account to keep your details ready for checkout and manage future orders."],
+  "/account/recovery": ["Reset Your Password | Glam Too", "Securely recover access to your Glam Too account using an email verification code."],
+  "/cart": ["Shopping Bag | Glam Too", "Review your Glam Too shopping bag, quantities and delivery before checkout."],
+  "/wishlist": ["My Wishlist | Glam Too", "Review your saved Glam Too favourites and choose pieces for your next order."],
+  "/checkout": ["Secure Checkout | Glam Too", "Review your order, enter billing and delivery details, and pay securely."],
+  "/order-confirmation": ["Order Confirmation | Glam Too", "Check the confirmation and next steps for your Glam Too purchase."],
+  "/admin": ["Store Administration | Glam Too", "Secure administration for authorised users to manage Glam Too products, orders and store settings."],
+};
+const accountSections: Record<string, [string, string]> = {
+  dashboard: ["My Account | Glam Too", "Manage your Glam Too orders, account details and delivery preferences."],
+  orders: ["My Orders | Glam Too", "Review your Glam Too orders and their payment and delivery status."],
+  addresses: ["My Addresses | Glam Too", "Manage the billing and delivery addresses saved in your Glam Too account."],
+  "payment-methods": ["My Payment Methods | Glam Too", "Manage the payment methods saved securely for your Glam Too account."],
+  "account-details": ["My Account Details | Glam Too", "Update your Glam Too account details and personal preferences securely."],
+};
 const clean = (value: unknown) => String(value ?? "").replace(/<[^>]*>/g, " ").replace(/&(?:amp|#38);/gi, "&").replace(/&(?:quot|#34);/gi, '"').replace(/\s+/g, " ").trim().slice(0, 160);
 export function seoOrigin(value: string | undefined): string {
   if (!value) throw new Error("SEO_SITE_ORIGIN must be configured");
@@ -68,6 +85,7 @@ function productData(product: Record<string, unknown>, url: string, origin: stri
     if (!live || displayed !== live.unitAmount || !Number.isSafeInteger(live.unitAmount) || live.unitAmount <= 0
       || !Number.isInteger(live.stock) || live.stock < 0) return [];
     return [{ "@type": "Offer", url, priceCurrency: "GBP", price: (live.unitAmount / 100).toFixed(2),
+      seller: { "@type": "Organization", name: siteName, url: origin },
       availability: `https://schema.org/${live.stock > 0 ? "InStock" : "OutOfStock"}`,
       ...(typeof variant.sku === "string" && variant.sku.trim() ? { sku: variant.sku.trim() } : {}) }];
   });
@@ -75,7 +93,7 @@ function productData(product: Record<string, unknown>, url: string, origin: stri
   return data;
 }
 export function resolveSeo(path: string, catalog: Catalog, origin: string, inventory?: SeoInventory): SeoResult {
-  const notFound = (): SeoResult => ({ status: 404, title: `Page not found | ${siteName}`, description: "This page could not be found. Explore the latest pieces at Glam Too.", canonicalUrl: `${origin}/`, robots: "noindex, follow", type: "website" });
+  const notFound = (): SeoResult => ({ status: 404, title: `Page not found | ${siteName}`, description: "This page could not be found. Explore the latest pieces at Glam Too.", canonicalUrl: "", robots: "noindex, nofollow", type: "website" });
   if (typeof path !== "string" || !path.startsWith("/") || path.startsWith("//") || path.includes("\\") || /[\u0000-\u001f]/.test(path)) return notFound();
   let url: URL;
   try { url = new URL(path, origin); } catch { return notFound(); }
@@ -119,8 +137,14 @@ export function resolveSeo(path: string, catalog: Catalog, origin: string, inven
     [title, description] = staticPages[target];
     if (target === "/") image = `${origin}/social-home.webp`;
   } else if (privatePage.test(target)) {
-    title = `Your account and shopping | ${siteName}`;
-    description = "Your private Glam Too shopping page.";
+    if (target.startsWith("/admin/")) return notFound();
+    if (/^\/(?:account|sign-in)(?:\/|$)/.test(target)) target = /^\/account\/recovery(?:\/|$)/.test(target) ? "/account/recovery" : "/account";
+    else if (/^\/(?:register|sign-up)(?:\/|$)/.test(target)) target = "/register";
+    const section = url.searchParams.get("section") || "";
+    const copy = target === "/account" && Object.hasOwn(accountSections, section)
+      ? accountSections[section] : privatePages[target];
+    if (!copy) return notFound();
+    [title, description] = copy;
     noindex = true;
   } else return notFound();
 
@@ -131,13 +155,29 @@ export function resolveSeo(path: string, catalog: Catalog, origin: string, inven
   if (hasFilters || !validPage || !Number.isSafeInteger(page)) noindex = true;
   if (target === "/shop" && !noindex && page > 1) {
     const maxPage = Math.max(1, Math.ceil(catalog.products.filter((item) => item.status === "Published").length / 12));
-    if (page <= maxPage) target += `?page=${page}`;
+    if (page <= maxPage) {
+      target += `?page=${page}`;
+      title = `Shop Women's Fashion — Page ${page} | Glam Too`;
+      description = `Explore page ${page} of Glam Too clothing and accessories. Discover more pieces from our current collection.`;
+    }
     else noindex = true;
   } else if (pageValues.length && target !== "/shop") noindex = true;
   const canonicalUrl = `${origin}${target}`;
   const result: SeoResult = { status: 200, title, description, canonicalUrl, robots: NOINDEX, type };
   if (image) result.image = image;
   if (product) result.structuredData = productData(product, canonicalUrl, origin, inventory);
+  else if (!privatePage.test(target)) {
+    const pageType = target === "/about" ? "AboutPage" : target === "/contact" ? "ContactPage"
+      : /^\/(?:shop|category)(?:[/?]|$)/.test(target) ? "CollectionPage" : "WebPage";
+    result.structuredData = {
+      "@context": "https://schema.org",
+      "@graph": [
+        { "@type": "Organization", "@id": `${origin}/#organization`, name: siteName, url: `${origin}/` },
+        { "@type": "WebSite", "@id": `${origin}/#website`, name: siteName, url: `${origin}/`, publisher: { "@id": `${origin}/#organization` } },
+        { "@type": pageType, "@id": `${canonicalUrl}#webpage`, url: canonicalUrl, name: title, description, isPartOf: { "@id": `${origin}/#website` } },
+      ],
+    };
+  }
   // Redirect only URL-path aliases and normalization, never untrusted query values.
   if (pathname !== target.split("?")[0] && !privatePage.test(target)) {
     return { ...result, status: 301, location: target };

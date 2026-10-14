@@ -3,6 +3,22 @@ name: Order email rollout safety
 description: Why connecting transactional email must not silently enable historical or unrestricted sends.
 ---
 
+## Approved contact-alert scope
+
+The merchant requested contact-form email alerts and admin-side enquiry display, then requested multiple admin emails for both contact and order confirmations. If no emails are added, use the admin email.
+
+**Why:** The merchant asked for these notification types after confirming Gmail authorization worked.
+
+**How to apply:** Keep separate lists for contact alerts and admin order copies; blank lists fall back to the verified account email of the administrator saving the settings. Keep explicit enable controls. Admin copies are independently approved staff notifications, not permission to remove customer-order recipient restrictions. Do not alter login permissions, public contact details, or add customer replies or historical resends.
+
+Track each admin recipient independently so a failed address cannot cause an already accepted message to be resent to another.
+
+**Why:** Multiple recipients can have different SMTP outcomes; a single aggregate retry would duplicate successful copies.
+
+**How to apply:** Preserve recipient snapshots and ambiguous-outcome safety when modifying notification workers or merging their changes. Recipient-setting edits apply to future messages, not historical backfill.
+
+## Order email rollout
+
 Keep provider setup and unrestricted customer-email rollout separate. Do not automatically backfill confirmations for old paid orders.
 
 **Why:** The merchant requested controlled staging verification only and prohibited emails to real customers or automatic historical resends. Connecting credentials can otherwise activate existing refund jobs as well as purchase emails.

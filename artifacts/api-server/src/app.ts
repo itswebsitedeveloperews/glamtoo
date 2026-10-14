@@ -72,5 +72,8 @@ app.use(
 );
 
 app.use("/api", router);
+app.use("/api", (_req, res) => {
+  res.status(404).json({ error: "This API endpoint is unavailable. Publish the updated API and database changes." });
+});
 
 export default app;
