@@ -12,8 +12,8 @@ export function DeliveryPolicy() {
   return <div className="policy-table-wrap"><table className="delivery-information-table">
     <thead><tr><th scope="col">Delivery option</th><th scope="col">Information</th><th scope="col">Cost</th></tr></thead>
     <tbody>{shippingMethods.map((method) => <tr key={method.id}>
-      <th scope="row">{method.name}</th><td>{method.description || "Contact us for delivery details."}</td>
-      <td>{pounds(method.price)}{method.freeOver !== null && method.freeOver !== undefined && <span> · Free on orders of {pounds(method.freeOver)} or more</span>}</td>
+      <th scope="row">{method.name}</th><td>{method.description || "Contact us for delivery details."}{method.freeOver !== null && method.freeOver !== undefined && <span className="delivery-free-threshold">Free on orders of {pounds(method.freeOver)} or more</span>}</td>
+      <td>{pounds(method.price)}</td>
     </tr>)}</tbody>
   </table></div>;
 }

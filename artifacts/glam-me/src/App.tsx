@@ -8,6 +8,7 @@ import aboutStudioImage from '@assets/glam-me-5_1787653559643.webp';
 import aboutStoryImage from '@assets/glam-me-12_1787653559644.webp';
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogMediaSource, getCatalogProductImages, getCategorySlug, getProductCategorySlug, hydrateCatalogProductMedia, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import RouteSeo from '@/components/RouteSeo';
+import OrderConfirmationView from '@/components/OrderConfirmationView';
 import ShopMobileFilters, { type ShopFilterValues } from '@/components/ShopMobileFilters';
 import { defaultHomePageSettings, type HomePageSettings } from '@/data/home-page';
 import { ClerkProvider, SignIn, SignUp, useAuth, useClerk, useSignIn, useUser } from '@clerk/react';
@@ -26,6 +27,7 @@ import { getCartLineAmount, getProductPricing } from '@/utils/product-pricing';
 import BusinessPolicies, { DeliveryPolicy, ReturnPolicy } from '@/components/BusinessPolicies';
 import { categoryProductCount, type CatalogStatus } from '@/utils/storefront-truth';
 import { useMobileMenu } from '@/hooks/use-mobile-menu';
+import { getRecoveryErrorMessage, saveRecoveryPassword } from '@/utils/password-recovery';
 import { PublicSnapshotContext, readPublicSnapshot, type PublicSnapshot } from '@/data/public-snapshot';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -77,7 +79,7 @@ const clerkAppearance = {
     dividerText: { color: '#716a67' },
     formButtonPrimary: {
       background: '#bd2855', color: '#fff', borderRadius: '0px',
-      '&:hover, &:focus, &:active': { background: '#a93458', color: '#fff' },
+      '&:hover, &:focus, &:active': { background: '#c96381', color: '#fff' },
     },
     formFieldInput: { background: '#f5f1ed', color: '#171615', borderRadius: '0px' },
     socialButtonsBlockButton: { borderRadius: '0px' },
@@ -817,7 +819,6 @@ function Header() {
   useMobileMenu(menuOpen, closeMenu, menuRef, menuTriggerRef);
   const [routeLocation] = useLocation();
   useEffect(() => { setMenuOpen(false); setSearchOpen(false); }, [routeLocation]);
-  const promotedCategories = getPromotedCategories().filter((category) => category.parentId == null);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isCompact, setIsCompact] = useState(false);
   const [cartCount, setCartCount] = useState(0);
@@ -988,8 +989,12 @@ function Header() {
         <div className="mobile-nav-head">
           <button className="mobile-nav-close" type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)}>×</button>
         </div>
-        {promotedCategories.map((category) => <a key={category.id} href={`/category/${getCategorySlug(category)}`} {...navLinkProps(`/category/${getCategorySlug(category)}`)} onClick={closeMenu}>{category.name}</a>)}
-        <a href="/shop" data-testid="link-nav-sale" onClick={closeMenu}>Shop all</a>
+        <a href={categoryUrlForName("New In")} {...navLinkProps(categoryUrlForName("New In"))} data-testid="link-nav-new-in" onClick={closeMenu}>New In</a>
+        <a href={categoryUrlForName("Clothes")} {...navLinkProps(categoryUrlForName("Clothes"))} data-testid="link-nav-clothes" onClick={closeMenu}>Clothes</a>
+        <a href={categoryUrlForName("Handbags")} {...navLinkProps(categoryUrlForName("Handbags"))} data-testid="link-nav-handbags" onClick={closeMenu}>Handbags</a>
+        <a href={categoryUrlForName("Purses")} {...navLinkProps(categoryUrlForName("Purses"))} data-testid="link-nav-purses" onClick={closeMenu}>Purses</a>
+        <a href={categoryUrlForName("Jewellery")} {...navLinkProps(categoryUrlForName("Jewellery"))} data-testid="link-nav-jewellery" onClick={closeMenu}>Jewellery</a>
+        <a href="/shop" data-testid="link-nav-sale" onClick={closeMenu}>Sale</a>
       </nav>
     </header>
   );
@@ -997,7 +1002,6 @@ function Header() {
 
 function Footer() {
   useContext(CatalogMediaContext);
-  const categories = getPromotedCategories().filter((category) => category.parentId == null);
   return (
     <>
       <footer className="footer">
@@ -1007,9 +1011,9 @@ function Footer() {
               <img className="footer-logo" src={logoImage} alt="Glam Too Boutique" />
               <p className="footer-intro">Outfits that make every moment yours. Expressive pieces for the beautifully busy life.</p>
             </div>
-            <div><h4>Shop</h4><ul>{categories.map((category) => <li key={category.id}><a href={`/category/${getCategorySlug(category)}`}>{category.name}</a></li>)}<li><a href="/shop" data-testid="link-footer-sale">Shop all</a></li></ul></div>
-            <div><h4>Help</h4><ul><li><a href="/delivery-returns" data-testid="link-footer-delivery">Delivery &amp; returns</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
-            <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">Our story</a></li></ul></div>
+            <div><h4>Shop</h4><ul><li><a href={categoryUrlForName("New In")} data-testid="link-footer-new-in">New In</a></li><li><a href={categoryUrlForName("Clothes")} data-testid="link-footer-clothes">Clothes</a></li><li><a href={categoryUrlForName("Handbags")} data-testid="link-footer-handbags">Handbags</a></li><li><a href={categoryUrlForName("Purses")} data-testid="link-footer-purses">Purses</a></li><li><a href={categoryUrlForName("Jewellery")} data-testid="link-footer-jewellery">Jewellery</a></li><li><a href="/shop" data-testid="link-footer-sale">Sale</a></li></ul></div>
+            <div><h4>Help</h4><ul><li><a href="/returns" data-testid="link-footer-delivery">Returns</a></li><li><a href="/faq" data-testid="link-footer-size-guide">Size Guide</a></li><li><a href="/faq" data-testid="link-footer-faq">FAQ</a></li><li><a href="/contact" data-testid="link-footer-contact">Contact Us</a></li></ul></div>
+            <div><h4>About</h4><ul><li><a href="/about" data-testid="link-footer-about">About</a></li><li><a href="/about" data-testid="link-footer-style-journal">Style Journal</a></li></ul></div>
             <div className="footer-knowledge"><h4>Need help?</h4><p>Contact us with questions about a product or your order.</p><a href="/contact" className="text-link">Get in touch</a></div>
           </div>
           <div className="footer-bottom"><span>© 2026 Glam Too. All rights reserved. <span aria-hidden="true">|</span> <a href="https://webdesignessex.io/" target="_blank" rel="noreferrer" data-testid="link-footer-web-design-essex">Web Design Essex</a></span><div className="footer-legal-links"><a href="/privacy" data-testid="link-footer-privacy">Privacy Policy</a><span aria-hidden="true">|</span><a href="/terms" data-testid="link-footer-terms">Terms &amp; Conditions</a></div></div>
@@ -1054,7 +1058,7 @@ function Home() {
   const settings = sharedCatalog?.homePage ?? defaultHomePageSettings(categories, products);
   const categoryById = new Map(categories.map((category) => [category.id, category]));
   const productById = new Map(products.map((product) => [product.id, product]));
-  const featuredCategories = settings.categoryIds.map((id) => categoryById.get(id)).filter((category): category is CatalogCategory => Boolean(category && categoryProductCount(category, categories, products) > 0));
+  const featuredCategories = settings.categoryIds.map((id) => categoryById.get(id)).filter((category): category is CatalogCategory => Boolean(category));
   const obsessionProducts = settings.obsessionIds.map((id) => productById.get(id)).filter((product): product is CatalogProduct => Boolean(product));
   const momentProducts = settings.momentIds.map((id) => productById.get(id)).filter((product): product is CatalogProduct => Boolean(product));
   return (
@@ -2890,28 +2894,30 @@ function Checkout() {
             {!isSignedIn && <div className="checkout-account-notice"><strong>You can checkout as a guest. No account is required.</strong><a className="text-link" href="/account" onClick={(event) => { event.preventDefault(); startCheckoutAccount("sign-in"); }}>Already have an account? Sign in</a></div>}
             <section className="checkout-section">
               <div className="checkout-section-heading"><span>01</span><div><h2>Billing details</h2><p>We&apos;ll use these details for your payment confirmation.</p></div></div>
+              <p className="checkout-required-note">Fields marked with * are required.</p>
               <div className="checkout-field-grid">
-                <div className="field"><label htmlFor="checkout-first-name">First name</label><input id="checkout-first-name" name="firstName" type="text" required data-testid="input-checkout-first-name" value={checkoutProfile.firstName} onChange={(event) => updateCheckoutProfile("firstName", event.target.value)} /></div>
-                <div className="field"><label htmlFor="checkout-last-name">Last name</label><input id="checkout-last-name" name="lastName" type="text" required data-testid="input-checkout-last-name" value={checkoutProfile.lastName} onChange={(event) => updateCheckoutProfile("lastName", event.target.value)} /></div>
-                <div className="field checkout-field-wide"><label htmlFor="checkout-email">Email address</label><input id="checkout-email" name="email" type="email" required autoComplete="email" data-testid="input-checkout-email" value={checkoutProfile.email} onChange={(event) => updateCheckoutProfile("email", event.target.value)} /></div>
-                <div className="field checkout-field-wide"><label htmlFor="checkout-country">Country / region</label><select id="checkout-country" name="country" value={checkoutProfile.country} onChange={(event) => updateCheckoutProfile("country", event.target.value)}><option value="GB">United Kingdom</option></select></div>
-                <div className="field checkout-field-wide"><label htmlFor="checkout-address">Street address</label><input id="checkout-address" name="address" type="text" required autoComplete="address-line1" placeholder="House number and street name" data-testid="input-checkout-address" value={checkoutProfile.addressLine1} onChange={(event) => updateCheckoutProfile("addressLine1", event.target.value)} /></div>
-                <div className="field checkout-field-wide"><label htmlFor="checkout-address-two">Address line 2 <span>Optional</span></label><input id="checkout-address-two" name="addressTwo" type="text" autoComplete="address-line2" placeholder="Apartment, suite, unit, etc." value={checkoutProfile.addressLine2} onChange={(event) => updateCheckoutProfile("addressLine2", event.target.value)} /></div>
-                <div className="field"><label htmlFor="checkout-city">Town or city</label><input id="checkout-city" name="city" type="text" required autoComplete="address-level2" data-testid="input-checkout-city" value={checkoutProfile.city} onChange={(event) => updateCheckoutProfile("city", event.target.value)} /></div>
-                <div className="field"><label htmlFor="checkout-postcode">Postcode</label><input id="checkout-postcode" name="postcode" type="text" required autoComplete="postal-code" data-testid="input-checkout-postcode" value={checkoutProfile.postcode} onChange={(event) => updateCheckoutProfile("postcode", event.target.value)} /></div>
-                <div className="field checkout-field-wide"><label htmlFor="checkout-phone">Phone <span>Optional</span></label><input id="checkout-phone" name="phone" type="tel" autoComplete="tel" placeholder="For delivery updates only" value={checkoutProfile.phone} onChange={(event) => updateCheckoutProfile("phone", event.target.value)} /></div>
+                <div className="field"><label htmlFor="checkout-first-name">First name <span className="checkout-required" aria-hidden="true">*</span></label><input id="checkout-first-name" name="firstName" type="text" required data-testid="input-checkout-first-name" value={checkoutProfile.firstName} onChange={(event) => updateCheckoutProfile("firstName", event.target.value)} /></div>
+                <div className="field"><label htmlFor="checkout-last-name">Last name <span className="checkout-required" aria-hidden="true">*</span></label><input id="checkout-last-name" name="lastName" type="text" required data-testid="input-checkout-last-name" value={checkoutProfile.lastName} onChange={(event) => updateCheckoutProfile("lastName", event.target.value)} /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-email">Email address <span className="checkout-required" aria-hidden="true">*</span></label><input id="checkout-email" name="email" type="email" required autoComplete="email" data-testid="input-checkout-email" value={checkoutProfile.email} onChange={(event) => updateCheckoutProfile("email", event.target.value)} /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-country">Country / region <span className="checkout-required" aria-hidden="true">*</span></label><select id="checkout-country" name="country" required value={checkoutProfile.country} onChange={(event) => updateCheckoutProfile("country", event.target.value)}><option value="GB">United Kingdom</option></select></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-address">Street address <span className="checkout-required" aria-hidden="true">*</span></label><input id="checkout-address" name="address" type="text" required autoComplete="address-line1" placeholder="House number and street name" data-testid="input-checkout-address" value={checkoutProfile.addressLine1} onChange={(event) => updateCheckoutProfile("addressLine1", event.target.value)} /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-address-two">Address line 2 <span>(Optional)</span></label><input id="checkout-address-two" name="addressTwo" type="text" autoComplete="address-line2" placeholder="Apartment, suite, unit, etc." value={checkoutProfile.addressLine2} onChange={(event) => updateCheckoutProfile("addressLine2", event.target.value)} /></div>
+                <div className="field"><label htmlFor="checkout-city">Town or city <span className="checkout-required" aria-hidden="true">*</span></label><input id="checkout-city" name="city" type="text" required autoComplete="address-level2" data-testid="input-checkout-city" value={checkoutProfile.city} onChange={(event) => updateCheckoutProfile("city", event.target.value)} /></div>
+                <div className="field"><label htmlFor="checkout-postcode">Postcode <span className="checkout-required" aria-hidden="true">*</span></label><input id="checkout-postcode" name="postcode" type="text" required autoComplete="postal-code" data-testid="input-checkout-postcode" value={checkoutProfile.postcode} onChange={(event) => updateCheckoutProfile("postcode", event.target.value)} /></div>
+                <div className="field checkout-field-wide"><label htmlFor="checkout-phone">Phone <span>(Optional)</span></label><input id="checkout-phone" name="phone" type="tel" autoComplete="tel" placeholder="For delivery updates only" value={checkoutProfile.phone} onChange={(event) => updateCheckoutProfile("phone", event.target.value)} /></div>
               </div>
             {!isSignedIn && <div className="checkout-account-option">
-              <label htmlFor="checkout-create-account"><input id="checkout-create-account" type="checkbox" checked={createAccount} onChange={(event) => setCreateAccount(event.target.checked)} data-testid="checkbox-checkout-create-account" /> Create an account?</label>
+              <label htmlFor="checkout-create-account"><input id="checkout-create-account" type="checkbox" checked={createAccount} onChange={(event) => setCreateAccount(event.target.checked)} data-testid="checkbox-checkout-create-account" /> Create an account? <span>(Optional)</span></label>
               {createAccount && <p>We’ll automatically create your account using your billing details after your purchase. You can then verify your email and set a password to sign in.</p>}
             </div>}
             </section>
             <section className="checkout-section">
               <div className="checkout-section-heading"><span>02</span><div><h2>Shipping</h2><p>Choose how quickly you&apos;d like your order to arrive.</p></div></div>
-              <div className="checkout-delivery-options">
+              <p id="checkout-delivery-label" className="checkout-choice-label">Delivery method <span className="checkout-required" aria-hidden="true">*</span></p>
+              <div className="checkout-delivery-options" role="radiogroup" aria-labelledby="checkout-delivery-label" aria-required="true">
                 {shippingMethods.map((method) => {
                   const charge = calculateShippingAmount(method, Math.round(subtotal * 100)) / 100;
-                  return <label key={method.id} className={`checkout-delivery-option ${delivery === method.id ? "is-selected" : ""}`}><input type="radio" name="delivery" value={method.id} checked={delivery === method.id} onChange={() => { setDelivery(method.id); saveCheckoutPreferences({ delivery: method.id }); setAppliedCoupon(null); }} /><span><strong>{method.name}</strong><small>{method.description}</small></span><b>{charge === 0 ? "Free" : formatPounds(charge)}</b></label>;
+                  return <label key={method.id} className={`checkout-delivery-option ${delivery === method.id ? "is-selected" : ""}`}><input type="radio" name="delivery" required value={method.id} checked={delivery === method.id} onChange={() => { setDelivery(method.id); saveCheckoutPreferences({ delivery: method.id }); setAppliedCoupon(null); }} /><span><strong>{method.name}</strong><small>{method.description}</small></span><b>{charge === 0 ? "Free" : formatPounds(charge)}</b></label>;
                 })}
               </div>
               {shippingMethodsLoading && <p className="checkout-payment-error" role="status">Loading delivery options…</p>}
@@ -2926,7 +2932,7 @@ function Checkout() {
                 {savedPaymentMethods.map((method) => <label key={method.id}><input type="radio" name="saved-payment-method" checked={selectedPaymentMethodId === method.id} onChange={() => setSelectedPaymentMethodId(method.id)} /><span><strong>{method.brand.toUpperCase()} ending in {method.last4}</strong><small>Expires {String(method.expMonth).padStart(2, "0")}/{method.expYear}</small></span></label>)}
                 <label><input type="radio" name="saved-payment-method" checked={!selectedPaymentMethodId} onChange={() => setSelectedPaymentMethodId("")} /><span><strong>Use a new card</strong><small>Securely save it with Stripe for later</small></span></label>
               </div>}
-              {paymentSetupError ? <p className="checkout-payment-error" role="alert">{paymentSetupError}</p> : !selectedPaymentMethodId && <div className="checkout-card-field" ref={cardMountRef} data-testid="stripe-card-field" aria-label="Card details" />}
+              {paymentSetupError ? <p className="checkout-payment-error" role="alert">{paymentSetupError}</p> : !selectedPaymentMethodId && <div><p id="checkout-card-label" className="checkout-choice-label">Card details <span className="checkout-required" aria-hidden="true">*</span></p><div className="checkout-card-field" ref={cardMountRef} data-testid="stripe-card-field" aria-labelledby="checkout-card-label" /></div>}
               {cardError && <p className="checkout-payment-error" role="alert">{cardError}</p>}
             </section>
             {paymentError && <p className="checkout-payment-error" role="alert">{paymentError}</p>}
@@ -2935,7 +2941,7 @@ function Checkout() {
             <div className="checkout-order-heading"><h2>Your order</h2><span>{cartLines.reduce((count, { item }) => count + item.quantity, 0)} item{cartLines.reduce((count, { item }) => count + item.quantity, 0) === 1 ? "" : "s"}</span></div>
             {cartLines.length === 0 ? <div className="checkout-empty-order"><p>Your bag is empty.</p><a className="text-link" href="/shop">Continue shopping</a></div> : <div className="checkout-order-items">{cartLines.map(({ item, product, variation }) => <article className="checkout-order-item" key={`${item.productId}-${item.variationId ?? item.size}-${item.colour ?? ""}`}><img src={product.image} alt={product.name} style={{ objectPosition: product.position }} /><div><h3>{product.name}</h3><p>{[product.type === "Variable" && item.size !== "One size" ? item.size : "", item.colour ?? "", ...Object.values(item.options ?? {})].filter(Boolean).join(" · ")} · Qty {item.quantity}</p></div><strong>{formatPounds(parsePounds(variation?.price ?? product.price) * item.quantity)}</strong></article>)}</div>}
             <div className="checkout-coupon" aria-label="Coupon code">
-              <label htmlFor="checkout-coupon-code">Coupon code</label>
+              <label htmlFor="checkout-coupon-code">Coupon code <span>(Optional)</span></label>
               {appliedCoupon ? (
                 <div className="checkout-applied-coupon"><span><strong>{appliedCoupon.coupon.code}</strong><small>{appliedCoupon.coupon.discountType === "percentage" ? `${appliedCoupon.coupon.discountValue}% off` : `${formatPounds(appliedCoupon.coupon.discountValue / 100)} off`}</small></span><button type="button" onClick={() => { setAppliedCoupon(null); saveCheckoutPreferences({ couponCode: undefined }); setCouponMessage("Coupon removed."); setCouponError(""); }}>Remove</button></div>
               ) : (
@@ -2998,27 +3004,14 @@ function Confirmation() {
     return () => { active = false; };
   }, []);
 
-  if (state === "confirming") {
-    return <Shell><div className="container confirmation"><div className="confirmation-mark">…</div><div className="eyebrow">Confirming payment</div><h1>One moment.</h1><p>We&apos;re saving your paid order securely. Please keep this page open.</p></div></Shell>;
-  }
-  if (state === "error") {
-    return <Shell><div className="container confirmation"><div className="confirmation-mark">!</div><div className="eyebrow">Order confirmation</div><h1>We&apos;re confirming your order.</h1><p>Your card payment may have succeeded, but we have not yet received a saved order confirmation. Your bag has been kept safe. Refresh this page in a moment to check again.</p><p role="alert">{confirmationError}</p><button className="button button-pink" type="button" onClick={() => window.location.reload()}>Check my order</button><p><a className="text-link" href="/contact">Contact us for help</a></p></div></Shell>;
-  }
-  if (state === "missing") {
-    return <Shell><div className="container confirmation"><div className="eyebrow">Order confirmation</div><h1>We need your payment reference.</h1><p>{isSignedIn ? "Return to your account to view confirmed orders, or contact us if you have been charged." : "Contact us with your payment receipt if you have been charged. You do not need an account to get help with a guest order."}</p><a className="button button-pink" href={isSignedIn ? "/account" : "/contact"}>{isSignedIn ? "View my orders" : "Contact us"}</a></div></Shell>;
-  }
-  if (order?.paymentResolution && order.paymentResolution !== "none") {
-    const copy = paymentResolutionCopy(order);
-    return <Shell><div className="container confirmation"><div className="confirmation-mark">!</div><div className="eyebrow">Payment received</div><h1>{copy.title}</h1><p>{copy.detail}</p><p>Your reference is {order.id}. {isSignedIn ? "You can check this update any time in your account." : "Keep this reference and contact us for help with your guest order."}</p><a className="button button-pink" href={isSignedIn ? "/account" : "/contact"}>{isSignedIn ? "View my orders" : "Contact us"}</a></div></Shell>;
-  }
-  return <Shell><div className="container confirmation"><div className="confirmation-mark">✓</div><div className="eyebrow">Order received</div><h1>It&apos;s a yes.</h1><p>Thank you for shopping Glam Too. Your order {order?.id} is being wrapped with care.</p>
-    {order?.accountCreation && <div role="status" data-testid="confirmation-account-status">
-      <p>{order.accountCreation === "created" ? "Your account has been created using your billing details. Verify your email and set a password to access your account and this order." : order.accountCreation === "existing" ? "An account already uses your billing email. Sign in with your existing details. For security, this guest purchase has not been linked to that account automatically." : "Your purchase is confirmed, but account creation is still pending. Refresh this page to retry account creation without paying again."}</p>
-      {order.accountCreation === "created" && <a className="text-link" href="/account/recovery">Set your password</a>}
-      {order.accountCreation === "existing" && <a className="text-link" href="/account">Sign in</a>}
-      {order.accountCreation === "pending" && <button className="text-link" type="button" onClick={() => window.location.reload()}>Retry account creation</button>}
-    </div>}
-    <a className="button button-pink" href="/shop" data-testid="link-confirmation-shop">Keep browsing</a></div></Shell>;
+  return <Shell><OrderConfirmationView
+    state={state}
+    order={order}
+    isSignedIn={Boolean(isSignedIn)}
+    error={confirmationError}
+    resolutionCopy={order?.paymentResolution && order.paymentResolution !== "none" ? paymentResolutionCopy(order) : undefined}
+    onRetry={() => window.location.reload()}
+  /></Shell>;
 }
 
 function CustomerSignInPage() {
@@ -3656,22 +3649,17 @@ function CustomerSignUpPage() {
 }
 
 function PasswordRecoveryPage() {
-  const { signIn } = useSignIn();
+  const { signIn, errors } = useSignIn();
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState<"email" | "code" | "password">("email");
+  const [step, setStep] = useState<"email" | "code" | "password" | "verification" | "saved">("email");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const getErrorMessage = (caught: unknown) => {
-    if (typeof caught === "object" && caught && "errors" in caught) {
-      const errors = (caught as { errors?: Array<{ longMessage?: string; message?: string }> }).errors;
-      return errors?.[0]?.longMessage || errors?.[0]?.message || "We could not complete that step. Please try again.";
-    }
-    return "We could not complete that step. Please try again.";
-  };
+  const fieldMessage = step === "password" ? errors.fields.password?.message
+    : step === "code" ? errors.fields.code?.message
+    : step === "email" ? errors.fields.identifier?.message : undefined;
 
   async function requestCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3685,7 +3673,7 @@ function PasswordRecoveryPage() {
       if (sendResult.error) throw sendResult.error;
       setStep("code");
     } catch (caught) {
-      setError(caught instanceof Error && caught.message.includes("No password") ? caught.message : getErrorMessage(caught));
+      setError(getRecoveryErrorMessage(caught, "We could not send a recovery code. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -3698,10 +3686,11 @@ function PasswordRecoveryPage() {
     setError("");
     try {
       const verifyResult = await signIn.resetPasswordEmailCode.verifyCode({ code });
-      if (verifyResult.error || signIn.status !== "needs_new_password") throw new Error("That code could not be verified. Please try again.");
+      if (verifyResult.error) throw verifyResult.error;
+      if (signIn.status !== "needs_new_password") throw new Error("That code could not be verified. Please try again.");
       setStep("password");
     } catch (caught) {
-      setError(caught instanceof Error && caught.message.includes("code could") ? caught.message : getErrorMessage(caught));
+      setError(getRecoveryErrorMessage(caught, "That code could not be verified. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -3713,13 +3702,17 @@ function PasswordRecoveryPage() {
     setLoading(true);
     setError("");
     try {
-      const passwordResult = await signIn.resetPasswordEmailCode.submitPassword({ password });
-      if (passwordResult.error || signIn.status !== "complete") throw new Error("Your password could not be updated. Please try again.");
-      const finalizeResult = await signIn.finalize();
-      if (finalizeResult.error) throw finalizeResult.error;
-      setLocation("/");
+      const outcome = await saveRecoveryPassword(signIn, password);
+      setPassword("");
+      setCode("");
+      if (outcome.kind === "complete") setLocation("/");
+      else if (outcome.kind === "verification") setStep("verification");
+      else {
+        setStep("saved");
+        setError(getRecoveryErrorMessage(outcome.error, "We could not finish signing you in. Please sign in with your new password."));
+      }
     } catch (caught) {
-      setError(caught instanceof Error && caught.message.includes("could not") ? caught.message : getErrorMessage(caught));
+      setError(getRecoveryErrorMessage(caught, "Your password could not be updated. Please try again."));
     } finally {
       setLoading(false);
     }
@@ -3729,13 +3722,16 @@ function PasswordRecoveryPage() {
     email: ["Reset your password.", "Enter the email address on your Glam Too account and we’ll send a secure verification code."],
     code: ["Check your inbox.", "Enter the verification code sent to your email address."],
     password: ["Choose a new password.", "Your new password will replace your previous one after you save it."],
+    verification: ["Complete your security check.", "Complete the security check below to finish account recovery."],
+    saved: ["Password updated.", "Your new password was saved. Sign in with your new password to continue."],
   } as const;
 
-  return <Shell><div className="customer-auth-page customer-recovery-page"><div className="customer-auth-copy"><div className="eyebrow">Account recovery</div><h1>{titles[step][0]}</h1><p>{titles[step][1]}</p></div><section className="customer-recovery-card">
+  return <Shell><div className="customer-auth-page customer-recovery-page"><div className="customer-auth-copy"><div className="eyebrow">Account recovery</div>{step === "verification" ? <div className="customer-auth-intro-title">{titles[step][0]}</div> : <h1>{titles[step][0]}</h1>}<p>{titles[step][1]}</p></div><section className="customer-recovery-card">
     {step === "email" && <form onSubmit={requestCode}><label>Email address<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label><button type="submit" className="customer-recovery-button" disabled={loading}>{loading ? "Sending…" : "Send recovery code"}</button></form>}
     {step === "code" && <form onSubmit={verifyCode}><label>Verification code<input inputMode="numeric" autoComplete="one-time-code" required value={code} onChange={(event) => setCode(event.target.value)} /></label><button type="submit" className="customer-recovery-button" disabled={loading}>{loading ? "Checking…" : "Verify code"}</button></form>}
     {step === "password" && <form onSubmit={resetPassword}><label>New password<input type="password" autoComplete="new-password" required minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} /></label><button type="submit" className="customer-recovery-button" disabled={loading}>{loading ? "Saving…" : "Save new password"}</button></form>}
-    {error && <p className="customer-recovery-error" role="alert">{error}</p>}
+    {step === "verification" && <SignIn signUpUrl={`${basePath}/register`} fallbackRedirectUrl={`${basePath}/`} />}
+    {error && <p className="customer-recovery-error" role="alert">{fieldMessage || error}</p>}
     <a href={`${basePath}/account`}>Back to sign in</a>
   </section></div></Shell>;
 }

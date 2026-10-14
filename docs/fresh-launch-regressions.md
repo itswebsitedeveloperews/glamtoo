@@ -155,9 +155,11 @@ not files required by the application.
 ## GT-004 and GT-011 accessibility
 
 The original bright pink `#e23d6f` yields 4.09:1 with white and 3.64:1
-against the paper background. Shared text/CTA pink is now `#bd2855` and deep
-pink is `#a93458`. Clerk uses the same accessible family with an explicit
-hover/focus background; its generated lighter hover was tested and corrected.
+against the paper background. Shared text/CTA pink is `#bd2855`; the deep
+accent has since been changed to the merchant-requested `#c96381`, including
+Clerk's explicit hover/focus background. White on this newer shade measures
+3.76:1, below the 4.5:1 requirement for normal-size text. The earlier contrast
+results do not establish accessibility of this updated palette.
 Regular/supporting copy stays 16px/14px; no text was shrunk to qualify as large.
 
 The six routes are `/`, `/shop`, `/product/military-style-jacket`, `/account`,

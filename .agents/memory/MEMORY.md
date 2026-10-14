@@ -30,7 +30,9 @@
 - [Catalog seed lifecycle](catalog-seed-lifecycle.md) — Seed built-in products only for an uninitialized catalog; never restore missing products after admins delete them.
 - [Unified delivery advice](delivery-content-vs-shipping.md) — Merchant approved product advice rates/promises; Shipping now feeds both product Delivery and checkout.
 - [Home page curation](home-page-curation.md) — An unset homepage uses defaults; intentionally empty saved selections must stay empty after refresh.
+- [Storefront defaults](storefront-defaults.md) — Merchant wants original header/footer menus and homepage category presentation; do not hide empty links/tiles incidentally.
 - [Glam Too Boutique wordmark](boutique-wordmark.md) — Keep Glam Too above Boutique, with the original serif and pink Boutique rules.
+- [Approved accent](approved-accent.md) — Merchant chose the lighter pink; preserve it when addressing foreground contrast.
 - [Catalog URL policy](catalog-url-policy.md) — Preserve URL formats and stable slugs; SEO metadata and redirects require server document handling.
 - [Chromium CDP preview checks](chromium-cdp-targets.md) — Select the actual page target and use instant scrolling for deterministic captures.
 - [Transactional email rollout](order-email-rollout-safety.md) — Separate multiple admin recipients for contacts/order copies; blank lists use admin email. Preserve customer restrictions and avoid replay/duplicates.
