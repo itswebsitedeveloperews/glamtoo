@@ -5,6 +5,7 @@ import { initializeStripe } from "./stripeBootstrap";
 import { isRefundEmailDeliveryConfigured, startRefundNotificationWorker } from "./refundNotifications";
 import { isOrderEmailConfigured, startOrderConfirmationWorker } from "./orderConfirmationNotifications";
 import { startContactNotificationWorker } from "./contactNotifications";
+import { startListingPreviewWarmupWorker } from "./lib/listingPreviewWarmup";
 
 const rawPort = process.env["PORT"];
 
@@ -42,6 +43,7 @@ if (!await isOrderEmailConfigured().catch(() => false)) {
 }
 startOrderConfirmationWorker();
 startContactNotificationWorker();
+startListingPreviewWarmupWorker();
 
 app.listen(port, (err) => {
   if (err) {

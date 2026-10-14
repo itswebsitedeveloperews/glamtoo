@@ -17,8 +17,9 @@ one-time repair receipt so an admin can later clear the gallery without a rerun
 bringing it back. For uncertain products, obtain a previous export, screenshot,
 or merchant-approved ordering instead of inferring intent from storage contents.
 
-Run one-time media repairs only as explicitly targeted operator procedures,
-after initialization and an audit; never make them automatic merge prerequisites.
+Run one-time media repairs only as explicitly authorized, environment-scoped
+operator procedures after initialization and an audit; never make them automatic
+merge prerequisites.
 
 **Why:** Repair fingerprints deliberately reject intervening merchant changes,
 and new databases do not yet have an initialized catalog. Either situation must

@@ -42,6 +42,9 @@ export async function encodeListingPreview(input: Buffer, width: number) {
 /** Persistent, generation-keyed derivatives survive restarts. Never mutate source metadata/bytes.
  * Authorization must be checked against the SOURCE before calling, even on cache hits. */
 export async function getListingPreview(source: File, width: number) {
+  if (!listingPreviewWidths.includes(width as typeof listingPreviewWidths[number])) {
+    throw new PreviewSourceError("Unsupported preview width.");
+  }
   const [metadata] = await source.getMetadata();
   if (!metadata.contentType?.startsWith("image/") || Number(metadata.size) > maxSourceBytes) {
     throw new PreviewSourceError("Unsupported preview source.");
@@ -65,10 +68,18 @@ export async function getListingPreview(source: File, width: number) {
     return withEncodeSlot(async () => {
       const chunks: Buffer[] = [];
       let size = 0;
-      for await (const chunk of source.createReadStream()) {
-        size += chunk.length;
-        if (size > maxSourceBytes) throw new PreviewSourceError("Image is too large for a preview.");
-        chunks.push(Buffer.from(chunk));
+      const stream = source.createReadStream();
+      const timeout = setTimeout(() => stream.destroy(new PreviewSourceError("Preview source download timed out.")), 30_000);
+      timeout.unref();
+      try {
+        for await (const chunk of stream) {
+          size += chunk.length;
+          if (size > maxSourceBytes) throw new PreviewSourceError("Image is too large for a preview.");
+          chunks.push(Buffer.from(chunk));
+        }
+      } finally {
+        clearTimeout(timeout);
+        stream.destroy();
       }
       const bytes = await encodeListingPreview(Buffer.concat(chunks), width);
       await derivative.save(bytes, {

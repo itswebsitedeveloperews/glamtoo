@@ -12,7 +12,7 @@ if (process.env.NODE_ENV !== "test" || !databaseUrl
     || !/^\/glam_checkout_test_[a-f0-9]{32}$/.test(databaseUrl.pathname)) {
   throw new Error("BLOCKED: backend test builds require the disposable local database runner. Use test:isolated or pnpm validate:linux.");
 }
-const testName = ["shipping", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth", "contact-notifications", "contact-email-template", "order-email-status", "order-email-actions", "customer-confirmation-policy", "order-confirmation-template", "fresh-launch"].includes(process.argv[2]) ? process.argv[2] : "regressions";
+const testName = ["listing-preview-warmup", "shipping", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth", "contact-notifications", "contact-email-template", "order-email-status", "order-email-actions", "customer-confirmation-policy", "order-confirmation-template", "fresh-launch"].includes(process.argv[2]) ? process.argv[2] : "regressions";
 const outputFile = resolve(outputDir, `${testName}.test.cjs`);
 
 await rm(outputDir, { recursive: true, force: true });
@@ -25,7 +25,13 @@ await build({
   outfile: outputFile,
   sourcemap: "inline",
   loader: { ".png": "base64" },
-  plugins: ["guest-checkout", "checkout-safety"].includes(testName) ? [{
+  plugins: testName === "listing-preview-warmup" ? [{
+    name: "isolated-listing-storage",
+    setup(builder) {
+      builder.onResolve({ filter: /\/objectStorage$/ }, () => ({ path: resolve(testDir, "fixtures/listing-storage.ts") }));
+      builder.onResolve({ filter: /^@clerk\/express$/ }, () => ({ path: resolve(testDir, "fixtures/gmail-oauth-clerk.ts") }));
+    },
+  }] : ["guest-checkout", "checkout-safety"].includes(testName) ? [{
     name: "isolated-guest-payment-provider",
     setup(builder) {
       builder.onResolve({ filter: /^@clerk\/express$/ }, () => ({ path: "clerk-test", namespace: "guest-checkout" }));
@@ -58,6 +64,7 @@ await build({
     },
   }] : [],
   external: [
+    "sharp",
     "stripe",
     "stripe-replit-sync",
     "express",

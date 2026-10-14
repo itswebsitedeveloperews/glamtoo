@@ -6,6 +6,7 @@ import { requireAdmin } from "../adminAuth";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { backfillCatalog, CatalogValidationError, prepareCatalog, type Catalog } from "../catalogSlugs";
 import { InventoryError, syncCatalogProduct, type CatalogProductInput } from "../inventoryService";
+import { requestListingPreviewWarmup } from "../lib/listingPreviewWarmup";
 
 const router: IRouter = Router();
 const catalogId = 1;
@@ -276,6 +277,7 @@ async function saveCatalog(parsed: Catalog, raw: Catalog, owner: string, migrate
     [catalogId, JSON.stringify(prepared.products), JSON.stringify(prepared.categories), JSON.stringify(reservations)]);
     return { ...record, ...prepared, initialized: true, updatedAt: new Date() };
   });
+  requestListingPreviewWarmup();
   return saved;
 }
 
