@@ -1106,7 +1106,7 @@ function Home() {
         </div>
         <div className="product-grid">{obsessionProducts.map((product) => <ProductCard key={product.id} product={product} showShopNow />)}</div>
       </section>}
-      {momentProducts.length > 0 && <section className="moments" aria-labelledby="moments-heading">
+      {momentProducts.length > 0 && <section className="moments home-moments" aria-labelledby="moments-heading">
         <div className="container">
           <div className="moments-heading"><div className="eyebrow">Shop by moment</div><h2 id="moments-heading">Outfits for Every Plan</h2></div>
           <div className="moment-grid">
@@ -1517,10 +1517,16 @@ function ProductDetail({ params }: { params: { slug: string } }) {
     if (!active) return;
     const bounds = strip.getBoundingClientRect();
     const selected = active.getBoundingClientRect();
-    const shift = selected.left < bounds.left ? selected.left - bounds.left - 2
-      : selected.right > bounds.right ? selected.right - bounds.right + 2 : 0;
+    const vertical = window.getComputedStyle(strip).flexDirection === 'column';
+    const start = vertical ? selected.top : selected.left;
+    const end = vertical ? selected.bottom : selected.right;
+    const viewportStart = vertical ? bounds.top : bounds.left;
+    const viewportEnd = vertical ? bounds.bottom : bounds.right;
+    const shift = start < viewportStart ? start - viewportStart - 2
+      : end > viewportEnd ? end - viewportEnd + 2 : 0;
     if (shift) strip.scrollTo({
-      left: strip.scrollLeft + shift,
+      top: strip.scrollTop + (vertical ? shift : 0),
+      left: strip.scrollLeft + (vertical ? 0 : shift),
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
     });
   }, [activeGalleryIndex, galleryImages.length, product?.id]);

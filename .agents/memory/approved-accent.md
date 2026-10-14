@@ -19,6 +19,14 @@ variable products without changing their existing cart or option-selection behav
 
 Bag-count and wishlist-count badge numbers must be `#fff`; keep their existing pink backgrounds. The merchant explicitly requested these exceptions to dark accent text.
 
+Product wishlist hearts must be white on hover, while pressed, and when saved,
+on their existing pink backgrounds.
+
+**Why:** The merchant explicitly requested white hearts in hover and active states.
+
+**How to apply:** Keep unselected hearts dark on their neutral backgrounds and
+preserve the wishlist toggle behavior. Do not apply this to the header menu icon.
+
 Checkout step badge numbers (Billing, Shipping and Payment) must also be white
 on their existing pink backgrounds.
 
