@@ -78,13 +78,13 @@ const clerkAppearance = {
     footerActionText: { color: '#716a67' },
     dividerText: { color: '#716a67' },
     formButtonPrimary: {
-      background: '#c96381', color: '#fff', borderRadius: '0px',
-      '&:hover, &:focus-visible, &:active': { background: '#bd2855', color: '#fff' },
+      background: '#e23d6f', color: '#fff', borderRadius: '0px',
+      '&:hover, &:focus-visible, &:active': { background: '#c93260', color: '#fff' },
     },
     formFieldInput: { background: '#f5f1ed', color: '#171615', borderRadius: '0px' },
     socialButtonsBlockButton: {
-      background: '#c96381', color: '#fff', borderRadius: '0px',
-      '&:hover, &:focus-visible, &:active': { background: '#bd2855', color: '#fff' },
+      background: '#e23d6f', color: '#fff', borderRadius: '0px',
+      '&:hover, &:focus-visible, &:active': { background: '#c93260', color: '#fff' },
     },
     socialButtonsBlockButtonText: { color: '#fff' },
     dividerLine: { background: '#d8d0ca' },

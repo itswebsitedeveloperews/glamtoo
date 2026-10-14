@@ -5,8 +5,8 @@ description: Merchant's exact accent choice and the contrast tradeoff to preserv
 
 The merchant requested replacing the previous deep pink with exactly `#c96381` throughout Glam Too.
 
-Action buttons must use `#c96381` as their default background and `#bd2855` on hover.
+Action buttons must use `#e23d6f` as their default background and `#c93260` on hover. This supersedes the earlier button palette; non-button accents remain unchanged.
 
 **Why:** Explicit visual direction from the merchant, not an accidental palette change.
 
-**How to apply:** Preserve these button backgrounds when doing unrelated accessibility fixes. White text on the default shade measures 3.76:1, so correct foreground treatment or obtain approval for a different shade rather than silently darkening the approved accent.
+**How to apply:** Preserve these button backgrounds when doing unrelated accessibility fixes. White text on the default button shade measures approximately 4.09:1, below the 4.5:1 normal-text requirement, so correct foreground treatment or obtain approval for a different shade rather than silently darkening the approved colors.
