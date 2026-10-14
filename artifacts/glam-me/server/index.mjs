@@ -25,7 +25,9 @@ function send(res, method, status, body, headers = {}) {
   res.end(method === 'HEAD' ? undefined : bytes);
 }
 
-export function createSeoServer({ directory = dist, fetcher = fetch, render = async (...args) => {
+export function createSeoServer({ directory = dist, fetcher = fetch, onRenderError = (error, pathname) => {
+  console.error('Public storefront document failed', { pathname, error: error instanceof Error ? error.stack : String(error) });
+}, render = async (...args) => {
   const entry = await import('../dist/server/entry-server.js');
   return entry.render(...args);
 } } = {}) {
@@ -79,7 +81,8 @@ export function createSeoServer({ directory = dist, fetcher = fetch, render = as
         send(res, method, data.status, injectSeo(html, data.status === 404 ? { ...data, robots: 'noindex, nofollow' } : data), {
           'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache',
         });
-      } catch {
+      } catch (error) {
+        onRenderError(error, pathname);
         try {
           const html = (await readFile(path.join(directory, 'index.html'), 'utf8'))
             .replace('<div id="root"></div>', '<div id="root"><main><h1>Storefront temporarily unavailable</h1><p>Current products and prices could not be loaded. Please try again shortly.</p></main></div>');

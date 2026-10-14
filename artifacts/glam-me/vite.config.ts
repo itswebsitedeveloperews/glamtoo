@@ -148,6 +148,11 @@ export default defineConfig({
     dedupe: ['react', 'react-dom'],
   },
   root: path.resolve(import.meta.dirname),
+  // The production server loads this bundle outside Vite. Include its runtime
+  // dependencies so rendering does not rely on development node_modules.
+  ssr: {
+    noExternal: process.env.STOREFRONT_SSR ? true : undefined,
+  },
   build: {
     outDir: path.resolve(import.meta.dirname, process.env.STOREFRONT_SSR ? 'dist/server' : 'dist/public'),
     emptyOutDir: true,

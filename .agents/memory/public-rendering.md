@@ -58,3 +58,18 @@ hydration mismatch when saved return information contained links.
 
 **How to apply:** Use deterministic allowlisted serialization; do not return a
 DOM implementation's innerHTML directly as the shared sanitizer result.
+
+Keep the production renderer self-contained, and test it outside the workspace's
+dependency tree. Apply dependency bundling only to the production SSR build,
+not Vite's development module loader.
+
+**Why:** Healthy public APIs and a working development preview do not prove the
+published renderer can load its dependencies. A client render can mask a 503
+document. Bundling dependencies in Vite development also changes module loading
+and can break otherwise valid development rendering.
+
+**How to apply:** Verify the built renderer in a temporary directory without
+node_modules, then check raw HTTP statuses, visible initial HTML and metadata
+for the current public routes. Preserve real 503s for unavailable live data,
+log the underlying server error, and distinguish local build verification from
+verification of a republished site.

@@ -1,10 +1,31 @@
 // Run after the production build: node --test server/public-ssr.integration.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { render } from '../dist/server/entry-server.js';
 import { createSeoServer } from './index.mjs';
 
 import { snapshot, fixtureResponse } from './public-ssr.fixtures.mjs';
+
+test('production renderer works without workspace node_modules', async (t) => {
+  const isolated = await mkdtemp(path.join(tmpdir(), 'glam-ssr-runtime-'));
+  t.after(() => rm(isolated, { recursive: true, force: true }));
+  await cp(new URL('../dist/server/', import.meta.url), isolated, { recursive: true });
+  const entry = pathToFileURL(path.join(isolated, 'entry-server.js')).href;
+  const result = spawnSync(process.execPath, ['--input-type=module', '-e', `
+    import { render } from ${JSON.stringify(entry)};
+    const snapshot = ${JSON.stringify(snapshot)};
+    for (const route of ['/', '/shop', '/product/live-cotton', '/about', '/faq']) {
+      const html = render(route, snapshot);
+      if (!html.includes('<main') || !html.includes('<h1')) throw new Error('Missing public HTML: ' + route);
+    }
+  `], { cwd: isolated, env: { PATH: process.env.PATH, NODE_ENV: 'production' }, encoding: 'utf8', timeout: 30000 });
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
+});
 
 test('real React templates produce visible public HTML with live stock and variant prices', () => {
   for (const route of ['/', '/shop', '/category', '/category/stable-dresses', '/product/live-cotton', '/product/variable-evening']) {
@@ -42,6 +63,7 @@ test('render state is restored between requests, including empty curated homepag
 test('production documents render for people and crawlers; redirects and private routes bypass public snapshots', async (t) => {
   let failStock = false;
   let publicLoads = 0;
+  const renderErrors = [];
   const fetcher = async (url, options) => {
     assert.deepEqual(options.headers, { accept: 'application/json' });
     const target = new URL(url);
@@ -49,7 +71,7 @@ test('production documents render for people and crawlers; redirects and private
     if (target.pathname === '/api/inventory' && failStock) return new Response('Unavailable', { status: 503 });
     return fixtureResponse(url, options);
   };
-  const server = createSeoServer({ fetcher, render });
+  const server = createSeoServer({ fetcher, render, onRenderError: (error, pathname) => renderErrors.push({ error, pathname }) });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -108,4 +130,7 @@ test('production documents render for people and crawlers; redirects and private
   const failureHtml = await failure.text();
   assert.match(failureHtml, /Storefront temporarily unavailable/);
   assert.doesNotMatch(failureHtml, /public-storefront-data|£39\.75/);
+  assert.equal(renderErrors.length, 1);
+  assert.equal(renderErrors[0].pathname, '/shop');
+  assert.match(renderErrors[0].error.message, /Public inventory unavailable/);
 });
