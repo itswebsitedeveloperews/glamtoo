@@ -32,6 +32,7 @@ node_modules
 /connect.lock
 /coverage
 /artifacts/api-server/test/.compiled
+/artifacts/api-server/scripts/.compiled
 /libpeerconnection.log
 npm-debug.log
 yarn-error.log
