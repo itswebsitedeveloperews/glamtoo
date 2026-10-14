@@ -1,4 +1,5 @@
 import { type ReactNode } from 'react';
+import { ProductListingImage } from './product-listing-image';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Minus, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 
@@ -23,6 +24,7 @@ export type CartSidebarRecommendation = {
   name: string;
   href: string;
   image?: string;
+  galleryImages?: string[];
   imagePosition?: string;
   priceLabel: string;
   canQuickAdd: boolean;
@@ -108,7 +110,7 @@ export default function CartSidebar(props: CartSidebarProps) {
                 <ul>
                   {recommendations.map((rec) => (
                     <li key={rec.id} data-testid={`card-cart-rec-${rec.id}`}>
-                      <a className="cart-drawer-rec-thumb" href={rec.href} onClick={props.onNavigate} tabIndex={-1} aria-hidden="true"><Thumb src={rec.image} position={rec.imagePosition} alt="" /></a>
+                      <a className="cart-drawer-rec-thumb" href={rec.href} onClick={props.onNavigate} tabIndex={-1} aria-hidden="true">{rec.image ? <ProductListingImage image={rec.image} galleryImages={rec.galleryImages} alt="" position={rec.imagePosition} sizes="72px" /> : <Thumb alt="" />}</a>
                       <a className="cart-drawer-rec-name" href={rec.href} onClick={props.onNavigate}>{rec.name}</a>
                       <span className="cart-drawer-rec-price">{rec.priceLabel}</span>
                       {rec.canQuickAdd

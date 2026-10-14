@@ -48,3 +48,4 @@
 - [Performance audits](performance-audits.md) — Check real images and configured services; local scores are not live PageSpeed results. Preserve original catalog media URLs.
 - [Public rendering](public-rendering.md) — Share public snapshots for hydration; keep private routes client-only, rendering synchronous and SSR image URLs public.
 - [CSP provider boundaries](csp-provider-boundaries.md) — Attribute violations to their owning document; do not loosen the parent policy for Stripe iframe warnings.
+- [Product hover previews](product-hover-previews.md) — All product listings preview the second detail-gallery photo on hover, not an unrelated image.

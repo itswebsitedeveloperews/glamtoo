@@ -21,6 +21,7 @@ import { useSubmitContactEnquiry } from '@workspace/api-client-react';
 import type { CheckoutPaymentInput, CheckoutPaymentIntentResult } from '@workspace/api-client-react';
 import NotFound from '@/pages/not-found';
 import { responsiveImage } from '@/utils/responsive-images';
+import { ProductListingImage } from '@/components/product-listing-image';
 import { hasRichTextContent, sanitizeRichTextHtml } from '@/utils/rich-text';
 import { calculateShippingAmount, selectShippingMethod } from '@workspace/shipping';
 import { useShippingMethods } from '@/hooks/use-shipping-methods';
@@ -953,7 +954,7 @@ function Header() {
                     key={product.id}
                     onClick={() => setSearchOpen(false)}
                   >
-                    {product.image ? <img {...responsiveImage(product.image, '64px')} alt={product.name} loading="lazy" decoding="async" style={{ objectPosition: product.position }} /> : <span className="header-search-result-placeholder">Glam Too</span>}
+                    {product.image ? <ProductListingImage image={product.image} galleryImages={product.galleryImages} alt={product.name} position={product.position} sizes="64px" /> : <span className="header-search-result-placeholder">Glam Too</span>}
                     <span className="header-search-result-details">
                       <strong>{product.name}</strong>
                       <small>{product.category} · {getProductPricing(product).label}</small>
@@ -1055,7 +1056,7 @@ function ProductCard({ product, featured = false, showShopNow = false }: { produ
       <div className="product-image">
         <a className="product-card-image-link" href={`/product/${product.slug}`} data-testid={`link-product-${product.id}`} aria-label={`View ${product.name}`}>
           {product.type === 'Simple' && product.stock <= 0 ? <span className="badge">Out of stock</span> : featured && <span className="badge">Featured</span>}
-          <img {...responsiveImage(product.image, '(max-width: 640px) calc(100vw - 32px), (max-width: 1000px) 45vw, 30vw')} alt={product.name} loading="lazy" decoding="async" />
+          <ProductListingImage image={product.image} galleryImages={product.galleryImages} alt={product.name} sizes="(max-width: 640px) calc(100vw - 32px), (max-width: 1000px) 45vw, 30vw" />
         </a>
         <WishlistButton product={product} />
       </div>
@@ -1748,7 +1749,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
                     <div className="detail-variation-fields">
                    {variationAttributes.map((attribute) => {
                      const values = [...new Set(productVariations.map((variation) => optionValue(variation, attribute)).filter(Boolean))];
-                     return <div className="field" key={attribute}><label htmlFor={`product-${attribute}-${product.id}`}>Select {attribute === 'size' ? 'size' : attribute === 'colour' ? 'colour' : attribute}</label><select id={`product-${attribute}-${product.id}`} name={attribute} value={selectedOptions[attribute] ?? ''} onChange={(event) => { const next = { ...selectedOptions, [attribute]: event.target.value }; setSelectedOptions(next); setVariationMessage(''); }} required data-testid={`select-product-${attribute}-${product.id}`}><option value="" disabled>Choose {attribute === 'size' ? 'a size' : attribute === 'colour' ? 'a colour' : `a ${attribute}`}</option>{values.map((value) => <option key={value} value={value} disabled={!hasAllRequiredSelections && !hasCompatibleVariation({ ...selectedOptions, [attribute]: value })}>{value}</option>)}</select></div>;
+                     return <div className="field" key={attribute}><label htmlFor={`product-${attribute}-${product.id}`}>Select {attribute === 'size' ? 'size' : attribute === 'colour' ? 'colour' : attribute}</label><select id={`product-${attribute}-${product.id}`} name={attribute} value={selectedOptions[attribute] ?? ''} onChange={(event) => { const next = { ...selectedOptions, [attribute]: event.target.value }; setSelectedOptions(next); setVariationMessage(''); }} required data-testid={`select-product-${attribute}-${product.id}`}><option value="" disabled>Choose {attribute === 'size' ? 'a size' : attribute === 'colour' ? 'a colour' : `a ${attribute}`}</option>{values.map((value) => <option key={value} value={value} disabled={!hasAllRequiredSelections && !hasCompatibleVariation({ ...selectedOptions, [attribute]: value })}>{attribute === 'size' ? value.toUpperCase() : value}</option>)}</select></div>;
                    })}
                    {availableVariations.length === 0 && <p className="variation-message">This product is currently unavailable.</p>}
                    {variationMessage && <p className="variation-message" role="alert">{variationMessage}</p>}
@@ -1914,7 +1915,7 @@ function WishlistPage() {
                 <article className="wishlist-item" key={product.id}>
                   <a className="wishlist-item-image" href={`/product/${product.slug}`} aria-label={`View ${product.name}`}>
                     {!available && <span className="badge">Out of stock</span>}
-                    <img src={product.image} alt={product.name} style={{ objectPosition: product.position }} />
+                    <ProductListingImage image={product.image} galleryImages={product.galleryImages} alt={product.name} position={product.position} sizes="(max-width: 460px) calc(100vw - 32px), (max-width: 800px) 40vw, 25vw" />
                   </a>
                   <div className="wishlist-item-content">
                     <div>
@@ -1928,9 +1929,9 @@ function WishlistPage() {
                     <div className="wishlist-item-actions">
                       <a className="button wishlist-view-button" href={`/product/${product.slug}`}>View Product</a>
                       {product.type === "Variable" ? (
-                        <a className="button button-pink" href={`/product/${product.slug}`}>Add to Cart</a>
+                        <a className="button button-pink wishlist-add-button" href={`/product/${product.slug}`}>Add to Cart</a>
                       ) : (
-                        <button className="button button-pink" type="button" disabled={!available || isPending(product.id)} onClick={() => void handleAddToCart(product)} data-testid={`button-wishlist-cart-${product.id}`}>
+                        <button className="button button-pink wishlist-add-button" type="button" disabled={!available || isPending(product.id)} onClick={() => void handleAddToCart(product)} data-testid={`button-wishlist-cart-${product.id}`}>
                           {!available ? "Out of stock" : isPending(product.id) ? "Adding…" : "Add to Cart"}
                         </button>
                       )}
@@ -3892,6 +3893,7 @@ function CartDrawerHost({ location }: { location: string }) {
         name: product.name,
         href: `/product/${product.slug}`,
         image: product.image,
+        galleryImages: product.galleryImages,
         imagePosition: product.position,
         priceLabel: getProductPricing(product).label,
         canQuickAdd: product.type !== 'Variable',
