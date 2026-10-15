@@ -17,6 +17,116 @@ tags:
   - name: seo
     description: Public search metadata and crawler files
 paths:
+  /products/{productId}/reviews:
+    get:
+      operationId: getProductReviews
+      summary: Approved reviews and rating summary for a published product
+      parameters:
+        - { in: path, name: productId, required: true, schema: { type: integer, minimum: 1 } }
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: Approved reviews only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductReviews"
+        "404":
+          description: Product not found
+        "503":
+          description: Reviews temporarily unavailable
+    post:
+      operationId: submitProductReview
+      summary: Submit a review for moderation; never publishes immediately
+      parameters:
+        - { in: path, name: productId, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewSubmission"
+      responses:
+        "202":
+          description: Review received for moderation, including safe duplicate retries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string }
+        "400":
+          description: Invalid review
+        "404":
+          description: Product not found
+        "409":
+          description: Submission identifier already used for different details
+        "429":
+          description: Submission limit reached
+        "503":
+          description: Review could not be saved
+  /admin/reviews:
+    get:
+      operationId: getAdminReviews
+      summary: Administrator-only review moderation queue
+      parameters:
+        - { in: query, name: status, schema: { type: string, enum: [pending, approved, rejected], default: pending } }
+        - { in: query, name: page, schema: { type: integer, minimum: 1, default: 1 } }
+      responses:
+        "200":
+          description: Reviews for moderation, without account identifiers or email
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reviews, total, page, pageSize]
+                properties:
+                  reviews:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ModerationReview"
+                  total: { type: integer }
+                  page: { type: integer }
+                  pageSize: { type: integer }
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator access required
+        "503":
+          description: Queue unavailable
+  /admin/reviews/{reviewId}:
+    patch:
+      operationId: moderateProductReview
+      summary: Approve, reject, or return a review to pending
+      parameters:
+        - { in: path, name: reviewId, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewModerationInput"
+      responses:
+        "200":
+          description: Review moderation saved
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string }
+        "400":
+          description: Invalid moderation status
+        "401":
+          description: Sign in required
+        "403":
+          description: Administrator access required
+        "404":
+          description: Review not found
+        "503":
+          description: Moderation could not be saved
   /admin/orders/{orderId}/email-actions:
     post:
       operationId: requestOrderEmailAction
@@ -654,6 +764,51 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
+    ReviewModerationInput:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [pending, approved, rejected] }
+    PublicProductReview:
+      type: object
+      required: [id, productId, rating, title, body, displayName, createdAt]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        title: { type: string }
+        body: { type: string }
+        displayName: { type: string }
+        createdAt: { type: string, format: date-time }
+    ModerationReview:
+      allOf:
+        - $ref: "#/components/schemas/PublicProductReview"
+        - type: object
+          required: [status, productName]
+          properties:
+            status: { type: string, enum: [pending, approved, rejected] }
+            productName: { type: string }
+    ProductReviews:
+      type: object
+      required: [reviews, averageRating, total, page, pageSize]
+      properties:
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/PublicProductReview"
+        averageRating: { type: number, minimum: 0, maximum: 5 }
+        total: { type: integer }
+        page: { type: integer }
+        pageSize: { type: integer }
+    ReviewSubmission:
+      type: object
+      required: [rating, title, body, submissionId]
+      properties:
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        title: { type: string, minLength: 1, maxLength: 120 }
+        body: { type: string, minLength: 1, maxLength: 3000 }
+        displayName: { type: string, minLength: 1, maxLength: 80 }
+        submissionId: { type: string, format: uuid }
     OrderEmailActionInput:
       type: object
       additionalProperties: false

@@ -18,3 +18,4 @@ export * from "./delivery-information";
 export * from "./size-guide";
 export * from "./return-information";
 export * from "./checkout-safety";
+export * from "./product-reviews";

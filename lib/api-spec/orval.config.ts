@@ -58,6 +58,7 @@ export default defineConfig({
       prettier: true,
       override: {
         operations: {
+          getProductReviews: { zod: { generate: { param: false } } },
           // The storage wildcard already validates its upload path. Orval's
           // path validator and query type otherwise share GetUploadedImageParams.
           getUploadedImage: { zod: { generate: { param: false } } },

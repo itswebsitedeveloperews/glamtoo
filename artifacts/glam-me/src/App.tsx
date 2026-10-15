@@ -17,6 +17,7 @@ import { shadcn } from '@clerk/themes';
 import { ui } from '@clerk/ui';
 import { ChevronDown, ZoomIn, Clock, CreditCard, Headphones, HelpCircle, LayoutDashboard, LogOut, Mail, MapPin, MessageSquare, Phone, RefreshCcw, Ruler, Search, ShoppingBag, Sparkles, Truck, UserRound, X, type LucideIcon } from 'lucide-react';
 import { Link, Route, Router as WouterRouter, Switch, useLocation, useSearch } from 'wouter';
+import { ProductReviewsProvider, ProductReviewSummary, ProductReviewsSection } from './components/product-reviews';
 import { useSubmitContactEnquiry } from '@workspace/api-client-react';
 import type { CheckoutPaymentInput, CheckoutPaymentIntentResult } from '@workspace/api-client-react';
 import NotFound from '@/pages/not-found';
@@ -1485,7 +1486,18 @@ function CategoryDetail({ params }: { params: { slug: string } }) {
   );
 }
 
-function ProductDetail({ params }: { params: { slug: string } }) { 
+function ProductDetail({ params }: { params: { slug: string } }) {
+  useContext(CatalogMediaContext);
+  const reviewedProduct = getStorefrontProducts().find((item) => item.slug === params.slug || String(item.id) === params.slug);
+  if (!reviewedProduct) return <ProductDetailContent params={params} />;
+  return (
+    <ProductReviewsProvider key={reviewedProduct.id} productId={Number(reviewedProduct.id)}>
+      <ProductDetailContent params={params} />
+    </ProductReviewsProvider>
+  );
+}
+
+function ProductDetailContent({ params }: { params: { slug: string } }) {
   useContext(CatalogMediaContext);
   useLiveInventory();
   const product = getStorefrontProducts().find((item) => item.slug === params.slug || String(item.id) === params.slug);
@@ -1794,6 +1806,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
               </div>
               <h1>{product.name}</h1>
               <div className="detail-price">{displayedPrice}</div>
+              <ProductReviewSummary />
               <p className="detail-description">{product.description}</p>
             </div>
             
@@ -1899,6 +1912,7 @@ function ProductDetail({ params }: { params: { slug: string } }) {
           </div>
         </div>
       </div>
+      <ProductReviewsSection key={product.id} productId={Number(product.id)} productName={product.name} />
       {relatedProducts.length > 0 && (
         <section className="related-products container" aria-labelledby="related-products-heading" data-testid="section-related-products">
           <div className="related-products-heading">

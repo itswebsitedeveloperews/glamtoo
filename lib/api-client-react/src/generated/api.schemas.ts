@@ -5,6 +5,83 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type ReviewModerationInputStatus = typeof ReviewModerationInputStatus[keyof typeof ReviewModerationInputStatus];
+
+
+export const ReviewModerationInputStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export interface ReviewModerationInput {
+  status: ReviewModerationInputStatus;
+}
+
+export interface PublicProductReview {
+  id: number;
+  productId: number;
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating: number;
+  title: string;
+  body: string;
+  displayName: string;
+  createdAt: string;
+}
+
+export type ModerationReviewStatus = typeof ModerationReviewStatus[keyof typeof ModerationReviewStatus];
+
+
+export const ModerationReviewStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export type ModerationReview = PublicProductReview & {
+  status: ModerationReviewStatus;
+  productName: string;
+};
+
+export interface ProductReviews {
+  reviews: PublicProductReview[];
+  /**
+     * @minimum 0
+     * @maximum 5
+     */
+  averageRating: number;
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ReviewSubmission {
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating: number;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 3000
+     */
+  body: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  displayName?: string;
+  submissionId: string;
+}
+
 export type OrderEmailActionInputAction = typeof OrderEmailActionInputAction[keyof typeof OrderEmailActionInputAction];
 
 
@@ -26,6 +103,16 @@ export interface OrderEmailActionInput {
 }
 
 export type CustomerConfirmationApprovalInputConfirmation = typeof CustomerConfirmationApprovalInputConfirmation[keyof typeof CustomerConfirmationApprovalInputConfirmation];
+
+
+export const CustomerConfirmationApprovalInputConfirmation = {
+  send_saved_order_confirmation: 'send_saved_order_confirmation',
+} as const;
+
+export interface CustomerConfirmationApprovalInput {
+  confirmation: CustomerConfirmationApprovalInputConfirmation;
+}
+
 export type AdminCatalogSaveInputProductsItem = { [key: string]: unknown };
 
 export type AdminCatalogSaveInputCategoriesItem = { [key: string]: unknown };
@@ -227,7 +314,59 @@ export interface ErrorEnvelope {
   code?: string;
 }
 
+export type GetProductReviewsParams = {
+/**
+ * @minimum 1
+ */
+page?: number;
+};
+
+export type SubmitProductReview202 = {
+  message: string;
+};
+
+export type GetAdminReviewsParams = {
+status?: GetAdminReviewsStatus;
+/**
+ * @minimum 1
+ */
+page?: number;
+};
+
+export type GetAdminReviewsStatus = typeof GetAdminReviewsStatus[keyof typeof GetAdminReviewsStatus];
+
+
+export const GetAdminReviewsStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export type GetAdminReviews200 = {
+  reviews: ModerationReview[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type ModerateProductReview200 = {
+  message: string;
+};
+
 export type ApproveCustomerConfirmation200Outcome = typeof ApproveCustomerConfirmation200Outcome[keyof typeof ApproveCustomerConfirmation200Outcome];
+
+
+export const ApproveCustomerConfirmation200Outcome = {
+  approved: 'approved',
+  already_approved: 'already_approved',
+  already_processed: 'already_processed',
+} as const;
+
+export type ApproveCustomerConfirmation200 = {
+  outcome: ApproveCustomerConfirmation200Outcome;
+  message: string;
+};
+
 export type SaveAdminCatalog200ProductsItem = { [key: string]: unknown };
 
 export type SaveAdminCatalog200CategoriesItem = { [key: string]: unknown };
@@ -346,14 +485,15 @@ preview?: GetUploadedImagePreview;
 width?: GetUploadedImageWidth;
 };
 
+export type GetUploadedImagePreview = typeof GetUploadedImagePreview[keyof typeof GetUploadedImagePreview];
+
 
 export const GetUploadedImagePreview = {
   'listing-v1': 'listing-v1',
 } as const;
 
-export type GetUploadedImagePreview = typeof GetUploadedImagePreview[keyof typeof GetUploadedImagePreview];
-
 export type GetUploadedImageWidth = typeof GetUploadedImageWidth[keyof typeof GetUploadedImageWidth];
+
 
 export const GetUploadedImageWidth = {
   NUMBER_320: 320,
@@ -361,22 +501,3 @@ export const GetUploadedImageWidth = {
   NUMBER_640: 640,
   NUMBER_960: 960,
 } as const;
-
-export const CustomerConfirmationApprovalInputConfirmation = {
-  send_saved_order_confirmation: 'send_saved_order_confirmation',
-} as const;
-
-export interface CustomerConfirmationApprovalInput {
-  confirmation: CustomerConfirmationApprovalInputConfirmation;
-}
-
-export const ApproveCustomerConfirmation200Outcome = {
-  approved: 'approved',
-  already_approved: 'already_approved',
-  already_processed: 'already_processed',
-} as const;
-
-export type ApproveCustomerConfirmation200 = {
-  outcome: ApproveCustomerConfirmation200Outcome;
-  message: string;
-};

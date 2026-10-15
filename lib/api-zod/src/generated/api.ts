@@ -9,6 +9,129 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Approved reviews and rating summary for a published product
+ */
+export const getProductReviewsQueryPageDefault = 1;
+
+
+
+export const GetProductReviewsQueryParams = zod.object({
+  "page": zod.number().int().min(1).default(getProductReviewsQueryPageDefault)
+})
+
+export const getProductReviewsResponseReviewsItemRatingMax = 5;
+
+export const getProductReviewsResponseAverageRatingMin = 0;
+export const getProductReviewsResponseAverageRatingMax = 5;
+
+
+
+export const GetProductReviewsResponse = zod.object({
+  "reviews": zod.array(zod.object({
+  "id": zod.number().int(),
+  "productId": zod.number().int(),
+  "rating": zod.number().int().min(1).max(getProductReviewsResponseReviewsItemRatingMax),
+  "title": zod.string(),
+  "body": zod.string(),
+  "displayName": zod.string(),
+  "createdAt": zod.date()
+})),
+  "averageRating": zod.number().min(getProductReviewsResponseAverageRatingMin).max(getProductReviewsResponseAverageRatingMax),
+  "total": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int()
+})
+
+
+/**
+ * @summary Submit a review for moderation; never publishes immediately
+ */
+
+
+
+export const SubmitProductReviewParams = zod.object({
+  "productId": zod.coerce.number().int().min(1)
+})
+
+export const submitProductReviewBodyRatingMax = 5;
+
+export const submitProductReviewBodyTitleMax = 120;
+
+export const submitProductReviewBodyBodyMax = 3000;
+
+export const submitProductReviewBodyDisplayNameMax = 80;
+
+
+
+export const SubmitProductReviewBody = zod.object({
+  "rating": zod.number().int().min(1).max(submitProductReviewBodyRatingMax),
+  "title": zod.string().min(1).max(submitProductReviewBodyTitleMax),
+  "body": zod.string().min(1).max(submitProductReviewBodyBodyMax),
+  "displayName": zod.string().min(1).max(submitProductReviewBodyDisplayNameMax).optional(),
+  "submissionId": zod.string().uuid()
+})
+
+export const SubmitProductReviewResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
+ * @summary Administrator-only review moderation queue
+ */
+export const getAdminReviewsQueryStatusDefault = `pending`;
+export const getAdminReviewsQueryPageDefault = 1;
+
+
+
+export const GetAdminReviewsQueryParams = zod.object({
+  "status": zod.enum(['pending', 'approved', 'rejected']).default(getAdminReviewsQueryStatusDefault),
+  "page": zod.coerce.number().int().min(1).default(getAdminReviewsQueryPageDefault)
+})
+
+export const getAdminReviewsResponseReviewsItemOneRatingMax = 5;
+
+
+
+export const GetAdminReviewsResponse = zod.object({
+  "reviews": zod.array(zod.object({
+  "id": zod.number().int(),
+  "productId": zod.number().int(),
+  "rating": zod.number().int().min(1).max(getAdminReviewsResponseReviewsItemOneRatingMax),
+  "title": zod.string(),
+  "body": zod.string(),
+  "displayName": zod.string(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "productName": zod.string()
+}))),
+  "total": zod.number().int(),
+  "page": zod.number().int(),
+  "pageSize": zod.number().int()
+})
+
+
+/**
+ * @summary Approve, reject, or return a review to pending
+ */
+
+
+
+export const ModerateProductReviewParams = zod.object({
+  "reviewId": zod.coerce.number().int().min(1)
+})
+
+export const ModerateProductReviewBody = zod.object({
+  "status": zod.enum(['pending', 'approved', 'rejected'])
+})
+
+export const ModerateProductReviewResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * Admin only. Queues work without contacting SMTP. Requires an exact recipient snapshot and explicit confirmation. Never resends accepted or uncertain mail.
  * @summary Explicitly approve a missing admin copy or one safe failed-message retry
  */
@@ -22,6 +145,8 @@ export const RequestOrderEmailActionParams = zod.object({
 export const requestOrderEmailActionBodyRecipientsMax = 50;
 
 
+
+
 export const RequestOrderEmailActionBody = zod.object({
   "action": zod.enum(['admin_copy', 'retry']),
   "confirmed": zod.literal(true),
@@ -31,17 +156,35 @@ export const RequestOrderEmailActionBody = zod.object({
 
 export const RequestOrderEmailActionResponse = zod.void()
 
+
 /**
  * Uses only the saved paid-order email. Never resends accepted or uncertain messages and never changes admin copies.
  * @summary Approve one demonstrably unsent customer confirmation for a paid order
  */
 export const approveCustomerConfirmationPathReferenceRegExp = new RegExp('^[a-zA-Z0-9_-]{1,120}$');
+
+
+export const ApproveCustomerConfirmationParams = zod.object({
+  "reference": zod.coerce.string().regex(approveCustomerConfirmationPathReferenceRegExp)
+})
+
+export const ApproveCustomerConfirmationBody = zod.object({
+  "confirmation": zod.enum(['send_saved_order_confirmation'])
+})
+
+export const ApproveCustomerConfirmationResponse = zod.object({
+  "outcome": zod.enum(['approved', 'already_approved', 'already_processed']),
+  "message": zod.string()
+})
+
+
 /**
  * Omitted products are retired. Existing inventory stock is preserved unless its exact product or product:variation key is listed in stockUpdates. This prevents live-stock browser overlays from resetting unrelated stock.
  * @summary Save the full catalog and sellable inventory atomically (administrators only)
  */
 export const saveAdminCatalogBodyStockUpdatesItemRegExp = new RegExp('^\\d+(?::\\d+)?$');
 export const saveAdminCatalogBodyStockUpdatesMax = 500;
+
 
 
 export const SaveAdminCatalogBody = zod.object({
@@ -111,6 +254,7 @@ export const saveAdminContactNotificationSettingsBodyOrderAdminEmailsItemMax = 2
 export const saveAdminContactNotificationSettingsBodyOrderAdminEmailsMax = 20;
 
 
+
 export const SaveAdminContactNotificationSettingsBody = zod.object({
   "adminEmail": zod.string().max(saveAdminContactNotificationSettingsBodyAdminEmailMax).optional().describe('Legacy single contact recipient. Prefer adminEmails.'),
   "adminEmails": zod.array(zod.string().max(saveAdminContactNotificationSettingsBodyAdminEmailsItemMax)).max(saveAdminContactNotificationSettingsBodyAdminEmailsMax).optional(),
@@ -166,6 +310,7 @@ export const VerifyAdminGmailAuthenticationResponse = zod.object({
  */
 export const createCheckoutPaymentIntentHeaderIdempotencyKeyMin = 16;
 export const createCheckoutPaymentIntentHeaderIdempotencyKeyMax = 100;
+
 
 
 export const CreateCheckoutPaymentIntentHeader = zod.object({
@@ -232,6 +377,7 @@ export const FinalizeCheckoutPaymentResponse = zod.object({
  */
 export const createHostedCheckoutHeaderIdempotencyKeyMin = 16;
 export const createHostedCheckoutHeaderIdempotencyKeyMax = 100;
+
 
 
 export const CreateHostedCheckoutHeader = zod.object({
@@ -330,6 +476,7 @@ export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
 
+
 /**
  * @summary Serve an original upload or a cacheable listing-only WebP preview
  */
@@ -337,6 +484,10 @@ export const GetUploadedImageQueryParams = zod.object({
   "preview": zod.enum(['listing-v1']).optional(),
   "width": zod.union([zod.literal(320),zod.literal(480),zod.literal(640),zod.literal(960)]).optional().describe('Required for previews; originals are never resized.')
 })
+
+export const GetUploadedImageResponse = zod.unknown()
+
+
 /**
  * @summary Request a presigned upload URL
  */
@@ -370,6 +521,7 @@ export const submitContactEnquiryBodyOrderMax = 80;
 export const submitContactEnquiryBodyMessageMax = 5000;
 
 
+
 export const SubmitContactEnquiryBody = zod.object({
   "name": zod.string().min(submitContactEnquiryBodyNameMin).max(submitContactEnquiryBodyNameMax),
   "email": zod.string().max(submitContactEnquiryBodyEmailMax),
@@ -380,21 +532,5 @@ export const SubmitContactEnquiryBody = zod.object({
 
 export const SubmitContactEnquiryResponse = zod.object({
   "sent": zod.boolean(),
-  "message": zod.string()
-})
-
-
-export const GetUploadedImageResponse = zod.unknown()
-
-export const ApproveCustomerConfirmationBody = zod.object({
-  "confirmation": zod.enum(['send_saved_order_confirmation'])
-})
-
-export const ApproveCustomerConfirmationParams = zod.object({
-  "reference": zod.coerce.string().regex(approveCustomerConfirmationPathReferenceRegExp)
-})
-
-export const ApproveCustomerConfirmationResponse = zod.object({
-  "outcome": zod.enum(['approved', 'already_approved', 'already_processed']),
   "message": zod.string()
 })

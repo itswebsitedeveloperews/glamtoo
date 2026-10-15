@@ -22,6 +22,7 @@ import { defaultHomePageSettings, type HomePageSettings } from "@/data/home-page
 import AdminOrderEmailStatus from "@/components/admin-order-email-status";
 import AdminGmailSettings from "@/components/admin-gmail-settings";
 import AdminContactEmailSettings from "@/components/admin-contact-email-settings";
+import AdminProductReviews from "../components/admin-product-reviews";
 import type { AdminCatalogSaveInput } from "@workspace/api-client-react";
 
 type RichTextEditorProps = {
@@ -104,6 +105,7 @@ type AdminSection =
   | "payments"
   | "coupons"
   | "messages"
+  | "reviews"
   | "users";
 
 type ProductStatus = "Published" | "Draft";
@@ -340,6 +342,7 @@ const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "payments", label: "Payments", icon: CreditCard },
   { id: "coupons", label: "Coupons", icon: TicketPercent },
   { id: "messages", label: "Contact Form", icon: Inbox },
+  { id: "reviews", label: "Reviews", icon: ListChecks },
   { id: "users", label: "Users", icon: Users },
 ];
 
@@ -3645,6 +3648,13 @@ export default function AdminDashboard({
                 </div>
               )}
             </section>
+          </>
+        )}
+
+        {section === "reviews" && (
+          <>
+            <SectionTitle eyebrow="Customer care" title="Reviews" description="Approve, reject, or return customer reviews to pending. Only approved reviews are public." />
+            <AdminProductReviews />
           </>
         )}
 

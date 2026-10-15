@@ -10,6 +10,7 @@ import catalogRouter from "./catalog";
 import contactRouter from "./contact";
 import seoRouter from "./seo";
 import customerEmailRetryRouter from "./customerEmailRetry";
+import reviewsRouter from "./reviews";
 import { listShippingMethods, serializeShippingMethod } from "../shippingMethods";
 import { listDeliveryInformation, serializeDeliveryInformation } from "../deliveryInformation";
 import { listSizeGuide, serializeSizeGuideRow } from "../sizeGuide";
@@ -27,6 +28,7 @@ router.use(customerEmailRetryRouter);
 router.use(storageRouter);
 router.use(catalogRouter);
 router.use(contactRouter);
+router.use(reviewsRouter);
 router.use(seoRouter);
 router.get("/shipping-methods", async (_request, response) => {
   try { response.set("Cache-Control", "no-store").json({ shippingMethods: (await listShippingMethods(true)).map(serializeShippingMethod) }); }
