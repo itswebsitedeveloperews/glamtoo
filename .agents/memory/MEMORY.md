@@ -55,3 +55,4 @@
 - [Read-only admin test sessions](admin-test-session-safety.md) — Existing-admin testing needs explicit approval and session-only APIs; do not assume the generic helper preserves users.
 - [Preview retention safety](preview-retention-safety.md) — Opaque preview hashes need age-based eviction; use dry-run-first maintenance, never catalog edits or source deletion.
 - [Isolated setup validation](isolated-setup-validation.md) — Strip app credentials but preserve the resolved pnpm store when testing setup in the existing workspace.
+- [Dependency remediation](dependency-remediation.md) — Avoid unused glob dependencies in the Clerk proxy; verify security overrides through actual consumers and clean builds.

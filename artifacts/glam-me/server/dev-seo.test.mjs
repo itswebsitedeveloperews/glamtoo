@@ -38,6 +38,12 @@ test('development documents, HEAD, redirects and fallbacks get noindex without i
   });
   server = await createServer({ configFile: path.join(root, 'vite.config.ts'),
     server: { port: 0, strictPort: false, host: '127.0.0.1' }, logLevel: 'silent',
+    // Public SSR still mounts Clerk. Use an invented key so this header test
+    // also runs in the credential-stripped Linux validation environment.
+    define: {
+      'import.meta.env.VITE_CLERK_PUBLISHABLE_KEY': JSON.stringify(`pk_test_${Buffer.from('seo-fixture.clerk.accounts.dev$').toString('base64')}`),
+      'import.meta.env.VITE_CLERK_PROXY_URL': JSON.stringify(''),
+    },
     // This HTTP/header test does not need dependency prebundling. Avoid racing
     // optimizer restarts while requesting Vite runtime modules in a clean tree.
     optimizeDeps: { noDiscovery: true, include: [] } });

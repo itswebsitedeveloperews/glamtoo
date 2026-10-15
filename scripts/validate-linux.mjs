@@ -59,6 +59,9 @@ try {
   await run("pnpm", ["--filter", "@workspace/glam-me", "run", "test:seo"]);
   await run("pnpm", ["--filter", "@workspace/glam-me", "run", "test:storefront"]);
   await run("pnpm", ["--filter", "@workspace/shipping", "run", "test"]);
+  await run("node", ["--test", "scripts/test-dependency-security.mjs"]);
+  await run("pnpm", ["--filter", "@workspace/api-server", "run", "test:clerk-proxy"]);
+  await run("pnpm", ["--filter", "@workspace/api-server", "run", "test:listing-preview"]);
 
   // Own the entire cluster, not merely a schema on a potentially live server.
   const data = join(temp, "postgres");

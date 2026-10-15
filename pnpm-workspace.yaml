@@ -67,9 +67,12 @@ overrides:
   '@tailwindcss/oxide>@tailwindcss/oxide-linux-x64-musl': '-'
   '@tailwindcss/oxide>@tailwindcss/oxide-win32-arm64-msvc': '-'
   '@tailwindcss/oxide>@tailwindcss/oxide-win32-x64-msvc': '-'
-  # Existing cross-parent pin. Do not blindly jump the 0.x minor: parent ranges
-  # differ. Remaining Windows-only serve advisory is documented in readiness.
-  esbuild: 0.27.3
+  # Cross-parent security updates; Linux validation exercises builds and loaders.
+  esbuild: 0.28.2
+  # Keep CommonJS support for Google storage's gaxios/teeny-request consumers.
+  uuid@<11.1.1: 11.1.1
+  # Typography pins 6.x; 7.1.6 keeps the selector API and fixes CPU exhaustion.
+  '@tailwindcss/typography>postcss-selector-parser': 7.1.6
   # Intended build platform is Linux x64 glibc; Windows support is not enabled.
   esbuild>@esbuild/aix-ppc64: '-'
   esbuild>@esbuild/android-arm: '-'

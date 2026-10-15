@@ -75,7 +75,7 @@ await build({
     "@clerk/express",
     "@clerk/shared",
     "cookie-parser",
-    "http-proxy-middleware",
+    "httpxy",
   ],
 });
 

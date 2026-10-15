@@ -126,7 +126,7 @@ pnpm audit --prod --json > generated-artifacts/readiness/audit-prod.json
 pnpm why -r fast-uri brace-expansion js-yaml nanoid markdown-it source-map-js fast-copy
 ```
 
-Fresh audit before updates: **21** advisories (14 high, 6 moderate, 1 low).
+Historical audit before the earlier compatible updates: **21** advisories (14 high, 6 moderate, 1 low).
 After compatible updates: **4** (1 high, 2 moderate, 1 low).
 Production-only: **2** both before and after (1 high, 1 moderate).
 These are advisory counts, not exploitable-vulnerability counts.
@@ -153,14 +153,26 @@ Pino-pretty is declared development tooling but is also emitted as an API
 logging worker by the production build; its fixed fast-copy path therefore
 matters beyond the package classification.
 
-### Residual findings — not waived as “safe”
+### Subsequent security remediation (2026-10-14)
 
-| Advisory / severity | Path and actual exposure | Decision |
+The fresh dependency scan reported **7** findings (5 high, 1 moderate, 1 low),
+including three newer sharp advisories. After the following updates, the fresh
+dependency scan reports **0** findings. This supersedes the earlier residual
+decisions below; a clean dependency scan is not general launch approval.
+
+| Advisory / severity | Previous path | Remediation |
 | --- | --- | --- |
-| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm), high | API runtime: http-proxy-middleware 4.2.0 → micromatch → braces 3.0.3. Deep attacker-controlled glob patterns can exhaust the stack. | Audit reports no patched version; current parent is latest 4.2.0. Our Clerk proxy supplies no glob `pathFilter`; upstream defaults to plain `/`, so the incoming URI is not used as the glob pattern. No exploitability proven in that configuration. Retain finding, monitor upstream; reassess before introducing dynamic glob configuration. |
-| [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq), moderate | API runtime: @google-cloud/storage 7.22.0 → gaxios 6.7.1 → uuid 9.0.1. Advisory concerns v3/v5/v6 output-buffer bounds. | Inspected gaxios uses v4 for a multipart boundary, not affected buffer APIs. Latest storage is a new major (8.x); no forced uuid 11 cross-major override. A reviewed major upgrade remains follow-up work, not a fabricated fix. |
-| [GHSA-g7r4-m6w7-qqqr](https://github.com/advisories/GHSA-g7r4-m6w7-qqqr), low | API build/test esbuild 0.27.3; advisory is esbuild's Windows development file server, not Linux builds or browser code. | Patch begins 0.28.1; latest observed 0.28.2 is a 0.x minor/API boundary. Existing workspace cross-parent pin remains rather than forcing all parents beyond their ranges. We use build(), not esbuild serve(). Windows support is out of scope. |
-| [GHSA-rj75-hqrm-r3gf](https://github.com/advisories/GHSA-rj75-hqrm-r3gf), moderate | Storefront Tailwind typography 0.5.20 → postcss-selector-parser 6.0.10; build-time CSS processing, not bundled browser runtime. | Latest typography still resolves vulnerable 6.x; patch is 7.1.6+. No unsupported cross-major parser override. Restrict CSS build input to trusted repository content and revisit upstream upgrade. |
+| GHSA-f88m-g3jw-g9cj, GHSA-rgj7-g3m4-5g8c, GHSA-wq5f-xc86-pv6w, high | Storefront image builds and API listing previews → sharp 0.34.5 | Upgrade both direct pins to 0.35.5, including its patched prebuilt native libraries. |
+| [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm), high | Clerk proxy and Canvas file discovery → micromatch → braces 3.0.3 | No patched braces release. Remove both paths: use httpxy (the same underlying proxy engine) directly and replace fast-glob with tinyglobby. No braces remains in the lockfile. |
+| [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq), high | @google-cloud/storage → gaxios / teeny-request → uuid 9.0.1 | Override vulnerable UUID versions to 11.1.1, preserving CommonJS support; focused tests resolve through the actual consumers and check v4/v5 and output-buffer guards. |
+| [GHSA-g7r4-m6w7-qqqr](https://github.com/advisories/GHSA-g7r4-m6w7-qqqr), low | Build/test tools → esbuild 0.27.3 | Update direct and cross-parent pins to 0.28.2. Linux validation exercises production builds and the existing schema-loader shim; Windows remains outside the supported build platform. |
+| [GHSA-rj75-hqrm-r3gf](https://github.com/advisories/GHSA-rj75-hqrm-r3gf), moderate | Tailwind typography → postcss-selector-parser 6.0.10 | Scope an override to typography for 7.1.6; focused checks cover selector round-trips and a large flat selector. |
+
+The one-day release quarantine is unchanged. The compatibility overrides are
+intentional and covered by `scripts/test-dependency-security.mjs` and the Linux
+validator. Real Clerk production sign-in and cloud storage access still require
+their separate provider verification; local proxy tests use an owned upstream
+and invented credentials only.
 
 `--prod` alone is not a browser-exposure audit: most Vite artifact dependencies,
 including browser runtimes, are correctly classified as devDependencies because

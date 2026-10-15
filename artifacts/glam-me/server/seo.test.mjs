@@ -104,6 +104,13 @@ test('sitemap index references the existing empty sitemap without enabling index
 });
 
 test('HTTP status, HEAD, static files, error response and dynamic feeds', async (t) => {
+  // Sitemap indexes require an explicit canonical origin, not ambient app env.
+  const previousOrigin = process.env.SEO_SITE_ORIGIN;
+  process.env.SEO_SITE_ORIGIN = 'https://shop.example';
+  t.after(() => {
+    if (previousOrigin === undefined) delete process.env.SEO_SITE_ORIGIN;
+    else process.env.SEO_SITE_ORIGIN = previousOrigin;
+  });
   const directory = await mkdtemp(path.join(tmpdir(), 'glam-seo-'));
   await writeFile(path.join(directory, 'index.html'), '<html><head><title>Fallback</title></head><body>App shell</body></html>');
   await writeFile(path.join(directory, 'icon.svg'), '<svg/>');
