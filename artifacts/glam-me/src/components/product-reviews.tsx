@@ -286,8 +286,11 @@ export function ProductReviewsSection({ productId, productName }: { productId: n
   return (
     <section className="rv-section container" id="product-reviews" aria-labelledby="rv-heading" data-testid="section-reviews">
       <div className="rv-head">
-        <div><div className="eyebrow">Customer reviews</div><h2 id="rv-heading">What customers say about {productName}</h2></div>
-        <div><ProductReviewSummary /></div>
+        <div className="eyebrow">Customer reviews</div>
+        <div className="rv-title-row">
+          <h2 id="rv-heading">What customers say about {productName}</h2>
+          <ProductReviewSummary />
+        </div>
       </div>
       <div className="rv-grid">
         <div aria-live="polite">

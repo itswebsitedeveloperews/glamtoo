@@ -7,7 +7,10 @@
 h2#rv-heading {
   font-size: 32px !important;
 }
-.rv-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;align-items:end;margin-bottom:28px}
+.rv-head{display:flex;flex-direction:column;gap:16px;margin-bottom:28px}
+.rv-title-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+.rv-title-row h2{flex:1 1 440px;margin:0}
+.rv-title-row .rv-summary{flex:0 0 auto;margin:0}
 .rv-grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:48px}
 @media(max-width:860px){.rv-grid{grid-template-columns:1fr;gap:32px}}
 .rv-list{list-style:none;margin:0;padding:0;display:grid;gap:0}
