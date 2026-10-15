@@ -278,7 +278,7 @@ function ReviewAccessPanel({ productId }: { productId: number }) {
   </>);
 }
 
-export function ProductReviewsSection({ productId, productName }: { productId: number; productName: string }) {
+export function ProductReviewsSection({ productId }: { productId: number }) {
   const ctx = useContext(ReviewsContext);
   if (!ctx) return null;
   const { data, isLoading, isError, page, setPage, refetch } = ctx;
@@ -288,7 +288,7 @@ export function ProductReviewsSection({ productId, productName }: { productId: n
       <div className="rv-head">
         <div className="eyebrow">Customer reviews</div>
         <div className="rv-title-row">
-          <h2 id="rv-heading">What customers say about {productName}</h2>
+          <h2 id="rv-heading">What customers say about</h2>
           <ProductReviewSummary />
         </div>
       </div>

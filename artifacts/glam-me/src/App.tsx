@@ -1912,7 +1912,7 @@ function ProductDetailContent({ params }: { params: { slug: string } }) {
           </div>
         </div>
       </div>
-      <ProductReviewsSection key={product.id} productId={Number(product.id)} productName={product.name} />
+      <ProductReviewsSection key={product.id} productId={Number(product.id)} />
       {relatedProducts.length > 0 && (
         <section className="related-products container" aria-labelledby="related-products-heading" data-testid="section-related-products">
           <div className="related-products-heading">
