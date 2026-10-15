@@ -1,3 +1,5 @@
+- [Hero media](hero-media-policy.md) — Preserve intentional empty slides; publishing hero images must not turn deletion into shared-file removal.
+- [Announcement copy](announcement-copy-policy.md) — Empty is intentional until the merchant supplies approved copy; never seed invented shipping promises or offers.
 - [Clerk embedded sign-in](clerk-embedded-sign-in.md) — In this Wouter/Vite app, use Clerk’s default embedded sign-in mode; path routing left the auth widget empty.
 - [Clerk heading semantics](clerk-heading-semantics.md) — Clerk owns the embedded title tag; appearance styling cannot turn its h1 into an h2.
 - [Clerk UI upgrade policy](clerk-ui-upgrades.md) — Upgrade bundled auth UI deliberately; verify the real signed-out widgets, not appearance fixtures alone.

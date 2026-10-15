@@ -8,6 +8,388 @@
 import * as zod from 'zod';
 
 
+export const getHeroSlidesResponseSlidesItemOneDesktopImageMax = 2048;
+
+export const getHeroSlidesResponseSlidesItemOneMobileImageMax = 2048;
+
+export const getHeroSlidesResponseSlidesItemOneHeadingMax = 120;
+
+export const getHeroSlidesResponseSlidesItemOneTextMax = 320;
+
+export const getHeroSlidesResponseSlidesItemOneCtaTextMax = 60;
+
+export const getHeroSlidesResponseSlidesItemOneCtaLinkMax = 2048;
+
+export const getHeroSlidesResponseSlidesItemOneAltTextMax = 240;
+
+export const getHeroSlidesResponseSlidesItemOneDisplayOrderMin = 0;
+export const getHeroSlidesResponseSlidesItemOneDisplayOrderMax = 10000;
+
+
+
+export const GetHeroSlidesResponse = zod.object({
+  "slides": zod.array(zod.object({
+  "desktopImage": zod.string().min(1).max(getHeroSlidesResponseSlidesItemOneDesktopImageMax),
+  "mobileImage": zod.string().min(1).max(getHeroSlidesResponseSlidesItemOneMobileImageMax),
+  "heading": zod.string().max(getHeroSlidesResponseSlidesItemOneHeadingMax),
+  "text": zod.string().max(getHeroSlidesResponseSlidesItemOneTextMax),
+  "ctaText": zod.string().max(getHeroSlidesResponseSlidesItemOneCtaTextMax),
+  "ctaLink": zod.string().max(getHeroSlidesResponseSlidesItemOneCtaLinkMax).nullable(),
+  "altText": zod.string().min(1).max(getHeroSlidesResponseSlidesItemOneAltTextMax),
+  "textPosition": zod.enum(['left', 'center', 'right']),
+  "displayOrder": zod.number().int().min(getHeroSlidesResponseSlidesItemOneDisplayOrderMin).max(getHeroSlidesResponseSlidesItemOneDisplayOrderMax),
+  "enabled": zod.boolean()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "revision": zod.number().int()
+})))
+})
+
+
+export const getAdminHeroSlidesResponseSlidesItemOneDesktopImageMax = 2048;
+
+export const getAdminHeroSlidesResponseSlidesItemOneMobileImageMax = 2048;
+
+export const getAdminHeroSlidesResponseSlidesItemOneHeadingMax = 120;
+
+export const getAdminHeroSlidesResponseSlidesItemOneTextMax = 320;
+
+export const getAdminHeroSlidesResponseSlidesItemOneCtaTextMax = 60;
+
+export const getAdminHeroSlidesResponseSlidesItemOneCtaLinkMax = 2048;
+
+export const getAdminHeroSlidesResponseSlidesItemOneAltTextMax = 240;
+
+export const getAdminHeroSlidesResponseSlidesItemOneDisplayOrderMin = 0;
+export const getAdminHeroSlidesResponseSlidesItemOneDisplayOrderMax = 10000;
+
+
+
+export const GetAdminHeroSlidesResponse = zod.object({
+  "slides": zod.array(zod.object({
+  "desktopImage": zod.string().min(1).max(getAdminHeroSlidesResponseSlidesItemOneDesktopImageMax),
+  "mobileImage": zod.string().min(1).max(getAdminHeroSlidesResponseSlidesItemOneMobileImageMax),
+  "heading": zod.string().max(getAdminHeroSlidesResponseSlidesItemOneHeadingMax),
+  "text": zod.string().max(getAdminHeroSlidesResponseSlidesItemOneTextMax),
+  "ctaText": zod.string().max(getAdminHeroSlidesResponseSlidesItemOneCtaTextMax),
+  "ctaLink": zod.string().max(getAdminHeroSlidesResponseSlidesItemOneCtaLinkMax).nullable(),
+  "altText": zod.string().min(1).max(getAdminHeroSlidesResponseSlidesItemOneAltTextMax),
+  "textPosition": zod.enum(['left', 'center', 'right']),
+  "displayOrder": zod.number().int().min(getAdminHeroSlidesResponseSlidesItemOneDisplayOrderMin).max(getAdminHeroSlidesResponseSlidesItemOneDisplayOrderMax),
+  "enabled": zod.boolean()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "revision": zod.number().int()
+})))
+})
+
+
+export const createHeroSlideBodyDesktopImageMax = 2048;
+
+export const createHeroSlideBodyMobileImageMax = 2048;
+
+export const createHeroSlideBodyHeadingMax = 120;
+
+export const createHeroSlideBodyTextMax = 320;
+
+export const createHeroSlideBodyCtaTextMax = 60;
+
+export const createHeroSlideBodyCtaLinkMax = 2048;
+
+export const createHeroSlideBodyAltTextMax = 240;
+
+export const createHeroSlideBodyDisplayOrderMin = 0;
+export const createHeroSlideBodyDisplayOrderMax = 10000;
+
+
+
+export const CreateHeroSlideBody = zod.object({
+  "desktopImage": zod.string().min(1).max(createHeroSlideBodyDesktopImageMax),
+  "mobileImage": zod.string().min(1).max(createHeroSlideBodyMobileImageMax),
+  "heading": zod.string().max(createHeroSlideBodyHeadingMax),
+  "text": zod.string().max(createHeroSlideBodyTextMax),
+  "ctaText": zod.string().max(createHeroSlideBodyCtaTextMax),
+  "ctaLink": zod.string().max(createHeroSlideBodyCtaLinkMax).nullable(),
+  "altText": zod.string().min(1).max(createHeroSlideBodyAltTextMax),
+  "textPosition": zod.enum(['left', 'center', 'right']),
+  "displayOrder": zod.number().int().min(createHeroSlideBodyDisplayOrderMin).max(createHeroSlideBodyDisplayOrderMax),
+  "enabled": zod.boolean()
+})
+
+export const createHeroSlideResponseOneDesktopImageMax = 2048;
+
+export const createHeroSlideResponseOneMobileImageMax = 2048;
+
+export const createHeroSlideResponseOneHeadingMax = 120;
+
+export const createHeroSlideResponseOneTextMax = 320;
+
+export const createHeroSlideResponseOneCtaTextMax = 60;
+
+export const createHeroSlideResponseOneCtaLinkMax = 2048;
+
+export const createHeroSlideResponseOneAltTextMax = 240;
+
+export const createHeroSlideResponseOneDisplayOrderMin = 0;
+export const createHeroSlideResponseOneDisplayOrderMax = 10000;
+
+
+
+export const CreateHeroSlideResponse = zod.object({
+  "desktopImage": zod.string().min(1).max(createHeroSlideResponseOneDesktopImageMax),
+  "mobileImage": zod.string().min(1).max(createHeroSlideResponseOneMobileImageMax),
+  "heading": zod.string().max(createHeroSlideResponseOneHeadingMax),
+  "text": zod.string().max(createHeroSlideResponseOneTextMax),
+  "ctaText": zod.string().max(createHeroSlideResponseOneCtaTextMax),
+  "ctaLink": zod.string().max(createHeroSlideResponseOneCtaLinkMax).nullable(),
+  "altText": zod.string().min(1).max(createHeroSlideResponseOneAltTextMax),
+  "textPosition": zod.enum(['left', 'center', 'right']),
+  "displayOrder": zod.number().int().min(createHeroSlideResponseOneDisplayOrderMin).max(createHeroSlideResponseOneDisplayOrderMax),
+  "enabled": zod.boolean()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "revision": zod.number().int()
+}))
+
+
+
+
+
+export const UpdateHeroSlideParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateHeroSlideBodyOneDesktopImageMax = 2048;
+
+export const updateHeroSlideBodyOneMobileImageMax = 2048;
+
+export const updateHeroSlideBodyOneHeadingMax = 120;
+
+export const updateHeroSlideBodyOneTextMax = 320;
+
+export const updateHeroSlideBodyOneCtaTextMax = 60;
+
+export const updateHeroSlideBodyOneCtaLinkMax = 2048;
+
+export const updateHeroSlideBodyOneAltTextMax = 240;
+
+export const updateHeroSlideBodyOneDisplayOrderMin = 0;
+export const updateHeroSlideBodyOneDisplayOrderMax = 10000;
+
+
+
+
+export const UpdateHeroSlideBody = zod.object({
+  "desktopImage": zod.string().min(1).max(updateHeroSlideBodyOneDesktopImageMax),
+  "mobileImage": zod.string().min(1).max(updateHeroSlideBodyOneMobileImageMax),
+  "heading": zod.string().max(updateHeroSlideBodyOneHeadingMax),
+  "text": zod.string().max(updateHeroSlideBodyOneTextMax),
+  "ctaText": zod.string().max(updateHeroSlideBodyOneCtaTextMax),
+  "ctaLink": zod.string().max(updateHeroSlideBodyOneCtaLinkMax).nullable(),
+  "altText": zod.string().min(1).max(updateHeroSlideBodyOneAltTextMax),
+  "textPosition": zod.enum(['left', 'center', 'right']),
+  "displayOrder": zod.number().int().min(updateHeroSlideBodyOneDisplayOrderMin).max(updateHeroSlideBodyOneDisplayOrderMax),
+  "enabled": zod.boolean()
+}).and(zod.object({
+  "expectedRevision": zod.number().int().min(1)
+}))
+
+export const updateHeroSlideResponseOneDesktopImageMax = 2048;
+
+export const updateHeroSlideResponseOneMobileImageMax = 2048;
+
+export const updateHeroSlideResponseOneHeadingMax = 120;
+
+export const updateHeroSlideResponseOneTextMax = 320;
+
+export const updateHeroSlideResponseOneCtaTextMax = 60;
+
+export const updateHeroSlideResponseOneCtaLinkMax = 2048;
+
+export const updateHeroSlideResponseOneAltTextMax = 240;
+
+export const updateHeroSlideResponseOneDisplayOrderMin = 0;
+export const updateHeroSlideResponseOneDisplayOrderMax = 10000;
+
+
+
+export const UpdateHeroSlideResponse = zod.object({
+  "desktopImage": zod.string().min(1).max(updateHeroSlideResponseOneDesktopImageMax),
+  "mobileImage": zod.string().min(1).max(updateHeroSlideResponseOneMobileImageMax),
+  "heading": zod.string().max(updateHeroSlideResponseOneHeadingMax),
+  "text": zod.string().max(updateHeroSlideResponseOneTextMax),
+  "ctaText": zod.string().max(updateHeroSlideResponseOneCtaTextMax),
+  "ctaLink": zod.string().max(updateHeroSlideResponseOneCtaLinkMax).nullable(),
+  "altText": zod.string().min(1).max(updateHeroSlideResponseOneAltTextMax),
+  "textPosition": zod.enum(['left', 'center', 'right']),
+  "displayOrder": zod.number().int().min(updateHeroSlideResponseOneDisplayOrderMin).max(updateHeroSlideResponseOneDisplayOrderMax),
+  "enabled": zod.boolean()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "revision": zod.number().int()
+}))
+
+
+
+
+
+export const DeleteHeroSlideParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const DeleteHeroSlideBody = zod.object({
+  "expectedRevision": zod.number().int().min(1)
+})
+
+export const DeleteHeroSlideResponse = zod.void()
+
+
+export const getAnnouncementsResponseAnnouncementsItemOneTextMax = 160;
+
+export const getAnnouncementsResponseAnnouncementsItemOneLinkMax = 2048;
+
+export const getAnnouncementsResponseAnnouncementsItemOneDisplayOrderMin = 0;
+export const getAnnouncementsResponseAnnouncementsItemOneDisplayOrderMax = 10000;
+
+
+
+export const GetAnnouncementsResponse = zod.object({
+  "announcements": zod.array(zod.object({
+  "text": zod.string().min(1).max(getAnnouncementsResponseAnnouncementsItemOneTextMax),
+  "link": zod.string().max(getAnnouncementsResponseAnnouncementsItemOneLinkMax).nullable(),
+  "displayOrder": zod.number().int().min(getAnnouncementsResponseAnnouncementsItemOneDisplayOrderMin).max(getAnnouncementsResponseAnnouncementsItemOneDisplayOrderMax),
+  "enabled": zod.boolean()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "revision": zod.number().int()
+})))
+})
+
+
+export const getAdminAnnouncementsResponseAnnouncementsItemOneTextMax = 160;
+
+export const getAdminAnnouncementsResponseAnnouncementsItemOneLinkMax = 2048;
+
+export const getAdminAnnouncementsResponseAnnouncementsItemOneDisplayOrderMin = 0;
+export const getAdminAnnouncementsResponseAnnouncementsItemOneDisplayOrderMax = 10000;
+
+
+
+export const GetAdminAnnouncementsResponse = zod.object({
+  "announcements": zod.array(zod.object({
+  "text": zod.string().min(1).max(getAdminAnnouncementsResponseAnnouncementsItemOneTextMax),
+  "link": zod.string().max(getAdminAnnouncementsResponseAnnouncementsItemOneLinkMax).nullable(),
+  "displayOrder": zod.number().int().min(getAdminAnnouncementsResponseAnnouncementsItemOneDisplayOrderMin).max(getAdminAnnouncementsResponseAnnouncementsItemOneDisplayOrderMax),
+  "enabled": zod.boolean()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "revision": zod.number().int()
+})))
+})
+
+
+export const createAnnouncementBodyTextMax = 160;
+
+export const createAnnouncementBodyLinkMax = 2048;
+
+export const createAnnouncementBodyDisplayOrderMin = 0;
+export const createAnnouncementBodyDisplayOrderMax = 10000;
+
+
+
+export const CreateAnnouncementBody = zod.object({
+  "text": zod.string().min(1).max(createAnnouncementBodyTextMax),
+  "link": zod.string().max(createAnnouncementBodyLinkMax).nullable(),
+  "displayOrder": zod.number().int().min(createAnnouncementBodyDisplayOrderMin).max(createAnnouncementBodyDisplayOrderMax),
+  "enabled": zod.boolean()
+})
+
+export const createAnnouncementResponseOneTextMax = 160;
+
+export const createAnnouncementResponseOneLinkMax = 2048;
+
+export const createAnnouncementResponseOneDisplayOrderMin = 0;
+export const createAnnouncementResponseOneDisplayOrderMax = 10000;
+
+
+
+export const CreateAnnouncementResponse = zod.object({
+  "text": zod.string().min(1).max(createAnnouncementResponseOneTextMax),
+  "link": zod.string().max(createAnnouncementResponseOneLinkMax).nullable(),
+  "displayOrder": zod.number().int().min(createAnnouncementResponseOneDisplayOrderMin).max(createAnnouncementResponseOneDisplayOrderMax),
+  "enabled": zod.boolean()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "revision": zod.number().int()
+}))
+
+
+
+
+
+export const UpdateAnnouncementParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+export const updateAnnouncementBodyOneTextMax = 160;
+
+export const updateAnnouncementBodyOneLinkMax = 2048;
+
+export const updateAnnouncementBodyOneDisplayOrderMin = 0;
+export const updateAnnouncementBodyOneDisplayOrderMax = 10000;
+
+
+
+
+export const UpdateAnnouncementBody = zod.object({
+  "text": zod.string().min(1).max(updateAnnouncementBodyOneTextMax),
+  "link": zod.string().max(updateAnnouncementBodyOneLinkMax).nullable(),
+  "displayOrder": zod.number().int().min(updateAnnouncementBodyOneDisplayOrderMin).max(updateAnnouncementBodyOneDisplayOrderMax),
+  "enabled": zod.boolean()
+}).and(zod.object({
+  "expectedRevision": zod.number().int().min(1)
+}))
+
+export const updateAnnouncementResponseOneTextMax = 160;
+
+export const updateAnnouncementResponseOneLinkMax = 2048;
+
+export const updateAnnouncementResponseOneDisplayOrderMin = 0;
+export const updateAnnouncementResponseOneDisplayOrderMax = 10000;
+
+
+
+export const UpdateAnnouncementResponse = zod.object({
+  "text": zod.string().min(1).max(updateAnnouncementResponseOneTextMax),
+  "link": zod.string().max(updateAnnouncementResponseOneLinkMax).nullable(),
+  "displayOrder": zod.number().int().min(updateAnnouncementResponseOneDisplayOrderMin).max(updateAnnouncementResponseOneDisplayOrderMax),
+  "enabled": zod.boolean()
+}).and(zod.object({
+  "id": zod.number().int(),
+  "revision": zod.number().int()
+}))
+
+
+
+
+
+export const DeleteAnnouncementParams = zod.object({
+  "id": zod.coerce.number().int().min(1)
+})
+
+
+
+
+export const DeleteAnnouncementBody = zod.object({
+  "expectedRevision": zod.number().int().min(1)
+})
+
+export const DeleteAnnouncementResponse = zod.void()
+
+
 /**
  * @summary Approved reviews and rating summary for a published product
  */
@@ -605,3 +987,5 @@ export const SubmitContactEnquiryResponse = zod.object({
   "sent": zod.boolean(),
   "message": zod.string()
 })
+
+

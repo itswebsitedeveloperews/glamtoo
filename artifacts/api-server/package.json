@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test:hero-slides": "esbuild test/hero-slides.test.ts --bundle --platform=node --format=cjs --alias:@clerk/express=./test/fixtures/review-clerk.ts --outfile=../../generated-artifacts/hero-tests/hero-slides.cjs && NODE_ENV=test node --test ../../generated-artifacts/hero-tests/hero-slides.cjs",
+    "test:announcements": "esbuild test/announcements.test.ts --bundle --platform=node --format=cjs --alias:@clerk/express=./test/fixtures/review-clerk.ts --outfile=../../generated-artifacts/announcement-tests/announcements.cjs && NODE_ENV=test node --test ../../generated-artifacts/announcement-tests/announcements.cjs",
     "test:reviews": "esbuild test/product-reviews.test.ts --bundle --platform=node --format=cjs --alias:@clerk/express=./test/fixtures/review-clerk.ts --outfile=../../generated-artifacts/reviews-tests/product-reviews.cjs && NODE_ENV=test node --test ../../generated-artifacts/reviews-tests/product-reviews.cjs",
     "dev": "export NODE_ENV=development && pnpm run build && pnpm run start",
     "build": "node ./build.mjs",

@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type ReactNode } from "react";
-import { ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FlaskConical, FolderOpen, Globe2, Image as ImageIcon, Inbox, KeyRound, LayoutDashboard, ListChecks, LockKeyhole, Mail, MapPin, Package, Ruler, Save, Send, Server, ShieldCheck, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, Upload, X, type LucideIcon } from "lucide-react";
+import AdminAnnouncements from "@/components/admin-announcements";
+import AdminHeroSlides from "@/components/admin-hero-slides";
+import { Megaphone, ArrowUpRight, Check, CircleDollarSign, Copy, CreditCard, Eye, FlaskConical, FolderOpen, Globe2, Image as ImageIcon, Inbox, KeyRound, LayoutDashboard, ListChecks, LockKeyhole, Mail, MapPin, Package, Ruler, Save, Send, Server, ShieldCheck, ShoppingBag, Tags, TicketPercent, Truck, UserRound, Users, Upload, X, type LucideIcon } from "lucide-react";
 import {
   catalogCategories,
   catalogProducts,
@@ -15,7 +17,7 @@ import {
   type CatalogVariation,
 } from "@/data/catalog";
 import { sanitizeRichTextHtml } from "@/utils/rich-text";
-import logoImage from "@assets/logo-soft-options/glam-too-selected-dark.svg";
+import logoImage from "@assets/logo-soft-options/glam-too-current-dark.svg";
 import AdminHomePage from "./admin-home-page";
 import AdminPromotionalPreview from "@/components/AdminPromotionalPreview";
 import { defaultHomePageSettings, type HomePageSettings } from "@/data/home-page";
@@ -106,6 +108,8 @@ type AdminSection =
   | "coupons"
   | "messages"
   | "reviews"
+  | "announcements"
+  | "hero-slides"
   | "users";
 
 type ProductStatus = "Published" | "Draft";
@@ -333,6 +337,8 @@ const blankSizeGuideRow = (): SizeGuideRow => ({
 const navItems: Array<{ id: AdminSection; label: string; icon: LucideIcon }> = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "home-page", label: "Home Page", icon: FolderOpen },
+  { id: "announcements", label: "Announcements", icon: Megaphone },
+  { id: "hero-slides", label: "Hero Slides", icon: ImageIcon },
   { id: "products", label: "Products", icon: Package },
   { id: "categories", label: "Categories", icon: Tags },
   { id: "orders", label: "Orders", icon: ShoppingBag },
@@ -3657,6 +3663,9 @@ export default function AdminDashboard({
             <AdminProductReviews />
           </>
         )}
+
+        {section === "announcements" && <AdminAnnouncements />}
+        {section === "hero-slides" && <AdminHeroSlides availableImages={catalogImages} />}
 
         {section === "users" && (
           <>

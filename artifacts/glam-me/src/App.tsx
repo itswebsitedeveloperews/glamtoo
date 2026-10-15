@@ -1,13 +1,13 @@
 import { createContext, lazy, Suspense, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import fashionImage from '@assets/glam-me-20260814-final-v2_1787646629461.webp';
-import logoImage from '@assets/logo-soft-options/glam-too-selected.svg';
-import heroImage from '@assets/glam-me-home-banner_1787651354578.webp';
+import logoImage from '@assets/glam-too_1792067910289.svg';
 import aboutHeroImage from '@assets/about_banner_1789035643721.webp';
 import aboutStudioImage from '@assets/glam-me-5_1787653559643.webp';
 import aboutStoryImage from '@assets/glam-me-12_1787653559644.webp';
 import { catalogCategories, catalogProducts, createProductSlug, formatCatalogPrice, getCatalogMediaSource, getCatalogProductImages, getCategorySlug, getProductCategorySlug, hydrateCatalogProductMedia, type CatalogCategory, type CatalogProduct } from '@/data/catalog';
 import RouteSeo from '@/components/RouteSeo';
+import ProductShare from '@/components/ProductShare';
 import OrderConfirmationView from '@/components/OrderConfirmationView';
 import ShopMobileFilters, { type ShopFilterValues } from '@/components/ShopMobileFilters';
 import { defaultHomePageSettings, type HomePageSettings } from '@/data/home-page';
@@ -33,6 +33,8 @@ import { useMobileMenu } from '@/hooks/use-mobile-menu';
 import { getRecoveryErrorMessage, saveRecoveryPassword } from '@/utils/password-recovery';
 import { PublicSnapshotContext, readPublicSnapshot, type PublicSnapshot } from '@/data/public-snapshot';
 import { CollectionTile, MomentCard } from '@/components/PromotionalCards';
+import AnnouncementBar from '@/components/announcement-bar';
+import HeroSlider from '@/components/hero-slider';
 import CartSidebar, { type CartSidebarLine, type CartSidebarRecommendation } from '@/components/cart-sidebar';
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -902,6 +904,7 @@ function Header() {
 
   return (
     <header className={`site-header${isScrolled ? " is-scrolled" : ""}${isCompact ? " is-compact" : ""}${menuOpen ? " is-menu-open" : ""}`} data-testid="site-header">
+      <AnnouncementBar />
       <div className="header-inner">
         <button
           ref={menuTriggerRef}
@@ -1083,14 +1086,7 @@ function Home() {
   const momentProducts = settings.momentIds.map((id) => productById.get(id)).filter((product): product is CatalogProduct => Boolean(product));
   return (
     <Shell>
-      <section className="hero" aria-label="The new occasion edit">
-        <img className="hero-image" {...responsiveImage(heroImage)} alt="Woman in a pink dress beside a vintage pink car on a sunny street" fetchPriority="high" loading="eager" />
-        <div className="hero-copy">
-          <h1>It&apos;s your moment</h1>
-          <p>Standout outfits for every plan on your calendar.</p>
-          <a className="button button-pink" href="/shop" data-testid="link-hero-shop">Shop the collection</a>
-        </div>
-      </section>
+      <HeroSlider />
       {products.length === 0 && <section className="container catalog-status"><h2>No products are available right now.</h2><p>Please check back or <a href="/contact">contact us</a> for help.</p></section>}
       {featuredCategories.length > 0 && (
         <section className={`collection-collage container${featuredCategories.length >= 5 ? " is-five-or-more" : ""}`} aria-labelledby="collection-heading">
@@ -1800,9 +1796,10 @@ function ProductDetailContent({ params }: { params: { slug: string } }) {
             )}
           </div>
           <div className="detail-copy">
-            <div className="detail-intro">
-              <div className="detail-header-row">
+            <div className="detail-intro product-share-intro">
+              <div className="detail-header-row product-share-header">
                 <span className="eyebrow">{product.eyebrow?.trim() || product.category}</span>
+                <ProductShare key={product.id} name={product.name} slug={product.slug} image={product.image} />
               </div>
               <h1>{product.name}</h1>
               <div className="detail-price">{displayedPrice}</div>

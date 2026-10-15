@@ -11,6 +11,58 @@ import { createSeoServer } from './index.mjs';
 
 import { snapshot, fixtureResponse } from './public-ssr.fixtures.mjs';
 
+test('announcement HTML precedes the header logo and empty/disabled bars occupy no markup', () => {
+  const announcement = { id: 901, text: 'Browse the new edit', link: '/shop', displayOrder: 0, enabled: true, revision: 1 };
+  const html = render('/about', { ...snapshot, announcements: [announcement] });
+  assert.ok(html.indexOf('data-testid="announcement-bar"') < html.indexOf('data-testid="link-home-logo"'));
+  assert.match(html, /Browse the new edit/);
+  assert.doesNotMatch(html, /data-testid="button-announcement-next"/);
+  for (const announcements of [[], [{ ...announcement, enabled: false }]]) {
+    assert.doesNotMatch(render('/about', { ...snapshot, announcements }), /data-testid="announcement-bar"/);
+  }
+});
+
+test('homepage hero is database-snapshot rendered with separate image sources and one-slide controls disabled', () => {
+  const slide = { id: 801, revision: 1, desktopImage: '/images/desktop.webp', mobileImage: '/images/mobile.webp',
+    heading: 'The boutique edit', text: 'Current merchant copy', ctaText: 'Explore the edit', ctaLink: '/shop',
+    altText: 'Boutique outfit', textPosition: 'left', displayOrder: 0, enabled: true };
+  const html = render('/', { ...snapshot, heroSlides: [slide] });
+  assert.match(html, /The boutique edit/);
+  assert.match(html, /Current merchant copy/);
+  assert.match(html, /\/images\/mobile.webp/);
+  assert.match(html, /\/images\/desktop.webp/);
+  assert.match(html, /alt="Boutique outfit"/);
+  assert.match(html, /fetchPriority="high"|fetchpriority="high"/);
+  assert.doesNotMatch(html, /aria-label="Next slide"/);
+  assert.doesNotMatch(render('/', { ...snapshot, heroSlides: [] }), /The boutique edit/);
+});
+
+test('approved reviews render in the initial product HTML without customer JavaScript', () => {
+  const ready = {
+    ...snapshot,
+    products: [{ ...snapshot.products[0], id: 981, slug: 'review-ready-dress' }],
+    productReviews: { productId: 981, data: {
+      reviews: [{
+        id: 310, productId: 981, rating: 5, title: 'Visible before customer scripts',
+        body: 'Public approved review content is ready on the first response.',
+        displayName: 'Shopper', createdAt: '2026-10-15T12:00:00.000Z', verifiedPurchase: true,
+      }],
+      averageRating: 5, total: 1, page: 1, pageSize: 10,
+    } },
+  };
+  const html = render('/product/review-ready-dress', ready).replace(/<!--.*?-->/g, '');
+  assert.match(html, /Visible before customer scripts/);
+  assert.match(html, /5\.0 out of 5 from 1 review/);
+  assert.match(html, /badge-verified-310/);
+  assert.doesNotMatch(html, /data-testid="form-review"/);
+  const unavailable = render('/product/review-ready-dress', {
+    ...ready, productReviews: { productId: 981, unavailable: true },
+  });
+  assert.match(unavailable, /Reviews could not be loaded/);
+  assert.doesNotMatch(unavailable, /Visible before customer scripts/);
+  assert.match(unavailable, /Live cotton dress/);
+});
+
 test('production renderer works without workspace node_modules', async (t) => {
   const isolated = await mkdtemp(path.join(tmpdir(), 'glam-ssr-runtime-'));
   t.after(() => rm(isolated, { recursive: true, force: true }));
@@ -114,7 +166,7 @@ test('production documents render for people and crawlers; redirects and private
     assert.match(html, /id="public-storefront-data"/);
     assert.doesNotMatch(html, /Live cotton dress|Loading the collection/);
     const policyPage = ['/faq', '/returns', '/delivery-returns'].includes(route);
-    assert.equal(publicLoads, policyPage ? 2 : 0, 'Informational pages must not fetch catalog or inventory');
+    assert.equal(publicLoads, policyPage ? 3 : 1, 'Informational pages fetch only announcements and applicable policy settings, not catalog or inventory');
     if (policyPage) {
       assert.match(html, /Merchant delivery/);
       assert.match(html, /£7\.25/);

@@ -1,0 +1,36 @@
+.glam-hs { position: relative; width: 100%; background: #b86f7b; overflow: hidden; }
+.glam-hs-stage { position: relative; width: 100%; aspect-ratio: 16 / 7; min-height: 420px; max-height: 720px; }
+.glam-hs-slide { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .7s ease, visibility 0s linear .7s; display: flex; align-items: center; }
+.glam-hs-slide.is-active { opacity: 1; visibility: visible; transition: opacity .7s ease; z-index: 1; }
+.glam-hs-slide picture, .glam-hs-img { position: absolute; inset: 0; width: 100%; height: 100%; }
+.glam-hs-img { object-fit: cover; object-position: center; }
+.glam-hs-slide::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(17,12,12,.56), rgba(17,12,12,.05) 68%), linear-gradient(0deg, rgba(17,12,12,.3), transparent 35%); }
+.glam-hs-slide.is-center::after { background: radial-gradient(ellipse at center, rgba(17,12,12,.5), rgba(17,12,12,.1) 75%), linear-gradient(0deg, rgba(17,12,12,.3), transparent 35%); }
+.glam-hs-slide.is-right::after { background: linear-gradient(270deg, rgba(17,12,12,.56), rgba(17,12,12,.05) 68%), linear-gradient(0deg, rgba(17,12,12,.3), transparent 35%); }
+.glam-hs-copy { position: relative; z-index: 1; color: #fff; width: min(1240px, calc(100% - 48px)); margin: 0 auto; padding: 56px 0 72px; }
+.glam-hs-slide.is-center .glam-hs-copy { text-align: center; display: flex; flex-direction: column; align-items: center; }
+.glam-hs-slide.is-right .glam-hs-copy { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+.glam-hs-copy h1, .glam-hs-copy h2 { max-width: 570px; margin: 0 0 20px; font: 400 clamp(44px, 7vw, 100px) / 1 var(--hero-display); text-transform: capitalize; color: #fff; }
+.glam-hs-copy p { max-width: 520px; margin: 0 0 27px; color: #fff; font-size: 16px; }
+.glam-hs-arrow { position: absolute; top: 50%; transform: translateY(-50%); z-index: 3; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(255,255,255,.88); color: #1b1414; cursor: pointer; }
+.glam-hs-arrow.is-prev { left: 16px; } .glam-hs-arrow.is-next { right: 16px; }
+.glam-hs-arrow svg, .glam-hs-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.glam-hs-arrow:hover { background: #fff; }
+.glam-hs-controls { position: absolute; right: 20px; bottom: 18px; z-index: 3; display: flex; align-items: center; gap: 10px; }
+.glam-hs-toggle { width: 32px; height: 32px; border: 0; border-radius: 50%; background: rgba(255,255,255,.88); color: #1b1414; display: grid; place-items: center; cursor: pointer; }
+.glam-hs-dots { display: flex; gap: 2px; }
+.glam-hs-dot { position: relative; width: 24px; height: 24px; border: 0; background: none; cursor: pointer; padding: 0; }
+.glam-hs-dot::before { content: ''; position: absolute; inset: 7px; border-radius: 50%; background: rgba(255,255,255,.6); transition: background .2s, transform .2s; }
+.glam-hs-dot.is-active::before { background: #fff; transform: scale(1.3); }
+.glam-hs-arrow:focus-visible, .glam-hs-toggle:focus-visible, .glam-hs-dot:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 4px #1b1414; }
+.glam-hs-status { min-height: 220px; display: grid; place-content: center; justify-items: center; gap: 14px; text-align: center; background: #f6e4e8; }
+.glam-hs-status.is-loading { min-height: min(675px, 60vw); background: linear-gradient(100deg, #f1dce1 30%, #f8eaed 50%, #f1dce1 70%); }
+.glam-hs.is-reduced .glam-hs-slide, .glam-hs.is-reduced .glam-hs-slide.is-active { transition: none; }
+@media (prefers-reduced-motion: reduce) { .glam-hs-slide, .glam-hs-slide.is-active, .glam-hs-dot::before { transition: none; } }
+@media (max-width: 767px) {
+  .glam-hs-stage { aspect-ratio: 4 / 5; min-height: 0; max-height: none; }
+  .glam-hs-slide { align-items: flex-end; }
+  .glam-hs-slide::after, .glam-hs-slide.is-center::after, .glam-hs-slide.is-right::after { background: linear-gradient(0deg, rgba(17,12,12,.68), rgba(17,12,12,.05) 65%); }
+  .glam-hs-copy { padding: 24px 0 64px; }
+  .glam-hs-arrow { width: 36px; height: 36px; } .glam-hs-arrow.is-prev { left: 8px; } .glam-hs-arrow.is-next { right: 8px; }
+}

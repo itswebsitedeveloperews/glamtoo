@@ -73,3 +73,14 @@ node_modules, then check raw HTTP statuses, visible initial HTML and metadata
 for the current public routes. Preserve real 503s for unavailable live data,
 log the underlying server error, and distinguish local build verification from
 verification of a republished site.
+
+Clear each request's query cache after synchronous server rendering, including
+disabled private queries.
+
+**Why:** Explicit client cache lifetimes still scheduled cleanup timers during
+SSR. Without clearing the request cache, an isolated renderer stayed alive and
+request-local data accumulated unnecessarily.
+
+**How to apply:** Clean up in the renderer's finally block without clearing the
+browser cache or adding asynchronous work around the shared snapshot. Keep the
+standalone renderer exit check, not just assertions about its HTML.

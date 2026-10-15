@@ -49,6 +49,12 @@ const publicImage = (value: unknown, origin: string): string | undefined => {
   if (candidate.startsWith("//")) return;
   try {
     const url = new URL(candidate, origin);
+    if (/(?:^|\.)(?:replit\.dev|repl\.co|localhost|local|internal|test)$/.test(url.hostname.toLowerCase().replace(/\.$/, ""))) return;
+    // Uploaded catalogue references use /objects/, while the public serving
+    // route (also used by the storefront gallery) is /api/storage/objects/.
+    if (url.origin === new URL(origin).origin && url.pathname.startsWith("/objects/")) {
+      url.pathname = `/api/storage${url.pathname}`;
+    }
     // Catalogs seeded from Vite can contain development-only file/module URLs.
     // These are not public production media and must never be advertised.
     if (/^\/(?:@fs|@vite|@id|src|node_modules)(?:\/|$)/.test(url.pathname)) return;

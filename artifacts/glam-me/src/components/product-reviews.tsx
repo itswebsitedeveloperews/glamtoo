@@ -3,7 +3,7 @@ import { useQueryClient, type UseQueryResult } from "@tanstack/react-query";
 import { useAuth, useUser } from "@clerk/react";
 import { useLocation } from "wouter";
 import { getGetProductReviewAccessQueryKey, submitProductReview, updateMyProductReview, useGetProductReviewAccess, useGetProductReviews, type GetProductReviewAccess200, type OwnProductReview, type ProductReviews } from "@workspace/api-client-react";
-import "../reviews.css";
+import { PublicSnapshotContext } from "../data/public-snapshot";
 
 type Access = { loaded: boolean; signedIn: boolean; userId: string | null; query: UseQueryResult<GetProductReviewAccess200> };
 type Ctx = { access: Access; productId: number; page: number; setPage: (page: number) => void; data?: ProductReviews; isLoading: boolean; isError: boolean; refetch: () => void };
@@ -11,15 +11,21 @@ const ReviewsContext = createContext<Ctx | null>(null);
 
 export function ProductReviewsProvider({ productId, children }: { productId: number; children: ReactNode }) {
   const [page, setPage] = useState(1);
+  const snapshot = useContext(PublicSnapshotContext);
+  const publicReviews = page === 1 && snapshot?.productReviews?.productId === productId ? snapshot.productReviews : undefined;
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
   const userId = isSignedIn && user?.id ? user.id : null;
   const aq = useGetProductReviewAccess(productId, { query: { queryKey: [...getGetProductReviewAccessQueryKey(productId), userId ?? "anonymous"], enabled: !!userId, retry: false, refetchOnWindowFocus: true, staleTime: 0, gcTime: 60000 } });
   const access: Access = { loaded: isLoaded && (!isSignedIn || !!user), signedIn: !!userId, userId, query: aq as UseQueryResult<GetProductReviewAccess200> };
-  const query = useGetProductReviews(productId, { page }, { query: { refetchInterval: 60000, refetchOnWindowFocus: true, refetchOnMount: "always", staleTime: 15000 } });
+  const query = useGetProductReviews(productId, { page }, {
+    request: { credentials: "omit" },
+    query: { initialData: publicReviews?.data, refetchInterval: 60000, refetchOnWindowFocus: true, refetchOnMount: "always", staleTime: 15000 },
+  });
+  const initialUnavailable = !query.data && !!publicReviews?.unavailable;
   const pagesCount = query.data ? Math.max(1, Math.ceil(query.data.total / query.data.pageSize)) : 1;
   useEffect(() => { if (query.data && page > pagesCount) setPage(pagesCount); }, [query.data, page, pagesCount]);
-  return <ReviewsContext.Provider value={{ access, productId, page, setPage, data: query.data, isLoading: query.isLoading, isError: query.isError, refetch: () => void query.refetch() }}>{children}</ReviewsContext.Provider>;
+  return <ReviewsContext.Provider value={{ access, productId, page, setPage, data: query.data, isLoading: query.isLoading && !initialUnavailable, isError: query.isError || initialUnavailable, refetch: () => void query.refetch() }}>{children}</ReviewsContext.Provider>;
 }
 
 export function Stars({ value }: { value: number }) {
@@ -233,7 +239,7 @@ function ReviewAccessPanel({ productId }: { productId: number }) {
   const { access } = ctx;
   const q = access.query;
   const shell = (children: ReactNode) => <div className="rv-side" id={`rv-panel-${productId}`} data-testid="panel-review-access"><div role="status" aria-live="polite">{saved && <p className="rv-ok" data-testid="text-review-saved">{saved}</p>}</div>{children}</div>;
-  if (!access.loaded) return shell(<div className="rv-skel" aria-label="Checking sign-in status" role="status" />);
+  if (!access.loaded) return shell(<div className="rv-skel" role="status"><p className="rv-meta">Checking review access…</p></div>);
   const q0 = access.query;
   const signInGate = (
     <div className="rv-gate" data-testid="panel-review-signin">
@@ -294,7 +300,7 @@ export function ProductReviewsSection({ productId }: { productId: number }) {
       </div>
       <div className="rv-grid">
         <div aria-live="polite">
-          {isLoading ? <div aria-label="Loading reviews"><div className="rv-skel" /><div className="rv-skel" /></div>
+          {isLoading ? <div aria-label="Loading reviews"><p className="rv-meta" role="status">Loading reviews…</p><div className="rv-skel" /><div className="rv-skel" /></div>
             : isError ? <div className="rv-banner" role="alert">Reviews could not be loaded. <button className="rv-btn alt" type="button" onClick={refetch}>Try again</button></div>
             : !data || data.reviews.length === 0 ? <div className="rv-empty" data-testid="text-reviews-empty"><strong>No reviews yet.</strong><p>Be the first to share how this piece fits and feels.</p></div>
             : <>
@@ -303,7 +309,7 @@ export function ProductReviewsSection({ productId }: { productId: number }) {
                   <li className="rv-item" key={r.id} data-testid={`review-${r.id}`}>
                     <Stars value={r.rating} /><span className="sr-only">{r.rating} out of 5 stars</span>
                     {r.verifiedPurchase === true && <span className="rv-badge" data-testid={`badge-verified-${r.id}`}>Verified Purchase</span>}<h4>{r.title}</h4><p>{r.body}</p>
-                    <div className="rv-meta">{r.displayName} &middot; <time dateTime={r.createdAt}>{new Date(r.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</time></div>
+                    <div className="rv-meta">{r.displayName} &middot; <time dateTime={r.createdAt}>{new Date(r.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/London" })}</time></div>
                   </li>
                 ))}
               </ol>

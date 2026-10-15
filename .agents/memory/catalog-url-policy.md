@@ -15,6 +15,12 @@ Keep the entire Glam Too website noindex until the user explicitly requests a po
 
 **How to apply:** Preserve titles, canonicals, pagination and slug redirects independently of indexing policy. Do not restore index directives when fixing metadata or choosing a final domain.
 
+Social sharing must use publicly served image URLs, not raw stored object references.
+
+**Why:** Product galleries normalized uploaded-image references correctly while social metadata advertised an unserved path, returning 404 despite a working gallery.
+
+**How to apply:** Reuse the public media route in metadata, exclude preview hosts, and verify the advertised image returns an image response without a signed-in session. Keep original catalogue references unchanged.
+
 Serve document metadata and redirects through the web server, not a static SPA fallback. Development middleware must exclude Vite runtime endpoints, including React Refresh.
 
 **Why:** Static hosting cannot return dynamic redirect or not-found statuses, and intercepting development runtime modules prevents React from loading.

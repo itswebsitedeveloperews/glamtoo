@@ -11,6 +11,20 @@ const fixture = (): Catalog => ({
   ],
   categories: [{ id: 1, name: "New Arrivals", description: "The newest edit." }],
 });
+test("social images use the public upload route and never advertise preview origins", () => {
+  const catalog = backfillCatalog(fixture());
+  catalog.products[0].image = "/objects/uploads/primary";
+  catalog.products[0].galleryImages = ["/objects/uploads/detail"];
+  const seo = resolveSeo("/product/sienna-dress", catalog, origin);
+  assert.equal(seo.image, `${origin}/api/storage/objects/uploads/primary`);
+  assert.deepEqual(seo.structuredData?.image, [
+    `${origin}/api/storage/objects/uploads/primary`, `${origin}/api/storage/objects/uploads/detail`,
+  ]);
+  catalog.products[0].image = "https://preview.janeway.replit.dev/objects/uploads/primary";
+  const safeFallback = resolveSeo("/product/sienna-dress", catalog, origin);
+  assert.equal(safeFallback.image, `${origin}/api/storage/objects/uploads/detail`);
+  assert.doesNotMatch(JSON.stringify(safeFallback), /replit\.dev/);
+});
 test("backfill retains product URLs and supplies durable category slugs", () => {
   const saved = backfillCatalog(fixture());
   assert.equal(saved.products[0].slug, "sienna-dress");

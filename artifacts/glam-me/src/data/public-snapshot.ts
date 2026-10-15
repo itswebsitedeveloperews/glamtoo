@@ -2,9 +2,12 @@ import type { CatalogCategory, CatalogProduct } from './catalog';
 import type { HomePageSettings } from './home-page';
 import type { ShippingMethod } from '@workspace/shipping';
 import { createContext } from 'react';
+import type { ProductReviews, Announcement, HeroSlide } from '@workspace/api-client-react';
 
 /** Only public endpoint data. Never add session, account or browser storage here. */
 export type PublicSnapshot = {
+  announcements?: Announcement[];
+  heroSlides?: HeroSlide[];
   products: CatalogProduct[];
   categories: CatalogCategory[];
   homePage: HomePageSettings | null;
@@ -13,6 +16,7 @@ export type PublicSnapshot = {
   catalogReady?: boolean;
   shippingMethods?: ShippingMethod[];
   returnInformation?: string;
+  productReviews?: { productId: number; data?: ProductReviews; unavailable?: boolean };
 };
 
 export const PublicSnapshotContext = createContext<PublicSnapshot | null>(null);

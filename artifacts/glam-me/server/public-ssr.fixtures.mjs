@@ -15,7 +15,11 @@ export const variable = {
     { id: 21, size: 'M', colour: '', price: '£39.75', stock: 3, sku: 'M' },
   ],
 };
-export const snapshot = { products: [simple, variable], categories, homePage: null, inventory: { 9001: 0, '9002:20': 0, '9002:21': 2 }, sales: { 9002: 8 } };
+export const snapshot = { products: [simple, variable], categories, homePage: null, inventory: { 9001: 0, '9002:20': 0, '9002:21': 2 }, sales: { 9002: 8 },
+  heroSlides: [{ id: 701, revision: 1, desktopImage: '/images/hero-desktop.webp', mobileImage: '/images/hero-mobile.webp',
+    heading: "It's your moment", text: 'Standout outfits for every plan on your calendar.', ctaText: 'Shop the collection',
+    ctaLink: '/shop', altText: 'A boutique outfit', textPosition: 'left', displayOrder: 0, enabled: true }],
+};
 
 export function fixtureResponse(url, options = {}) {
   if (options.method && !['GET', 'HEAD'].includes(options.method)) {
@@ -29,6 +33,8 @@ export function fixtureResponse(url, options = {}) {
       if (route === '/product/missing') return Response.json({ status: 404, title: 'Not found' });
       return Response.json({ status: 200, title: 'Current public page', canonicalUrl: 'https://example.test/shop' });
     }
+    case '/api/announcements': return Response.json({ announcements: [] });
+    case '/api/hero-slides': return Response.json({ slides: snapshot.heroSlides });
     case '/api/catalog': return Response.json({ ...snapshot, initialized: true });
     case '/api/inventory': return Response.json({ inventory: snapshot.inventory });
     case '/api/stripe/product-sales': return Response.json({ sales: snapshot.sales });

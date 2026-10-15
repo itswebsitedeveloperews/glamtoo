@@ -7,6 +7,11 @@
 @import '@fontsource/poppins/latin-600.css';
 @import '@fontsource/poppins/latin-700.css';
 @import '@fontsource/poppins/latin-800.css';
+@import './reviews.css';
+@import './product-share.css';
+@import './announcement-bar.css';
+@import './hero-slider.css';
+@import './admin-hero-slides.css';
 
 :root {
   --paper: #f5f1ed;

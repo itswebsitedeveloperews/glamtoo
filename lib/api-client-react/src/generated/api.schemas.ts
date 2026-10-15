@@ -5,6 +5,103 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+export type HeroSlideInputTextPosition = typeof HeroSlideInputTextPosition[keyof typeof HeroSlideInputTextPosition];
+
+
+export const HeroSlideInputTextPosition = {
+  left: 'left',
+  center: 'center',
+  right: 'right',
+} as const;
+
+export interface HeroSlideInput {
+  /**
+     * @minLength 1
+     * @maxLength 2048
+     */
+  desktopImage: string;
+  /**
+     * @minLength 1
+     * @maxLength 2048
+     */
+  mobileImage: string;
+  /** @maxLength 120 */
+  heading: string;
+  /** @maxLength 320 */
+  text: string;
+  /** @maxLength 60 */
+  ctaText: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  ctaLink: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 240
+     */
+  altText: string;
+  textPosition: HeroSlideInputTextPosition;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  displayOrder: number;
+  enabled: boolean;
+}
+
+export type HeroSlideUpdate = HeroSlideInput & {
+  /** @minimum 1 */
+  expectedRevision: number;
+};
+
+export type HeroSlide = HeroSlideInput & {
+  id: number;
+  revision: number;
+};
+
+export interface HeroSlideList {
+  slides: HeroSlide[];
+}
+
+export interface AnnouncementDeleteInput {
+  /** @minimum 1 */
+  expectedRevision: number;
+}
+
+export interface AnnouncementInput {
+  /**
+     * @minLength 1
+     * @maxLength 160
+     */
+  text: string;
+  /**
+     * @maxLength 2048
+     * @nullable
+     */
+  link: string | null;
+  /**
+     * @minimum 0
+     * @maximum 10000
+     */
+  displayOrder: number;
+  enabled: boolean;
+}
+
+export type AnnouncementUpdate = AnnouncementInput & {
+  /** @minimum 1 */
+  expectedRevision: number;
+};
+
+export type Announcement = AnnouncementInput & {
+  id: number;
+  revision: number;
+};
+
+export interface AnnouncementList {
+  announcements: Announcement[];
+}
+
 export type ReviewModerationInputStatus = typeof ReviewModerationInputStatus[keyof typeof ReviewModerationInputStatus];
 
 
@@ -531,3 +628,4 @@ export const GetUploadedImageWidth = {
   NUMBER_640: 640,
   NUMBER_960: 960,
 } as const;
+

@@ -17,6 +17,150 @@ tags:
   - name: seo
     description: Public search metadata and crawler files
 paths:
+  /hero-slides:
+    get:
+      operationId: getHeroSlides
+      responses:
+        "200":
+          description: Enabled homepage slides in display order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeroSlideList"
+  /admin/hero-slides:
+    get:
+      operationId: getAdminHeroSlides
+      responses:
+        "200":
+          description: All homepage slides, administrator only.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeroSlideList"
+    post:
+      operationId: createHeroSlide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HeroSlideInput"
+      responses:
+        "201":
+          description: Slide created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeroSlide"
+  /admin/hero-slides/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    patch:
+      operationId: updateHeroSlide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HeroSlideUpdate"
+      responses:
+        "200":
+          description: Slide updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeroSlide"
+        "409":
+          description: Refresh the slide before retrying this edit.
+    delete:
+      operationId: deleteHeroSlide
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementDeleteInput"
+      responses:
+        "204":
+          description: Slide deleted.
+  /announcements:
+    get:
+      operationId: getAnnouncements
+      responses:
+        "200":
+          description: Enabled announcements in display order.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnouncementList"
+  /admin/announcements:
+    get:
+      operationId: getAdminAnnouncements
+      responses:
+        "200":
+          description: All announcements. Requires administrator authorization.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnnouncementList"
+    post:
+      operationId: createAnnouncement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementInput"
+      responses:
+        "201":
+          description: Announcement created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+  /admin/announcements/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+    patch:
+      operationId: updateAnnouncement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementUpdate"
+      responses:
+        "200":
+          description: Announcement updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+        "409":
+          description: Announcement changed in another session. Refresh before editing.
+    delete:
+      operationId: deleteAnnouncement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnnouncementDeleteInput"
+      responses:
+        "204":
+          description: Announcement deleted.
+        "409":
+          description: Announcement changed in another session. Refresh before deleting.
   /products/{productId}/reviews:
     get:
       operationId: getProductReviews
@@ -830,6 +974,121 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
+    HeroSlideInput:
+      type: object
+      required: [desktopImage, mobileImage, heading, text, ctaText, ctaLink, altText, textPosition, displayOrder, enabled]
+      properties:
+        desktopImage:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        mobileImage:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        heading:
+          type: string
+          maxLength: 120
+        text:
+          type: string
+          maxLength: 320
+        ctaText:
+          type: string
+          maxLength: 60
+        ctaLink:
+          type: [string, "null"]
+          maxLength: 2048
+        altText:
+          type: string
+          minLength: 1
+          maxLength: 240
+        textPosition:
+          type: string
+          enum: [left, center, right]
+        displayOrder:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        enabled:
+          type: boolean
+    HeroSlideUpdate:
+      allOf:
+        - $ref: "#/components/schemas/HeroSlideInput"
+        - type: object
+          required: [expectedRevision]
+          properties:
+            expectedRevision:
+              type: integer
+              minimum: 1
+    HeroSlide:
+      allOf:
+        - $ref: "#/components/schemas/HeroSlideInput"
+        - type: object
+          required: [id, revision]
+          properties:
+            id:
+              type: integer
+            revision:
+              type: integer
+    HeroSlideList:
+      type: object
+      required: [slides]
+      properties:
+        slides:
+          type: array
+          items:
+            $ref: "#/components/schemas/HeroSlide"
+    AnnouncementDeleteInput:
+      type: object
+      required: [expectedRevision]
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 1
+    AnnouncementInput:
+      type: object
+      required: [text, link, displayOrder, enabled]
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 160
+        link:
+          type: [string, "null"]
+          maxLength: 2048
+        displayOrder:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        enabled:
+          type: boolean
+    AnnouncementUpdate:
+      allOf:
+        - $ref: "#/components/schemas/AnnouncementInput"
+        - type: object
+          required: [expectedRevision]
+          properties:
+            expectedRevision:
+              type: integer
+              minimum: 1
+    Announcement:
+      allOf:
+        - $ref: "#/components/schemas/AnnouncementInput"
+        - type: object
+          required: [id, revision]
+          properties:
+            id:
+              type: integer
+            revision:
+              type: integer
+    AnnouncementList:
+      type: object
+      required: [announcements]
+      properties:
+        announcements:
+          type: array
+          items:
+            $ref: "#/components/schemas/Announcement"
     ReviewModerationInput:
       type: object
       required: [status]

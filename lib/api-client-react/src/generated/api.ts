@@ -27,6 +27,11 @@ import type {
 import type {
   AbandonCheckoutPayment200,
   AdminCatalogSaveInput,
+  Announcement,
+  AnnouncementDeleteInput,
+  AnnouncementInput,
+  AnnouncementList,
+  AnnouncementUpdate,
   ApproveCustomerConfirmation200,
   CheckoutFinalizationResult,
   CheckoutPaymentInput,
@@ -46,6 +51,10 @@ import type {
   GetProductReviewsParams,
   GetUploadedImageParams,
   HealthStatus,
+  HeroSlide,
+  HeroSlideInput,
+  HeroSlideList,
+  HeroSlideUpdate,
   HostedCheckoutResult,
   ModerateProductReview200,
   OrderEmailActionInput,
@@ -91,6 +100,882 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetHeroSlidesUrl = () => {
+
+
+
+
+  return `/api/hero-slides`
+}
+
+export const getHeroSlides = async ( options?: Parameters<typeof customFetch>[1]): Promise<HeroSlideList> => {
+
+  return customFetch<HeroSlideList>(getGetHeroSlidesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetHeroSlidesQueryKey = () => {
+    return [
+    `/api/hero-slides`
+    ] as const;
+    }
+
+
+export const getGetHeroSlidesQueryOptions = <TData = Awaited<ReturnType<typeof getHeroSlides>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHeroSlides>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetHeroSlidesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getHeroSlides>>> = ({ signal }) => getHeroSlides({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getHeroSlides>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetHeroSlidesQueryResult = NonNullable<Awaited<ReturnType<typeof getHeroSlides>>>
+export type GetHeroSlidesQueryError = ErrorType<unknown>
+
+
+export function useGetHeroSlides<TData = Awaited<ReturnType<typeof getHeroSlides>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHeroSlides>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getHeroSlides>>,
+          TError,
+          Awaited<ReturnType<typeof getHeroSlides>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetHeroSlides<TData = Awaited<ReturnType<typeof getHeroSlides>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHeroSlides>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getHeroSlides>>,
+          TError,
+          Awaited<ReturnType<typeof getHeroSlides>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetHeroSlides<TData = Awaited<ReturnType<typeof getHeroSlides>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHeroSlides>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetHeroSlides<TData = Awaited<ReturnType<typeof getHeroSlides>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getHeroSlides>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetHeroSlidesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminHeroSlidesUrl = () => {
+
+
+
+
+  return `/api/admin/hero-slides`
+}
+
+export const getAdminHeroSlides = async ( options?: Parameters<typeof customFetch>[1]): Promise<HeroSlideList> => {
+
+  return customFetch<HeroSlideList>(getGetAdminHeroSlidesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminHeroSlidesQueryKey = () => {
+    return [
+    `/api/admin/hero-slides`
+    ] as const;
+    }
+
+
+export const getGetAdminHeroSlidesQueryOptions = <TData = Awaited<ReturnType<typeof getAdminHeroSlides>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminHeroSlides>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminHeroSlidesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminHeroSlides>>> = ({ signal }) => getAdminHeroSlides({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminHeroSlides>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminHeroSlidesQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminHeroSlides>>>
+export type GetAdminHeroSlidesQueryError = ErrorType<unknown>
+
+
+export function useGetAdminHeroSlides<TData = Awaited<ReturnType<typeof getAdminHeroSlides>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminHeroSlides>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminHeroSlides>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminHeroSlides>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminHeroSlides<TData = Awaited<ReturnType<typeof getAdminHeroSlides>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminHeroSlides>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminHeroSlides>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminHeroSlides>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminHeroSlides<TData = Awaited<ReturnType<typeof getAdminHeroSlides>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminHeroSlides>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetAdminHeroSlides<TData = Awaited<ReturnType<typeof getAdminHeroSlides>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminHeroSlides>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdminHeroSlidesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateHeroSlideUrl = () => {
+
+
+
+
+  return `/api/admin/hero-slides`
+}
+
+export const createHeroSlide = async (heroSlideInput: HeroSlideInput, options?: Parameters<typeof customFetch>[1]): Promise<HeroSlide> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<HeroSlide>(getCreateHeroSlideUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(heroSlideInput)
+  }
+);}
+
+
+
+
+
+export const getCreateHeroSlideMutationKey = () => ['createHeroSlide'] as const;
+
+export const getCreateHeroSlideMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHeroSlide>>, TError,CreateHeroSlideMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createHeroSlide>>, TError,CreateHeroSlideMutationVariables, TContext> => {
+
+const mutationKey = getCreateHeroSlideMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createHeroSlide>>, CreateHeroSlideMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createHeroSlide(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateHeroSlideMutationResult = NonNullable<Awaited<ReturnType<typeof createHeroSlide>>>
+    export type CreateHeroSlideMutationBody = BodyType<HeroSlideInput>
+    export type CreateHeroSlideMutationError = ErrorType<unknown>
+    export type CreateHeroSlideMutationVariables = {data: BodyType<HeroSlideInput>}
+
+    export const useCreateHeroSlide = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createHeroSlide>>, TError,CreateHeroSlideMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createHeroSlide>>,
+        TError,
+        CreateHeroSlideMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateHeroSlideMutationOptions(options), queryClient);
+    }
+
+export const getUpdateHeroSlideUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/hero-slides/${id}`
+}
+
+export const updateHeroSlide = async (id: number,
+    heroSlideUpdate: HeroSlideUpdate, options?: Parameters<typeof customFetch>[1]): Promise<HeroSlide> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<HeroSlide>(getUpdateHeroSlideUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(heroSlideUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateHeroSlideMutationKey = () => ['updateHeroSlide'] as const;
+
+export const getUpdateHeroSlideMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateHeroSlide>>, TError,UpdateHeroSlideMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateHeroSlide>>, TError,UpdateHeroSlideMutationVariables, TContext> => {
+
+const mutationKey = getUpdateHeroSlideMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateHeroSlide>>, UpdateHeroSlideMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateHeroSlide(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateHeroSlideMutationResult = NonNullable<Awaited<ReturnType<typeof updateHeroSlide>>>
+    export type UpdateHeroSlideMutationBody = BodyType<HeroSlideUpdate>
+    export type UpdateHeroSlideMutationError = ErrorType<void>
+    export type UpdateHeroSlideMutationVariables = {id: number;data: BodyType<HeroSlideUpdate>}
+
+    export const useUpdateHeroSlide = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateHeroSlide>>, TError,UpdateHeroSlideMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateHeroSlide>>,
+        TError,
+        UpdateHeroSlideMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateHeroSlideMutationOptions(options), queryClient);
+    }
+
+export const getDeleteHeroSlideUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/hero-slides/${id}`
+}
+
+export const deleteHeroSlide = async (id: number,
+    announcementDeleteInput: AnnouncementDeleteInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getDeleteHeroSlideUrl(id),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(announcementDeleteInput)
+  }
+);}
+
+
+
+
+
+export const getDeleteHeroSlideMutationKey = () => ['deleteHeroSlide'] as const;
+
+export const getDeleteHeroSlideMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHeroSlide>>, TError,DeleteHeroSlideMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteHeroSlide>>, TError,DeleteHeroSlideMutationVariables, TContext> => {
+
+const mutationKey = getDeleteHeroSlideMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteHeroSlide>>, DeleteHeroSlideMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  deleteHeroSlide(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteHeroSlideMutationResult = NonNullable<Awaited<ReturnType<typeof deleteHeroSlide>>>
+    export type DeleteHeroSlideMutationBody = BodyType<AnnouncementDeleteInput>
+    export type DeleteHeroSlideMutationError = ErrorType<unknown>
+    export type DeleteHeroSlideMutationVariables = {id: number;data: BodyType<AnnouncementDeleteInput>}
+
+    export const useDeleteHeroSlide = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteHeroSlide>>, TError,DeleteHeroSlideMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteHeroSlide>>,
+        TError,
+        DeleteHeroSlideMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteHeroSlideMutationOptions(options), queryClient);
+    }
+
+export const getGetAnnouncementsUrl = () => {
+
+
+
+
+  return `/api/announcements`
+}
+
+export const getAnnouncements = async ( options?: Parameters<typeof customFetch>[1]): Promise<AnnouncementList> => {
+
+  return customFetch<AnnouncementList>(getGetAnnouncementsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAnnouncementsQueryKey = () => {
+    return [
+    `/api/announcements`
+    ] as const;
+    }
+
+
+export const getGetAnnouncementsQueryOptions = <TData = Awaited<ReturnType<typeof getAnnouncements>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAnnouncementsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnnouncements>>> = ({ signal }) => getAnnouncements({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAnnouncementsQueryResult = NonNullable<Awaited<ReturnType<typeof getAnnouncements>>>
+export type GetAnnouncementsQueryError = ErrorType<unknown>
+
+
+export function useGetAnnouncements<TData = Awaited<ReturnType<typeof getAnnouncements>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnnouncements>>,
+          TError,
+          Awaited<ReturnType<typeof getAnnouncements>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnnouncements<TData = Awaited<ReturnType<typeof getAnnouncements>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAnnouncements>>,
+          TError,
+          Awaited<ReturnType<typeof getAnnouncements>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAnnouncements<TData = Awaited<ReturnType<typeof getAnnouncements>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetAnnouncements<TData = Awaited<ReturnType<typeof getAnnouncements>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAnnouncements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAnnouncementsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetAdminAnnouncementsUrl = () => {
+
+
+
+
+  return `/api/admin/announcements`
+}
+
+export const getAdminAnnouncements = async ( options?: Parameters<typeof customFetch>[1]): Promise<AnnouncementList> => {
+
+  return customFetch<AnnouncementList>(getGetAdminAnnouncementsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminAnnouncementsQueryKey = () => {
+    return [
+    `/api/admin/announcements`
+    ] as const;
+    }
+
+
+export const getGetAdminAnnouncementsQueryOptions = <TData = Awaited<ReturnType<typeof getAdminAnnouncements>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminAnnouncements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminAnnouncementsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminAnnouncements>>> = ({ signal }) => getAdminAnnouncements({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminAnnouncements>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminAnnouncementsQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminAnnouncements>>>
+export type GetAdminAnnouncementsQueryError = ErrorType<unknown>
+
+
+export function useGetAdminAnnouncements<TData = Awaited<ReturnType<typeof getAdminAnnouncements>>, TError = ErrorType<unknown>>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminAnnouncements>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminAnnouncements>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminAnnouncements>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminAnnouncements<TData = Awaited<ReturnType<typeof getAdminAnnouncements>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminAnnouncements>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminAnnouncements>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminAnnouncements>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminAnnouncements<TData = Awaited<ReturnType<typeof getAdminAnnouncements>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminAnnouncements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetAdminAnnouncements<TData = Awaited<ReturnType<typeof getAdminAnnouncements>>, TError = ErrorType<unknown>>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminAnnouncements>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdminAnnouncementsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAnnouncementUrl = () => {
+
+
+
+
+  return `/api/admin/announcements`
+}
+
+export const createAnnouncement = async (announcementInput: AnnouncementInput, options?: Parameters<typeof customFetch>[1]): Promise<Announcement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Announcement>(getCreateAnnouncementUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(announcementInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAnnouncementMutationKey = () => ['createAnnouncement'] as const;
+
+export const getCreateAnnouncementMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAnnouncement>>, TError,CreateAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAnnouncement>>, TError,CreateAnnouncementMutationVariables, TContext> => {
+
+const mutationKey = getCreateAnnouncementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAnnouncement>>, CreateAnnouncementMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAnnouncement(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof createAnnouncement>>>
+    export type CreateAnnouncementMutationBody = BodyType<AnnouncementInput>
+    export type CreateAnnouncementMutationError = ErrorType<unknown>
+    export type CreateAnnouncementMutationVariables = {data: BodyType<AnnouncementInput>}
+
+    export const useCreateAnnouncement = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAnnouncement>>, TError,CreateAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createAnnouncement>>,
+        TError,
+        CreateAnnouncementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAnnouncementMutationOptions(options), queryClient);
+    }
+
+export const getUpdateAnnouncementUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/announcements/${id}`
+}
+
+export const updateAnnouncement = async (id: number,
+    announcementUpdate: AnnouncementUpdate, options?: Parameters<typeof customFetch>[1]): Promise<Announcement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Announcement>(getUpdateAnnouncementUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(announcementUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAnnouncementMutationKey = () => ['updateAnnouncement'] as const;
+
+export const getUpdateAnnouncementMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAnnouncement>>, TError,UpdateAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAnnouncement>>, TError,UpdateAnnouncementMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAnnouncementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAnnouncement>>, UpdateAnnouncementMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAnnouncement(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof updateAnnouncement>>>
+    export type UpdateAnnouncementMutationBody = BodyType<AnnouncementUpdate>
+    export type UpdateAnnouncementMutationError = ErrorType<void>
+    export type UpdateAnnouncementMutationVariables = {id: number;data: BodyType<AnnouncementUpdate>}
+
+    export const useUpdateAnnouncement = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAnnouncement>>, TError,UpdateAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateAnnouncement>>,
+        TError,
+        UpdateAnnouncementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAnnouncementMutationOptions(options), queryClient);
+    }
+
+export const getDeleteAnnouncementUrl = (id: number,) => {
+
+
+
+
+  return `/api/admin/announcements/${id}`
+}
+
+export const deleteAnnouncement = async (id: number,
+    announcementDeleteInput: AnnouncementDeleteInput, options?: Parameters<typeof customFetch>[1]): Promise<void> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<void>(getDeleteAnnouncementUrl(id),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(announcementDeleteInput)
+  }
+);}
+
+
+
+
+
+export const getDeleteAnnouncementMutationKey = () => ['deleteAnnouncement'] as const;
+
+export const getDeleteAnnouncementMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAnnouncement>>, TError,DeleteAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAnnouncement>>, TError,DeleteAnnouncementMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAnnouncementMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAnnouncement>>, DeleteAnnouncementMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  deleteAnnouncement(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAnnouncementMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAnnouncement>>>
+    export type DeleteAnnouncementMutationBody = BodyType<AnnouncementDeleteInput>
+    export type DeleteAnnouncementMutationError = ErrorType<void>
+    export type DeleteAnnouncementMutationVariables = {id: number;data: BodyType<AnnouncementDeleteInput>}
+
+    export const useDeleteAnnouncement = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAnnouncement>>, TError,DeleteAnnouncementMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAnnouncement>>,
+        TError,
+        DeleteAnnouncementMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAnnouncementMutationOptions(options), queryClient);
+    }
 
 export const getGetProductReviewsUrl = (productId: number,
     params?: GetProductReviewsParams,) => {
@@ -2552,3 +3437,4 @@ export const useSubmitContactEnquiry = <TError = ErrorType<ErrorEnvelope>,
       > => {
       return useMutation(getSubmitContactEnquiryMutationOptions(options), queryClient);
     }
+
