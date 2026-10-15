@@ -23,7 +23,7 @@
 - [UK shipping defaults](uk-shipping-rules.md) — Original £3.95/£75 rates are historical defaults; preserve admin-configured rates when fixing shipping inconsistencies.
 - [Legacy payment reconciliation](legacy-payment-reconciliation.md) — Use stable cursors when importing historical Stripe payments; synced records can arrive while paging.
 - [Bestseller ranking](bestseller-ranking.md) — Rank products by paid units sold; never use current stock as a bestseller proxy.
-- [Product review policy](product-review-policy.md) — Pending-by-default reviews, approved-only ratings, public names without emails, and safe retry identities.
+- [Product review policy](product-review-policy.md) — Verified purchasers only; one editable review per customer/product, pending moderation, private order evidence and safe retries.
 - [Catalog refresh routing](catalog-refresh-routing.md) — Catalog refreshes must not remount the admin route, or active admin workspace state resets to Overview.
 - [OpenAPI/Zod compatibility](openapi-email-validation.md) — Generator auto-detection emitted unsupported helpers; explicitly match the installed Zod major.
 - [Contact spam protection](contact-spam-protection.md) — Do not use a hidden honeypot field; browser autofill caused valid enquiries to fail validation.

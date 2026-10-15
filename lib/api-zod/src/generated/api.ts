@@ -34,7 +34,8 @@ export const GetProductReviewsResponse = zod.object({
   "title": zod.string(),
   "body": zod.string(),
   "displayName": zod.string(),
-  "createdAt": zod.date()
+  "createdAt": zod.date(),
+  "verifiedPurchase": zod.boolean()
 })),
   "averageRating": zod.number().min(getProductReviewsResponseAverageRatingMin).max(getProductReviewsResponseAverageRatingMax),
   "total": zod.number().int(),
@@ -44,7 +45,7 @@ export const GetProductReviewsResponse = zod.object({
 
 
 /**
- * @summary Submit a review for moderation; never publishes immediately
+ * @summary Submit one authenticated verified-purchase review per customer and product for moderation
  */
 
 
@@ -77,6 +78,75 @@ export const SubmitProductReviewResponse = zod.object({
 
 
 /**
+ * @summary Private server-verified purchase eligibility and the authenticated customer's own review
+ */
+
+
+
+export const GetProductReviewAccessParams = zod.object({
+  "productId": zod.coerce.number().int().min(1)
+})
+
+export const getProductReviewAccessResponseReviewOneOneRatingMax = 5;
+
+
+
+
+export const GetProductReviewAccessResponse = zod.object({
+  "eligible": zod.boolean(),
+  "review": zod.union([zod.object({
+  "id": zod.number().int(),
+  "productId": zod.number().int(),
+  "rating": zod.number().int().min(1).max(getProductReviewAccessResponseReviewOneOneRatingMax),
+  "title": zod.string(),
+  "body": zod.string(),
+  "displayName": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "verifiedPurchase": zod.boolean()
+}).and(zod.object({
+  "status": zod.enum(['pending', 'approved', 'rejected']),
+  "revision": zod.number().int().min(1)
+})),zod.null()])
+})
+
+
+/**
+ * @summary Edit only the authenticated customer's review and return it to pending moderation
+ */
+
+
+
+export const UpdateMyProductReviewParams = zod.object({
+  "productId": zod.coerce.number().int().min(1)
+})
+
+export const updateMyProductReviewBodyOneRatingMax = 5;
+
+export const updateMyProductReviewBodyOneTitleMax = 120;
+
+export const updateMyProductReviewBodyOneBodyMax = 3000;
+
+export const updateMyProductReviewBodyOneDisplayNameMax = 80;
+
+
+
+
+export const UpdateMyProductReviewBody = zod.object({
+  "rating": zod.number().int().min(1).max(updateMyProductReviewBodyOneRatingMax),
+  "title": zod.string().min(1).max(updateMyProductReviewBodyOneTitleMax),
+  "body": zod.string().min(1).max(updateMyProductReviewBodyOneBodyMax),
+  "displayName": zod.string().min(1).max(updateMyProductReviewBodyOneDisplayNameMax).optional(),
+  "submissionId": zod.string().uuid()
+}).and(zod.object({
+  "expectedRevision": zod.number().int().min(1)
+}))
+
+export const UpdateMyProductReviewResponse = zod.object({
+  "message": zod.string()
+})
+
+
+/**
  * @summary Administrator-only review moderation queue
  */
 export const getAdminReviewsQueryStatusDefault = `pending`;
@@ -101,7 +171,8 @@ export const GetAdminReviewsResponse = zod.object({
   "title": zod.string(),
   "body": zod.string(),
   "displayName": zod.string(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "verifiedPurchase": zod.boolean()
 }).and(zod.object({
   "status": zod.enum(['pending', 'approved', 'rejected']),
   "productName": zod.string()

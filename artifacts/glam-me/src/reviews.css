@@ -4,6 +4,9 @@
 .rv-summary a{color:inherit;text-decoration:underline;text-underline-offset:3px}
 .rv-section{border-top:1px solid #e9dcd5;margin-top:56px;padding:48px 0}
 .rv-section h2,.rv-section h3{font-family:var(--font-serif,"Playfair Display",Georgia,serif);font-weight:500}
+h2#rv-heading {
+  font-size: 32px !important;
+}
 .rv-head{display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;align-items:end;margin-bottom:28px}
 .rv-grid{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:48px}
 @media(max-width:860px){.rv-grid{grid-template-columns:1fr;gap:32px}}
@@ -40,3 +43,16 @@
 .rv-name-static{margin:0;font-size:16px}
 .rv-summary a,.rv-linkbtn{background:none;border:0;padding:0;font:inherit;font-size:14px;color:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .rv-label{font-size:14px;font-weight:600;display:block;margin-bottom:6px}
+
+.rv-badge{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#7a3b50;background:#f7e6ea;border:1px solid #e3c1ca;padding:2px 8px;margin-bottom:4px}
+.rv-badge.legacy{color:#6d5d57;background:#f3ece8;border-color:#d8c5bc}
+.rv-gate,.rv-own{background:#fbf5f1;border:1px solid #eadcd5;padding:24px;display:grid;gap:12px;align-content:start}
+.rv-gate h3,.rv-own h3{margin:0}.rv-gate p,.rv-own p{margin:0;line-height:1.6}
+.rv-gate .rv-btn{justify-self:start}
+.rv-own h4{margin:0}.rv-own-body{white-space:pre-wrap;overflow-wrap:anywhere}
+.rv-own .rv-btn{justify-self:start}
+.rv-status{font-size:14px;padding:10px 12px;background:#fff;border-left:3px solid #b9677f}
+.rv-status.approved{border-color:#6f9a6f}.rv-status.rejected{border-color:#9b2c2c}
+.rv-actions{display:flex;gap:8px;flex-wrap:wrap}
+.rv-banner .rv-btn{margin-top:8px}
+.rv-summary{flex-wrap:wrap}

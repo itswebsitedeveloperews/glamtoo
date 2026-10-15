@@ -37,7 +37,7 @@ paths:
           description: Reviews temporarily unavailable
     post:
       operationId: submitProductReview
-      summary: Submit a review for moderation; never publishes immediately
+      summary: Submit one authenticated verified-purchase review per customer and product for moderation
       parameters:
         - { in: path, name: productId, required: true, schema: { type: integer, minimum: 1 } }
       requestBody:
@@ -58,14 +58,80 @@ paths:
                   message: { type: string }
         "400":
           description: Invalid review
+        "401":
+          description: Sign in to review this product
+        "403":
+          description: No qualifying purchase of this product
         "404":
           description: Product not found
         "409":
-          description: Submission identifier already used for different details
+          description: Review already exists or submission identifier conflicts
         "429":
           description: Submission limit reached
         "503":
           description: Review could not be saved
+  /products/{productId}/review-access:
+    get:
+      operationId: getProductReviewAccess
+      summary: Private server-verified purchase eligibility and the authenticated customer's own review
+      parameters:
+        - { in: path, name: productId, required: true, schema: { type: integer, minimum: 1 } }
+      responses:
+        "200":
+          description: Qualifying purchase found; own review may be absent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [eligible, review]
+                properties:
+                  eligible: { type: boolean }
+                  review:
+                    nullable: true
+                    allOf:
+                      - $ref: "#/components/schemas/OwnProductReview"
+        "401":
+          description: Sign in to review this product
+        "403":
+          description: No qualifying purchase of this product
+        "404":
+          description: Product not found
+        "503":
+          description: Eligibility could not be checked
+  /products/{productId}/reviews/mine:
+    patch:
+      operationId: updateMyProductReview
+      summary: Edit only the authenticated customer's review and return it to pending moderation
+      parameters:
+        - { in: path, name: productId, required: true, schema: { type: integer, minimum: 1 } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewUpdate"
+      responses:
+        "202":
+          description: Edited review saved for moderation, including safe duplicate retries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: { type: string }
+        "400":
+          description: Invalid review
+        "401":
+          description: Sign in required
+        "403":
+          description: No qualifying purchase
+        "404":
+          description: Product or own review not found
+        "409":
+          description: Review changed in another tab or submission identifier conflicts
+        "503":
+          description: Edit could not be confirmed
   /admin/reviews:
     get:
       operationId: getAdminReviews
@@ -771,7 +837,7 @@ components:
         status: { type: string, enum: [pending, approved, rejected] }
     PublicProductReview:
       type: object
-      required: [id, productId, rating, title, body, displayName, createdAt]
+      required: [id, productId, rating, title, body, displayName, createdAt, verifiedPurchase]
       properties:
         id: { type: integer }
         productId: { type: integer }
@@ -780,6 +846,22 @@ components:
         body: { type: string }
         displayName: { type: string }
         createdAt: { type: string, format: date-time }
+        verifiedPurchase: { type: boolean }
+    OwnProductReview:
+      allOf:
+        - $ref: "#/components/schemas/PublicProductReview"
+        - type: object
+          required: [status, revision]
+          properties:
+            status: { type: string, enum: [pending, approved, rejected] }
+            revision: { type: integer, minimum: 1 }
+    ReviewUpdate:
+      allOf:
+        - $ref: "#/components/schemas/ReviewSubmission"
+        - type: object
+          required: [expectedRevision]
+          properties:
+            expectedRevision: { type: integer, minimum: 1 }
     ModerationReview:
       allOf:
         - $ref: "#/components/schemas/PublicProductReview"

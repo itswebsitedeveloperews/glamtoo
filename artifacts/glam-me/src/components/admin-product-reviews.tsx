@@ -38,11 +38,12 @@ export default function AdminProductReviews() {
         : !q.data || q.data.reviews.length === 0 ? <div className="rv-empty">No {status} reviews.</div>
         : q.data.reviews.map((r) => (
           <article className="rv-admin-row" key={r.id} data-testid={`admin-review-${r.id}`}>
-            <div className="rv-meta"><strong>{r.productName}</strong> &middot; {r.rating} / 5 &middot; {r.displayName} &middot; {new Date(r.createdAt).toLocaleString("en-GB")}</div>
+            <div className="rv-meta"><span className={`rv-badge${r.verifiedPurchase ? "" : " legacy"}`} data-testid={`badge-admin-verified-${r.id}`}>{r.verifiedPurchase ? "Verified Purchase" : "Unverified purchase"}</span> <strong>{r.productName}</strong> &middot; {r.rating} / 5 &middot; {r.displayName} &middot; {new Date(r.createdAt).toLocaleString("en-GB")}</div>
             <h4 style={{ margin: 0 }}>{r.title}</h4>
             <p style={{ margin: 0, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{r.body}</p>
+            {!r.verifiedPurchase && <p className="rv-meta">This review has no qualifying purchase, so it cannot be approved.</p>}
             <div className="rv-admin-actions">
-              {(["approved", "rejected", "pending"] as Status[]).filter((s) => s !== r.status).map((s) => (
+              {(["approved", "rejected", "pending"] as Status[]).filter((s) => s !== r.status && !(s === "approved" && !r.verifiedPurchase)).map((s) => (
                 <button key={s} type="button" className={s === "approved" ? "admin-primary" : "admin-secondary"} disabled={busyId !== null} onClick={() => void moderate(r.id, s)} data-testid={`button-review-${s}-${r.id}`}>
                   {busyId === r.id ? "Saving…" : s === "approved" ? "Approve" : s === "rejected" ? "Reject" : "Return to pending"}
                 </button>

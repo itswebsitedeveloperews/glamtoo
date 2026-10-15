@@ -1,11 +1,13 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, pgTable, serial, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, index, integer, pgTable, serial, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
 export const productReviewsTable = pgTable("product_reviews", {
   id: serial("id").primaryKey(),
   productId: integer("product_id").notNull(),
+  userId: text("user_id"),
+  revision: integer("revision").notNull().default(1),
   rating: integer("rating").notNull(),
   title: text("title").notNull(),
   body: text("body").notNull(),
@@ -16,6 +18,7 @@ export const productReviewsTable = pgTable("product_reviews", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   moderatedAt: timestamp("moderated_at", { withTimezone: true }),
 }, (table) => [
+  unique("product_reviews_customer_product_unique").on(table.userId, table.productId),
   check("product_reviews_rating_check", sql`${table.rating} BETWEEN 1 AND 5`),
   check("product_reviews_status_check", sql`${table.status} IN ('pending', 'approved', 'rejected')`),
   check("product_reviews_content_check", sql`length(btrim(${table.title})) BETWEEN 1 AND 120 AND length(btrim(${table.body})) BETWEEN 1 AND 3000 AND length(btrim(${table.displayName})) BETWEEN 1 AND 80`),
@@ -26,3 +29,12 @@ export const productReviewsTable = pgTable("product_reviews", {
 export const insertProductReviewSchema = createInsertSchema(productReviewsTable).omit({ id: true, createdAt: true, moderatedAt: true });
 export type InsertProductReview = z.infer<typeof insertProductReviewSchema>;
 export type ProductReview = typeof productReviewsTable.$inferSelect;
+
+export const productReviewSubmissionsTable = pgTable("product_review_submissions", {
+  submissionId: uuid("submission_id").primaryKey(),
+  userId: text("user_id").notNull(),
+  productId: integer("product_id").notNull(),
+  fingerprint: text("fingerprint").notNull(),
+  reviewId: integer("review_id").notNull().references(() => productReviewsTable.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

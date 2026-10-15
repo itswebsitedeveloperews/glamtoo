@@ -30,7 +30,52 @@ export interface PublicProductReview {
   body: string;
   displayName: string;
   createdAt: string;
+  verifiedPurchase: boolean;
 }
+
+export type OwnProductReviewStatus = typeof OwnProductReviewStatus[keyof typeof OwnProductReviewStatus];
+
+
+export const OwnProductReviewStatus = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+} as const;
+
+export type OwnProductReview = PublicProductReview & {
+  status: OwnProductReviewStatus;
+  /** @minimum 1 */
+  revision: number;
+};
+
+export interface ReviewSubmission {
+  /**
+     * @minimum 1
+     * @maximum 5
+     */
+  rating: number;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
+  title: string;
+  /**
+     * @minLength 1
+     * @maxLength 3000
+     */
+  body: string;
+  /**
+     * @minLength 1
+     * @maxLength 80
+     */
+  displayName?: string;
+  submissionId: string;
+}
+
+export type ReviewUpdate = ReviewSubmission & {
+  /** @minimum 1 */
+  expectedRevision: number;
+};
 
 export type ModerationReviewStatus = typeof ModerationReviewStatus[keyof typeof ModerationReviewStatus];
 
@@ -56,30 +101,6 @@ export interface ProductReviews {
   total: number;
   page: number;
   pageSize: number;
-}
-
-export interface ReviewSubmission {
-  /**
-     * @minimum 1
-     * @maximum 5
-     */
-  rating: number;
-  /**
-     * @minLength 1
-     * @maxLength 120
-     */
-  title: string;
-  /**
-     * @minLength 1
-     * @maxLength 3000
-     */
-  body: string;
-  /**
-     * @minLength 1
-     * @maxLength 80
-     */
-  displayName?: string;
-  submissionId: string;
 }
 
 export type OrderEmailActionInputAction = typeof OrderEmailActionInputAction[keyof typeof OrderEmailActionInputAction];
@@ -322,6 +343,15 @@ page?: number;
 };
 
 export type SubmitProductReview202 = {
+  message: string;
+};
+
+export type GetProductReviewAccess200 = {
+  eligible: boolean;
+  review: OwnProductReview | null;
+};
+
+export type UpdateMyProductReview202 = {
   message: string;
 };
 

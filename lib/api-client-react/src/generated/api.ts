@@ -42,6 +42,7 @@ import type {
   GetAdminGmailSettings200,
   GetAdminReviews200,
   GetAdminReviewsParams,
+  GetProductReviewAccess200,
   GetProductReviewsParams,
   GetUploadedImageParams,
   HealthStatus,
@@ -52,11 +53,13 @@ import type {
   ResolveSeoParams,
   ReviewModerationInput,
   ReviewSubmission,
+  ReviewUpdate,
   SaveAdminCatalog200,
   SaveAdminContactNotificationSettings200,
   SeoResolution,
   StartAdminGmailAuthorization200,
   SubmitProductReview202,
+  UpdateMyProductReview202,
   UploadUrlRequest,
   UploadUrlResponse,
   VerifyAdminGmailAuthentication200
@@ -214,7 +217,7 @@ export const getSubmitProductReviewUrl = (productId: number,) => {
 }
 
 /**
- * @summary Submit a review for moderation; never publishes immediately
+ * @summary Submit one authenticated verified-purchase review per customer and product for moderation
  */
 export const submitProductReview = async (productId: number,
     reviewSubmission: ReviewSubmission, options?: Parameters<typeof customFetch>[1]): Promise<SubmitProductReview202> => {
@@ -281,7 +284,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type SubmitProductReviewMutationVariables = {productId: number;data: BodyType<ReviewSubmission>}
 
     /**
- * @summary Submit a review for moderation; never publishes immediately
+ * @summary Submit one authenticated verified-purchase review per customer and product for moderation
  */
 export const useSubmitProductReview = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof submitProductReview>>, TError,SubmitProductReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -292,6 +295,196 @@ export const useSubmitProductReview = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getSubmitProductReviewMutationOptions(options), queryClient);
+    }
+
+export const getGetProductReviewAccessUrl = (productId: number,) => {
+
+
+
+
+  return `/api/products/${productId}/review-access`
+}
+
+/**
+ * @summary Private server-verified purchase eligibility and the authenticated customer's own review
+ */
+export const getProductReviewAccess = async (productId: number, options?: Parameters<typeof customFetch>[1]): Promise<GetProductReviewAccess200> => {
+
+  return customFetch<GetProductReviewAccess200>(getGetProductReviewAccessUrl(productId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProductReviewAccessQueryKey = (productId: number,) => {
+    return [
+    `/api/products/${productId}/review-access`
+    ] as const;
+    }
+
+
+export const getGetProductReviewAccessQueryOptions = <TData = Awaited<ReturnType<typeof getProductReviewAccess>>, TError = ErrorType<void>>(productId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProductReviewAccess>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProductReviewAccessQueryKey(productId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProductReviewAccess>>> = ({ signal }) => getProductReviewAccess(productId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: productId !== null && productId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProductReviewAccess>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetProductReviewAccessQueryResult = NonNullable<Awaited<ReturnType<typeof getProductReviewAccess>>>
+export type GetProductReviewAccessQueryError = ErrorType<void>
+
+
+export function useGetProductReviewAccess<TData = Awaited<ReturnType<typeof getProductReviewAccess>>, TError = ErrorType<void>>(
+ productId: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProductReviewAccess>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getProductReviewAccess>>,
+          TError,
+          Awaited<ReturnType<typeof getProductReviewAccess>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetProductReviewAccess<TData = Awaited<ReturnType<typeof getProductReviewAccess>>, TError = ErrorType<void>>(
+ productId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProductReviewAccess>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getProductReviewAccess>>,
+          TError,
+          Awaited<ReturnType<typeof getProductReviewAccess>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetProductReviewAccess<TData = Awaited<ReturnType<typeof getProductReviewAccess>>, TError = ErrorType<void>>(
+ productId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProductReviewAccess>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Private server-verified purchase eligibility and the authenticated customer's own review
+ */
+
+export function useGetProductReviewAccess<TData = Awaited<ReturnType<typeof getProductReviewAccess>>, TError = ErrorType<void>>(
+ productId: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getProductReviewAccess>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetProductReviewAccessQueryOptions(productId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateMyProductReviewUrl = (productId: number,) => {
+
+
+
+
+  return `/api/products/${productId}/reviews/mine`
+}
+
+/**
+ * @summary Edit only the authenticated customer's review and return it to pending moderation
+ */
+export const updateMyProductReview = async (productId: number,
+    reviewUpdate: ReviewUpdate, options?: Parameters<typeof customFetch>[1]): Promise<UpdateMyProductReview202> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<UpdateMyProductReview202>(getUpdateMyProductReviewUrl(productId),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reviewUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateMyProductReviewMutationKey = () => ['updateMyProductReview'] as const;
+
+export const getUpdateMyProductReviewMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyProductReview>>, TError,UpdateMyProductReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMyProductReview>>, TError,UpdateMyProductReviewMutationVariables, TContext> => {
+
+const mutationKey = getUpdateMyProductReviewMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMyProductReview>>, UpdateMyProductReviewMutationVariables> = (props) => {
+          const {productId,data} = props ?? {};
+
+          return  updateMyProductReview(productId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMyProductReviewMutationResult = NonNullable<Awaited<ReturnType<typeof updateMyProductReview>>>
+    export type UpdateMyProductReviewMutationBody = BodyType<ReviewUpdate>
+    export type UpdateMyProductReviewMutationError = ErrorType<void>
+    export type UpdateMyProductReviewMutationVariables = {productId: number;data: BodyType<ReviewUpdate>}
+
+    /**
+ * @summary Edit only the authenticated customer's review and return it to pending moderation
+ */
+export const useUpdateMyProductReview = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMyProductReview>>, TError,UpdateMyProductReviewMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateMyProductReview>>,
+        TError,
+        UpdateMyProductReviewMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateMyProductReviewMutationOptions(options), queryClient);
     }
 
 export const getGetAdminReviewsUrl = (params?: GetAdminReviewsParams,) => {

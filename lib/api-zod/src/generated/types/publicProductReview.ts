@@ -18,4 +18,5 @@ export interface PublicProductReview {
   body: string;
   displayName: string;
   createdAt: Date;
+  verifiedPurchase: boolean;
 }
