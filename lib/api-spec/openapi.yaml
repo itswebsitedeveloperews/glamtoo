@@ -17,6 +17,38 @@ tags:
   - name: seo
     description: Public search metadata and crawler files
 paths:
+  /admin/email-branding-tests:
+    get:
+      operationId: getEmailBrandingTests
+      summary: Read the approved synthetic email batch without sending
+      responses:
+        "200":
+          description: Admin-only configuration and persisted test outcomes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailBrandingTestStatus"
+    post:
+      operationId: sendEmailBrandingTests
+      summary: Send one approved five-message synthetic branding batch
+      description: Admin only, same origin, no automatic retries or business records.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmailBrandingTestRequest"
+      responses:
+        "200":
+          description: Recorded batch results; acceptance does not prove inbox receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailBrandingTestStatus"
+        "409":
+          description: This approval has already been used; never resend
+        "503":
+          description: Configuration, authorization or storage is unavailable
   /admin/orders/{orderId}/email-actions:
     post:
       operationId: requestOrderEmailAction
@@ -654,6 +686,33 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
 components:
   schemas:
+    EmailBrandingTestRequest:
+      type: object
+      additionalProperties: false
+      required: [recipient, confirmation]
+      properties:
+        recipient: { type: string, format: email }
+        confirmation: { type: string, enum: ["SEND FIVE SYNTHETIC EMAILS"] }
+    EmailBrandingTestStatus:
+      type: object
+      required: [configured, recipient, canSend, samples]
+      properties:
+        configured: { type: boolean }
+        recipient: { type: string }
+        canSend: { type: boolean }
+        samples:
+          type: array
+          items:
+            type: object
+            required: [variant, marker, messageId, subject, status]
+            properties:
+              variant: { type: string }
+              marker: { type: string }
+              messageId: { type: string }
+              subject: { type: string }
+              status:
+                type: string
+                enum: [reserved, sending, accepted, failed, uncertain, not_sent]
     OrderEmailActionInput:
       type: object
       additionalProperties: false

@@ -21,6 +21,7 @@ import AdminPromotionalPreview from "@/components/AdminPromotionalPreview";
 import { defaultHomePageSettings, type HomePageSettings } from "@/data/home-page";
 import AdminOrderEmailStatus from "@/components/admin-order-email-status";
 import AdminGmailSettings from "@/components/admin-gmail-settings";
+import AdminEmailBrandingTests from "@/components/admin-email-branding-tests";
 import AdminContactEmailSettings from "@/components/admin-contact-email-settings";
 import type { AdminCatalogSaveInput } from "@workspace/api-client-react";
 
@@ -3702,6 +3703,7 @@ export default function AdminDashboard({
           <div className="admin-payments-page">
             <SectionTitle eyebrow="Store settings" title="Payments" description="Secure payment processing and transaction reporting for Glam Too." action={<button className="admin-payment-view-transactions" type="button" onClick={() => setSection("orders")}>View transactions</button>} />
             <AdminGmailSettings />
+            <AdminEmailBrandingTests />
             <AdminContactEmailSettings kind="order" />
             <section className={`admin-payment-card ${stripeStatus.configured ? "is-connected" : ""}`}>
               <div className="admin-payment-banner-copy">

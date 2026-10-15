@@ -9,6 +9,46 @@ import * as zod from 'zod';
 
 
 /**
+ * @summary Read the approved synthetic email batch without sending
+ */
+export const GetEmailBrandingTestsResponse = zod.object({
+  "configured": zod.boolean(),
+  "recipient": zod.string(),
+  "canSend": zod.boolean(),
+  "samples": zod.array(zod.object({
+  "variant": zod.string(),
+  "marker": zod.string(),
+  "messageId": zod.string(),
+  "subject": zod.string(),
+  "status": zod.enum(['reserved', 'sending', 'accepted', 'failed', 'uncertain', 'not_sent'])
+}))
+})
+
+
+/**
+ * Admin only, same origin, no automatic retries or business records.
+ * @summary Send one approved five-message synthetic branding batch
+ */
+export const SendEmailBrandingTestsBody = zod.object({
+  "recipient": zod.string().email(),
+  "confirmation": zod.enum(['SEND FIVE SYNTHETIC EMAILS'])
+})
+
+export const SendEmailBrandingTestsResponse = zod.object({
+  "configured": zod.boolean(),
+  "recipient": zod.string(),
+  "canSend": zod.boolean(),
+  "samples": zod.array(zod.object({
+  "variant": zod.string(),
+  "marker": zod.string(),
+  "messageId": zod.string(),
+  "subject": zod.string(),
+  "status": zod.enum(['reserved', 'sending', 'accepted', 'failed', 'uncertain', 'not_sent'])
+}))
+})
+
+
+/**
  * Admin only. Queues work without contacting SMTP. Requires an exact recipient snapshot and explicit confirmation. Never resends accepted or uncertain mail.
  * @summary Explicitly approve a missing admin copy or one safe failed-message retry
  */
@@ -22,6 +62,8 @@ export const RequestOrderEmailActionParams = zod.object({
 export const requestOrderEmailActionBodyRecipientsMax = 50;
 
 
+
+
 export const RequestOrderEmailActionBody = zod.object({
   "action": zod.enum(['admin_copy', 'retry']),
   "confirmed": zod.literal(true),
@@ -31,17 +73,35 @@ export const RequestOrderEmailActionBody = zod.object({
 
 export const RequestOrderEmailActionResponse = zod.void()
 
+
 /**
  * Uses only the saved paid-order email. Never resends accepted or uncertain messages and never changes admin copies.
  * @summary Approve one demonstrably unsent customer confirmation for a paid order
  */
 export const approveCustomerConfirmationPathReferenceRegExp = new RegExp('^[a-zA-Z0-9_-]{1,120}$');
+
+
+export const ApproveCustomerConfirmationParams = zod.object({
+  "reference": zod.coerce.string().regex(approveCustomerConfirmationPathReferenceRegExp)
+})
+
+export const ApproveCustomerConfirmationBody = zod.object({
+  "confirmation": zod.enum(['send_saved_order_confirmation'])
+})
+
+export const ApproveCustomerConfirmationResponse = zod.object({
+  "outcome": zod.enum(['approved', 'already_approved', 'already_processed']),
+  "message": zod.string()
+})
+
+
 /**
  * Omitted products are retired. Existing inventory stock is preserved unless its exact product or product:variation key is listed in stockUpdates. This prevents live-stock browser overlays from resetting unrelated stock.
  * @summary Save the full catalog and sellable inventory atomically (administrators only)
  */
 export const saveAdminCatalogBodyStockUpdatesItemRegExp = new RegExp('^\\d+(?::\\d+)?$');
 export const saveAdminCatalogBodyStockUpdatesMax = 500;
+
 
 
 export const SaveAdminCatalogBody = zod.object({
@@ -111,6 +171,7 @@ export const saveAdminContactNotificationSettingsBodyOrderAdminEmailsItemMax = 2
 export const saveAdminContactNotificationSettingsBodyOrderAdminEmailsMax = 20;
 
 
+
 export const SaveAdminContactNotificationSettingsBody = zod.object({
   "adminEmail": zod.string().max(saveAdminContactNotificationSettingsBodyAdminEmailMax).optional().describe('Legacy single contact recipient. Prefer adminEmails.'),
   "adminEmails": zod.array(zod.string().max(saveAdminContactNotificationSettingsBodyAdminEmailsItemMax)).max(saveAdminContactNotificationSettingsBodyAdminEmailsMax).optional(),
@@ -166,6 +227,7 @@ export const VerifyAdminGmailAuthenticationResponse = zod.object({
  */
 export const createCheckoutPaymentIntentHeaderIdempotencyKeyMin = 16;
 export const createCheckoutPaymentIntentHeaderIdempotencyKeyMax = 100;
+
 
 
 export const CreateCheckoutPaymentIntentHeader = zod.object({
@@ -232,6 +294,7 @@ export const FinalizeCheckoutPaymentResponse = zod.object({
  */
 export const createHostedCheckoutHeaderIdempotencyKeyMin = 16;
 export const createHostedCheckoutHeaderIdempotencyKeyMax = 100;
+
 
 
 export const CreateHostedCheckoutHeader = zod.object({
@@ -330,6 +393,7 @@ export const HealthCheckResponse = zod.object({
   "status": zod.string()
 })
 
+
 /**
  * @summary Serve an original upload or a cacheable listing-only WebP preview
  */
@@ -337,6 +401,10 @@ export const GetUploadedImageQueryParams = zod.object({
   "preview": zod.enum(['listing-v1']).optional(),
   "width": zod.union([zod.literal(320),zod.literal(480),zod.literal(640),zod.literal(960)]).optional().describe('Required for previews; originals are never resized.')
 })
+
+export const GetUploadedImageResponse = zod.unknown()
+
+
 /**
  * @summary Request a presigned upload URL
  */
@@ -370,6 +438,7 @@ export const submitContactEnquiryBodyOrderMax = 80;
 export const submitContactEnquiryBodyMessageMax = 5000;
 
 
+
 export const SubmitContactEnquiryBody = zod.object({
   "name": zod.string().min(submitContactEnquiryBodyNameMin).max(submitContactEnquiryBodyNameMax),
   "email": zod.string().max(submitContactEnquiryBodyEmailMax),
@@ -380,21 +449,5 @@ export const SubmitContactEnquiryBody = zod.object({
 
 export const SubmitContactEnquiryResponse = zod.object({
   "sent": zod.boolean(),
-  "message": zod.string()
-})
-
-
-export const GetUploadedImageResponse = zod.unknown()
-
-export const ApproveCustomerConfirmationBody = zod.object({
-  "confirmation": zod.enum(['send_saved_order_confirmation'])
-})
-
-export const ApproveCustomerConfirmationParams = zod.object({
-  "reference": zod.coerce.string().regex(approveCustomerConfirmationPathReferenceRegExp)
-})
-
-export const ApproveCustomerConfirmationResponse = zod.object({
-  "outcome": zod.enum(['approved', 'already_approved', 'already_processed']),
   "message": zod.string()
 })

@@ -33,7 +33,7 @@ try {
   await admin.query(`CREATE DATABASE "${database}"`);
   await run(["--filter", "@workspace/db", "run", "push-force"]);
   const suites = process.argv.slice(2);
-  for (const suite of suites.length ? suites : ["regressions", "listing-preview-warmup", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth", "shipping", "contact-notifications", "contact-email-template", "order-email-status", "order-email-actions", "customer-confirmation-policy", "order-confirmation-template", "fresh-launch"]) {
+  for (const suite of suites.length ? suites : ["email-branding-controls", "regressions", "listing-preview-warmup", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth", "shipping", "contact-notifications", "contact-email-template", "order-email-status", "order-email-actions", "customer-confirmation-policy", "order-confirmation-template", "fresh-launch"]) {
     await run(["--filter", "@workspace/api-server", "exec", "node", "test/build.mjs", suite]);
   }
 } finally {

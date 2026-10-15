@@ -90,6 +90,41 @@ tools. Never infer retry permission from human-readable error text.
 
 ## Matching inbox evidence
 
+Identify the exact environment before asking the merchant to authorize Gmail
+for a test. Authorization on the published custom-domain shop does not populate
+an isolated task workspace's database.
+
+**Why:** A merchant completed Connect Gmail on the published shop while the
+task workspace still had no saved authorization. Repeating a generic request
+to reconnect in "the preview" did not resolve that environment mismatch.
+
+**How to apply:** Confirm the supplied origin against deployment metadata and
+use read-only existence checks if needed. Provide the specific intended test
+preview address before requesting authorization. Never copy production tokens
+or infer permission to send from production from a successful reconnect.
+
+The merchant stated that Gmail cannot be connected for the preview link.
+
+**Why:** The user explicitly reported this limitation after completing
+authorization on the published shop.
+
+**How to apply:** Do not keep requesting preview Gmail authorization as a
+prerequisite. Use an explicitly approved alternative in an authorized
+environment, while preserving recipient restrictions and historical-send
+safeguards.
+
+Synthetic branding samples have their own one-time recipient approval,
+separate from all customer and refund sending policies. The merchant approved
+an admin-only control for this purpose when preview authorization was unavailable.
+
+**Why:** Real-order retries, real refunds and broader customer-send permissions
+are not appropriate ways to generate inbox-rendering evidence.
+
+**How to apply:** Use only synthetic data; treating a refund template as a Gmail
+sample does not migrate its live provider. Never rotate an already consumed
+approval merely because a screenshot or receipt is missing. Another batch
+requires new explicit approval.
+
 Receipt verification must match the specific approved test's saved Message-ID,
 recipient, Reply-To, and complete content. A merchant's explicit Inbox-location
 confirmation plus the matching original email is acceptable; copied message text
