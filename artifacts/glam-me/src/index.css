@@ -142,17 +142,17 @@ h2 { text-transform: capitalize !important; }
     align-items: center;
     column-gap: clamp(16px, 2vw, 32px);
     min-height: 90px;
-    padding: 16px max(24px, calc((100vw - 1440px) / 2 + 58px));
+    padding: 10px max(24px, calc((100vw - 1440px) / 2 + 58px));
     transition: box-shadow .2s ease, min-height .3s ease, padding .3s ease;
   }
   .site-header .header-inner { display: contents; }
   .site-header .header-inner > a[data-testid="link-home-logo"] { grid-column: 1; justify-self: start; }
-  .site-header .logo { width: clamp(145px, 15vw, 190px); }
+  .site-header .logo { width: clamp(180px, 19vw, 240px); display: block; }
   .site-header .logo { transition: width .3s ease; }
   .site-header .nav { grid-column: 2; grid-row: 1; gap: clamp(12px, 2vw, 28px); padding: 0; white-space: nowrap; }
   .site-header .header-tools { gap: clamp(14px, 2vw, 25px); }
   .site-header.is-compact { min-height: 64px; padding-top: 10px; padding-bottom: 10px; }
-  .site-header.is-compact .logo { width: 145px; }
+  .site-header.is-compact .logo { width: 180px; }
 }
 @media (min-width: 801px) and (max-width: 1050px) {
   .site-header { padding-left: 20px; padding-right: 20px; }
@@ -948,7 +948,9 @@ h2 { text-transform: capitalize !important; }
   .dr-cards { grid-template-columns: 1fr; }
   .dr-step { flex-direction: column; gap: 15px; padding: 25px; }
 
-  .header-inner { grid-template-columns: minmax(0, 1fr) auto 32px; gap: 8px; padding: 16px 18px 12px; }
+  .header-inner { grid-template-columns: minmax(0, 1fr) auto 28px; gap: 6px; padding: 12px 18px; }
+  .site-header .header-inner .logo { display: block; width: 220px; max-width: 100%; height: auto; }
+  .site-header .header-inner > a[data-testid="link-home-logo"] { min-width: 0; max-width: 100%; }
   .menu-toggle { display: inline-flex; grid-column: 3; grid-row: 1; align-items: center; justify-content: flex-end; }
   .header-inner > .logo { grid-column: 1; grid-row: 1; justify-self: start; width: 145px; }
   .search-link { display: inline-flex; }
@@ -1160,8 +1162,8 @@ h2 { text-transform: capitalize !important; }
 }
 @media (max-width: 460px) {
   .announcement { font-size: 14px; letter-spacing: .1em; }
-  .header-inner { grid-template-columns: minmax(0, 1fr) auto 32px; }
-  .header-inner .logo { width: 125px; }
+  .header-inner { grid-template-columns: minmax(0, 1fr) auto 24px; gap: 4px; }
+  .site-header .header-inner .logo { width: 170px; }
   .header-inner > .logo { grid-column: 1; grid-row: 1; }
   .hero-copy h1 { font-size: 54px; }
   .hero-copy { padding-top: 100px; }
@@ -1197,7 +1199,10 @@ h2 { text-transform: capitalize !important; }
   .wishlist-empty-state { padding: 52px 20px; }
 }
 @media (max-width: 360px) {
-  .header-inner .logo { width: 112px; }
+  .site-header .header-inner .logo { width: 144px; }
+  .site-header .header-inner { padding-inline: 12px; }
+  .site-header .header-tools { gap: 2px; }
+  .site-header .header-tools > a, .site-header .header-tools > button { width: 26px; flex-basis: 26px; }
 }
 @media (max-width: 500px) {
   .moment-grid { grid-template-columns: 1fr; }

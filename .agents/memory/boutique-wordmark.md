@@ -13,6 +13,12 @@ Keep the main desktop and mobile navigation typographically aligned with the log
 
 **Why:** The user found the DM Sans menu clashed with the softer logo and approved Cormorant Garamond Medium for navigation only.
 
+Keep the header wordmark prominent without making the header excessively tall or crowding navigation and utility controls. Preserve the original vector proportions and homepage link.
+
+**Why:** The merchant explicitly requested a visibly larger, stronger header logo while preserving its boutique identity and all existing header functionality.
+
+**How to apply:** Balance logo size with available space across mobile, tablet, desktop and the compact scrolled header; do not stretch, crop or replace the approved artwork.
+
 Use an email-safe PNG derived from the approved vector wordmark for contact
 notifications, embedded with a CID rather than served from a new public URL.
 
