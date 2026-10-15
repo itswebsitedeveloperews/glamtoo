@@ -19,6 +19,12 @@ Keep the header wordmark prominent without making the header excessively tall or
 
 **How to apply:** Balance logo size with available space across mobile, tablet, desktop and the compact scrolled header; do not stretch, crop or replace the approved artwork.
 
+Use a restrained GT monogram for small brand-icon roles; keep the full wordmark primary. Avoid crowns, sparkles, shopping bags, hearts and unrelated stock symbols.
+
+**Why:** The merchant requested an identity-derived premium boutique icon without competing with the main logo.
+
+**How to apply:** Preserve the SVG source for sharp rendering. Hide decorative embedded instances from screen readers; give meaningful instances accessible text.
+
 Use an email-safe PNG derived from the approved vector wordmark for contact
 notifications, embedded with a CID rather than served from a new public URL.
 
