@@ -76,8 +76,6 @@ export default defineConfig({
             }
             return;
           }
-          // Local-only component harness; not a production build entry or auth bypass.
-          if (pathname === '/test/fixtures/email-branding-controls.html') return next();
           if (!isDocumentPath(pathname)) return next();
           let data = FALLBACK;
           let status = 503;

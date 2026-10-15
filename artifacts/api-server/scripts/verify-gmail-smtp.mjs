@@ -6,7 +6,6 @@ import { fileURLToPath } from "node:url";
 const built = await build({
   entryPoints: [fileURLToPath(new URL("../src/gmailSmtp.ts", import.meta.url))],
   bundle: true, platform: "node", format: "cjs", write: false, logLevel: "silent",
-  loader: { ".png": "base64" },
 });
 const child = spawn(process.execPath, ["-"], { stdio: ["pipe", "inherit", "inherit"], env: process.env });
 child.stdin.end(`${built.outputFiles[0].text}

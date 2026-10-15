@@ -31,8 +31,6 @@ ORDER_EMAIL_PUBLIC_URL = "https://glamtoo.webdesignessex.io"
 ORDER_EMAIL_SEND_TO_ALL = "false"
 ORDER_EMAIL_TRANSPORT = "gmail_smtp"
 GMAIL_SMTP_AUTH_MODE = "oauth2"
-EMAIL_BRANDING_TEST_APPROVAL_ID = "18d7984f-51b4-4267-acd6-4922da04cf24"
-EMAIL_BRANDING_TEST_RECIPIENT = "itswebsitedeveloper.ews@gmail.com"
 
 [userenv.production]
 GMAIL_SMTP_OAUTH_REDIRECT_URI = "https://glamtoo.webdesignessex.io/api/gmail/oauth/callback"

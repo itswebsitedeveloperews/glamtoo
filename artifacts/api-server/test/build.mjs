@@ -12,7 +12,7 @@ if (process.env.NODE_ENV !== "test" || !databaseUrl
     || !/^\/glam_checkout_test_[a-f0-9]{32}$/.test(databaseUrl.pathname)) {
   throw new Error("BLOCKED: backend test builds require the disposable local database runner. Use test:isolated or pnpm validate:linux.");
 }
-const testName = ["email-branding-controls", "listing-preview-warmup", "shipping", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth", "contact-notifications", "contact-email-template", "order-email-status", "order-email-actions", "customer-confirmation-policy", "order-confirmation-template", "fresh-launch"].includes(process.argv[2]) ? process.argv[2] : "regressions";
+const testName = ["listing-preview-warmup", "shipping", "guest-checkout", "checkout-safety", "email-confirmations", "gmail-smtp", "gmail-oauth", "contact-notifications", "contact-email-template", "order-email-status", "order-email-actions", "customer-confirmation-policy", "order-confirmation-template", "fresh-launch"].includes(process.argv[2]) ? process.argv[2] : "regressions";
 const outputFile = resolve(outputDir, `${testName}.test.cjs`);
 
 await rm(outputDir, { recursive: true, force: true });
@@ -50,7 +50,7 @@ await build({
         resolveDir: testDir,
       }));
     },
-  }] : ["email-branding-controls", "gmail-smtp", "gmail-oauth", "contact-notifications", "order-email-actions"].includes(testName) ? [{
+  }] : ["gmail-smtp", "gmail-oauth", "contact-notifications", "order-email-actions"].includes(testName) ? [{
     name: "isolated-gmail-smtp",
     setup(builder) {
       builder.onResolve({ filter: /^nodemailer$/ }, () => ({ path: resolve(testDir, "fixtures/gmail-smtp.ts") }));
@@ -58,7 +58,7 @@ await build({
         builder.onResolve({ filter: /^@workspace\/db$/ }, () => ({ path: resolve(testDir, "fixtures/gmail-oauth-db.ts") }));
         builder.onResolve({ filter: /^@clerk\/express$/ }, () => ({ path: resolve(testDir, "fixtures/gmail-oauth-clerk.ts") }));
       }
-      if (["email-branding-controls", "contact-notifications", "order-email-actions"].includes(testName)) {
+      if (["contact-notifications", "order-email-actions"].includes(testName)) {
         builder.onResolve({ filter: /^@clerk\/express$/ }, () => ({ path: resolve(testDir, "fixtures/gmail-oauth-clerk.ts") }));
       }
     },

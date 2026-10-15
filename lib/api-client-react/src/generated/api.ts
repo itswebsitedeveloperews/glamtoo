@@ -36,8 +36,6 @@ import type {
   ContactEnquiryResponse,
   ContactNotificationSettingsInput,
   CustomerConfirmationApprovalInput,
-  EmailBrandingTestRequest,
-  EmailBrandingTestStatus,
   ErrorEnvelope,
   GetAdminContactEnquiries200,
   GetAdminContactNotificationSettings200,
@@ -67,7 +65,6 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
-
 const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKey: K } => {
   const result = { queryKey } as T & { queryKey: K };
   for (const key of Object.keys(query)) {
@@ -83,199 +80,7 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   return result;
 };
 
-export const getGetEmailBrandingTestsUrl = () => {
-
-
-
-
-  return `/api/admin/email-branding-tests`
-}
-
-/**
- * @summary Read the approved synthetic email batch without sending
- */
-export const getEmailBrandingTests = async ( options?: Parameters<typeof customFetch>[1]): Promise<EmailBrandingTestStatus> => {
-
-  return customFetch<EmailBrandingTestStatus>(getGetEmailBrandingTestsUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetEmailBrandingTestsQueryKey = () => {
-    return [
-    `/api/admin/email-branding-tests`
-    ] as const;
-    }
-
-
-export const getGetEmailBrandingTestsQueryOptions = <TData = Awaited<ReturnType<typeof getEmailBrandingTests>>, TError = ErrorType<unknown>>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEmailBrandingTests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetEmailBrandingTestsQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getEmailBrandingTests>>> = ({ signal }) => getEmailBrandingTests({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getEmailBrandingTests>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetEmailBrandingTestsQueryResult = NonNullable<Awaited<ReturnType<typeof getEmailBrandingTests>>>
-export type GetEmailBrandingTestsQueryError = ErrorType<unknown>
-
-
-export function useGetEmailBrandingTests<TData = Awaited<ReturnType<typeof getEmailBrandingTests>>, TError = ErrorType<unknown>>(
-  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEmailBrandingTests>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getEmailBrandingTests>>,
-          TError,
-          Awaited<ReturnType<typeof getEmailBrandingTests>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetEmailBrandingTests<TData = Awaited<ReturnType<typeof getEmailBrandingTests>>, TError = ErrorType<unknown>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEmailBrandingTests>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getEmailBrandingTests>>,
-          TError,
-          Awaited<ReturnType<typeof getEmailBrandingTests>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetEmailBrandingTests<TData = Awaited<ReturnType<typeof getEmailBrandingTests>>, TError = ErrorType<unknown>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEmailBrandingTests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Read the approved synthetic email batch without sending
- */
-
-export function useGetEmailBrandingTests<TData = Awaited<ReturnType<typeof getEmailBrandingTests>>, TError = ErrorType<unknown>>(
-  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getEmailBrandingTests>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetEmailBrandingTestsQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
-export const getSendEmailBrandingTestsUrl = () => {
-
-
-
-
-  return `/api/admin/email-branding-tests`
-}
-
-/**
- * Admin only, same origin, no automatic retries or business records.
- * @summary Send one approved five-message synthetic branding batch
- */
-export const sendEmailBrandingTests = async (emailBrandingTestRequest: EmailBrandingTestRequest, options?: Parameters<typeof customFetch>[1]): Promise<EmailBrandingTestStatus> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<EmailBrandingTestStatus>(getSendEmailBrandingTestsUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(emailBrandingTestRequest)
-  }
-);}
-
-
-
-
-
-export const getSendEmailBrandingTestsMutationKey = () => ['sendEmailBrandingTests'] as const;
-
-export const getSendEmailBrandingTestsMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendEmailBrandingTests>>, TError,SendEmailBrandingTestsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof sendEmailBrandingTests>>, TError,SendEmailBrandingTestsMutationVariables, TContext> => {
-
-const mutationKey = getSendEmailBrandingTestsMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendEmailBrandingTests>>, SendEmailBrandingTestsMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  sendEmailBrandingTests(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type SendEmailBrandingTestsMutationResult = NonNullable<Awaited<ReturnType<typeof sendEmailBrandingTests>>>
-    export type SendEmailBrandingTestsMutationBody = BodyType<EmailBrandingTestRequest>
-    export type SendEmailBrandingTestsMutationError = ErrorType<void>
-    export type SendEmailBrandingTestsMutationVariables = {data: BodyType<EmailBrandingTestRequest>}
-
-    /**
- * @summary Send one approved five-message synthetic branding batch
- */
-export const useSendEmailBrandingTests = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendEmailBrandingTests>>, TError,SendEmailBrandingTestsMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof sendEmailBrandingTests>>,
-        TError,
-        SendEmailBrandingTestsMutationVariables,
-        TContext
-      > => {
-      return useMutation(getSendEmailBrandingTestsMutationOptions(options), queryClient);
-    }
-
 export const getRequestOrderEmailActionUrl = (orderId: string,) => {
-
-
 
 
   return `/api/admin/orders/${orderId}/email-actions`
@@ -312,9 +117,6 @@ return customFetch<void>(getRequestOrderEmailActionUrl(orderId),
 );}
 
 
-
-
-
 export const getRequestOrderEmailActionMutationKey = () => ['requestOrderEmailAction'] as const;
 
 export const getRequestOrderEmailActionMutationOptions = <TError = ErrorType<void>,
@@ -329,17 +131,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestOrderEmailAction>>, RequestOrderEmailActionMutationVariables> = (props) => {
           const {orderId,data} = props ?? {};
 
           return  requestOrderEmailAction(orderId,data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -366,96 +162,9 @@ export const useRequestOrderEmailAction = <TError = ErrorType<void>,
 export const getApproveCustomerConfirmationUrl = (reference: string,) => {
 
 
-
-
   return `/api/admin/orders/${reference}/customer-email/retry`
 }
-
-/**
- * Uses only the saved paid-order email. Never resends accepted or uncertain messages and never changes admin copies.
- * @summary Approve one demonstrably unsent customer confirmation for a paid order
- */
-export const approveCustomerConfirmation = async (reference: string,
-    customerConfirmationApprovalInput: CustomerConfirmationApprovalInput, options?: Parameters<typeof customFetch>[1]): Promise<ApproveCustomerConfirmation200> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return customFetch<ApproveCustomerConfirmation200>(getApproveCustomerConfirmationUrl(reference),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(customerConfirmationApprovalInput)
-  }
-);}
-
-
-
-
-
-export const getApproveCustomerConfirmationMutationKey = () => ['approveCustomerConfirmation'] as const;
-
-export const getApproveCustomerConfirmationMutationOptions = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveCustomerConfirmation>>, TError,ApproveCustomerConfirmationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof approveCustomerConfirmation>>, TError,ApproveCustomerConfirmationMutationVariables, TContext> => {
-
-const mutationKey = getApproveCustomerConfirmationMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveCustomerConfirmation>>, ApproveCustomerConfirmationMutationVariables> = (props) => {
-          const {reference,data} = props ?? {};
-
-          return  approveCustomerConfirmation(reference,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type ApproveCustomerConfirmationMutationResult = NonNullable<Awaited<ReturnType<typeof approveCustomerConfirmation>>>
-    export type ApproveCustomerConfirmationMutationBody = BodyType<CustomerConfirmationApprovalInput>
-    export type ApproveCustomerConfirmationMutationError = ErrorType<void>
-    export type ApproveCustomerConfirmationMutationVariables = {reference: string;data: BodyType<CustomerConfirmationApprovalInput>}
-
-    /**
- * @summary Approve one demonstrably unsent customer confirmation for a paid order
- */
-export const useApproveCustomerConfirmation = <TError = ErrorType<void>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveCustomerConfirmation>>, TError,ApproveCustomerConfirmationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof approveCustomerConfirmation>>,
-        TError,
-        ApproveCustomerConfirmationMutationVariables,
-        TContext
-      > => {
-      return useMutation(getApproveCustomerConfirmationMutationOptions(options), queryClient);
-    }
-
 export const getSaveAdminCatalogUrl = () => {
-
-
 
 
   return `/api/admin/catalog`
@@ -491,9 +200,6 @@ return customFetch<SaveAdminCatalog200>(getSaveAdminCatalogUrl(),
 );}
 
 
-
-
-
 export const getSaveAdminCatalogMutationKey = () => ['saveAdminCatalog'] as const;
 
 export const getSaveAdminCatalogMutationOptions = <TError = ErrorType<void>,
@@ -508,17 +214,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveAdminCatalog>>, SaveAdminCatalogMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  saveAdminCatalog(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -545,8 +245,6 @@ export const useSaveAdminCatalog = <TError = ErrorType<void>,
 export const getGetAdminContactEnquiriesUrl = () => {
 
 
-
-
   return `/api/admin/contact-enquiries`
 }
 
@@ -565,9 +263,6 @@ export const getAdminContactEnquiries = async ( options?: Parameters<typeof cust
 );}
 
 
-
-
-
 export const getGetAdminContactEnquiriesQueryKey = () => {
     return [
     `/api/admin/contact-enquiries`
@@ -583,11 +278,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetAdminContactEnquiriesQueryKey();
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminContactEnquiries>>> = ({ signal }) => getAdminContactEnquiries({ signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminContactEnquiries>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -638,14 +329,7 @@ export function useGetAdminContactEnquiries<TData = Awaited<ReturnType<typeof ge
 }
 
 
-
-
-
-
-
 export const getGetAdminContactNotificationSettingsUrl = () => {
-
-
 
 
   return `/api/admin/contact-notification-settings`
@@ -666,9 +350,6 @@ export const getAdminContactNotificationSettings = async ( options?: Parameters<
 );}
 
 
-
-
-
 export const getGetAdminContactNotificationSettingsQueryKey = () => {
     return [
     `/api/admin/contact-notification-settings`
@@ -684,11 +365,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetAdminContactNotificationSettingsQueryKey();
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminContactNotificationSettings>>> = ({ signal }) => getAdminContactNotificationSettings({ signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminContactNotificationSettings>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -739,14 +416,7 @@ export function useGetAdminContactNotificationSettings<TData = Awaited<ReturnTyp
 }
 
 
-
-
-
-
-
 export const getSaveAdminContactNotificationSettingsUrl = () => {
-
-
 
 
   return `/api/admin/contact-notification-settings`
@@ -782,9 +452,6 @@ return customFetch<SaveAdminContactNotificationSettings200>(getSaveAdminContactN
 );}
 
 
-
-
-
 export const getSaveAdminContactNotificationSettingsMutationKey = () => ['saveAdminContactNotificationSettings'] as const;
 
 export const getSaveAdminContactNotificationSettingsMutationOptions = <TError = ErrorType<void>,
@@ -799,17 +466,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof saveAdminContactNotificationSettings>>, SaveAdminContactNotificationSettingsMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  saveAdminContactNotificationSettings(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -836,8 +497,6 @@ export const useSaveAdminContactNotificationSettings = <TError = ErrorType<void>
 export const getGetAdminGmailSettingsUrl = () => {
 
 
-
-
   return `/api/admin/gmail`
 }
 
@@ -856,9 +515,6 @@ export const getAdminGmailSettings = async ( options?: Parameters<typeof customF
 );}
 
 
-
-
-
 export const getGetAdminGmailSettingsQueryKey = () => {
     return [
     `/api/admin/gmail`
@@ -874,11 +530,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetAdminGmailSettingsQueryKey();
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminGmailSettings>>> = ({ signal }) => getAdminGmailSettings({ signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminGmailSettings>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -929,14 +581,7 @@ export function useGetAdminGmailSettings<TData = Awaited<ReturnType<typeof getAd
 }
 
 
-
-
-
-
-
 export const getStartAdminGmailAuthorizationUrl = () => {
-
-
 
 
   return `/api/admin/gmail/connect`
@@ -958,9 +603,6 @@ export const startAdminGmailAuthorization = async ( options?: Parameters<typeof 
 );}
 
 
-
-
-
 export const getStartAdminGmailAuthorizationMutationKey = () => ['startAdminGmailAuthorization'] as const;
 
 export const getStartAdminGmailAuthorizationMutationOptions = <TError = ErrorType<void>,
@@ -975,17 +617,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof startAdminGmailAuthorization>>, void> = () => {
 
 
           return  startAdminGmailAuthorization(requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1012,8 +648,6 @@ export const useStartAdminGmailAuthorization = <TError = ErrorType<void>,
 export const getVerifyAdminGmailAuthenticationUrl = () => {
 
 
-
-
   return `/api/admin/gmail/verify`
 }
 
@@ -1032,9 +666,6 @@ export const verifyAdminGmailAuthentication = async ( options?: Parameters<typeo
 );}
 
 
-
-
-
 export const getVerifyAdminGmailAuthenticationMutationKey = () => ['verifyAdminGmailAuthentication'] as const;
 
 export const getVerifyAdminGmailAuthenticationMutationOptions = <TError = ErrorType<void>,
@@ -1049,17 +680,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyAdminGmailAuthentication>>, void> = () => {
 
 
           return  verifyAdminGmailAuthentication(requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1084,8 +709,6 @@ export const useVerifyAdminGmailAuthentication = <TError = ErrorType<void>,
     }
 
 export const getCreateCheckoutPaymentIntentUrl = () => {
-
-
 
 
   return `/api/stripe/payment-intent`
@@ -1121,9 +744,6 @@ return customFetch<CheckoutPaymentIntentResult>(getCreateCheckoutPaymentIntentUr
 );}
 
 
-
-
-
 export const getCreateCheckoutPaymentIntentMutationKey = () => ['createCheckoutPaymentIntent'] as const;
 
 export const getCreateCheckoutPaymentIntentMutationOptions = <TError = ErrorType<ErrorEnvelope | void>,
@@ -1138,17 +758,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCheckoutPaymentIntent>>, CreateCheckoutPaymentIntentMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  createCheckoutPaymentIntent(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1173,8 +787,6 @@ export const useCreateCheckoutPaymentIntent = <TError = ErrorType<ErrorEnvelope 
     }
 
 export const getFinalizeCheckoutPaymentUrl = () => {
-
-
 
 
   return `/api/stripe/finalize-payment`
@@ -1210,9 +822,6 @@ return customFetch<CheckoutFinalizationResult>(getFinalizeCheckoutPaymentUrl(),
 );}
 
 
-
-
-
 export const getFinalizeCheckoutPaymentMutationKey = () => ['finalizeCheckoutPayment'] as const;
 
 export const getFinalizeCheckoutPaymentMutationOptions = <TError = ErrorType<ErrorEnvelope>,
@@ -1227,17 +836,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof finalizeCheckoutPayment>>, FinalizeCheckoutPaymentMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  finalizeCheckoutPayment(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1262,8 +865,6 @@ export const useFinalizeCheckoutPayment = <TError = ErrorType<ErrorEnvelope>,
     }
 
 export const getCreateHostedCheckoutUrl = () => {
-
-
 
 
   return `/api/stripe/checkout`
@@ -1298,9 +899,6 @@ return customFetch<HostedCheckoutResult>(getCreateHostedCheckoutUrl(),
 );}
 
 
-
-
-
 export const getCreateHostedCheckoutMutationKey = () => ['createHostedCheckout'] as const;
 
 export const getCreateHostedCheckoutMutationOptions = <TError = ErrorType<ErrorEnvelope | void>,
@@ -1315,17 +913,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof createHostedCheckout>>, CreateHostedCheckoutMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  createHostedCheckout(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1350,8 +942,6 @@ export const useCreateHostedCheckout = <TError = ErrorType<ErrorEnvelope | void>
     }
 
 export const getAbandonCheckoutPaymentUrl = () => {
-
-
 
 
   return `/api/stripe/abandon-payment`
@@ -1386,9 +976,6 @@ return customFetch<AbandonCheckoutPayment200>(getAbandonCheckoutPaymentUrl(),
 );}
 
 
-
-
-
 export const getAbandonCheckoutPaymentMutationKey = () => ['abandonCheckoutPayment'] as const;
 
 export const getAbandonCheckoutPaymentMutationOptions = <TError = ErrorType<void>,
@@ -1403,17 +990,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof abandonCheckoutPayment>>, AbandonCheckoutPaymentMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  abandonCheckoutPayment(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -1468,9 +1049,6 @@ export const resolveSeo = async (params: ResolveSeoParams, options?: Parameters<
 );}
 
 
-
-
-
 export const getResolveSeoQueryKey = (params?: ResolveSeoParams,) => {
     return [
     `/api/seo/resolve`, ...(params ? [params] : [])
@@ -1486,11 +1064,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getResolveSeoQueryKey(params);
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof resolveSeo>>> = ({ signal }) => resolveSeo(params, { signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof resolveSeo>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -1541,14 +1115,7 @@ export function useResolveSeo<TData = Awaited<ReturnType<typeof resolveSeo>>, TE
 }
 
 
-
-
-
-
-
 export const getGetSeoSitemapUrl = () => {
-
-
 
 
   return `/api/seo/sitemap.xml`
@@ -1569,9 +1136,6 @@ export const getSeoSitemap = async ( options?: Parameters<typeof customFetch>[1]
 );}
 
 
-
-
-
 export const getGetSeoSitemapQueryKey = () => {
     return [
     `/api/seo/sitemap.xml`
@@ -1587,11 +1151,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetSeoSitemapQueryKey();
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getSeoSitemap>>> = ({ signal }) => getSeoSitemap({ signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSeoSitemap>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -1642,14 +1202,7 @@ export function useGetSeoSitemap<TData = Awaited<ReturnType<typeof getSeoSitemap
 }
 
 
-
-
-
-
-
 export const getGetSeoRobotsUrl = () => {
-
-
 
 
   return `/api/seo/robots.txt`
@@ -1670,9 +1223,6 @@ export const getSeoRobots = async ( options?: Parameters<typeof customFetch>[1])
 );}
 
 
-
-
-
 export const getGetSeoRobotsQueryKey = () => {
     return [
     `/api/seo/robots.txt`
@@ -1688,11 +1238,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getGetSeoRobotsQueryKey();
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof getSeoRobots>>> = ({ signal }) => getSeoRobots({ signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getSeoRobots>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -1743,14 +1289,7 @@ export function useGetSeoRobots<TData = Awaited<ReturnType<typeof getSeoRobots>>
 }
 
 
-
-
-
-
-
 export const getHealthCheckUrl = () => {
-
-
 
 
   return `/api/healthz`
@@ -1772,9 +1311,6 @@ export const healthCheck = async ( options?: Parameters<typeof customFetch>[1]):
 );}
 
 
-
-
-
 export const getHealthCheckQueryKey = () => {
     return [
     `/api/healthz`
@@ -1790,11 +1326,7 @@ const {query: queryOptions, request: requestOptions} = options ?? {};
   const queryKey =  queryOptions?.queryKey ?? getHealthCheckQueryKey();
 
 
-
     const queryFn: QueryFunction<Awaited<ReturnType<typeof healthCheck>>> = ({ signal }) => healthCheck({ signal, ...requestOptions });
-
-
-
 
 
    return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof healthCheck>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
@@ -1844,12 +1376,6 @@ export function useHealthCheck<TData = Awaited<ReturnType<typeof healthCheck>>, 
   return withQueryKey(query, queryOptions.queryKey);
 }
 
-
-
-
-
-
-
 export const getGetUploadedImageUrl = (id: string,
     params?: GetUploadedImageParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -1865,110 +1391,7 @@ export const getGetUploadedImageUrl = (id: string,
 
   return stringifiedParams.length > 0 ? `/api/storage/objects/uploads/${id}?${stringifiedParams}` : `/api/storage/objects/uploads/${id}`
 }
-
-/**
- * @summary Serve an original upload or a cacheable listing-only WebP preview
- */
-export const getUploadedImage = async (id: string,
-    params?: GetUploadedImageParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
-
-  return customFetch<Blob>(getGetUploadedImageUrl(id,params),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetUploadedImageQueryKey = (id: string,
-    params?: GetUploadedImageParams,) => {
-    return [
-    `/api/storage/objects/uploads/${id}`, ...(params ? [params] : [])
-    ] as const;
-    }
-
-
-export const getGetUploadedImageQueryOptions = <TData = Awaited<ReturnType<typeof getUploadedImage>>, TError = ErrorType<void>>(id: string,
-    params?: GetUploadedImageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUploadedImage>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetUploadedImageQueryKey(id,params);
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUploadedImage>>> = ({ signal }) => getUploadedImage(id,params, { signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUploadedImage>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetUploadedImageQueryResult = NonNullable<Awaited<ReturnType<typeof getUploadedImage>>>
-export type GetUploadedImageQueryError = ErrorType<void>
-
-
-export function useGetUploadedImage<TData = Awaited<ReturnType<typeof getUploadedImage>>, TError = ErrorType<void>>(
- id: string,
-    params: undefined |  GetUploadedImageParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUploadedImage>>, TError, TData>> & Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getUploadedImage>>,
-          TError,
-          Awaited<ReturnType<typeof getUploadedImage>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetUploadedImage<TData = Awaited<ReturnType<typeof getUploadedImage>>, TError = ErrorType<void>>(
- id: string,
-    params?: GetUploadedImageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUploadedImage>>, TError, TData>> & Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getUploadedImage>>,
-          TError,
-          Awaited<ReturnType<typeof getUploadedImage>>
-        > , 'initialData'
-      >, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-export function useGetUploadedImage<TData = Awaited<ReturnType<typeof getUploadedImage>>, TError = ErrorType<void>>(
- id: string,
-    params?: GetUploadedImageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUploadedImage>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
-  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
-/**
- * @summary Serve an original upload or a cacheable listing-only WebP preview
- */
-
-export function useGetUploadedImage<TData = Awaited<ReturnType<typeof getUploadedImage>>, TError = ErrorType<void>>(
- id: string,
-    params?: GetUploadedImageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUploadedImage>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
- , queryClient?: QueryClient
- ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-
-  const queryOptions = getGetUploadedImageQueryOptions(id,params,options)
-
-  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
-
-  return withQueryKey(query, queryOptions.queryKey);
-}
-
-
-
-
-
-
-
 export const getRequestUploadUrlUrl = () => {
-
-
 
 
   return `/api/storage/uploads/request-url`
@@ -2003,9 +1426,6 @@ return customFetch<UploadUrlResponse>(getRequestUploadUrlUrl(),
 );}
 
 
-
-
-
 export const getRequestUploadUrlMutationKey = () => ['requestUploadUrl'] as const;
 
 export const getRequestUploadUrlMutationOptions = <TError = ErrorType<ErrorEnvelope>,
@@ -2020,17 +1440,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestUploadUrl>>, RequestUploadUrlMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  requestUploadUrl(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -2055,8 +1469,6 @@ export const useRequestUploadUrl = <TError = ErrorType<ErrorEnvelope>,
     }
 
 export const getSubmitContactEnquiryUrl = () => {
-
-
 
 
   return `/api/contact-enquiries`
@@ -2091,9 +1503,6 @@ return customFetch<ContactEnquiryResponse>(getSubmitContactEnquiryUrl(),
 );}
 
 
-
-
-
 export const getSubmitContactEnquiryMutationKey = () => ['submitContactEnquiry'] as const;
 
 export const getSubmitContactEnquiryMutationOptions = <TError = ErrorType<ErrorEnvelope>,
@@ -2108,17 +1517,11 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       : {mutation: { mutationKey, }, request: undefined};
 
 
-
-
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof submitContactEnquiry>>, SubmitContactEnquiryMutationVariables> = (props) => {
           const {data} = props ?? {};
 
           return  submitContactEnquiry(data,requestOptions)
         }
-
-
-
-
 
 
   return  { mutationFn, ...mutationOptions }}
@@ -2141,3 +1544,137 @@ export const useSubmitContactEnquiry = <TError = ErrorType<ErrorEnvelope>,
       > => {
       return useMutation(getSubmitContactEnquiryMutationOptions(options), queryClient);
     }
+
+
+export type GetUploadedImageQueryError = ErrorType<void>
+
+/**
+ * @summary Serve an original upload or a cacheable listing-only WebP preview
+ */
+export const getUploadedImage = async (id: string,
+    params?: GetUploadedImageParams, options?: Parameters<typeof customFetch>[1]): Promise<Blob> => {
+
+  return customFetch<Blob>(getGetUploadedImageUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+/**
+ * @summary Serve an original upload or a cacheable listing-only WebP preview
+ */
+
+export function useGetUploadedImage<TData = Awaited<ReturnType<typeof getUploadedImage>>, TError = ErrorType<void>>(
+ id: string,
+    params?: GetUploadedImageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUploadedImage>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetUploadedImageQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getGetUploadedImageQueryKey = (id: string,
+    params?: GetUploadedImageParams,) => {
+    return [
+    `/api/storage/objects/uploads/${id}`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+export const getGetUploadedImageQueryOptions = <TData = Awaited<ReturnType<typeof getUploadedImage>>, TError = ErrorType<void>>(id: string,
+    params?: GetUploadedImageParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getUploadedImage>>, TError, TData>>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUploadedImageQueryKey(id,params);
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUploadedImage>>> = ({ signal }) => getUploadedImage(id,params, { signal, ...requestOptions });
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUploadedImage>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetUploadedImageQueryResult = NonNullable<Awaited<ReturnType<typeof getUploadedImage>>>
+
+export const getApproveCustomerConfirmationMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveCustomerConfirmation>>, TError,ApproveCustomerConfirmationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveCustomerConfirmation>>, TError,ApproveCustomerConfirmationMutationVariables, TContext> => {
+
+const mutationKey = getApproveCustomerConfirmationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveCustomerConfirmation>>, ApproveCustomerConfirmationMutationVariables> = (props) => {
+          const {reference,data} = props ?? {};
+
+          return  approveCustomerConfirmation(reference,data,requestOptions)
+        }
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveCustomerConfirmationMutationBody = BodyType<CustomerConfirmationApprovalInput>
+
+    export type ApproveCustomerConfirmationMutationVariables = {reference: string;data: BodyType<CustomerConfirmationApprovalInput>}
+
+    export type ApproveCustomerConfirmationMutationResult = NonNullable<Awaited<ReturnType<typeof approveCustomerConfirmation>>>
+
+    /**
+ * @summary Approve one demonstrably unsent customer confirmation for a paid order
+ */
+export const useApproveCustomerConfirmation = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveCustomerConfirmation>>, TError,ApproveCustomerConfirmationMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof approveCustomerConfirmation>>,
+        TError,
+        ApproveCustomerConfirmationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveCustomerConfirmationMutationOptions(options), queryClient);
+    }
+
+    export type ApproveCustomerConfirmationMutationError = ErrorType<void>
+
+/**
+ * Uses only the saved paid-order email. Never resends accepted or uncertain messages and never changes admin copies.
+ * @summary Approve one demonstrably unsent customer confirmation for a paid order
+ */
+export const approveCustomerConfirmation = async (reference: string,
+    customerConfirmationApprovalInput: CustomerConfirmationApprovalInput, options?: Parameters<typeof customFetch>[1]): Promise<ApproveCustomerConfirmation200> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<ApproveCustomerConfirmation200>(getApproveCustomerConfirmationUrl(reference),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(customerConfirmationApprovalInput)
+  }
+);}
+
+export const getApproveCustomerConfirmationMutationKey = () => ['approveCustomerConfirmation'] as const;

@@ -5,45 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export type EmailBrandingTestRequestConfirmation = typeof EmailBrandingTestRequestConfirmation[keyof typeof EmailBrandingTestRequestConfirmation];
-
-
-export const EmailBrandingTestRequestConfirmation = {
-  SEND_FIVE_SYNTHETIC_EMAILS: 'SEND FIVE SYNTHETIC EMAILS',
-} as const;
-
-export interface EmailBrandingTestRequest {
-  recipient: string;
-  confirmation: EmailBrandingTestRequestConfirmation;
-}
-
-export type EmailBrandingTestStatusSamplesItemStatus = typeof EmailBrandingTestStatusSamplesItemStatus[keyof typeof EmailBrandingTestStatusSamplesItemStatus];
-
-
-export const EmailBrandingTestStatusSamplesItemStatus = {
-  reserved: 'reserved',
-  sending: 'sending',
-  accepted: 'accepted',
-  failed: 'failed',
-  uncertain: 'uncertain',
-  not_sent: 'not_sent',
-} as const;
-
-export type EmailBrandingTestStatusSamplesItem = {
-  variant: string;
-  marker: string;
-  messageId: string;
-  subject: string;
-  status: EmailBrandingTestStatusSamplesItemStatus;
-};
-
-export interface EmailBrandingTestStatus {
-  configured: boolean;
-  recipient: string;
-  canSend: boolean;
-  samples: EmailBrandingTestStatusSamplesItem[];
-}
-
 export type OrderEmailActionInputAction = typeof OrderEmailActionInputAction[keyof typeof OrderEmailActionInputAction];
 
 
@@ -65,16 +26,6 @@ export interface OrderEmailActionInput {
 }
 
 export type CustomerConfirmationApprovalInputConfirmation = typeof CustomerConfirmationApprovalInputConfirmation[keyof typeof CustomerConfirmationApprovalInputConfirmation];
-
-
-export const CustomerConfirmationApprovalInputConfirmation = {
-  send_saved_order_confirmation: 'send_saved_order_confirmation',
-} as const;
-
-export interface CustomerConfirmationApprovalInput {
-  confirmation: CustomerConfirmationApprovalInputConfirmation;
-}
-
 export type AdminCatalogSaveInputProductsItem = { [key: string]: unknown };
 
 export type AdminCatalogSaveInputCategoriesItem = { [key: string]: unknown };
@@ -277,19 +228,6 @@ export interface ErrorEnvelope {
 }
 
 export type ApproveCustomerConfirmation200Outcome = typeof ApproveCustomerConfirmation200Outcome[keyof typeof ApproveCustomerConfirmation200Outcome];
-
-
-export const ApproveCustomerConfirmation200Outcome = {
-  approved: 'approved',
-  already_approved: 'already_approved',
-  already_processed: 'already_processed',
-} as const;
-
-export type ApproveCustomerConfirmation200 = {
-  outcome: ApproveCustomerConfirmation200Outcome;
-  message: string;
-};
-
 export type SaveAdminCatalog200ProductsItem = { [key: string]: unknown };
 
 export type SaveAdminCatalog200CategoriesItem = { [key: string]: unknown };
@@ -408,15 +346,14 @@ preview?: GetUploadedImagePreview;
 width?: GetUploadedImageWidth;
 };
 
-export type GetUploadedImagePreview = typeof GetUploadedImagePreview[keyof typeof GetUploadedImagePreview];
-
 
 export const GetUploadedImagePreview = {
   'listing-v1': 'listing-v1',
 } as const;
 
-export type GetUploadedImageWidth = typeof GetUploadedImageWidth[keyof typeof GetUploadedImageWidth];
+export type GetUploadedImagePreview = typeof GetUploadedImagePreview[keyof typeof GetUploadedImagePreview];
 
+export type GetUploadedImageWidth = typeof GetUploadedImageWidth[keyof typeof GetUploadedImageWidth];
 
 export const GetUploadedImageWidth = {
   NUMBER_320: 320,
@@ -424,3 +361,22 @@ export const GetUploadedImageWidth = {
   NUMBER_640: 640,
   NUMBER_960: 960,
 } as const;
+
+export const CustomerConfirmationApprovalInputConfirmation = {
+  send_saved_order_confirmation: 'send_saved_order_confirmation',
+} as const;
+
+export interface CustomerConfirmationApprovalInput {
+  confirmation: CustomerConfirmationApprovalInputConfirmation;
+}
+
+export const ApproveCustomerConfirmation200Outcome = {
+  approved: 'approved',
+  already_approved: 'already_approved',
+  already_processed: 'already_processed',
+} as const;
+
+export type ApproveCustomerConfirmation200 = {
+  outcome: ApproveCustomerConfirmation200Outcome;
+  message: string;
+};
