@@ -1,6 +1,7 @@
 import nodemailer, { type SendMailOptions } from "nodemailer";
 import { createHash } from "node:crypto";
 import { gmailOAuthClient, gmailUsesOAuth, getGmailRefreshToken } from "./gmailOAuthCredentials";
+import { EMAIL_BRAND } from "./emailBranding";
 
 type GmailMessage = { subject: string; html: string; text: string; attachments?: SendMailOptions["attachments"] };
 
@@ -22,14 +23,14 @@ export async function gmailSmtpConfiguration(): Promise<GmailSmtpConfig | null> 
     return {
       user, mode: "oauth2", clientId: client.clientId, clientSecret: client.clientSecret,
       refreshToken: refreshToken.token, authorizedSince: refreshToken.enabledAt,
-      fromName: process.env.GMAIL_SMTP_FROM_NAME?.trim() || "Glam Too Boutique",
+      fromName: process.env.GMAIL_SMTP_FROM_NAME?.trim() || EMAIL_BRAND.name,
       replyTo: process.env.GMAIL_SMTP_REPLY_TO_EMAIL?.trim() || user,
     };
   }
   if (!password) return null;
   return {
     user, password, mode: "app_password",
-    fromName: process.env.GMAIL_SMTP_FROM_NAME?.trim() || "Glam Too Boutique",
+    fromName: process.env.GMAIL_SMTP_FROM_NAME?.trim() || EMAIL_BRAND.name,
     replyTo: process.env.GMAIL_SMTP_REPLY_TO_EMAIL?.trim() || user,
   };
 }

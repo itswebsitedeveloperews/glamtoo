@@ -1,4 +1,4 @@
-import wordmark from "./assets/email-wordmark.png";
+import { brandedEmailDocument } from "./emailBranding";
 
 const LOGO_CID = "glam-too-order-wordmark";
 
@@ -81,18 +81,12 @@ export function buildOrderConfirmation(
   const totalRows = totals.slice(0, -1).map(([l, v]) => `
 <tr><td align="left" valign="top" style="padding:5px 12px 5px 0;${F}font-size:14px;line-height:22px;color:#625b56;${wrap}">${e(l!)}</td>
 <td align="right" valign="top" style="padding:5px 0;${F}font-size:14px;line-height:22px;color:#171615;white-space:nowrap;">${e(v!)}</td></tr>`).join("");
-  const html = `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><title>${e(subject)}</title></head>
-<body style="margin:0;padding:0;background-color:#f5f1ed;color:#171615;${F}font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%;">
-<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;mso-hide:all;">Payment confirmed for order ${e(reference)}. Total paid ${e(money(order.total))}.</div>
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f5f1ed" style="width:100%;background-color:#f5f1ed;">
-<tr><td align="center" style="padding:28px 12px;">
-<!--[if mso]><table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" align="center"><tr><td><![endif]-->
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" align="center" bgcolor="#ffffff" style="width:100%;max-width:640px;margin:0 auto;background-color:#ffffff;border:1px solid #d8d0ca;">
-<tr><td height="4" bgcolor="#c96381" style="height:4px;font-size:0;line-height:0;background-color:#c96381;">&nbsp;</td></tr>
-<tr><td align="center" bgcolor="#f5f1ed" style="padding:26px 24px 20px;background-color:#f5f1ed;border-bottom:1px solid #e8e1dc;">
-<img src="cid:${LOGO_CID}" alt="Glam Too Boutique" width="220" height="63" style="display:block;width:220px;max-width:100%;height:auto;margin:0 auto;border:0;color:#171615;font-family:Georgia,serif;font-size:24px;"></td></tr>
-<tr><td align="left" style="padding:32px 28px 8px;">
+  const { html, attachments } = brandedEmailDocument({
+    subject,
+    preheader: `Payment confirmed for order ${reference}. Total paid ${money(order.total)}.`,
+    logoCid: LOGO_CID,
+    footerNote: "Prices include 20% VAT",
+    content: `<tr><td align="left" style="padding:32px 28px 8px;">
 <p style="margin:0 0 10px;${F}font-size:14px;line-height:20px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b12d5c;">Order confirmed</p>
 <h1 style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:38px;font-weight:400;color:#171615;">Thank you, ${e(order.customer_name || "there")}</h1>
 <p style="margin:0 0 20px;${F}font-size:16px;line-height:24px;color:#171615;">Your payment has been confirmed. We are preparing your order and will keep you updated.</p>
@@ -117,17 +111,7 @@ ${address.map(e).join("<br>")}</td></tr></table>
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" bgcolor="#e23d6f" style="background-color:#e23d6f;mso-padding-alt:14px 24px;">
 <a href="${e(link)}" style="display:inline-block;padding:14px 24px;border:1px solid #e23d6f;background-color:#e23d6f;color:#ffffff;${F}font-size:16px;line-height:22px;font-weight:700;text-decoration:none;">${e(linkLabel)}</a></td></tr></table>
 ${guest ? `<p style="margin:16px 0 0;${F}font-size:14px;line-height:22px;color:#625b56;">Please include your order reference when contacting us.</p>` : ""}
-</td></tr>
-<tr><td align="center" bgcolor="#f5f1ed" style="padding:20px 24px;background-color:#f5f1ed;border-top:1px solid #e8e1dc;${F}font-size:14px;line-height:22px;color:#625b56;">Glam Too Boutique &middot; Prices include 20% VAT</td></tr>
-</table>
-<!--[if mso]></td></tr></table><![endif]-->
-</td></tr></table></body></html>`;
-  const attachments = [{
-    filename: "glam-too-boutique.png",
-    content: Buffer.from(wordmark, "base64"),
-    contentType: "image/png",
-    contentDisposition: "inline" as const,
-    cid: LOGO_CID,
-  }];
+</td></tr>`,
+  });
   return { subject, text, html, attachments };
 }

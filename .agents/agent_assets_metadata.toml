@@ -98,3 +98,31 @@ mtime_ms = 1791982157092
 storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/c35acf06-ab84-41bd-a0eb-cfd928305a51/df1b20e2-3359-4eb7-b7c4-75e82f2788e7"
 storage_version_token = "1791983262089056"
 content_type = "text/html"
+
+[[outputs]]
+id = "snwAOeDRbUb1vaZ88H2cA"
+uri = "file://generated-artifacts/email-branding/preview.html"
+type = "html"
+title = "Glam Too email branding preview"
+description = "Five offline previews: order confirmation, contact enquiry, and refund/payment-resolution emails. Fictional details; no email is sent."
+logical_id = "7af1c0b6-8aeb-46b7-82f0-5a5b8987e05b"
+content_hash = "sha256:1030b0c08ab20e709b742ac4157c5d7fa918f12e08493d1727484ced7902e000"
+size = 200354
+mtime_ms = 1792059499195
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/7af1c0b6-8aeb-46b7-82f0-5a5b8987e05b/c55fe029-b17d-4c06-98da-d5355b877fd3"
+storage_version_token = "1792059611244875"
+content_type = "text/html"
+
+[[outputs]]
+id = "d5PLac4fNz6DepJ4CNxwX"
+uri = "file://artifacts/api-server/src/assets/email-wordmark.png"
+type = "image"
+title = "Glam Too email logo"
+description = "The existing Glam Too Boutique PNG wordmark, ready to upload to the account-email branding settings."
+logical_id = "1bfe0c9f-2c82-430b-9d2b-1b57e128a3be"
+content_hash = "sha256:60b3edb91417439aa23a5b78623371f049ca4c7ad9c333a8a0bdc4ff08e87d6f"
+size = 25020
+mtime_ms = 1791976551915
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/1bfe0c9f-2c82-430b-9d2b-1b57e128a3be/966a901c-04ea-4a51-a291-503beea1cd4f"
+storage_version_token = "1792059611727223"
+content_type = "image/png"

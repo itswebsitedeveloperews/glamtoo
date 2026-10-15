@@ -13,6 +13,7 @@ test("branded enquiry email preserves its subject and complete plain-text fallba
   const mail = buildContactNotificationMessage(enquiry);
   assert.equal(mail.subject, "Glam Too contact enquiry #42");
   assert.equal(mail.text, [
+    "Glam Too Boutique", "Outfits that make every moment yours.", "",
     "Enquiry: 42", "Name: Avery Example", "Email: avery@example.test",
     "Order number: GM-DEMO-42", "Topic: Order help", `Message: ${enquiry.message}`,
   ].join("\n"));

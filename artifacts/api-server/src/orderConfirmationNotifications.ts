@@ -1,6 +1,7 @@
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { buildOrderConfirmation, type ConfirmationItem, type ConfirmationOrder } from "./orderConfirmationTemplate";
+import { EMAIL_BRAND } from "./emailBranding";
 import { orderConfirmationRecipientPolicy } from "./emailRecipientPolicy";
 import { getContactNotificationSettings } from "./contactNotifications";
 import { gmailOrderMessageId, gmailAdminOrderMessageId, gmailSmtpConfiguration, GmailSmtpError, sendGmailConfirmation, sendGmailAdminOrderConfirmation } from "./gmailSmtp";
@@ -37,7 +38,7 @@ async function configuration(transport = process.env.ORDER_EMAIL_TRANSPORT === "
   } catch { return null; }
   return {
     token: token ?? "", fromEmail: fromEmail ?? "", publicUrl, ...policy, transport, smtp,
-    adminAudience, fromName: process.env.MAILERSEND_FROM_NAME?.trim() || "Glam Too Boutique",
+    adminAudience, fromName: process.env.MAILERSEND_FROM_NAME?.trim() || EMAIL_BRAND.name,
     replyTo: process.env.MAILERSEND_REPLY_TO_EMAIL?.trim() || fromEmail,
   };
 }

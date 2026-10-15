@@ -1,8 +1,9 @@
 import { pool } from "@workspace/db";
 import { logger } from "./lib/logger";
 import { emailRecipientPolicy } from "./emailRecipientPolicy";
-
-export type RefundNotificationType = "refund_processing" | "refunded" | "manual_resolution";
+import { EMAIL_BRAND } from "./emailBranding";
+import { buildRefundNotificationMessage, type RefundNotificationType } from "./refundNotificationTemplate";
+export { buildRefundNotificationMessage, type RefundNotificationType } from "./refundNotificationTemplate";
 
 type RefundNotificationRow = {
   id: number;
@@ -12,73 +13,6 @@ type RefundNotificationRow = {
   customer_name: string;
 };
 
-function publicOrderNumber(orderId: string) {
-  return `#GM-${orderId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase()}`;
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function notificationCopy(type: RefundNotificationType, orderNumber: string) {
-  if (type === "refunded") {
-    return {
-      subject: `Your Glam Too refund is complete (${orderNumber})`,
-      heading: "Your refund is complete",
-      detail: "We have completed your full refund. Your bank may take a few working days to show the money in your account.",
-    };
-  }
-  if (type === "manual_resolution") {
-    return {
-      subject: `Your Glam Too payment needs our attention (${orderNumber})`,
-      heading: "We’re resolving your payment",
-      detail: "Your payment arrived after this order had been cancelled. Our customer-care team is completing the refund manually and will contact you if anything else is needed.",
-    };
-  }
-  return {
-    subject: `Your Glam Too refund is being processed (${orderNumber})`,
-    heading: "Your refund is being processed",
-    detail: "Your payment arrived after this order had been cancelled. We are processing your full refund now, and your bank may take a few working days to show it.",
-  };
-}
-
-export function buildRefundNotificationMessage(
-  type: RefundNotificationType,
-  orderId: string,
-  customerName: string,
-) {
-  const orderNumber = publicOrderNumber(orderId);
-  const copy = notificationCopy(type, orderNumber);
-  const name = customerName.trim() || "there";
-  const greeting = `Hi ${name},`;
-  const text = [
-    greeting,
-    "",
-    copy.heading,
-    "",
-    `Order ${orderNumber} will not be fulfilled because it was cancelled after the availability reserved for it had changed.`,
-    copy.detail,
-    "",
-    "If you have any questions, please reply to this email or contact hello@glamtoo.co.uk.",
-    "",
-    "Glam Too",
-  ].join("\n");
-  const html = [
-    `<p>${escapeHtml(greeting)}</p>`,
-    `<h1>${escapeHtml(copy.heading)}</h1>`,
-    `<p>Order <strong>${escapeHtml(orderNumber)}</strong> will not be fulfilled because it was cancelled after the availability reserved for it had changed.</p>`,
-    `<p>${escapeHtml(copy.detail)}</p>`,
-    "<p>If you have any questions, please reply to this email or contact hello@glamtoo.co.uk.</p>",
-    "<p>Glam Too</p>",
-  ].join("");
-  return { subject: copy.subject, text, html };
-}
-
 export function isRefundEmailDeliveryConfigured() {
   return Boolean(mailerSendConfig());
 }
@@ -86,7 +20,7 @@ export function isRefundEmailDeliveryConfigured() {
 function mailerSendConfig() {
   const token = process.env.MAILERSEND_API_TOKEN?.trim();
   const fromEmail = process.env.MAILERSEND_FROM_EMAIL?.trim();
-  const fromName = process.env.MAILERSEND_FROM_NAME?.trim() || "Glam Too";
+  const fromName = process.env.MAILERSEND_FROM_NAME?.trim() || EMAIL_BRAND.name;
   const policy = emailRecipientPolicy();
   return token && fromEmail && policy ? { token, fromEmail, fromName, ...policy } : null;
 }
@@ -112,6 +46,12 @@ async function sendWithMailerSend(
       subject: message.subject,
       text: message.text,
       html: message.html,
+      attachments: message.attachments.map((attachment) => ({
+        filename: attachment.filename,
+        content: attachment.content.toString("base64"),
+        disposition: attachment.contentDisposition,
+        id: attachment.cid,
+      })),
     }),
   });
   if (!response.ok) {
