@@ -117,14 +117,14 @@ content_type = "text/html"
 id = "d5PLac4fNz6DepJ4CNxwX"
 uri = "file://artifacts/api-server/src/assets/email-wordmark.png"
 type = "image"
-title = "Glam Too email logo"
-description = "The existing Glam Too Boutique PNG wordmark, ready to upload to the account-email branding settings."
+title = "Glam Too Boutique logo for Clerk"
+description = "Download this PNG, then upload it as the application logo in Clerk’s branding settings."
 logical_id = "1bfe0c9f-2c82-430b-9d2b-1b57e128a3be"
 content_hash = "sha256:60b3edb91417439aa23a5b78623371f049ca4c7ad9c333a8a0bdc4ff08e87d6f"
 size = 25020
 mtime_ms = 1791976551915
-storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/1bfe0c9f-2c82-430b-9d2b-1b57e128a3be/966a901c-04ea-4a51-a291-503beea1cd4f"
-storage_version_token = "1792059611727223"
+storage_uri = "gcs://replit-rams-assets-janeway/rams/assets/repl:b631e358-8dab-4675-a497-64d0915e8fd4/1bfe0c9f-2c82-430b-9d2b-1b57e128a3be/887f8da4-6f47-4018-b04e-1f86622cad8e"
+storage_version_token = "1792061172680436"
 content_type = "image/png"
 
 [[outputs]]

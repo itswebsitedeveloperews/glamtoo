@@ -1,0 +1,85 @@
+<re-html>
+<re-head>
+    <re-title>{{otp_code}} is your {{app.name}} verification code</re-title>
+    <re-style>
+        body, table, td, p { font-family: Arial, Helvetica, sans-serif; }
+        .boutique-heading { font-family: Georgia, 'Times New Roman', serif !important; }
+        .boutique-logo img { width: 220px !important; max-width: 100% !important; height: auto !important; }
+    </re-style>
+</re-head>
+<re-body background-color="#f5f1ed" padding="28px 12px 28px 12px">
+    <re-preheader>Your {{app.name}} verification code. Keep this code private.</re-preheader>
+    <re-container width="640px" background-color="#ffffff" border="1px solid #d8d0ca" border-radius="0px">
+    <re-header width="100%" padding="0px" background-color="#f5f1ed">
+        <re-block padding="0px 0px 0px 0px">
+            <re-divider background-color="#c96381" height="4px"></re-divider>
+        </re-block>
+        <re-block align="center" padding="26px 24px 20px 24px">
+            <re-text class="boutique-logo" margin="0px" align="center" font-size="24px" line-height="32px" color="#171615">
+                {{> app_logo}}
+            </re-text>
+        </re-block>
+        <re-block padding="0px">
+            <re-divider background-color="#e8e1dc" height="1px"></re-divider>
+        </re-block>
+    </re-header>
+    <re-main width="100%" background-color="#ffffff" border-radius="0px">
+        <re-block align="left" padding="28px 24px 20px 24px">
+            <re-text margin="0px 0px 10px 0px" font-size="14px" font-weight="bold" line-height="20px" color="#b12d5c">
+                ACCOUNT SECURITY
+            </re-text>
+            <re-heading class="boutique-heading" margin="0px" level="h1" align="left" font-size="30px" font-weight="normal" line-height="38px" color="#171615">
+                Your verification code
+            </re-heading>
+            <re-text margin="14px 0px 0px 0px" font-size="16px" line-height="24px" color="#171615">
+                Enter the code below when prompted to continue securely with your Glam Too Boutique account.
+            </re-text>
+        </re-block>
+        <re-block padding="0px 24px 0px 24px">
+            <re-table>
+                <re-table-row>
+                    <re-table-cell align="center" padding="20px 12px 20px 12px" background-color="#f9e8ee" style="border-left:3px solid #e23d6f;">
+                        <re-text margin="0px" align="center" font-size="14px" line-height="22px" color="#625b56">
+                            Your one-time code
+                        </re-text>
+                        <re-text margin="8px 0px 0px 0px" align="center" font-size="40px" font-weight="bold" line-height="52px" color="#171615">
+                            {{otp_code}}
+                        </re-text>
+                    </re-table-cell>
+                </re-table-row>
+            </re-table>
+        </re-block>
+        <re-block align="left" padding="24px 24px 32px 24px">
+            <re-text margin="0px" font-size="16px" line-height="24px" color="#171615">
+                <b>Keep this code private.</b> To protect your account, do not share it with anyone.
+            </re-text>
+            <re-text margin="24px 0px 0px 0px" font-size="14px" font-weight="bold" line-height="22px" color="#171615">
+                Didn't request this?
+            </re-text>
+            <re-text margin="8px 0px 0px 0px" font-size="14px" line-height="22px" color="#625b56">
+                This code was requested from <b>{{requested_from}}</b> at <b>{{requested_at}}</b>. If you didn't make this request, you can safely ignore this email.
+            </re-text>
+        </re-block>
+    </re-main>
+    <re-footer width="100%" padding="0px" background-color="#f5f1ed">
+        <re-block padding="0px">
+            <re-divider background-color="#e8e1dc" height="1px"></re-divider>
+        </re-block>
+        <re-block align="center" padding="20px 24px 20px 24px">
+            <re-text align="center" margin="0px" font-size="14px" line-height="22px" color="#171615">
+                Glam Too Boutique
+            </re-text>
+            <re-text align="center" margin="4px 0px 0px 0px" font-size="14px" line-height="22px" color="#625b56">
+                Outfits that make every moment yours.
+            </re-text>
+            <re-text align="center" margin="8px 0px 0px 0px" font-size="14px" line-height="22px" color="#625b56">
+                Sent for your account security.
+            </re-text>
+            <re-text align="center" margin="8px 0px 0px 0px" font-size="14px" line-height="22px" color="#625b56">
+                &copy; {{current_year}} Glam Too Boutique
+            </re-text>
+        </re-block>
+    </re-footer>
+    </re-container>
+</re-body>
+</re-html>

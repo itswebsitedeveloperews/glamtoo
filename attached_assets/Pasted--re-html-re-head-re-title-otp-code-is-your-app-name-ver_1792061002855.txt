@@ -1,0 +1,48 @@
+<re-html>
+<re-head>
+    <re-title>
+        {{otp_code}}
+is your {{app.name}}
+verification code
+    </re-title>
+</re-head>
+<re-body background-color="#fff" padding="48px 32px 48px 32px">
+    <re-preheader>
+        Your {{app.name}}
+verification code
+    </re-preheader>
+    <re-header padding="16px 32px 8px 32px">
+        <re-text font-size="18px" font-weight="bold" line-height="26px" color="#111827">
+            {{> app_logo}}
+        </re-text>
+    </re-header>
+    <re-main background-color="#fff" border-radius="0px">
+        <re-block border-radius="0px" align="left" padding="32px 32px 48px 32px" background-color="#ffffff" font-size="14px" font-weight="bold" margin="0" level="h1">
+            <re-heading margin="0" level="h1" align="left" color="#111827" font-size="24px" line-height="32px">
+                Verification code
+            </re-heading>
+            <re-text margin="32px 0px 0px 0px" align="left" font-size="14px" color="#747686">
+                Enter the following verification code when prompted:
+            </re-text>
+            <re-text font-size="40px" margin="16px 0px 0px 0px" color="#747686">
+                <b>{{otp_code}}</b>
+            </re-text>
+            <re-text margin="16px 0px 0px 0px" font-size="14px" color="#747686">
+                To protect your account, do not share this code.
+            </re-text>
+            <re-text margin="64px 0px 0px 0px" color="#747686" font-size="14px">
+                <b>Didn't request this?</b>
+            </re-text>
+            <re-text font-size="14px" margin="4px 0px 0px 0px" color="#747686">
+                This code was requested from <b>{{requested_from}}</b> at <b>{{requested_at}}</b>. If you didn't make this request, you can safely ignore this email.
+            </re-text>
+        </re-block>
+    </re-main>
+    <re-footer padding="24px 32px 48px">
+        <re-divider background-color="#B7B8C2" height="1px"></re-divider>
+        <re-text margin="16px 0px 0px 0px" font-size="13px" color="#747686">
+            © {{current_year}} {{app.name}}
+        </re-text>
+    </re-footer>
+</re-body>
+</re-html>
